@@ -2696,6 +2696,47 @@ function selectCity(c){
   closeDropdown();
   startExploring();
 }
+async function loadMap(city){
+  showLdr('Geocoding '+city+'…');
+  document.getElementById('map-city-name').textContent=city;
+  document.getElementById('map-place-count').textContent='';
+  document.getElementById('sel-count-text').textContent='0 places selected';
+  document.getElementById('btn-plan').disabled=true;
+  try{
+    const geo=await fetch(`${API}/geocode?city=${encodeURIComponent(city)}`).then(r=>r.json());
+    if(geo.error){showToast(geo.error);hideLdr();return;}
+    if(!leafletMap){
+      leafletMap=L.map('map',{zoomControl:false,tap:true,tapTolerance:15,dragging:true,touchZoom:true,doubleClickZoom:false}).setView([geo.lat,geo.lon],13);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafletMap);
+      leafletMap.on('click',()=>document.getElementById('pin-card').classList.remove('vis'));
+    }else{leafletMap.setView([geo.lat,geo.lon],13);}
+    setTimeout(()=>leafletMap.invalidateSize(true),100);
+    setTimeout(()=>leafletMap.invalidateSize(true),500);
+    showLdr('Scouting places in '+city+'…');
+    allPlaces=await fetch(`${API}/map-data?city=${encodeURIComponent(city)}`).then(r=>r.json());
+    if(!Array.isArray(allPlaces)||!allPlaces.length){showToast('No places found');hideLdr();return;}
+    document.getElementById('map-place-count').textContent=allPlaces.length+' places';
+    renderPins();hideLdr();
+  }catch(e){console.error(e);showToast('Could not load map');hideLdr();}
+}
+
+function renderPins(){
+  markers.forEach(m=>leafletMap.removeLayer(m));markers=[];
+  const list=currentFilter==='all'?allPlaces:allPlaces.filter(p=>p.category===currentFilter);
+  list.forEach(place=>{
+    if(!place.lat||!place.lon)return;
+    const cat=place.category||'place';
+    const icon=CICONS[cat]||'location_on';
+    const sel=selectedPlaces.some(s=>s.title===place.title);
+    const html=`<div class="mpin-wrap"><div class="mpin ${cat}${sel?' selected':''}"><span class="ms${sel?' fill':''}">${icon}</span></div></div>`;
+    const li=L.divIcon({className:'',html,iconSize:[48,56],iconAnchor:[24,56]});
+    const m=L.marker([place.lat,place.lon],{icon:li}).addTo(leafletMap);
+    m.on('click',e=>{L.DomEvent.stopPropagation(e);openCard(place);});
+    markers.push(m);
+  });
+}
+
+
 function startExploring(){
   const city=document.getElementById('city-input').value.trim();
   if(!city){showToast('Enter a city name');return;}
