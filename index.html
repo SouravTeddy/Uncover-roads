@@ -2698,10 +2698,9 @@ function selectCity(c){
 }
 async function loadMap(city){
   showLdr('Geocoding '+city+'…');
-  document.getElementById('map-city-name').textContent=city;
-  document.getElementById('map-place-count').textContent='';
-  document.getElementById('sel-count-text').textContent='0 places selected';
-  document.getElementById('btn-plan').disabled=true;
+  const _cn = document.getElementById('map-city-name'); if(_cn) _cn.textContent=city;
+  const _mc = document.getElementById('map-place-count'); if(_mc) _mc.textContent='';
+  const _bar = document.getElementById('create-itin-bar'); if(_bar) _bar.classList.remove('visible');
   try{
     const geo=await fetch(`${API}/geocode?city=${encodeURIComponent(city)}`).then(r=>r.json());
     if(geo.error){showToast(geo.error);hideLdr();return;}
@@ -2715,7 +2714,7 @@ async function loadMap(city){
     showLdr('Scouting places in '+city+'…');
     allPlaces=await fetch(`${API}/map-data?city=${encodeURIComponent(city)}`).then(r=>r.json());
     if(!Array.isArray(allPlaces)||!allPlaces.length){showToast('No places found');hideLdr();return;}
-    document.getElementById('map-place-count').textContent=allPlaces.length+' places';
+    const _mp2 = document.getElementById('map-place-count'); if(_mp2) _mp2.textContent=allPlaces.length+' places';
     renderPins();hideLdr();
   }catch(e){console.error(e);showToast('Could not load map');hideLdr();}
 }
@@ -2761,8 +2760,8 @@ function openCard(place){
 function addPlace(){
   if(!activePlace||selectedPlaces.some(s=>s.title===activePlace.title))return;
   selectedPlaces.push(activePlace);
-  document.getElementById('sel-count-text').textContent=selectedPlaces.length+' place'+(selectedPlaces.length>1?'s':'')+' selected';
-  document.getElementById('btn-plan').disabled=selectedPlaces.length<2;
+  const _bar2 = document.getElementById('create-itin-bar');
+  if(_bar2) _bar2.classList.toggle('visible', selectedPlaces.length >= 2);
   document.getElementById('btn-add').innerHTML='<span class="ms">check</span> Added';
   document.getElementById('btn-add').className='btn-add added';
   renderPins();
