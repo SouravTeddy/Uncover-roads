@@ -2985,9 +2985,12 @@ function selOb(key, val, prefix) {
 
   // Enable the corresponding Next button
   const btnId = OB_NEXT_BTN[key];
+  console.log('[selOb] key='+key+' val='+val+' btnId='+btnId);
   if (btnId) {
     const btn = document.getElementById(btnId);
+    console.log('[selOb] btn found:', !!btn, 'was disabled:', btn&&btn.disabled);
     if (btn) btn.disabled = false;
+    console.log('[selOb] btn now disabled:', btn&&btn.disabled);
   }
 }
 
@@ -3020,9 +3023,12 @@ function obBack(from, to) {
 
 // Final step — build persona and navigate
 async function obFinish() {
+  console.log('[obFinish] called, persona.pace='+persona.pace);
   const btn = document.getElementById('ob5-next');
   if(btn){ btn.disabled = true; btn.innerHTML = 'Setting up... <span class="ms">hourglass_empty</span>'; }
+  console.log('[obFinish] calling buildPersona...');
   await buildPersona();
+  console.log('[obFinish] buildPersona done, persona.archetype='+persona.archetype);
   goTo('explore');
 }
 
