@@ -2743,18 +2743,25 @@ function hideLdr(){document.getElementById('map-ldr').classList.remove('on');}
 function openCard(place){
   activePlace=place;
   const cat=place.category||'place';
-  document.getElementById('card-title').textContent=place.title;
-  document.getElementById('card-cat').textContent=CLABELS[cat]||'Place';
-  const img=document.getElementById('card-img');
-  img.src='https://picsum.photos/seed/'+encodeURIComponent(place.title).slice(0,15)+'/80/80';
-  fetch(`${API}/place-image?name=${encodeURIComponent(place.title)}&city=${encodeURIComponent(currentCity)}`)
-    .then(r=>r.json()).then(d=>{ if(d.image) img.src=d.image; }).catch(()=>{});
-  img.onerror=()=>{img.src='https://picsum.photos/80/80';
+  const titleEl=document.getElementById('card-title');
+  if(titleEl) titleEl.textContent=place.title;
+  const descEl=document.getElementById('card-desc');
+  if(descEl) descEl.textContent=CLABELS[cat]||'Place';
+  const iconEl=document.getElementById('card-icon');
+  if(iconEl) iconEl.textContent=CICONS[cat]||'location_on';
+  const imgWrap=document.getElementById('card-img-wrap');
+  if(imgWrap){
+    const iconSpan=document.getElementById('card-img-icon');
+    fetch(`${API}/place-image?name=${encodeURIComponent(place.title)}&city=${encodeURIComponent(currentCity)}`)
+      .then(r=>r.json()).then(d=>{
+        if(d.image){imgWrap.style.backgroundImage='url('+d.image+')';imgWrap.style.backgroundSize='cover';imgWrap.style.backgroundPosition='center';if(iconSpan)iconSpan.style.display='none';}
+      }).catch(()=>{});
+  }
   const marked=selectedPlaces.some(s=>s.title===place.title);
   const btn=document.getElementById('btn-add');
-  btn.innerHTML=marked?'<span class="ms">check</span> Added':'<span class="ms">add</span> Add to Itinerary';
-  btn.className='btn-add'+(marked?' added':'');
-  document.getElementById('pin-card').classList.add('vis');
+  if(btn){btn.innerHTML=marked?'<span class="ms">check</span> Added':'<span class="ms">add</span> Add to Itinerary';btn.className='btn-add'+(marked?' added':'');}
+  const card=document.getElementById('pin-card');
+  if(card) card.classList.add('vis');
 }
 
 function addPlace(){
@@ -2983,7 +2990,6 @@ function startNavigation(){
   goTo('nav');
 }
 
-document.getElementById('load-txt').textContent=t||'Loading…';document.getElementById('map-ldr').classList.add('on');}
 
 function startExploring(){
   const city=document.getElementById('city-input').value.trim();
