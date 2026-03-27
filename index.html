@@ -2583,7 +2583,7 @@ h1,h2,h3,h4 { font-family:'Plus Jakarta Sans',sans-serif; }
 
 
 <script>
-const API='https://web-production-15f5a.up.railway.app';
+const API='http://192.168.1.6:8000';
 const persona={ritual:null,pace:null,attractions:[]};
 let currentCity='',allPlaces=[],markers=[],selectedPlaces=[],clusterLayer=null;
 let currentScreen='login';
@@ -3019,8 +3019,11 @@ function obBack(from, to) {
 }
 
 // Final step — build persona and navigate
-function obFinish() {
-  buildPersona();
+async function obFinish() {
+  const btn = document.getElementById('ob5-next');
+  if(btn){ btn.disabled = true; btn.innerHTML = 'Setting up... <span class="ms">hourglass_empty</span>'; }
+  await buildPersona();
+  goTo('explore');
 }
 
 // Ensure ob2-screen items work with goTo
