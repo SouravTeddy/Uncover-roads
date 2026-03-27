@@ -2586,6 +2586,7 @@ h1,h2,h3,h4 { font-family:'Plus Jakarta Sans',sans-serif; }
 const API='https://web-production-15f5a.up.railway.app';
 const persona={ritual:null,pace:null,attractions:[]};
 let currentCity='',allPlaces=[],markers=[],selectedPlaces=[],clusterLayer=null;
+let tripCtx={startType:'hotel',arrivalTime:null,date:new Date(),days:1,dayNumber:1,flightTime:null,isLongHaul:false,locationLat:null,locationLon:null,locationName:null};
 let currentScreen='login';
 let activePlace=null,leafletMap=null,routeLine=null,currentFilter='all';
 const CICONS={restaurant:'restaurant',cafe:'local_cafe',park:'park',museum:'museum',historic:'account_balance',tourism:'photo_camera',place:'location_on'};
@@ -2990,6 +2991,38 @@ function startNavigation(){
   goTo('nav');
 }
 
+
+
+function selectStartType(type){
+  tripCtx.startType=type;
+  ['airport','hotel','airbnb','map'].forEach(t=>{
+    const btn=document.getElementById('tm-seg-'+t);
+    if(btn) btn.classList.toggle('active',t===type);
+  });
+  const locRow=document.getElementById('tm-location-row');
+  if(locRow) locRow.style.display=type==='map'?'flex':'none';
+}
+
+function fitMapToPins(animate){
+  if(!leafletMap||!allPlaces.length) return;
+  const pts=allPlaces.filter(p=>p.lat&&p.lon).map(p=>[p.lat,p.lon]);
+  if(!pts.length) return;
+  try{ leafletMap.fitBounds(L.latLngBounds(pts).pad(0.15),{animate:!!animate,maxZoom:15}); }catch(e){}
+}
+
+function searchHere(){
+  if(!leafletMap) return;
+  const c=leafletMap.getCenter();
+  const r=leafletMap.getBounds();
+  const btn=document.getElementById('search-here-btn');
+  if(btn) btn.classList.remove('visible');
+  showLdr('Finding places here…');
+  fetch(`${API}/map-data?city=${encodeURIComponent(currentCity)}&lat=${c.lat}&lon=${c.lng}`)
+    .then(r=>r.json()).then(data=>{
+      if(Array.isArray(data)&&data.length){ allPlaces=data; renderPins(); }
+      hideLdr();
+    }).catch(()=>hideLdr());
+}
 
 function startExploring(){
   const city=document.getElementById('city-input').value.trim();
