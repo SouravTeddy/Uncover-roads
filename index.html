@@ -2737,6 +2737,255 @@ function renderPins(){
 }
 
 
+function showLdr(t){document.getElementById('load-txt').textContent=t||'Loading…';document.getElementById('map-ldr').classList.add('on');}
+
+function hideLdr(){document.getElementById('map-ldr').classList.remove('on');}
+
+function openCard(place){
+  activePlace=place;
+  const cat=place.category||'place';
+  document.getElementById('card-title').textContent=place.title;
+  document.getElementById('card-cat').textContent=CLABELS[cat]||'Place';
+  const img=document.getElementById('card-img');
+  img.src='https://picsum.photos/seed/'+encodeURIComponent(place.title).slice(0,15)+'/80/80';
+  fetch(`${API}/place-image?name=${encodeURIComponent(place.title)}&city=${encodeURIComponent(currentCity)}`)
+    .then(r=>r.json()).then(d=>{ if(d.image) img.src=d.image; }).catch(()=>{});
+  img.onerror=()=>{img.src='https://picsum.photos/80/80';
+  const marked=selectedPlaces.some(s=>s.title===place.title);
+  const btn=document.getElementById('btn-add');
+  btn.innerHTML=marked?'<span class="ms">check</span> Added':'<span class="ms">add</span> Add to Itinerary';
+  btn.className='btn-add'+(marked?' added':'');
+  document.getElementById('pin-card').classList.add('vis');
+}
+
+function addPlace(){
+  if(!activePlace||selectedPlaces.some(s=>s.title===activePlace.title))return;
+  selectedPlaces.push(activePlace);
+  document.getElementById('sel-count-text').textContent=selectedPlaces.length+' place'+(selectedPlaces.length>1?'s':'')+' selected';
+  document.getElementById('btn-plan').disabled=selectedPlaces.length<2;
+  document.getElementById('btn-add').innerHTML='<span class="ms">check</span> Added';
+  document.getElementById('btn-add').className='btn-add added';
+  renderPins();
+}
+
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.fchip').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pin-card').classList.remove('vis');
+  renderPins();
+}
+
+async function planTrip(){
+  if(selectedPlaces.length<2){showToast('Select at least 2 places');return;}
+  drawRoute();
+  goTo('route');
+  document.getElementById('rt-title').textContent='Your '+currentCity+' Journey';
+  document.getElementById('rt-body').innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:50vh;gap:1rem"><div class="spin"></div><p class="ltxt">Building your journey…</p></div>';
+  const [wxRes,itRes]=await Promise.allSettled([fetchWx(currentCity),fetchItin()]);
+  const wx=wxRes.status==='fulfilled'?wxRes.value:simWx();
+  const it=itRes.status==='fulfilled'?itRes.value:null;
+  applyWx(wx);
+  if(it&&!it.error)renderRoute(it,wx);
+  else showToast(it?.error||'Could not build itinerary');
+}
+
+async function fetchWx(city){
+  try{const r=await fetch(`${API}/weather?city=${encodeURIComponent(city)}`);return await r.json();}
+  catch{return simWx();}
+}
+function simWx(){
+  const h=new Date().getHours();
+  if(h>=6&&h<10)return{condition:'Clear',temp:22,description:'clear sky',sunrise:1,sunset:99999};
+  if(h>=10&&h<17)return{condition:'Sunny',temp:28,description:'sunny',sunrise:1,sunset:99999};
+  if(h>=17&&h<20)return{condition:'Clouds',temp:24,description:'partly cloudy',sunrise:1,sunset:99999};
+  return{condition:'Clear',temp:18,description:'clear night',sunrise:0,sunset:1};
+}
+async function fetchItin(){
+  const ctxParts=[
+    persona.ritual&&persona.ritual!=='neither'?`Prefers ${persona.ritual} in the morning`:'',
+    persona.pace==='walking'?'Enjoys walking':persona.pace==='transit'?'Prefers transit':persona.pace==='self'?'Has own transport':'',
+    persona.attractions.length?`Interested in: ${persona.attractions.join(', ')}`:'',
+    persona.style?`Travel style: ${persona.style}`:'',
+    persona.sensory?`Driven by: ${persona.sensory}`:'',
+    persona._city_compat_warning?`Note: ${persona._city_compat_warning}`:''
+  ].filter(Boolean).join('. ');
+  const payload={
+    city:currentCity, days:1, pace:persona.pace||'moderate', places:selectedPlaces,
+    persona:ctxParts,
+    persona_archetype:persona.archetype,
+    persona_context:{
+      archetype:persona.archetype, drive:persona.sensory, style:persona.style,
+      ritual:persona.ritual, pace:persona.pace, social:persona.social,
+      attractions:persona.attractions, budget:persona._budget_context,
+      schedule:persona._schedule, filters:persona.archetypeData?.venue_filters,
+      itinerary_bias:persona.archetypeData?.itinerary_bias,
+      social_context:persona._context, secondary:persona._secondary_archetype||null,
+      traits:persona.resolvedTraits
+    }
+  };
+  const r=await fetch(`${API}/ai-itinerary`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  return r.json();
+}
+
+function applyWx(w){
+  if(!w||w.error){applyWxState('clear-day',false);return;}
+  const now=Date.now()/1000,isNight=now<w.sunrise||now>w.sunset;
+  const c=(w.condition||'').toLowerCase();
+  let state='clear-day',icon='wb_sunny';
+  if(isNight&&c.includes('cloud')){state='cloudy';icon='nights_stay';}
+  else if(isNight){state='night';icon='star';}
+  else if(c.includes('rain')||c.includes('drizzle')){state='rain';icon='rainy';}
+  else if(c.includes('cloud')){state='cloudy';icon='cloud';}
+  else if(c.includes('fog')||c.includes('mist')){state='fog';icon='foggy';}
+  else if(!isNight){state='sunny';icon='wb_sunny';}
+  applyWxState(state,isNight);
+  const b=document.getElementById('wx-badge');
+  b.style.display='flex';
+  document.getElementById('wx-icon').textContent=icon;
+  document.getElementById('wx-label').textContent=w.description||'Clear';
+  document.getElementById('wx-temp').textContent=w.temp!==undefined?w.temp+'°':'';
+}
+function applyWxState(state,isNight){
+  const c=document.getElementById('wx-canvas');
+  c.className=state;c.innerHTML='';
+  if(state==='night'||state==='clear-day')buildStars(c,state==='night'?100:35);
+  if(state==='rain'){buildStars(c,15);buildRain(c,70);buildClouds(c,3);}
+  if(state==='cloudy'){buildClouds(c,4);if(isNight)buildStars(c,25);}
+  if(state==='sunny')buildSun(c);
+  if(state==='fog'){buildFog(c);buildStars(c,10);}
+}
+function buildStars(p,n){for(let i=0;i<n;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+1;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*60}%;left:${Math.random()*100}%;--op:${Math.random()*.7+.3};--d:${(Math.random()*3+2).toFixed(1)}s;--dl:${(Math.random()*4).toFixed(1)}s;`;p.appendChild(s);}}
+function buildRain(p,n){for(let i=0;i<n;i++){const d=document.createElement('div');d.className='rdrop';const h=Math.random()*70+40;d.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*20-20}%;height:${h}px;--dur:${(Math.random()*.4+.5).toFixed(2)}s;--dl2:-${(Math.random()*2).toFixed(2)}s;opacity:${Math.random()*.5+.3};`;p.appendChild(d);}}
+function buildClouds(p,n){for(let i=0;i<n;i++){const c=document.createElement('div');c.className='cld';const w=Math.random()*280+180;c.style.cssText=`width:${w}px;height:${w*.4}px;top:${Math.random()*30}%;left:${Math.random()*80}%;--cd:${(Math.random()*40+35).toFixed(0)}s;--cdl:-${(Math.random()*25).toFixed(0)}s;opacity:${Math.random()*.4+.15};`;p.appendChild(c);}}
+function buildSun(p){const g=document.createElement('div');g.className='sunglow';p.appendChild(g);}
+function buildFog(p){for(let i=0;i<5;i++){const f=document.createElement('div');f.className='fgl';f.style.cssText=`top:${i*15}%;height:${Math.random()*70+50}px;--fd:${(Math.random()*20+12).toFixed(0)}s;--fdl:-${(Math.random()*8).toFixed(0)}s;opacity:${Math.random()*.5+.25};`;p.appendChild(f);}}
+
+function renderRoute(data,wx){
+  const items=data.itinerary||[],sum=data.summary||{};
+  const now=Date.now()/1000,isNight=wx?(now<wx.sunrise||now>wx.sunset):new Date().getHours()>19;
+  const cond=(wx?.condition||'').toLowerCase();
+  const detour=persona.ritual==='tea'?{name:'Local Tea House',desc:'Since you love tea, this traditional spot offers rare blends just 3 mins off route.',img:'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=200&q=80'}:persona.ritual==='coffee'?{name:'Specialty Coffee Bar',desc:'Since you prefer coffee, this roastery is just 4 mins off route.',img:'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&q=80'}:null;
+  let wxTip='';
+  if(cond.includes('rain'))wxTip='It\'s raining — we\'ve prioritized covered walkways and indoor stops.';
+  else if(isNight)wxTip='Night journey — well-lit routes selected. Carry a light layer.';
+  else if(cond.includes('cloud'))wxTip='Overcast skies — great lighting for photography, no harsh shadows.';
+  else if(cond.includes('fog'))wxTip='Foggy conditions — follow landmarks carefully.';
+
+  let html=`
+  <div class="rt-map-hero">
+    <img src="https://picsum.photos/seed/${encodeURIComponent(currentCity).slice(0,10)}/800/400" alt="map" onerror="this.src='https://picsum.photos/800/400'"/>
+    <div class="g"></div>
+    <div class="live-badge"><div class="live-dot"></div><span>Live Route</span></div>
+    <div class="arrive-wrap">
+      <div class="arrive-ic"><span class="ms fill">near_me</span></div>
+      <div class="arrive-txt"><p>Arriving in</p><span>${items.length*90} min</span></div>
+    </div>
+    <button class="btn-start-sm" onclick="startNavigation()"><span class="ms fill">navigation</span> Start</button>
+  </div>
+  <div class="stats-strip">
+    <div class="stat-c"><span class="ms">straighten</span><p>Distance</p><span>${sum.distance_km||'~'} km</span></div>
+    <div class="stat-c"><span class="ms">schedule</span><p>Time</p><span>${items.length*90} min</span></div>
+    <div class="stat-c"><span class="ms">location_on</span><p>Stops</p><span>${items.length}</span></div>
+    <div class="stat-c"><span class="ms">payments</span><p>Budget</p><span>${(sum.estimated_cost||'Varies').split(' ')[0]}</span></div>
+  </div>`;
+
+  if(wxTip)html+=`<div class="wx-tip"><span class="ms fill">${cond.includes('rain')?'umbrella':isNight?'nightlight':'info'}</span><p>${wxTip}</p></div>`;
+
+  html+=`<div class="rt-tl"><div class="tl-spine"></div>
+  <div class="tl-stop"><div class="tl-dot-lg"></div><div class="tl-stop-name">Starting Point</div><div class="tl-stop-sub">Your current location</div></div>`;
+
+  items.forEach((item,i)=>{
+    const isTransit=persona.pace==='transit'&&i>0;
+    html+=`
+    <div class="tl-leg">
+      <div class="tl-dot-sm"><span class="ms" style="font-size:10px">${isTransit?'subway':'directions_walk'}</span></div>
+      <div class="leg-card ${isTransit?'b-teal':'b-blue'}">
+        <div class="leg-left">
+          <div class="leg-icon ${isTransit?'teal':'blue'}"><span class="ms fill">${isTransit?'subway':'directions_walk'}</span></div>
+          <div class="leg-info">
+            <h4>${isTransit?'Take Metro / Bus':'Walk to next stop'}</h4>
+            <p>${item.place}</p>
+            ${isTransit?'<span class="tpill"><span class="ms fill" style="font-size:12px">train</span> On time</span>':''}
+          </div>
+        </div>
+        <div class="leg-right"><div class="leg-dist">${isTransit?'~2.4 km':'~0.6 km'}</div><div class="leg-time">${isTransit?'12 min':'8 min'}</div></div>
+      </div>
+    </div>`;
+
+    if(i===0&&detour)html+=`
+    <div class="detour">
+      <div class="detour-row">
+        <img class="detour-img" src="${detour.img}" alt="${detour.name}" onerror="this.src='https://picsum.photos/seed/SEED4/80/100'"/>
+        <div style="flex:1"><div class="detour-badge"><span class="ms fill">star</span><span>Persona Match</span></div><h4>${detour.name}</h4><p>${detour.desc}</p></div>
+      </div>
+      <button class="btn-add-detour" onclick="showToast('Added to route!')"><span class="ms fill">add_circle</span> Add to Route</button>
+    </div>`;
+
+    const q=encodeURIComponent(item.place+' '+currentCity);
+    html+=`
+    <div class="tl-stop">
+      <div class="tl-dot-lg"></div>
+      <div class="stop-card">
+        <img src="https://picsum.photos/seed/${encodeURIComponent(item.place).slice(0,15)}/600/300" onerror="this.src='https://picsum.photos/600/300'" alt="${item.place}"/>
+        <div class="stop-info">
+          <div class="stop-time-row"><span class="stop-tb">${item.time}</span><span class="stop-dur">${item.duration}</span></div>
+          <h3>${item.place}</h3>
+          <p>${item.tip||'A wonderful stop on your journey.'}</p>
+          <div class="stop-btns">
+            <button class="btn-dir-s" onclick="showToast('Directions coming soon!')"><span class="ms">directions</span> Directions</button>
+            <button class="btn-det-s" onclick="showToast('Details coming soon!')"><span class="ms">info</span> Details</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    if(i===Math.floor(items.length/2)&&sum.pro_tip)html+=`
+    </div><div class="ai-blk"><div class="ai-blk-ic"><span class="ms fill">psychology</span></div><div><h4>Pro Insight</h4><p>${sum.pro_tip}</p></div></div><div class="rt-tl"><div class="tl-spine"></div>`;
+  });
+
+  html+=`<div class="tl-stop"><div class="tl-dot-lg end"></div><div class="tl-stop-name">Final Destination</div><div class="tl-stop-sub teal">${items[items.length-1]?.place||'Last stop'}</div></div></div>`;
+  document.getElementById('rt-body').innerHTML=html;
+}
+
+async function drawRoute(){
+  if(!leafletMap||selectedPlaces.length<2)return;
+  if(routeLine){leafletMap.removeLayer(routeLine);routeLine=null;}
+  try{
+    const data=await fetch(`${API}/route`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({points:selectedPlaces})}).then(r=>r.json());
+    if(!data.routes)return;
+    const coords=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+    routeLine=L.polyline(coords,{color:'#3b82f6',weight:3,opacity:.85,dashArray:'8 5'}).addTo(leafletMap);
+    leafletMap.fitBounds(routeLine.getBounds(),{padding:[60,60]});
+  }catch(e){console.error(e);}
+}
+
+function startNavigation(){
+  // Set nav screen data
+  document.getElementById('nav-city').textContent=currentCity;
+  // Arrival time = now + estimated duration
+  const mins=selectedPlaces.length*90;
+  const arrival=new Date(Date.now()+mins*60000);
+  document.getElementById('nav-arrival').textContent=arrival.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('nav-remaining').innerHTML=mins+' min <span>remaining</span>';
+  // Weather
+  const h=new Date().getHours();
+  const wxLabel=h>=20||h<6?'Clear Night · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Partly Cloudy · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('nav-weather').textContent=wxLabel;
+  // Persona detour text
+  if(persona.ritual==='tea'){
+    document.getElementById('persona-card-text').textContent='A traditional tea house nearby matches your ritual preference. Just 5 mins off route.';
+    document.getElementById('detour-name').textContent='Tea House';
+  } else if(persona.ritual==='coffee'){
+    document.getElementById('persona-card-text').textContent='An award-winning specialty coffee bar matches your morning ritual. Just 4 mins off route.';
+    document.getElementById('detour-name').textContent='Coffee Bar';
+  }
+  document.getElementById('persona-card').style.display='flex';
+  goTo('nav');
+}
+
+document.getElementById('load-txt').textContent=t||'Loading…';document.getElementById('map-ldr').classList.add('on');}
+
 function startExploring(){
   const city=document.getElementById('city-input').value.trim();
   if(!city){showToast('Enter a city name');return;}
