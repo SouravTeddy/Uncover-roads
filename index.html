@@ -3149,10 +3149,22 @@ function selChoice(key, val, prefix) {
         };
       }
     } catch(e) {
-      console.warn("Persona API error:", e);
-      // Fallback: use basic archetype assignment
-      persona.archetype = persona.archetype || "explorer";
+      console.warn("Persona API error:", e.message, "API=", API);
+      // Fallback: assign archetype locally based on OB answers
+      const signals = {
+        coffee:['voyager','epicurean'], tea:['slowtraveller','historian'],
+        exercise:['explorer'], alcohol:['pulse','epicurean'],
+        visual:['voyager'], taste:['epicurean'], history:['historian'],
+        nature:['explorer'], social:['pulse'], solitude:['slowtraveller'],
+      };
+      const scores = {voyager:0,wanderer:0,epicurean:0,historian:0,pulse:0,slowtraveller:0,explorer:0};
+      [persona.ritual, persona.sensory].forEach(v => {
+        (signals[v]||[]).forEach(a => scores[a]++);
+      });
+      (persona.attractions||[]).forEach(v => (signals[v]||[]).forEach(a => scores[a]++));
+      persona.archetype = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0][0];
       persona._conflict_payload = { has_conflicts: false, conflicts: [] };
+      persona._city_profile = {};
     }
   }
 
