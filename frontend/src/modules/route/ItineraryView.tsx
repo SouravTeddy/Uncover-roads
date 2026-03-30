@@ -4,8 +4,19 @@ interface Props {
   stops: ItineraryStop[];
   selectedPlaces: Place[];
   startTime?: string;
+  conflictNotes?: string;
   onRemove: (idx: number) => void;
   onAddMeal: () => void;
+}
+
+function tagStyle(tag: string): { bg: string; text: string; label: string } {
+  switch (tag) {
+    case 'heat':     return { bg: 'bg-amber-100',  text: 'text-amber-800',  label: '🌡 heat' };
+    case 'jetlag':   return { bg: 'bg-indigo-100', text: 'text-indigo-800', label: '✈️ jetlag' };
+    case 'ramadan':  return { bg: 'bg-purple-100', text: 'text-purple-800', label: '🌙 ramadan' };
+    case 'altitude': return { bg: 'bg-teal-100',   text: 'text-teal-800',   label: '⛰ altitude' };
+    default:         return { bg: 'bg-zinc-100',   text: 'text-zinc-600',   label: tag };
+  }
 }
 
 function parseTimeLabel(startMins: number): string {
@@ -106,7 +117,7 @@ function MealGapCard({ label, onAdd }: { label: string; onAdd: () => void }) {
   );
 }
 
-export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAddMeal }: Props) {
+export function ItineraryView({ stops, selectedPlaces, startTime, conflictNotes, onRemove, onAddMeal }: Props) {
   const [startH, startM] = (startTime ?? '9:00').split(':').map(Number);
   const startMins = (startH || 9) * 60 + (startM || 0);
 
@@ -118,6 +129,9 @@ export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAd
       className="rounded-2xl overflow-hidden border border-white/8 bg-surface/50"
       style={{ margin: '0 4px' }}
     >
+      {conflictNotes && (
+        <p className="text-xs text-zinc-500 mb-3 px-1">{conflictNotes}</p>
+      )}
       {timeline.map(({ stop, index, startMins: tMins }) => {
         const timeLabel = parseTimeLabel(tMins);
         const isLast = index === stops.length - 1;
@@ -149,6 +163,18 @@ export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAd
                   <div className="flex items-center gap-1.5 mt-2">
                     <span className="ms text-text-3 text-xs">directions_transit</span>
                     <span className="text-text-3 text-xs">{transit}</span>
+                  </div>
+                )}
+                {stop.tags && stop.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {stop.tags.map(tag => {
+                      const s = tagStyle(tag);
+                      return (
+                        <span key={tag} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
+                          {s.label}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>
