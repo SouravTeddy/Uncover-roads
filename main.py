@@ -329,6 +329,25 @@ def ai_itinerary(body: dict):
         conflict = body.get("conflict_resolution", {})
         trip_ctx = body.get("trip_context", {})
 
+        if not conflict:
+            try:
+                persona_dict = {
+                    'archetype': body.get('persona', ''),
+                    'ritual': body.get('trip_context', {}).get('ritual', '') or body.get('ritual', ''),
+                    'pace': body.get('pace', ''),
+                    'sensory': body.get('sensory', ''),
+                    'social': body.get('social', ''),
+                    'attractions': body.get('attractions', []),
+                }
+                travel_date = body.get('trip_context', {}).get('travel_date') or body.get('date', '')
+                conflict = run_conflict_check(
+                    city=body.get('city', ''),
+                    persona=persona_dict,
+                    travel_date=travel_date,
+                )
+            except Exception:
+                conflict = {}
+
         if not places:
             return {"itinerary": [], "summary": {}}
 
@@ -447,6 +466,9 @@ CRITICAL RULES — FOLLOW STRICTLY:
 - If arrival time is between 0:00-6:00 (late night/early morning): note in conflict_notes that ideal start is ~10:00 AM
 - transit_to_next must be a realistic walking/transit time string like "12 min walk" or "8 min by metro"
 - tip: ONE sentence only, max 12 words, one specific insider detail — not a paragraph
+- Add tags to each stop when relevant: use short labels from this set:
+  heat (hot weather), jetlag (long-haul arrival), ramadan (religious observance period),
+  altitude (high elevation venue). Only add tags when they actually apply.
 
 Return ONLY a valid JSON object, no markdown, no explanation:
 {{
@@ -458,7 +480,8 @@ Return ONLY a valid JSON object, no markdown, no explanation:
       "duration": "2 hours",
       "category": "museum",
       "tip": "Specific insider tip",
-      "transit_to_next": "10 min walk"
+      "transit_to_next": "10 min walk",
+      "tags": ["optional", "array", "of", "short", "conflict-aware", "labels"]
     }}
   ],
   "summary": {{
