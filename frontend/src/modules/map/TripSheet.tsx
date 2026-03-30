@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '../../shared/store';
 import type { CityResult, GeoData, StartType } from '../../shared/types';
 
@@ -18,20 +19,19 @@ const LOCATION_TYPES: { value: StartType; label: string }[] = [
 
 async function nominatimSearch(
   query: string,
-  cityGeo: GeoData,
+  cityGeo: GeoData | null,
   signal?: AbortSignal,
 ): Promise<CityResult[]> {
-  // bbox is [south, north, west, east]; Nominatim viewbox = west,north,east,south
-  const [south, north, west, east] = cityGeo.bbox;
-  const params = new URLSearchParams({
-    q: query,
-    format: 'json',
-    limit: '5',
-    viewbox: `${west},${north},${east},${south}`,
-    bounded: '1',
-  });
+  const params = new URLSearchParams({ q: query, format: 'json', limit: '6' });
+  // Bias toward the city bbox when available, but don't hard-limit (bounded=0)
+  if (cityGeo) {
+    const [south, north, west, east] = cityGeo.bbox;
+    params.set('viewbox', `${west},${north},${east},${south}`);
+    // bounded=0 so results outside bbox still show if nothing local matches
+    params.set('bounded', '0');
+  }
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en', 'User-Agent': 'uncover-roads/1.0' },
+    headers: { 'Accept-Language': 'en' },
     signal,
   });
   const data = await res.json();
@@ -64,11 +64,11 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
       : null,
   );
   const [searchLoading, setSearchLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef    = useRef<AbortController | null>(null);
+  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef      = useRef<AbortController | null>(null);
+  const resultsRef    = useRef<HTMLDivElement | null>(null);
 
   const needsArrival = startType === 'airport' || startType === 'station';
-  // Can generate as long as a date is set; pin is optional
   const canGenerate  = !!date;
 
   const handleLocationInput = useCallback((query: string) => {
@@ -76,7 +76,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
     setSelectedLocation(null);
     setSearchResults([]);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim() || !cityGeo) return;
+    if (!query.trim()) return;
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
@@ -84,7 +84,11 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
       setSearchLoading(true);
       try {
         const results = await nominatimSearch(query, cityGeo, signal);
-        if (!signal.aborted) setSearchResults(results);
+        if (!signal.aborted) {
+          setSearchResults(results);
+          // Scroll results into view after render
+          setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+        }
       } catch {
         if (!signal.aborted) setSearchResults([]);
       } finally {
@@ -135,19 +139,19 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
     dispatch({ type: 'GO_TO', screen: 'route' });
   }
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
         className="fixed inset-0"
-        style={{ zIndex: 25, background: 'rgba(0,0,0,.55)' }}
+        style={{ zIndex: 50, background: 'rgba(0,0,0,.55)' }}
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet — overflow:hidden makes maxHeight a hard flex boundary */}
       <div
         className="fixed inset-x-0 bottom-0 rounded-t-3xl bg-surface flex flex-col"
-        style={{ zIndex: 26, maxHeight: '82dvh' }}
+        style={{ zIndex: 51, maxHeight: 'min(82dvh, 82vh)', overflow: 'hidden' }}
       >
         {/* Handle + title — never scrolls */}
         <div className="flex-shrink-0 px-5 pt-3 pb-4 border-b border-white/8">
@@ -225,7 +229,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
 
                   {/* Autocomplete results — IN FLOW, not absolute, so scroll container doesn't clip */}
                   {searchResults.length > 0 && (
-                    <div className="mt-1 rounded-xl bg-bg border border-white/10 overflow-hidden">
+                    <div ref={resultsRef} className="mt-1 rounded-xl bg-bg border border-white/10 overflow-hidden">
                       {searchResults.map((r, i) => (
                         <button
                           key={i}
@@ -336,6 +340,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
