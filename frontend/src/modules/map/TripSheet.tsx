@@ -17,7 +17,7 @@ const START_TYPES: { value: StartType; emoji: string; label: string }[] = [
   { value: 'pin',     emoji: '📍', label: 'Drop Pin' },
 ];
 
-async function nominatimSearch(query: string, cityGeo: GeoData): Promise<CityResult[]> {
+async function nominatimSearch(query: string, cityGeo: GeoData, signal?: AbortSignal): Promise<CityResult[]> {
   const params = new URLSearchParams({
     q: query,
     format: 'json',
@@ -26,7 +26,8 @@ async function nominatimSearch(query: string, cityGeo: GeoData): Promise<CityRes
     bounded: '1',
   });
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en' },
+    headers: { 'Accept-Language': 'en', 'User-Agent': 'uncover-roads/1.0' },
+    signal,
   });
   const data = await res.json();
   return data.map((r: { display_name: string; lat: string; lon: string }) => ({
@@ -57,6 +58,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
   );
   const [searchLoading, setSearchLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const needsArrival = startType === 'airport' || startType === 'station';
   const showNameSearch = startType !== 'pin';
@@ -70,17 +72,28 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!query.trim() || !cityGeo) return;
     debounceRef.current = setTimeout(async () => {
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      const { signal } = abortRef.current;
       setSearchLoading(true);
       try {
-        const results = await nominatimSearch(query, cityGeo);
-        setSearchResults(results);
+        const results = await nominatimSearch(query, cityGeo, signal);
+        if (!signal.aborted) setSearchResults(results);
       } catch {
-        setSearchResults([]);
+        if (!signal.aborted) setSearchResults([]);
       } finally {
-        setSearchLoading(false);
+        if (!signal.aborted) setSearchLoading(false);
       }
     }, 300);
   }, [cityGeo]);
+
+  // Cleanup debounce and abort on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, []);
 
   // Clear search when switching to pin mode
   useEffect(() => {
