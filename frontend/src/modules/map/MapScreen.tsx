@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap as useLeafletMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,6 +7,7 @@ import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
 import { CATEGORY_ICONS } from './types';
+import { TripSheet } from './TripSheet';
 
 // Fix Leaflet default icon URLs broken by Vite bundler
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -93,15 +94,18 @@ export function MapScreen() {
     selectedPlaces,
     activeFilter,
     loading,
+    error,
+    loadPlaces,
     activePlace,
     setActivePlace,
     togglePlace,
     setFilter,
-    goToRoute,
     goBack,
   } = useMap();
 
-  const selectedIds = new Set(selectedPlaces.map(p => p.id));
+  const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
+  const [showTripSheet, setShowTripSheet] = useState(false);
 
   const counts: Partial<Record<string, number>> = {
     all: places.length,
@@ -117,11 +121,11 @@ export function MapScreen() {
 
   return (
     <div className="fixed inset-0" style={{ zIndex: 10 }}>
-      {/* Map */}
+      {/* Map — full screen, no sibling overlays on top */}
       <MapContainer
         center={center}
         zoom={cityGeo ? 13 : 2}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', zIndex: 0 }}
         zoomControl={false}
       >
         <TileLayer
@@ -132,95 +136,129 @@ export function MapScreen() {
         <MapPins
           places={filteredPlaces}
           selectedIds={selectedIds}
-          onPinClick={p => setActivePlace(p)}
+          onPinClick={handlePinClick}
         />
       </MapContainer>
 
-      {/* UI overlay */}
-      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 15 }}>
-        {/* Header */}
-        <div
-          className="pointer-events-auto flex flex-col gap-3 px-4 pb-3"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-        >
-          <div className="flex items-center gap-3">
-            <button
-              onClick={goBack}
-              className="w-10 h-10 rounded-full bg-bg/80 backdrop-blur flex items-center justify-center border border-white/10"
-            >
-              <span className="ms text-text-2 text-base">arrow_back</span>
-            </button>
-            <div className="flex items-center gap-2 px-4 h-10 rounded-full bg-bg/80 backdrop-blur border border-white/10">
-              <span className="ms text-text-3 text-base">location_on</span>
-              <span className="text-text-1 font-semibold text-sm">{city || '—'}</span>
-              {places.length > 0 && (
-                <span className="text-text-3 text-xs">{places.length} places</span>
-              )}
-            </div>
-          </div>
+      {/* ── Each UI element positioned independently ── */}
 
-          {/* Filter bar */}
+      {/* Header row: back + city chip */}
+      <div
+        className="absolute inset-x-0 top-0 flex flex-col gap-3 px-4 pb-3"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', zIndex: 20, pointerEvents: 'none' }}
+      >
+        <div className="flex items-center gap-3" style={{ pointerEvents: 'auto' }}>
+          <button
+            onClick={goBack}
+            className="w-10 h-10 rounded-full bg-bg/80 backdrop-blur flex items-center justify-center border border-white/10"
+          >
+            <span className="ms text-text-2 text-base">arrow_back</span>
+          </button>
+          <div className="flex items-center gap-2 px-4 h-10 rounded-full bg-bg/80 backdrop-blur border border-white/10">
+            <span className="ms text-text-3 text-base">location_on</span>
+            <span className="text-text-1 font-semibold text-sm">{city || '—'}</span>
+            {places.length > 0 && (
+              <span className="text-text-3 text-xs">{places.length} places</span>
+            )}
+          </div>
+        </div>
+        <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
             counts={counts}
             onSelect={setFilter}
           />
         </div>
-
-        {/* Live indicator */}
-        <div
-          className="pointer-events-none absolute flex items-center gap-2 px-3 py-2 rounded-full border border-white/10"
-          style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 5.5rem)',
-            right: '1.25rem',
-            background: 'rgba(29,33,41,.6)',
-            backdropFilter: 'blur(6px)',
-          }}
-        >
-          <div className="w-2 h-2 rounded-full bg-[#70F8E8] animate-pulse" />
-          <span className="text-white text-xs font-bold tracking-widest uppercase">
-            {loading ? 'Loading' : 'Exploring'}
-          </span>
-        </div>
-
-        {/* Pin card */}
-        {activePlace && (
-          <div className="pointer-events-auto absolute inset-x-4 bottom-40">
-            <PinCard
-              place={activePlace}
-              isSelected={selectedIds.has(activePlace.id)}
-              onAdd={() => togglePlace(activePlace)}
-              onClose={() => setActivePlace(null)}
-            />
-          </div>
-        )}
-
-        {/* Create itinerary CTA */}
-        {selectedPlaces.length >= 2 && (
-          <div
-            className="pointer-events-auto absolute inset-x-4 flex gap-3"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
-          >
-            <button
-              onClick={goToRoute}
-              className="flex-1 h-14 rounded-2xl bg-orange font-heading font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg"
-            >
-              <span className="ms fill text-base">auto_fix</span>
-              Create Itinerary ({selectedPlaces.length})
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Loading overlay */}
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-bg/60 z-30">
-          <div className="flex flex-col items-center gap-3">
-            <span className="ms text-primary text-4xl animate-spin">autorenew</span>
-            <span className="text-text-2 text-sm">Loading places…</span>
-          </div>
+      {/* Live / Loading indicator — top-right */}
+      <div
+        className="absolute flex items-center gap-2 px-3 py-2 rounded-full border border-white/10"
+        style={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 5.5rem)',
+          right: '1.25rem',
+          zIndex: 20,
+          pointerEvents: 'none',
+          background: 'rgba(29,33,41,.6)',
+          backdropFilter: 'blur(6px)',
+        }}
+      >
+        {loading
+          ? <span className="ms text-primary text-base animate-spin">autorenew</span>
+          : <div className="w-2 h-2 rounded-full bg-[#70F8E8] animate-pulse" />
+        }
+        <span className="text-white text-xs font-bold tracking-widest uppercase">
+          {loading ? 'Loading' : 'Exploring'}
+        </span>
+      </div>
+
+      {/* Pin card */}
+      {activePlace && (
+        <div
+          className="absolute inset-x-4 bottom-40"
+          style={{ zIndex: 20 }}
+        >
+          <PinCard
+            place={activePlace}
+            isSelected={selectedIds.has(activePlace.id)}
+            onAdd={() => togglePlace(activePlace)}
+            onClose={() => setActivePlace(null)}
+          />
         </div>
       )}
+
+      {/* Create itinerary CTA */}
+      {selectedPlaces.length >= 2 && (
+        <div
+          className="absolute inset-x-4 flex gap-3"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
+        >
+          <button
+            onClick={() => setShowTripSheet(true)}
+            className="flex-1 h-14 rounded-2xl bg-orange font-heading font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg"
+          >
+            <span className="ms fill text-base">auto_fix</span>
+            Create Itinerary ({selectedPlaces.length})
+          </button>
+        </div>
+      )}
+
+      {/* Empty / error state */}
+      {!loading && error && (
+        <div
+          className="absolute flex flex-col items-center gap-3 px-6 py-5 rounded-2xl text-center"
+          style={{
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 20,
+            background: 'rgba(15,23,42,.92)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,.1)',
+            minWidth: '220px',
+          }}
+        >
+          <span className="ms text-text-3 text-3xl">location_off</span>
+          <div>
+            <p className="text-text-1 font-semibold text-sm mb-1">
+              {places.length === 0 ? 'No places found' : 'Could not load places'}
+            </p>
+            <p className="text-text-3 text-xs">
+              {city ? `Nothing came back for "${city}"` : 'Please select a city first'}
+            </p>
+          </div>
+          {city && (
+            <button
+              onClick={() => loadPlaces()}
+              className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      )}
+
+      {showTripSheet && <TripSheet onClose={() => setShowTripSheet(false)} />}
     </div>
   );
 }
