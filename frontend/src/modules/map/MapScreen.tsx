@@ -201,21 +201,14 @@ export function MapScreen() {
     }
   }, [searchBbox, city, cityGeo, dispatch]);
 
-  // When pin is dropped, dispatch coordinates and clear awaiting state
+  // When pin is dropped: store result, re-open sheet so user can continue
   const handlePinDrop = useCallback(
     (latlng: { lat: number; lon: number }) => {
       setPinDropResult(latlng);
       setAwaitingPinDrop(false);
-      dispatch({
-        type: 'SET_TRIP_CONTEXT',
-        ctx: {
-          locationLat: latlng.lat,
-          locationLon: latlng.lon,
-          locationName: 'Custom pin',
-        },
-      });
+      setShowTripSheet(true);
     },
-    [dispatch],
+    [],
   );
 
   const counts: Partial<Record<string, number>> = {
@@ -402,8 +395,8 @@ export function MapScreen() {
 
       {showTripSheet && (
         <TripSheet
-          onClose={() => { setShowTripSheet(false); setPinDropResult(null); }}
-          onRequestPinDrop={() => setAwaitingPinDrop(true)}
+          onClose={() => setShowTripSheet(false)}
+          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
           pinDropResult={pinDropResult}
           cityGeo={cityGeo}
         />
