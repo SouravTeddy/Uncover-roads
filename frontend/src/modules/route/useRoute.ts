@@ -10,7 +10,7 @@ export function useRoute() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'active' | 'saved'>('active');
 
-  const { city, selectedPlaces, persona, tripContext, itinerary, weather, savedItineraries } = state;
+  const { city, selectedPlaces, persona, itinerary, weather, savedItineraries } = state;
 
   useEffect(() => {
     if (!itinerary && selectedPlaces.length >= 2 && persona) {
