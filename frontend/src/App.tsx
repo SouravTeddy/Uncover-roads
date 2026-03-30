@@ -16,7 +16,7 @@ function ScreenRouter() {
 
   return (
     <div
-      className="relative w-full overflow-hidden"
+      className="relative w-full"
       style={{ background: '#0f172a', minHeight: '100dvh' }}
     >
       {currentScreen === 'login'       && <LoginScreen />}

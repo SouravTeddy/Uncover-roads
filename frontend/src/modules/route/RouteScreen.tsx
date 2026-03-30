@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRoute } from './useRoute';
 import { ItineraryView } from './ItineraryView';
 import { RecSheet } from './RecSheet';
+import { WeatherCanvas } from './WeatherCanvas';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
 
@@ -28,15 +29,7 @@ export function RouteScreen() {
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-      {/* Weather canvas placeholder */}
-      {weather && (
-        <div
-          className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(59,130,246,.08) 0%, transparent 100%)',
-          }}
-        />
-      )}
+      {weather && <WeatherCanvas condition={weather.condition} />}
 
       {/* Weather badge */}
       {weather && (
