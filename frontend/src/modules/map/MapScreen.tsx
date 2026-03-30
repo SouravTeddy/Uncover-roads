@@ -34,11 +34,13 @@ function MapPins({
   onPinClick: (place: Place) => void;
 }) {
   const map = useLeafletMap();
-  const markersRef = useRef<L.Marker[]>([]);
+  // Map of place.id → marker for in-place icon updates
+  const markersRef = useRef<Map<string, L.Marker>>(new Map());
 
+  // Build/rebuild markers only when the place list or click handler changes
   useEffect(() => {
     markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    markersRef.current = new Map();
 
     places.forEach(place => {
       if (!place.lat || !place.lon) return;
@@ -50,14 +52,29 @@ function MapPins({
       const marker = L.marker([place.lat, place.lon], { icon });
       marker.on('click', () => onPinClick(place));
       marker.addTo(map);
-      markersRef.current.push(marker);
+      markersRef.current.set(place.id, marker);
     });
 
     return () => {
       markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
+      markersRef.current = new Map();
     };
-  }, [places, selectedIds, recommendedIds, map, onPinClick]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places, recommendedIds, map, onPinClick]);
+
+  // Update icons in-place when selection changes — no flicker
+  useEffect(() => {
+    places.forEach(place => {
+      const marker = markersRef.current.get(place.id);
+      if (!marker) return;
+      const icon = selectedIds.has(place.id)
+        ? makeSelectedIcon(place.category)
+        : recommendedIds.has(place.id)
+          ? makeRecommendedIcon(place.category)
+          : makeIcon(place.category);
+      marker.setIcon(icon);
+    });
+  }, [selectedIds, places, recommendedIds]);
 
   return null;
 }
