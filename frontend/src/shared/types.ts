@@ -81,6 +81,7 @@ export interface Place {
   lon: number;
   tags?: Record<string, string>;
   imageUrl?: string | null;
+  reason?: string;
 }
 
 // ── Trip context ──────────────────────────────────────────────

@@ -49,6 +49,11 @@ export const api = {
   mapData: (city: string) =>
     get<Place[]>(`/map-data?city=${encodeURIComponent(city)}`),
 
+  recommended: (city: string, persona: Persona) =>
+    get<Place[]>(
+      `/recommended-places?city=${encodeURIComponent(city)}&persona=${encodeURIComponent(JSON.stringify(persona))}`
+    ),
+
   citySearch: (q: string) =>
     get<CityResult[]>(`/city-search?q=${encodeURIComponent(q)}`),
 
