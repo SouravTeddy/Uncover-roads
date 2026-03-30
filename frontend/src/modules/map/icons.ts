@@ -24,6 +24,21 @@ export function makeIcon(category: string): L.DivIcon {
   });
 }
 
+export function makeSelectedIcon(category: string): L.DivIcon {
+  const color = CATEGORY_COLORS[category] ?? '#64748b';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:32px;height:32px;border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);background:${color};
+      border:3px solid #ffffff;
+      box-shadow:0 0 0 3px ${color},0 0 12px 2px ${color}80,0 3px 8px rgba(0,0,0,.5);
+    "></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+  });
+}
+
 export function makeRecommendedIcon(_category: string): L.DivIcon {
   return L.divIcon({
     className: '',

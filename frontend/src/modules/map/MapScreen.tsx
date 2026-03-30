@@ -7,7 +7,7 @@ import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
 import { TripSheet } from './TripSheet';
-import { makeIcon, makeRecommendedIcon } from './icons';
+import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
 import { mapData } from '../../shared/api';
@@ -24,7 +24,7 @@ L.Icon.Default.mergeOptions({
 
 function MapPins({
   places,
-  selectedIds: _selectedIds,
+  selectedIds,
   recommendedIds,
   onPinClick,
 }: {
@@ -42,9 +42,11 @@ function MapPins({
 
     places.forEach(place => {
       if (!place.lat || !place.lon) return;
-      const icon = recommendedIds.has(place.id)
-        ? makeRecommendedIcon(place.category)
-        : makeIcon(place.category);
+      const icon = selectedIds.has(place.id)
+        ? makeSelectedIcon(place.category)
+        : recommendedIds.has(place.id)
+          ? makeRecommendedIcon(place.category)
+          : makeIcon(place.category);
       const marker = L.marker([place.lat, place.lon], { icon });
       marker.on('click', () => onPinClick(place));
       marker.addTo(map);
@@ -55,7 +57,7 @@ function MapPins({
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
     };
-  }, [places, recommendedIds, map, onPinClick]);
+  }, [places, selectedIds, recommendedIds, map, onPinClick]);
 
   return null;
 }
