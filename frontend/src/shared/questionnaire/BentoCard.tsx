@@ -10,7 +10,7 @@ export function BentoCard({ label, sub, imageUrl, selected, onSelect }: Props) {
   return (
     <div
       onClick={onSelect}
-      className={`relative overflow-hidden rounded-2xl cursor-pointer aspect-square transition-all ${
+      className={`relative overflow-hidden rounded-2xl cursor-pointer aspect-square transition-all bg-surface ${
         selected ? 'ring-2 ring-primary' : 'ring-1 ring-white/8'
       }`}
     >

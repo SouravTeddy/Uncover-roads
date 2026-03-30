@@ -65,7 +65,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
           </div>
         )}
         {imageUrl && !imageLoading ? (
-          <img src={imageUrl} alt={place.title} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={place.title} className="w-full h-full object-cover" onError={() => setImageUrl(null)} />
         ) : !imageLoading ? (
           <div className="w-full h-full bg-bg flex items-center justify-center">
             <span className="ms text-text-3 text-4xl">image</span>

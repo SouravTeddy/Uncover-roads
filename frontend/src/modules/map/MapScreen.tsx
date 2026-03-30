@@ -22,6 +22,53 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
+// ── Clustering helpers ──────────────────────────────────────────
+
+function buildClusters(places: Place[], map: L.Map, gridSize = 55): Place[][] {
+  const clusters: Place[][] = [];
+  const assigned = new Set<number>();
+
+  places.forEach((place, i) => {
+    if (assigned.has(i)) return;
+    const pt = map.latLngToContainerPoint([place.lat, place.lon]);
+    const group: Place[] = [place];
+    assigned.add(i);
+
+    places.forEach((other, j) => {
+      if (i === j || assigned.has(j)) return;
+      const op = map.latLngToContainerPoint([other.lat, other.lon]);
+      const dx = pt.x - op.x;
+      const dy = pt.y - op.y;
+      if (Math.sqrt(dx * dx + dy * dy) < gridSize) {
+        group.push(other);
+        assigned.add(j);
+      }
+    });
+
+    clusters.push(group);
+  });
+
+  return clusters;
+}
+
+function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: boolean) {
+  const accent = (hasSelected || hasRecommended) ? '#f97316' : '#374151';
+  const ring   = (hasSelected || hasRecommended) ? 'rgba(249,115,22,.25)' : 'rgba(255,255,255,.07)';
+  const inner  = count >= 10 ? 44 : count >= 5 ? 38 : 32;
+  const outer  = inner + 10;
+  const fs     = count >= 10 ? 14 : 13;
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${outer}px;height:${outer}px;border-radius:50%;background:${ring};display:flex;align-items:center;justify-content:center">
+      <div style="width:${inner}px;height:${inner}px;border-radius:50%;background:${accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.22)">
+        <span style="font-weight:700;color:#fff;font-size:${fs}px;font-family:system-ui,sans-serif;letter-spacing:-0.5px;line-height:1">${count}</span>
+      </div>
+    </div>`,
+    iconSize: [outer, outer],
+    iconAnchor: [outer / 2, outer / 2],
+  });
+}
+
 function MapPins({
   places,
   selectedIds,
@@ -34,45 +81,80 @@ function MapPins({
   onPinClick: (place: Place) => void;
 }) {
   const map = useLeafletMap();
-  // Map of place.id → marker for in-place icon updates
-  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  // Individual (non-clustered) place markers keyed by id — allows in-place icon updates
+  const pinMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  // Cluster markers with their member groups — allows in-place cluster icon updates
+  const clusterMarkersRef = useRef<Array<{ marker: L.Marker; group: Place[] }>>([]);
 
-  // Build/rebuild markers only when the place list or click handler changes
-  useEffect(() => {
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = new Map();
+  const rebuild = useCallback(() => {
+    pinMarkersRef.current.forEach(m => m.remove());
+    pinMarkersRef.current = new Map();
+    clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
+    clusterMarkersRef.current = [];
 
-    places.forEach(place => {
-      if (!place.lat || !place.lon) return;
-      const icon = selectedIds.has(place.id)
-        ? makeSelectedIcon(place.category)
-        : recommendedIds.has(place.id)
-          ? makeRecommendedIcon(place.category)
-          : makeIcon(place.category);
-      const marker = L.marker([place.lat, place.lon], { icon });
-      marker.on('click', () => onPinClick(place));
-      marker.addTo(map);
-      markersRef.current.set(place.id, marker);
+    const valid = places.filter(p => p.lat && p.lon);
+    if (valid.length === 0) return;
+
+    buildClusters(valid, map).forEach(group => {
+      if (group.length === 1) {
+        const place = group[0];
+        const icon = selectedIds.has(place.id)
+          ? makeSelectedIcon(place.category)
+          : recommendedIds.has(place.id)
+            ? makeRecommendedIcon(place.category)
+            : makeIcon(place.category);
+        const marker = L.marker([place.lat, place.lon], { icon });
+        marker.on('click', () => onPinClick(place));
+        marker.addTo(map);
+        pinMarkersRef.current.set(place.id, marker);
+      } else {
+        const hasRec = group.some(p => recommendedIds.has(p.id));
+        const hasSel = group.some(p => selectedIds.has(p.id));
+        const clat = group.reduce((s, p) => s + p.lat, 0) / group.length;
+        const clon = group.reduce((s, p) => s + p.lon, 0) / group.length;
+        const marker = L.marker([clat, clon], {
+          icon: makeClusterIcon(group.length, hasRec, hasSel),
+        });
+        marker.on('click', () => {
+          const bounds = L.latLngBounds(group.map(p => [p.lat, p.lon] as [number, number]));
+          map.flyToBounds(bounds, { padding: [72, 72], maxZoom: map.getZoom() + 3, duration: 0.4 });
+        });
+        marker.addTo(map);
+        clusterMarkersRef.current.push({ marker, group });
+      }
     });
+  }, [places, selectedIds, recommendedIds, map, onPinClick]);
 
-    return () => {
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = new Map();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places, recommendedIds, map, onPinClick]);
-
-  // Update icons in-place when selection changes — no flicker
+  // Rebuild on place list change and on every zoom/pan (clusters are zoom-dependent)
   useEffect(() => {
-    places.forEach(place => {
-      const marker = markersRef.current.get(place.id);
-      if (!marker) return;
-      const icon = selectedIds.has(place.id)
+    rebuild();
+    map.on('zoomend moveend', rebuild);
+    return () => {
+      map.off('zoomend moveend', rebuild);
+      pinMarkersRef.current.forEach(m => m.remove());
+      pinMarkersRef.current = new Map();
+      clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
+      clusterMarkersRef.current = [];
+    };
+  }, [rebuild, map]);
+
+  // Update individual pin icons in-place when selection changes — no flicker for non-clustered pins
+  useEffect(() => {
+    pinMarkersRef.current.forEach((marker, id) => {
+      const place = places.find(p => p.id === id);
+      if (!place) return;
+      const icon = selectedIds.has(id)
         ? makeSelectedIcon(place.category)
-        : recommendedIds.has(place.id)
+        : recommendedIds.has(id)
           ? makeRecommendedIcon(place.category)
           : makeIcon(place.category);
       marker.setIcon(icon);
+    });
+    // Update cluster icons in-place when a clustered place gets selected/deselected
+    clusterMarkersRef.current.forEach(({ marker, group }) => {
+      const hasRec = group.some(p => recommendedIds.has(p.id));
+      const hasSel = group.some(p => selectedIds.has(p.id));
+      marker.setIcon(makeClusterIcon(group.length, hasRec, hasSel));
     });
   }, [selectedIds, places, recommendedIds]);
 
@@ -156,8 +238,8 @@ export function MapScreen() {
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(
-    () => new Set(places.filter(p => p.reason).map(p => p.id)),
-    [places]
+    () => new Set(filteredPlaces.filter(p => p.reason).map(p => p.id)),
+    [filteredPlaces]
   );
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
   const [showTripSheet, setShowTripSheet] = useState(false);
@@ -224,7 +306,7 @@ export function MapScreen() {
     : [20, 0];
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: 10 }}>
+    <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
       {/* Map — full screen, no sibling overlays on top */}
       <MapContainer
         center={center}
