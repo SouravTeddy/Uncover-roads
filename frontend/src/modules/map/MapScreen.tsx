@@ -8,6 +8,11 @@ import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
 import { TripSheet } from './TripSheet';
 import { makeIcon, makeRecommendedIcon } from './icons';
+import { useMapMove } from './useMapMove';
+import { SearchHereButton } from './SearchHereButton';
+import { mapData } from '../../shared/api';
+import type { BBox } from '../../shared/api';
+import { useAppStore } from '../../shared/store';
 
 // Fix Leaflet default icon URLs broken by Vite bundler
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -73,6 +78,22 @@ function FitBounds({ places, cityGeo }: { places: Place[]; cityGeo: { lat: numbe
   return null;
 }
 
+function MapMoveListener({
+  cityCenter,
+  onMove,
+}: {
+  cityCenter: { lat: number; lon: number } | null;
+  onMove: (show: boolean, bbox: [number, number, number, number] | null, reset: () => void) => void;
+}) {
+  const { showSearchHere, currentBbox, resetSearchHere } = useMapMove(cityCenter);
+
+  useEffect(() => {
+    onMove(showSearchHere, currentBbox, resetSearchHere);
+  }, [showSearchHere, currentBbox, resetSearchHere, onMove]);
+
+  return null;
+}
+
 export function MapScreen() {
   const {
     city,
@@ -91,6 +112,8 @@ export function MapScreen() {
     goBack,
   } = useMap();
 
+  const { dispatch } = useAppStore();
+
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(
     () => new Set(places.filter(p => p.reason).map(p => p.id)),
@@ -98,6 +121,41 @@ export function MapScreen() {
   );
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
   const [showTripSheet, setShowTripSheet] = useState(false);
+
+  // Search Here state
+  const [showSearchHere, setShowSearchHere] = useState(false);
+  const [searchBbox, setSearchBbox] = useState<BBox | null>(null);
+  const [searchHereLoading, setSearchHereLoading] = useState(false);
+  const resetSearchHereRef = useRef<() => void>(() => {});
+
+  const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null;
+
+  const handleMapMove = useCallback(
+    (show: boolean, bbox: BBox | null, reset: () => void) => {
+      setShowSearchHere(show);
+      setSearchBbox(bbox);
+      resetSearchHereRef.current = reset;
+    },
+    [],
+  );
+
+  const handleSearchHere = useCallback(async () => {
+    if (!searchBbox || !city || !cityGeo) return;
+    setSearchHereLoading(true);
+    try {
+      const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], searchBbox);
+      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
+        ...p,
+        id: p.id ?? `${p.title}-${i}`,
+      }));
+      dispatch({ type: 'MERGE_PLACES', places: withIds });
+    } catch (e) {
+      console.error('[MapScreen] searchHere failed:', e);
+    } finally {
+      setSearchHereLoading(false);
+      resetSearchHereRef.current();
+    }
+  }, [searchBbox, city, cityGeo, dispatch]);
 
   const counts: Partial<Record<string, number>> = {
     all: places.length,
@@ -131,7 +189,13 @@ export function MapScreen() {
           recommendedIds={recommendedIds}
           onPinClick={handlePinClick}
         />
+        <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
       </MapContainer>
+
+      {/* Search Here button — shown after panning */}
+      {showSearchHere && (
+        <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />
+      )}
 
       {/* ── Each UI element positioned independently ── */}
 
