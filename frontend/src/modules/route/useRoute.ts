@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
+import type { ItineraryRequest } from '../../shared/api';
 import type { SavedItinerary } from '../../shared/types';
 
 export function useRoute() {
@@ -9,7 +10,7 @@ export function useRoute() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'active' | 'saved'>('active');
 
-  const { city, selectedPlaces, persona, tripContext, itinerary, weather, savedItineraries } = state;
+  const { city, selectedPlaces, persona, itinerary, weather, savedItineraries } = state;
 
   useEffect(() => {
     if (!itinerary && selectedPlaces.length >= 2 && persona) {
@@ -22,16 +23,35 @@ export function useRoute() {
   }, []);
 
   async function buildItinerary() {
-    if (!persona) return;
+    if (!persona || !state.cityGeo) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await api.aiItinerary({
-        places: selectedPlaces,
-        persona,
-        tripCtx: tripContext,
-        city,
-      });
+      const body: ItineraryRequest = {
+        city: state.city,
+        lat: state.cityGeo.lat,
+        lon: state.cityGeo.lon,
+        days: state.tripContext.days,
+        day_number: state.tripContext.dayNumber,
+        pace: state.persona!.pace ?? 'any',
+        persona: state.persona!.archetype,
+        persona_archetype: state.persona!.archetype_name,
+        persona_context: state.persona!.insight,
+        trip_context: {
+          start_type: state.tripContext.startType,
+          arrival_time: state.tripContext.arrivalTime,
+          travel_date: state.tripContext.date,
+          flight_time: state.tripContext.flightTime,
+          is_long_haul: state.tripContext.isLongHaul,
+          location_lat: state.tripContext.locationLat,
+          location_lon: state.tripContext.locationLon,
+          location_name: state.tripContext.locationName,
+        },
+        selected_places: state.selectedPlaces.map(p => ({
+          id: p.id, title: p.title, lat: p.lat, lon: p.lon,
+        })),
+      };
+      const result = await api.aiItinerary(body);
       dispatch({ type: 'SET_ITINERARY', itinerary: result });
     } catch (err) {
       setError('Could not generate your itinerary. Please try again.');

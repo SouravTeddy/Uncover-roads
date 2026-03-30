@@ -31,7 +31,11 @@ export function useMap() {
     setLoading(true);
     setError(false);
     try {
-      const data = await api.mapData(city);
+      const data = await api.mapData(
+        city,
+        cityGeo?.lat ?? undefined,
+        cityGeo?.lon ?? undefined,
+      );
       const raw: Place[] = Array.isArray(data) ? data : [];
       const withIds = raw.map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
       dispatch({ type: 'SET_PLACES', places: withIds });

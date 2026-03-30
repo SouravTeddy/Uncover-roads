@@ -6,8 +6,13 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
-import { CATEGORY_ICONS } from './types';
 import { TripSheet } from './TripSheet';
+import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
+import { useMapMove } from './useMapMove';
+import { SearchHereButton } from './SearchHereButton';
+import { mapData } from '../../shared/api';
+import type { BBox } from '../../shared/api';
+import { useAppStore } from '../../shared/store';
 
 // Fix Leaflet default icon URLs broken by Vite bundler
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -17,52 +22,141 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function makeIcon(category: string, selected: boolean) {
-  const color = selected ? '#f97316' : '#3b82f6';
-  const icon = CATEGORY_ICONS[category] ?? 'location_on';
+// ── Clustering helpers ──────────────────────────────────────────
+
+function buildClusters(places: Place[], map: L.Map, gridSize = 55): Place[][] {
+  const clusters: Place[][] = [];
+  const assigned = new Set<number>();
+
+  places.forEach((place, i) => {
+    if (assigned.has(i)) return;
+    const pt = map.latLngToContainerPoint([place.lat, place.lon]);
+    const group: Place[] = [place];
+    assigned.add(i);
+
+    places.forEach((other, j) => {
+      if (i === j || assigned.has(j)) return;
+      const op = map.latLngToContainerPoint([other.lat, other.lon]);
+      const dx = pt.x - op.x;
+      const dy = pt.y - op.y;
+      if (Math.sqrt(dx * dx + dy * dy) < gridSize) {
+        group.push(other);
+        assigned.add(j);
+      }
+    });
+
+    clusters.push(group);
+  });
+
+  return clusters;
+}
+
+function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: boolean) {
+  const accent = (hasSelected || hasRecommended) ? '#f97316' : '#374151';
+  const ring   = (hasSelected || hasRecommended) ? 'rgba(249,115,22,.25)' : 'rgba(255,255,255,.07)';
+  const inner  = count >= 10 ? 44 : count >= 5 ? 38 : 32;
+  const outer  = inner + 10;
+  const fs     = count >= 10 ? 14 : 13;
   return L.divIcon({
     className: '',
-    html: `<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.3)">
-      <span class="ms fill" style="transform:rotate(45deg);color:#fff;font-size:16px;font-family:'Material Symbols Outlined'">${icon}</span>
+    html: `<div style="width:${outer}px;height:${outer}px;border-radius:50%;background:${ring};display:flex;align-items:center;justify-content:center">
+      <div style="width:${inner}px;height:${inner}px;border-radius:50%;background:${accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.22)">
+        <span style="font-weight:700;color:#fff;font-size:${fs}px;font-family:system-ui,sans-serif;letter-spacing:-0.5px;line-height:1">${count}</span>
+      </div>
     </div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
+    iconSize: [outer, outer],
+    iconAnchor: [outer / 2, outer / 2],
   });
 }
 
 function MapPins({
   places,
   selectedIds,
+  recommendedIds,
   onPinClick,
 }: {
   places: Place[];
   selectedIds: Set<string>;
+  recommendedIds: Set<string>;
   onPinClick: (place: Place) => void;
 }) {
   const map = useLeafletMap();
-  const markersRef = useRef<L.Marker[]>([]);
+  // Individual (non-clustered) place markers keyed by id — allows in-place icon updates
+  const pinMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  // Cluster markers with their member groups — allows in-place cluster icon updates
+  const clusterMarkersRef = useRef<Array<{ marker: L.Marker; group: Place[] }>>([]);
 
-  useEffect(() => {
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+  const rebuild = useCallback(() => {
+    pinMarkersRef.current.forEach(m => m.remove());
+    pinMarkersRef.current = new Map();
+    clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
+    clusterMarkersRef.current = [];
 
-    places.forEach(place => {
-      if (!place.lat || !place.lon) return;
-      const selected = selectedIds.has(place.id);
-      const marker = L.marker([place.lat, place.lon], {
-        icon: makeIcon(place.category, selected),
-      });
-      marker.on('click', () => onPinClick(place));
-      marker.addTo(map);
-      markersRef.current.push(marker);
+    const valid = places.filter(p => p.lat && p.lon);
+    if (valid.length === 0) return;
+
+    buildClusters(valid, map).forEach(group => {
+      if (group.length === 1) {
+        const place = group[0];
+        const icon = selectedIds.has(place.id)
+          ? makeSelectedIcon(place.category)
+          : recommendedIds.has(place.id)
+            ? makeRecommendedIcon(place.category)
+            : makeIcon(place.category);
+        const marker = L.marker([place.lat, place.lon], { icon });
+        marker.on('click', () => onPinClick(place));
+        marker.addTo(map);
+        pinMarkersRef.current.set(place.id, marker);
+      } else {
+        const hasRec = group.some(p => recommendedIds.has(p.id));
+        const hasSel = group.some(p => selectedIds.has(p.id));
+        const clat = group.reduce((s, p) => s + p.lat, 0) / group.length;
+        const clon = group.reduce((s, p) => s + p.lon, 0) / group.length;
+        const marker = L.marker([clat, clon], {
+          icon: makeClusterIcon(group.length, hasRec, hasSel),
+        });
+        marker.on('click', () => {
+          const bounds = L.latLngBounds(group.map(p => [p.lat, p.lon] as [number, number]));
+          map.flyToBounds(bounds, { padding: [72, 72], maxZoom: map.getZoom() + 3, duration: 0.4 });
+        });
+        marker.addTo(map);
+        clusterMarkersRef.current.push({ marker, group });
+      }
     });
+  }, [places, selectedIds, recommendedIds, map, onPinClick]);
 
+  // Rebuild on place list change and on every zoom/pan (clusters are zoom-dependent)
+  useEffect(() => {
+    rebuild();
+    map.on('zoomend moveend', rebuild);
     return () => {
-      markersRef.current.forEach(m => m.remove());
-      markersRef.current = [];
+      map.off('zoomend moveend', rebuild);
+      pinMarkersRef.current.forEach(m => m.remove());
+      pinMarkersRef.current = new Map();
+      clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
+      clusterMarkersRef.current = [];
     };
-  }, [places, selectedIds, map, onPinClick]);
+  }, [rebuild, map]);
+
+  // Update individual pin icons in-place when selection changes — no flicker for non-clustered pins
+  useEffect(() => {
+    pinMarkersRef.current.forEach((marker, id) => {
+      const place = places.find(p => p.id === id);
+      if (!place) return;
+      const icon = selectedIds.has(id)
+        ? makeSelectedIcon(place.category)
+        : recommendedIds.has(id)
+          ? makeRecommendedIcon(place.category)
+          : makeIcon(place.category);
+      marker.setIcon(icon);
+    });
+    // Update cluster icons in-place when a clustered place gets selected/deselected
+    clusterMarkersRef.current.forEach(({ marker, group }) => {
+      const hasRec = group.some(p => recommendedIds.has(p.id));
+      const hasSel = group.some(p => selectedIds.has(p.id));
+      marker.setIcon(makeClusterIcon(group.length, hasRec, hasSel));
+    });
+  }, [selectedIds, places, recommendedIds]);
 
   return null;
 }
@@ -85,6 +179,43 @@ function FitBounds({ places, cityGeo }: { places: Place[]; cityGeo: { lat: numbe
   return null;
 }
 
+function MapMoveListener({
+  cityCenter,
+  onMove,
+}: {
+  cityCenter: { lat: number; lon: number } | null;
+  onMove: (show: boolean, bbox: [number, number, number, number] | null, reset: () => void) => void;
+}) {
+  const { showSearchHere, currentBbox, resetSearchHere } = useMapMove(cityCenter);
+
+  useEffect(() => {
+    onMove(showSearchHere, currentBbox, resetSearchHere);
+  }, [showSearchHere, currentBbox, resetSearchHere, onMove]);
+
+  return null;
+}
+
+function PinDropListener({
+  active,
+  onDrop,
+}: {
+  active: boolean;
+  onDrop: (latlng: { lat: number; lon: number }) => void;
+}) {
+  const map = useLeafletMap();
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: L.LeafletMouseEvent) => {
+      onDrop({ lat: e.latlng.lat, lon: e.latlng.lng });
+    };
+    map.once('click', handler);
+    return () => {
+      map.off('click', handler);
+    };
+  }, [active, map, onDrop]);
+  return null;
+}
+
 export function MapScreen() {
   const {
     city,
@@ -103,9 +234,64 @@ export function MapScreen() {
     goBack,
   } = useMap();
 
+  const { dispatch } = useAppStore();
+
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const recommendedIds = useMemo(
+    () => new Set(filteredPlaces.filter(p => p.reason).map(p => p.id)),
+    [filteredPlaces]
+  );
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
   const [showTripSheet, setShowTripSheet] = useState(false);
+
+  // Search Here state
+  const [showSearchHere, setShowSearchHere] = useState(false);
+  const [searchBbox, setSearchBbox] = useState<BBox | null>(null);
+  const [searchHereLoading, setSearchHereLoading] = useState(false);
+  const resetSearchHereRef = useRef<() => void>(() => {});
+
+  // Drop pin state
+  const [awaitingPinDrop, setAwaitingPinDrop] = useState(false);
+  const [pinDropResult, setPinDropResult] = useState<{ lat: number; lon: number } | null>(null);
+
+  const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null;
+
+  const handleMapMove = useCallback(
+    (show: boolean, bbox: BBox | null, reset: () => void) => {
+      setShowSearchHere(show);
+      setSearchBbox(bbox);
+      resetSearchHereRef.current = reset;
+    },
+    [],
+  );
+
+  const handleSearchHere = useCallback(async () => {
+    if (!searchBbox || !city || !cityGeo) return;
+    setSearchHereLoading(true);
+    try {
+      const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], searchBbox);
+      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
+        ...p,
+        id: p.id ?? `${p.title}-${i}`,
+      }));
+      dispatch({ type: 'MERGE_PLACES', places: withIds });
+    } catch (e) {
+      console.error('[MapScreen] searchHere failed:', e);
+    } finally {
+      setSearchHereLoading(false);
+      resetSearchHereRef.current();
+    }
+  }, [searchBbox, city, cityGeo, dispatch]);
+
+  // When pin is dropped: store result, re-open sheet so user can continue
+  const handlePinDrop = useCallback(
+    (latlng: { lat: number; lon: number }) => {
+      setPinDropResult(latlng);
+      setAwaitingPinDrop(false);
+      setShowTripSheet(true);
+    },
+    [],
+  );
 
   const counts: Partial<Record<string, number>> = {
     all: places.length,
@@ -120,7 +306,7 @@ export function MapScreen() {
     : [20, 0];
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: 10 }}>
+    <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
       {/* Map — full screen, no sibling overlays on top */}
       <MapContainer
         center={center}
@@ -136,9 +322,39 @@ export function MapScreen() {
         <MapPins
           places={filteredPlaces}
           selectedIds={selectedIds}
+          recommendedIds={recommendedIds}
           onPinClick={handlePinClick}
         />
+        <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
+        <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
       </MapContainer>
+
+      {/* Search Here button — shown after panning */}
+      {showSearchHere && (
+        <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />
+      )}
+
+      {/* Drop pin instructional strip */}
+      {awaitingPinDrop && (
+        <div
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-5 py-4"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+            zIndex: 20,
+            background: 'linear-gradient(to top, rgba(20,184,166,.9), rgba(20,184,166,.7))',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <span className="text-xl">📍</span>
+          <p className="text-white font-semibold text-sm">Tap the map to drop your starting pin</p>
+          <button
+            onClick={() => setAwaitingPinDrop(false)}
+            className="ml-auto text-white/70 text-xs underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* ── Each UI element positioned independently ── */}
 
@@ -195,11 +411,12 @@ export function MapScreen() {
       {/* Pin card */}
       {activePlace && (
         <div
-          className="absolute inset-x-4 bottom-40"
-          style={{ zIndex: 20 }}
+          className="absolute inset-x-4"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)', zIndex: 20 }}
         >
           <PinCard
             place={activePlace}
+            city={city}
             isSelected={selectedIds.has(activePlace.id)}
             onAdd={() => togglePlace(activePlace)}
             onClose={() => setActivePlace(null)}
@@ -258,7 +475,14 @@ export function MapScreen() {
         </div>
       )}
 
-      {showTripSheet && <TripSheet onClose={() => setShowTripSheet(false)} />}
+      {showTripSheet && (
+        <TripSheet
+          onClose={() => setShowTripSheet(false)}
+          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
+          pinDropResult={pinDropResult}
+          cityGeo={cityGeo}
+        />
+      )}
     </div>
   );
 }
