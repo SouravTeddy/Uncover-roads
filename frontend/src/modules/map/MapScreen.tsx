@@ -6,8 +6,8 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
-import { CATEGORY_ICONS } from './types';
 import { TripSheet } from './TripSheet';
+import { makeIcon, makeRecommendedIcon } from './icons';
 
 // Fix Leaflet default icon URLs broken by Vite bundler
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -17,27 +17,15 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function makeIcon(category: string, selected: boolean) {
-  const color = selected ? '#f97316' : '#3b82f6';
-  const icon = CATEGORY_ICONS[category] ?? 'location_on';
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.3)">
-      <span class="ms fill" style="transform:rotate(45deg);color:#fff;font-size:16px;font-family:'Material Symbols Outlined'">${icon}</span>
-    </div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36],
-  });
-}
-
 function MapPins({
   places,
   selectedIds,
+  recommendedIds,
   onPinClick,
 }: {
   places: Place[];
   selectedIds: Set<string>;
+  recommendedIds: Set<string>;
   onPinClick: (place: Place) => void;
 }) {
   const map = useLeafletMap();
@@ -49,10 +37,10 @@ function MapPins({
 
     places.forEach(place => {
       if (!place.lat || !place.lon) return;
-      const selected = selectedIds.has(place.id);
-      const marker = L.marker([place.lat, place.lon], {
-        icon: makeIcon(place.category, selected),
-      });
+      const icon = recommendedIds.has(place.id)
+        ? makeRecommendedIcon(place.category)
+        : makeIcon(place.category);
+      const marker = L.marker([place.lat, place.lon], { icon });
       marker.on('click', () => onPinClick(place));
       marker.addTo(map);
       markersRef.current.push(marker);
@@ -62,7 +50,7 @@ function MapPins({
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
     };
-  }, [places, selectedIds, map, onPinClick]);
+  }, [places, selectedIds, recommendedIds, map, onPinClick]);
 
   return null;
 }
@@ -104,6 +92,10 @@ export function MapScreen() {
   } = useMap();
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const recommendedIds = useMemo(
+    () => new Set(places.filter(p => p.reason).map(p => p.id)),
+    [places]
+  );
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
   const [showTripSheet, setShowTripSheet] = useState(false);
 
@@ -136,6 +128,7 @@ export function MapScreen() {
         <MapPins
           places={filteredPlaces}
           selectedIds={selectedIds}
+          recommendedIds={recommendedIds}
           onPinClick={handlePinClick}
         />
       </MapContainer>
