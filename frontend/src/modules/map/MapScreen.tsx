@@ -94,6 +94,27 @@ function MapMoveListener({
   return null;
 }
 
+function PinDropListener({
+  active,
+  onDrop,
+}: {
+  active: boolean;
+  onDrop: (latlng: { lat: number; lon: number }) => void;
+}) {
+  const map = useLeafletMap();
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: L.LeafletMouseEvent) => {
+      onDrop({ lat: e.latlng.lat, lon: e.latlng.lng });
+    };
+    map.once('click', handler);
+    return () => {
+      map.off('click', handler);
+    };
+  }, [active, map, onDrop]);
+  return null;
+}
+
 export function MapScreen() {
   const {
     city,
@@ -128,6 +149,10 @@ export function MapScreen() {
   const [searchHereLoading, setSearchHereLoading] = useState(false);
   const resetSearchHereRef = useRef<() => void>(() => {});
 
+  // Drop pin state
+  const [awaitingPinDrop, setAwaitingPinDrop] = useState(false);
+  const [pinDropResult, setPinDropResult] = useState<{ lat: number; lon: number } | null>(null);
+
   const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null;
 
   const handleMapMove = useCallback(
@@ -156,6 +181,23 @@ export function MapScreen() {
       resetSearchHereRef.current();
     }
   }, [searchBbox, city, cityGeo, dispatch]);
+
+  // When pin is dropped, dispatch coordinates and clear awaiting state
+  const handlePinDrop = useCallback(
+    (latlng: { lat: number; lon: number }) => {
+      setPinDropResult(latlng);
+      setAwaitingPinDrop(false);
+      dispatch({
+        type: 'SET_TRIP_CONTEXT',
+        ctx: {
+          locationLat: latlng.lat,
+          locationLon: latlng.lon,
+          locationName: 'Custom pin',
+        },
+      });
+    },
+    [dispatch],
+  );
 
   const counts: Partial<Record<string, number>> = {
     all: places.length,
@@ -190,11 +232,34 @@ export function MapScreen() {
           onPinClick={handlePinClick}
         />
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
+        <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
       </MapContainer>
 
       {/* Search Here button — shown after panning */}
       {showSearchHere && (
         <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />
+      )}
+
+      {/* Drop pin instructional strip */}
+      {awaitingPinDrop && (
+        <div
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-5 py-4"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
+            zIndex: 20,
+            background: 'linear-gradient(to top, rgba(20,184,166,.9), rgba(20,184,166,.7))',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <span className="text-xl">📍</span>
+          <p className="text-white font-semibold text-sm">Tap the map to drop your starting pin</p>
+          <button
+            onClick={() => setAwaitingPinDrop(false)}
+            className="ml-auto text-white/70 text-xs underline underline-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
       )}
 
       {/* ── Each UI element positioned independently ── */}
@@ -315,7 +380,14 @@ export function MapScreen() {
         </div>
       )}
 
-      {showTripSheet && <TripSheet onClose={() => setShowTripSheet(false)} />}
+      {showTripSheet && (
+        <TripSheet
+          onClose={() => setShowTripSheet(false)}
+          onRequestPinDrop={() => setAwaitingPinDrop(true)}
+          pinDropResult={pinDropResult}
+          cityGeo={cityGeo}
+        />
+      )}
     </div>
   );
 }
