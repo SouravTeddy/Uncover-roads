@@ -43,6 +43,13 @@ export function PinCard({ place, isSelected, onAdd, onClose }: Props) {
 
       <div className="font-heading font-bold text-text-1 text-base mb-1">{place.title}</div>
 
+      {place.reason && (
+        <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-lg bg-primary/8 border border-primary/15">
+          <span className="ms text-primary text-sm flex-shrink-0">auto_awesome</span>
+          <span className="text-primary text-xs leading-relaxed">{place.reason}</span>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex gap-2 mt-3">
         <button
