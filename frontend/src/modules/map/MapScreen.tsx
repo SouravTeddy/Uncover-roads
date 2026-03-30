@@ -50,7 +50,7 @@ function MapPins({
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
     };
-  }, [places, selectedIds, recommendedIds, map, onPinClick]);
+  }, [places, recommendedIds, map, onPinClick]);
 
   return null;
 }
