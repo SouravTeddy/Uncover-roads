@@ -332,7 +332,7 @@ def ai_itinerary(body: dict):
         if not conflict:
             try:
                 persona_dict = {
-                    'archetype': body.get('persona', ''),
+                    'archetype': body.get('persona_archetype', ''),
                     'ritual': body.get('trip_context', {}).get('ritual', '') or body.get('ritual', ''),
                     'pace': body.get('pace', ''),
                     'sensory': body.get('sensory', ''),
@@ -345,8 +345,9 @@ def ai_itinerary(body: dict):
                     persona=persona_dict,
                     travel_date=travel_date,
                 )
-            except Exception:
-                conflict = {}
+            except Exception as e:
+                print(f"CONFLICT CHECK ERROR: {e}")
+                conflict = {"has_conflicts": False, "conflicts": []}
 
         if not places:
             return {"itinerary": [], "summary": {}}
