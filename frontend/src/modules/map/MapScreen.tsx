@@ -382,7 +382,7 @@ export function MapScreen() {
 
       {showTripSheet && (
         <TripSheet
-          onClose={() => setShowTripSheet(false)}
+          onClose={() => { setShowTripSheet(false); setPinDropResult(null); }}
           onRequestPinDrop={() => setAwaitingPinDrop(true)}
           pinDropResult={pinDropResult}
           cityGeo={cityGeo}

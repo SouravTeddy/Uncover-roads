@@ -113,10 +113,10 @@ export const api = {
 
   placeImage: async (name: string, city: string): Promise<string | null> => {
     try {
-      const data = await get<{ url: string | null }>(
+      const data = await get<{ image: string | null }>(
         `/place-image?name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}`
       );
-      return data.url ?? null;
+      return data.image ?? null;
     } catch {
       return null;
     }
