@@ -106,6 +106,7 @@ export type Action =
   | { type: 'SET_CITY'; city: string }
   | { type: 'SET_CITY_GEO'; geo: GeoData }
   | { type: 'SET_PLACES'; places: Place[] }
+  | { type: 'MERGE_PLACES'; places: Place[] }
   | { type: 'TOGGLE_PLACE'; place: Place }
   | { type: 'SET_SELECTED_PLACES'; places: Place[] }
   | { type: 'SET_FILTER'; filter: MapFilter | 'all' }
@@ -146,6 +147,12 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_PLACES':
       return { ...state, places: action.places };
+
+    case 'MERGE_PLACES': {
+      const existingIds = new Set(state.places.map(p => p.id));
+      const newPlaces = action.places.filter(p => !existingIds.has(p.id));
+      return { ...state, places: [...state.places, ...newPlaces] };
+    }
 
     case 'TOGGLE_PLACE': {
       const exists = state.selectedPlaces.some(p => p.id === action.place.id);
