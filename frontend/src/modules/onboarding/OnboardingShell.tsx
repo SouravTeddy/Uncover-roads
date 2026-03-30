@@ -1,0 +1,113 @@
+import type { ReactNode } from 'react';
+import type { ObStep } from './types';
+import { OB_STEPS, STEP_TITLES, STEP_SUBTITLES } from './types';
+import { useOnboarding } from './useOnboarding';
+
+interface Props {
+  step: ObStep;
+  canAdvance: boolean;
+  children: ReactNode;
+}
+
+export function OnboardingShell({ step, canAdvance, children }: Props) {
+  const { progress, currentIndex, totalSteps, goBack, goNext, finish, isLast } = useOnboarding(step);
+
+  return (
+    <div className="fixed inset-0 flex flex-col bg-bg" style={{ zIndex: 20 }}>
+      {/* Header */}
+      <div
+        className="flex-shrink-0 flex items-center justify-between px-5 border-b border-white/6"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+          paddingBottom: '1rem',
+          background: 'rgba(15,23,42,.95)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <button
+          onClick={goBack}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer"
+        >
+          <span className="ms text-primary text-xl">arrow_back</span>
+        </button>
+        <span className="text-text-1 font-semibold text-base">Travel Preferences</span>
+        <div className="w-10" />
+      </div>
+
+      {/* Progress bar */}
+      <div className="flex-shrink-0 h-1 bg-surface">
+        <div
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      {/* Body */}
+      <div
+        className="flex-1 overflow-y-auto -webkit-overflow-scrolling-touch"
+        style={{ paddingBottom: '9rem' }}
+      >
+        <div className="px-5 pt-6">
+          <span className="text-text-3 text-xs font-medium tracking-wide uppercase">
+            Step {String(currentIndex + 1).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
+          </span>
+          <h1 className="font-heading font-extrabold text-text-1 text-2xl mt-2 mb-1 tracking-tight">
+            {STEP_TITLES[step]}
+          </h1>
+          <p className="text-text-2 text-sm mb-5">
+            {step === 'ob4' ? (
+              <>
+                What do you look forward to the most?{' '}
+                <span className="text-primary font-bold">Pick all that apply.</span>
+              </>
+            ) : (
+              STEP_SUBTITLES[step]
+            )}
+          </p>
+          {children}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div
+        className="flex-shrink-0 bg-bg border-t border-white/6 px-5 py-4 flex items-center justify-between"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+      >
+        {/* Dots */}
+        <div className="flex gap-2">
+          {OB_STEPS.map((s, i) => (
+            <div
+              key={s}
+              className={`rounded-full transition-all ${
+                i === currentIndex
+                  ? 'w-4 h-2 bg-primary'
+                  : i < currentIndex
+                  ? 'w-2 h-2 bg-primary/40'
+                  : 'w-2 h-2 bg-white/10'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Next / Finish */}
+        <button
+          disabled={!canAdvance}
+          onClick={isLast ? finish : goNext}
+          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-heading font-bold text-sm transition-all ${
+            canAdvance
+              ? 'bg-primary text-white cursor-pointer'
+              : 'bg-surface text-text-3 cursor-not-allowed'
+          }`}
+        >
+          {isLast ? (
+            <>Finish <span className="ms">auto_fix</span></>
+          ) : (
+            <>Next <span className="ms">chevron_right</span></>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
