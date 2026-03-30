@@ -114,6 +114,7 @@ export function RouteScreen() {
               <ItineraryView
                 stops={itinerary.itinerary}
                 selectedPlaces={selectedPlaces}
+                conflictNotes={itinerary.summary?.conflict_notes}
                 onRemove={removeStop}
                 onAddMeal={() => {
                   dispatch({ type: 'SET_FILTER', filter: 'restaurant' });
