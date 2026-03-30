@@ -24,7 +24,7 @@ L.Icon.Default.mergeOptions({
 
 function MapPins({
   places,
-  selectedIds,
+  selectedIds: _selectedIds,
   recommendedIds,
   onPinClick,
 }: {

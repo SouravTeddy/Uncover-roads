@@ -24,8 +24,7 @@ export function makeIcon(category: string): L.DivIcon {
   });
 }
 
-export function makeRecommendedIcon(category: string): L.DivIcon {
-  const color = CATEGORY_COLORS[category] ?? '#64748b';
+export function makeRecommendedIcon(_category: string): L.DivIcon {
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:36px;height:36px;">
