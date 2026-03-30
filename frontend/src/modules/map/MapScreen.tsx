@@ -319,11 +319,12 @@ export function MapScreen() {
       {/* Pin card */}
       {activePlace && (
         <div
-          className="absolute inset-x-4 bottom-40"
-          style={{ zIndex: 20 }}
+          className="absolute inset-x-4"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)', zIndex: 20 }}
         >
           <PinCard
             place={activePlace}
+            city={city}
             isSelected={selectedIds.has(activePlace.id)}
             onAdd={() => togglePlace(activePlace)}
             onClose={() => setActivePlace(null)}
