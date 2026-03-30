@@ -64,7 +64,7 @@ def geocode(city: str = Query(...)):
         return {
             "city": result["display_name"],
             "lat": lat, "lon": lon,
-            "bbox": {"south": south, "west": west, "north": north, "east": east}
+            "bbox": [south, north, west, east]
         }
     except Exception as e:
         print("GEOCODE ERROR:", e)
@@ -134,8 +134,8 @@ def map_data(
             geo = geocode(city)
             if "error" in geo:
                 return {"error": geo["error"]}
-            b = geo["bbox"]
-            bbox_str = f"{b['south']},{b['west']},{b['north']},{b['east']}"
+            b = geo["bbox"]  # [south, north, west, east]
+            bbox_str = f"{b[0]},{b[2]},{b[1]},{b[3]}"
 
         query = f"""
 [out:json][timeout:15];
@@ -182,14 +182,14 @@ out center 40;
             else:
                 cat = "place"
 
-            lat = el.get("lat") or (el.get("center") or {}).get("lat")
-            lon = el.get("lon") or (el.get("center") or {}).get("lon")
-            if lat is None or lon is None:
+            el_lat = el.get("lat") or (el.get("center") or {}).get("lat")
+            el_lon = el.get("lon") or (el.get("center") or {}).get("lon")
+            if el_lat is None or el_lon is None:
                 continue
             places.append({
                 "title":    name,
-                "lat":      lat,
-                "lon":      lon,
+                "lat":      el_lat,
+                "lon":      el_lon,
                 "type":     "place",
                 "category": cat,
                 "tags": {
@@ -318,7 +318,7 @@ def route(body: dict):
 @app.post("/ai-itinerary")
 def ai_itinerary(body: dict):
     try:
-        places   = body.get("places", [])
+        places   = body.get("selected_places", [])
         city     = body.get("city", "the city")
         days     = body.get("days", 1)  # can be 0.5 for half day
         day_num  = body.get("day_number", 1)
@@ -328,6 +328,26 @@ def ai_itinerary(body: dict):
         ctx      = body.get("persona_context", {})
         conflict = body.get("conflict_resolution", {})
         trip_ctx = body.get("trip_context", {})
+
+        if not conflict:
+            try:
+                persona_dict = {
+                    'archetype': body.get('persona_archetype', ''),
+                    'ritual': body.get('trip_context', {}).get('ritual', '') or body.get('ritual', ''),
+                    'pace': body.get('pace', ''),
+                    'sensory': body.get('sensory', ''),
+                    'social': body.get('social', ''),
+                    'attractions': body.get('attractions', []),
+                }
+                travel_date = body.get('trip_context', {}).get('travel_date') or body.get('date', '')
+                conflict = run_conflict_check(
+                    city=body.get('city', ''),
+                    persona=persona_dict,
+                    travel_date=travel_date,
+                )
+            except Exception as e:
+                print(f"CONFLICT CHECK ERROR: {e}")
+                conflict = {"has_conflicts": False, "conflicts": []}
 
         if not places:
             return {"itinerary": [], "summary": {}}
@@ -447,6 +467,9 @@ CRITICAL RULES — FOLLOW STRICTLY:
 - If arrival time is between 0:00-6:00 (late night/early morning): note in conflict_notes that ideal start is ~10:00 AM
 - transit_to_next must be a realistic walking/transit time string like "12 min walk" or "8 min by metro"
 - tip: ONE sentence only, max 12 words, one specific insider detail — not a paragraph
+- Add tags to each stop when relevant: use short labels from this set:
+  heat (hot weather), jetlag (long-haul arrival), ramadan (religious observance period),
+  altitude (high elevation venue). Only add tags when they actually apply.
 
 Return ONLY a valid JSON object, no markdown, no explanation:
 {{
@@ -458,7 +481,8 @@ Return ONLY a valid JSON object, no markdown, no explanation:
       "duration": "2 hours",
       "category": "museum",
       "tip": "Specific insider tip",
-      "transit_to_next": "10 min walk"
+      "transit_to_next": "10 min walk",
+      "tags": ["optional", "array", "of", "short", "conflict-aware", "labels"]
     }}
   ],
   "summary": {{
