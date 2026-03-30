@@ -85,7 +85,7 @@ export interface Place {
 }
 
 // ── Trip context ──────────────────────────────────────────────
-export type StartType = 'hotel' | 'airport' | 'station' | 'airbnb';
+export type StartType = 'hotel' | 'airport' | 'station' | 'airbnb' | 'pin';
 
 export interface TripContext {
   startType: StartType;
@@ -108,10 +108,20 @@ export interface ItineraryStop {
   tip?: string;
   duration?: string;
   transit_to_next?: string;
+  tags?: string[];
+}
+
+export interface ItinerarySummary {
+  total_places?: number;
+  estimated_cost?: string;
+  best_transport?: string;
+  pro_tip?: string;
+  conflict_notes?: string;
 }
 
 export interface Itinerary {
   itinerary: ItineraryStop[];
+  summary?: ItinerarySummary;
   city?: string;
 }
 
