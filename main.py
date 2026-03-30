@@ -64,7 +64,7 @@ def geocode(city: str = Query(...)):
         return {
             "city": result["display_name"],
             "lat": lat, "lon": lon,
-            "bbox": {"south": south, "west": west, "north": north, "east": east}
+            "bbox": [south, north, west, east]
         }
     except Exception as e:
         print("GEOCODE ERROR:", e)
@@ -134,8 +134,8 @@ def map_data(
             geo = geocode(city)
             if "error" in geo:
                 return {"error": geo["error"]}
-            b = geo["bbox"]
-            bbox_str = f"{b['south']},{b['west']},{b['north']},{b['east']}"
+            b = geo["bbox"]  # [south, north, west, east]
+            bbox_str = f"{b[0]},{b[2]},{b[1]},{b[3]}"
 
         query = f"""
 [out:json][timeout:15];
@@ -182,14 +182,14 @@ out center 40;
             else:
                 cat = "place"
 
-            lat = el.get("lat") or (el.get("center") or {}).get("lat")
-            lon = el.get("lon") or (el.get("center") or {}).get("lon")
-            if lat is None or lon is None:
+            el_lat = el.get("lat") or (el.get("center") or {}).get("lat")
+            el_lon = el.get("lon") or (el.get("center") or {}).get("lon")
+            if el_lat is None or el_lon is None:
                 continue
             places.append({
                 "title":    name,
-                "lat":      lat,
-                "lon":      lon,
+                "lat":      el_lat,
+                "lon":      el_lon,
                 "type":     "place",
                 "category": cat,
                 "tags": {
@@ -318,7 +318,7 @@ def route(body: dict):
 @app.post("/ai-itinerary")
 def ai_itinerary(body: dict):
     try:
-        places   = body.get("places", [])
+        places   = body.get("selected_places", [])
         city     = body.get("city", "the city")
         days     = body.get("days", 1)  # can be 0.5 for half day
         day_num  = body.get("day_number", 1)
