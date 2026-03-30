@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRoute } from './useRoute';
 import { ItineraryView } from './ItineraryView';
 import { RecSheet } from './RecSheet';
+import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
 
 export function RouteScreen() {
@@ -13,6 +14,7 @@ export function RouteScreen() {
     itinerary,
     weather,
     city,
+    selectedPlaces,
     savedItineraries,
     removeStop,
     saveItinerary,
@@ -21,6 +23,7 @@ export function RouteScreen() {
     goToNav,
   } = useRoute();
 
+  const { dispatch } = useAppStore();
   const [showRecSheet, setShowRecSheet] = useState(false);
 
   return (
@@ -117,7 +120,12 @@ export function RouteScreen() {
             {!loading && !error && itinerary && (
               <ItineraryView
                 stops={itinerary.itinerary}
+                selectedPlaces={selectedPlaces}
                 onRemove={removeStop}
+                onAddMeal={() => {
+                  dispatch({ type: 'SET_FILTER', filter: 'restaurant' });
+                  dispatch({ type: 'GO_TO', screen: 'map' });
+                }}
               />
             )}
           </>

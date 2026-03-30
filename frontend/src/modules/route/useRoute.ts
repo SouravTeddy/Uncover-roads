@@ -97,6 +97,7 @@ export function useRoute() {
     itinerary,
     weather,
     city,
+    selectedPlaces,
     savedItineraries,
     removeStop,
     saveItinerary,
