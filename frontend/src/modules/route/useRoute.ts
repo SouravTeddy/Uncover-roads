@@ -36,7 +36,7 @@ export function useRoute() {
         pace: state.persona!.pace ?? 'any',
         persona: state.persona!.archetype,
         persona_archetype: state.persona!.archetype_name,
-        persona_context: state.persona!.insight,
+        persona_context: state.persona!.insight ?? '',
         trip_context: {
           start_type: state.tripContext.startType,
           arrival_time: state.tripContext.arrivalTime,
