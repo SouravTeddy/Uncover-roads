@@ -240,14 +240,18 @@ function MapReadyTrigger({ onReady }: { onReady: (bbox: BBox) => void }) {
   const map = useLeafletMap();
   const firedRef = useRef(false);
   useEffect(() => {
-    function handler() {
+    function fire() {
       if (firedRef.current) return;
       firedRef.current = true;
       const b = map.getBounds();
-      onReady([b.getSouth(), b.getNorth(), b.getWest(), b.getEast()]);
+      if (b.isValid()) onReady([b.getSouth(), b.getNorth(), b.getWest(), b.getEast()]);
     }
-    map.once('moveend', handler);
-    return () => { map.off('moveend', handler); };
+    // moveend fires if FitBounds animates the view (async)
+    map.once('moveend', fire);
+    // Timeout fallback: FitBounds sometimes fires moveend synchronously before
+    // this listener registers — the timeout catches that case
+    const t = setTimeout(fire, 600);
+    return () => { map.off('moveend', fire); clearTimeout(t); };
   }, [map, onReady]);
   return null;
 }
