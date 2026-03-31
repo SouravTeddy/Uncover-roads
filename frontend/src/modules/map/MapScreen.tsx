@@ -418,35 +418,59 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Pin card */}
-      {activePlace && (
+      {/* Pin card + itinerary bar — stacked column, grows upward from bottom anchor */}
+      {(activePlace || selectedPlaces.length >= 2) && (
         <div
-          className="absolute inset-x-4"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6rem)', zIndex: 20 }}
-        >
-          <PinCard
-            place={activePlace}
-            city={city}
-            isSelected={selectedIds.has(activePlace.id)}
-            onAdd={() => togglePlace(activePlace)}
-            onClose={() => setActivePlace(null)}
-          />
-        </div>
-      )}
-
-      {/* Create itinerary CTA */}
-      {selectedPlaces.length >= 2 && (
-        <div
-          className="absolute inset-x-4 flex gap-3"
+          className="absolute inset-x-4 flex flex-col gap-2"
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
         >
-          <button
-            onClick={() => setShowTripSheet(true)}
-            className="flex-1 h-14 rounded-2xl bg-orange font-heading font-bold text-white text-base flex items-center justify-center gap-2 shadow-lg"
-          >
-            <span className="ms fill text-base">auto_fix</span>
-            Create Itinerary ({selectedPlaces.length})
-          </button>
+          {activePlace && (
+            <PinCard
+              place={activePlace}
+              city={city}
+              isSelected={selectedIds.has(activePlace.id)}
+              onAdd={() => togglePlace(activePlace)}
+              onClose={() => setActivePlace(null)}
+            />
+          )}
+
+          {selectedPlaces.length >= 2 && (
+            <div
+              className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
+              style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
+            >
+              {/* Place dots */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="flex -space-x-1.5">
+                  {selectedPlaces.slice(0, 5).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-4 h-4 rounded-full border-2"
+                      style={{
+                        background: '#f97316',
+                        borderColor: 'rgba(15,20,30,1)',
+                        opacity: 1 - i * 0.14,
+                        zIndex: 5 - i,
+                      }}
+                    />
+                  ))}
+                </div>
+                <span className="text-text-1 text-sm font-semibold">
+                  {selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}
+                </span>
+                <span className="text-text-3 text-xs">added</span>
+              </div>
+              {/* CTA */}
+              <button
+                onClick={() => setShowTripSheet(true)}
+                className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
+                style={{ fontSize: 12 }}
+              >
+                <span className="ms fill" style={{ fontSize: 14 }}>auto_fix</span>
+                Build Itinerary
+              </button>
+            </div>
+          )}
         </div>
       )}
 
