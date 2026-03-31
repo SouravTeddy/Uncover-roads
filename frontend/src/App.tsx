@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries } from './shared/userSync';
 
-import { LoginScreen } from './modules/login';
+import { LoginScreen, WelcomeBackScreen } from './modules/login';
 import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
@@ -16,28 +17,39 @@ import { ProfileScreen } from './modules/profile';
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
 
-  // Handle Supabase OAuth redirect: sync profile + itineraries, then navigate.
+  async function handleSignedIn(user: User) {
+    // Persist user info for the welcome back screen
+    localStorage.setItem('ur_user', JSON.stringify({
+      name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',
+      avatar: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
+      email: user.email ?? '',
+    }));
+
+    syncProfile(user).catch(console.warn);
+    loadSavedItineraries(user.id).then(items => {
+      if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
+    }).catch(console.warn);
+
+    const hasPersona = Boolean(localStorage.getItem('ur_persona'));
+    dispatch({ type: 'GO_TO', screen: hasPersona ? 'destination' : 'ob1' });
+  }
+
   useEffect(() => {
+    // Check for session immediately — catches the OAuth redirect case
+    // where the session is already established before the listener fires
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleSignedIn(session.user);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const user = session.user;
-
-        // Sync Google profile data to Supabase
-        syncProfile(user).catch(console.warn);
-
-        // Load their saved itineraries from Supabase and merge into app state
-        loadSavedItineraries(user.id).then(items => {
-          if (items.length > 0) {
-            dispatch({ type: 'SET_SAVED_ITINERARIES', items });
-          }
-        }).catch(console.warn);
-
-        const hasPersona = Boolean(localStorage.getItem('ur_persona'));
-        dispatch({ type: 'GO_TO', screen: hasPersona ? 'destination' : 'ob1' });
+        handleSignedIn(session.user);
       }
     });
     return () => subscription.unsubscribe();
-  }, [dispatch]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { currentScreen } = state;
 
   return (
@@ -46,6 +58,7 @@ function ScreenRouter() {
       style={{ background: '#0f172a', minHeight: '100dvh' }}
     >
       {currentScreen === 'login'       && <LoginScreen />}
+      {currentScreen === 'welcome'     && <WelcomeBackScreen />}
       {currentScreen === 'ob1'         && <OB1Ritual />}
       {currentScreen === 'ob2'         && <OB2Motivation />}
       {currentScreen === 'ob3'         && <OB3Style />}
@@ -56,7 +69,6 @@ function ScreenRouter() {
       {currentScreen === 'map'         && <MapScreen />}
       {currentScreen === 'route'       && <RouteScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
-      {/* Profile accessible from bottom nav via persona screen slot */}
       {currentScreen === 'profile'     && <ProfileScreen />}
 
       <BottomNav />
