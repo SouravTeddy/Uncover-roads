@@ -21,18 +21,33 @@ async function nominatimSearch(
   cityGeo: GeoData | null,
   signal?: AbortSignal,
 ): Promise<CityResult[]> {
-  const params = new URLSearchParams({ q: query, format: 'json', limit: '6' });
+  const params = new URLSearchParams({ q: query, format: 'json', limit: '6', 'accept-language': 'en' });
   if (cityGeo) {
     const [south, north, west, east] = cityGeo.bbox;
     params.set('viewbox', `${west},${north},${east},${south}`);
-    params.set('bounded', '0');
+    params.set('bounded', '1'); // strictly limit to city bounding box
   }
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
     headers: { 'Accept-Language': 'en' },
     signal,
   });
   const data = await res.json();
-  return data.map((r: { display_name: string; lat: string; lon: string }) => ({
+  // If bounded search returns nothing (e.g. airport outside city bbox), retry without bounded
+  if (Array.isArray(data) && data.length === 0 && cityGeo) {
+    params.set('bounded', '0');
+    const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { 'Accept-Language': 'en' },
+      signal,
+    });
+    const data2 = await res2.json();
+    return (Array.isArray(data2) ? data2 : []).map((r: { display_name: string; lat: string; lon: string }) => ({
+      name: r.display_name.split(',')[0],
+      country: r.display_name,
+      lat: parseFloat(r.lat),
+      lon: parseFloat(r.lon),
+    }));
+  }
+  return (Array.isArray(data) ? data : []).map((r: { display_name: string; lat: string; lon: string }) => ({
     name: r.display_name.split(',')[0],
     country: r.display_name,
     lat: parseFloat(r.lat),
