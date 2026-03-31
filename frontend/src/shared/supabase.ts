@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL  as string;
-const supabaseKey  = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('Supabase env vars missing — auth will not work. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-}
+// Use placeholder values so createClient doesn't throw — auth calls will simply fail gracefully
+export const supabase = createClient(
+  supabaseUrl  || 'https://placeholder.supabase.co',
+  supabaseKey  || 'placeholder-key',
+);
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseKey ?? '');
+export const supabaseReady = Boolean(supabaseUrl && supabaseKey);
