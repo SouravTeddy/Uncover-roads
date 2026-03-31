@@ -162,6 +162,8 @@ export function RouteScreen() {
                 tripContext={tripContext}
                 summary={itinerary.summary}
                 persona={persona}
+                weather={weather}
+                city={city ?? itinerary.city}
                 onRemove={removeStop}
                 onAddMeal={() => {
                   dispatch({ type: 'SET_FILTER', filter: 'restaurant' });

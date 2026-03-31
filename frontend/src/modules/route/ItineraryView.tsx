@@ -1,4 +1,4 @@
-import type { ItineraryStop, ItinerarySummary, Place, TripContext, Persona } from '../../shared/types';
+import type { ItineraryStop, ItinerarySummary, Place, TripContext, Persona, WeatherData } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from '../map/types';
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   tripContext: TripContext;
   summary?: ItinerarySummary;
   persona?: Persona | null;
+  weather?: WeatherData | null;
+  city?: string;
   startTime?: string;
   onRemove: (idx: number) => void;
   onAddMeal: () => void;
@@ -429,6 +431,226 @@ function slotReason(slot: SuggestionSlot, archetype: string | undefined, place: 
   }
 }
 
+// ── Context intelligence chips ────────────────────────────────
+
+interface ContextChip { icon: string; label: string; color: string; bg: string }
+
+const CITY_TRANSPORT: Record<string, string> = {
+  tokyo: 'IC card · metro runs everywhere',
+  kyoto: 'Day bus pass saves money here',
+  osaka: 'ICOCA card for metro + JR',
+  seoul: 'T-money card for all transit',
+  singapore: 'EZ-Link card works everywhere',
+  bangkok: 'BTS Skytrain + Grab for last-mile',
+  'hong kong': 'Octopus card for MTR + buses',
+  'kuala lumpur': 'Touch \'n Go for LRT + bus',
+  beijing: 'Yikatong card for subway',
+  shanghai: 'Metro card at any station',
+  dubai: 'Nol card for metro + buses',
+  istanbul: 'Istanbulkart for all transit',
+  london: 'Oyster or tap contactless',
+  paris: 'Navigo day pass saves money',
+  rome: 'Buy 48h pass on arrival',
+  barcelona: 'T-Casual card for 10 trips',
+  amsterdam: 'GVB day pass covers trams',
+  berlin: 'AB day ticket covers centre',
+  vienna: 'Vienna City Card includes museums',
+  prague: '24h pass for trams + metro',
+  lisbon: 'Viva Viagem card at station',
+  madrid: 'Metrobús 10-trip card',
+  stockholm: 'SL Access card for all transit',
+  copenhagen: 'Copenhagen Card saves on transit',
+  athens: 'Metro runs direct to airport',
+  nyc: 'OMNY tap-to-pay on subway',
+  'new york': 'OMNY tap-to-pay on subway',
+  'los angeles': 'Uber recommended · low transit',
+  toronto: 'Presto card for TTC',
+  sydney: 'Opal card for ferry + rail',
+  melbourne: 'Free trams in city centre',
+  mumbai: 'Uber recommended here',
+  delhi: 'Delhi Metro is excellent',
+  bangalore: 'Namma Metro + Uber works well',
+  cairo: 'Uber/Careem most reliable',
+  'mexico city': 'World\'s cheapest metro here',
+  'rio de janeiro': 'Uber recommended for safety',
+  'sao paulo': 'Bilhete Único for metro + bus',
+};
+
+const TIPPING_CUSTOMS: Record<string, string> = {
+  tokyo: 'Tipping is not expected here',
+  kyoto: 'Tipping not expected here',
+  osaka: 'Tipping not expected here',
+  seoul: 'Tipping uncommon here',
+  singapore: 'Service charge usually included',
+  bangkok: 'Small tip appreciated',
+  'hong kong': 'Service charge typically added',
+  dubai: '10–15% at restaurants',
+  london: '10–12.5% typical at restaurants',
+  paris: '~10% tip appreciated, not required',
+  rome: 'Coperto (cover charge) is normal',
+  amsterdam: '5–10% if pleased',
+  barcelona: '5–10% optional at restaurants',
+  nyc: '18–22% is standard here',
+  'new york': '18–22% is standard here',
+  lisbon: '5–10% appreciated',
+};
+
+function buildContextChips(
+  stop: ItineraryStop,
+  index: number,
+  totalStops: number,
+  tMins: number,
+  stopEndMins: number,
+  matchedCategory: string | null,
+  weather: WeatherData | null | undefined,
+  persona: Persona | null | undefined,
+  tripContext: TripContext,
+  city: string | undefined,
+): ContextChip[] {
+  const chips: ContextChip[] = [];
+  const isFirst = index === 0;
+  const isLast  = index === totalStops - 1;
+  const nameLower    = (stop.place ?? '').toLowerCase();
+  const category     = matchedCategory ?? '';
+  const archetype    = (persona?.archetype ?? '').toLowerCase();
+  const ritual       = persona?.ritual;
+  const social       = persona?.social;
+  const weatherCond  = (weather?.condition ?? '').toLowerCase();
+  const weatherTemp  = weather?.temp ?? 20;
+  const cityLower    = (city ?? '').toLowerCase().split(',')[0].trim();
+
+  // ── 1. Flight proximity ───────────────────────────────────────
+  if (isLast && tripContext.flightTime) {
+    const [fh, fm] = tripContext.flightTime.split(':').map(Number);
+    const flightMins = (isNaN(fh) ? 0 : fh) * 60 + (isNaN(fm) ? 0 : fm);
+    const gap = flightMins - stopEndMins;
+    if (gap < 180) {
+      const absH = Math.floor(Math.abs(gap) / 60);
+      const absM = Math.abs(gap) % 60;
+      const timeStr = absH > 0 ? `${absH}h ${absM}m` : `${absM}m`;
+      chips.push(gap < 0
+        ? { icon: 'flight', label: 'Flight overlap · leave early', color: '#f87171', bg: 'rgba(248,113,113,.14)' }
+        : { icon: 'flight', label: `${timeStr} before flight · wrap up`, color: '#fb923c', bg: 'rgba(251,146,60,.12)' },
+      );
+    }
+  }
+
+  // ── 2. Weather at stop ────────────────────────────────────────
+  if (weather) {
+    const isOutdoor = category === 'park' || category === 'tourism' || category === 'place';
+    const isIndoor  = category === 'museum' || category === 'historic' || category === 'restaurant' || category === 'cafe';
+    if (weatherCond.includes('thunder') || weatherCond.includes('storm')) {
+      chips.push({ icon: 'thunderstorm', label: 'Storm forecast · check before you go', color: '#a78bfa', bg: 'rgba(167,139,250,.12)' });
+    } else if (weatherCond.includes('rain') || weatherCond.includes('drizzle')) {
+      if (isOutdoor) chips.push({ icon: 'water_drop', label: 'Rain expected · bring an umbrella', color: '#60a5fa', bg: 'rgba(96,165,250,.12)' });
+      else if (isIndoor) chips.push({ icon: 'water_drop', label: 'Great indoor call — it\'ll rain', color: '#60a5fa', bg: 'rgba(96,165,250,.10)' });
+    } else if (weatherCond.includes('snow')) {
+      chips.push({ icon: 'ac_unit', label: 'Snow likely · dress in layers', color: '#bae6fd', bg: 'rgba(186,230,253,.12)' });
+    } else if (weatherTemp >= 35 && isOutdoor) {
+      chips.push({ icon: 'thermometer', label: `${weatherTemp}° — stay hydrated, go early`, color: '#fbbf24', bg: 'rgba(251,191,36,.12)' });
+    } else if (weatherTemp <= 4 && isOutdoor) {
+      chips.push({ icon: 'weather_snowy', label: `${weatherTemp}° cold · dress warm`, color: '#bae6fd', bg: 'rgba(186,230,253,.12)' });
+    }
+  }
+
+  // ── 3. Jet lag (long haul + early in day) ─────────────────────
+  if (tripContext.isLongHaul && index <= 1) {
+    chips.push({ icon: 'airline_seat_flat', label: 'Long-haul arrival · pace yourself', color: '#818cf8', bg: 'rgba(99,102,241,.12)' });
+  }
+
+  // ── 4. Ritual match ───────────────────────────────────────────
+  const isCafe = category === 'cafe' || nameLower.includes('cafe') || nameLower.includes('coffee') || nameLower.includes('kopi');
+  if (isCafe) {
+    if (ritual === 'coffee') chips.push({ icon: 'coffee', label: 'Your coffee ritual — savour this one', color: '#d97706', bg: 'rgba(217,119,6,.12)' });
+    else if (ritual === 'tea') chips.push({ icon: 'emoji_food_beverage', label: 'Ask if they serve tea', color: '#10b981', bg: 'rgba(16,185,129,.12)' });
+  }
+  if (ritual === 'alcohol' && /\b(bar|pub|wine|rooftop|cocktail|lounge)\b/i.test(nameLower)) {
+    chips.push({ icon: 'local_bar', label: 'Matches your evening drinks ritual', color: '#c084fc', bg: 'rgba(192,132,252,.12)' });
+  }
+
+  // ── 5. Golden hour ────────────────────────────────────────────
+  const isGoldenHour = tMins >= 960 && tMins <= 1080;
+  if (isGoldenHour && (category === 'park' || category === 'tourism' || category === 'place')) {
+    chips.push({ icon: 'wb_twilight', label: 'Golden hour — best light of the day', color: '#f59e0b', bg: 'rgba(245,158,11,.12)' });
+  }
+
+  // ── 6. Museum morning ─────────────────────────────────────────
+  const isMorningEarly = tMins < 600;
+  if (isMorningEarly && (category === 'museum' || category === 'historic')) {
+    chips.push({ icon: 'group_off', label: 'Early entry · fewer crowds guaranteed', color: '#34d399', bg: 'rgba(52,211,153,.12)' });
+  }
+
+  // ── 7. Lunch/dinner rush ──────────────────────────────────────
+  const isLunchRush  = tMins >= 720  && tMins <= 810;
+  const isDinnerRush = tMins >= 1110 && tMins <= 1260;
+  if ((isLunchRush || isDinnerRush) && (category === 'restaurant' || category === 'cafe')) {
+    chips.push({ icon: 'groups', label: isLunchRush ? 'Peak lunch hour · expect a queue' : 'Peak dinner time · consider booking', color: '#fb923c', bg: 'rgba(251,146,60,.12)' });
+  }
+
+  // ── 8. Rush hour transit ──────────────────────────────────────
+  const transitMins   = parseTransitMins(stop.transit_to_next);
+  const isMorningRush = tMins >= 480 && tMins <= 570;
+  const isEveningRush = tMins >= 1020 && tMins <= 1110;
+  if (transitMins >= 20 && (isMorningRush || isEveningRush)) {
+    chips.push({ icon: 'directions_transit', label: isMorningRush ? 'Morning rush — add 15 min buffer' : 'Evening rush — add extra transit time', color: '#38bdf8', bg: 'rgba(56,189,248,.12)' });
+  }
+
+  // ── 9. City transport (first stop) ───────────────────────────
+  if (isFirst) {
+    for (const [key, tip] of Object.entries(CITY_TRANSPORT)) {
+      if (cityLower === key || cityLower.startsWith(key) || key.startsWith(cityLower)) {
+        chips.push({ icon: 'train', label: tip, color: '#2dd4bf', bg: 'rgba(45,212,191,.12)' });
+        break;
+      }
+    }
+  }
+
+  // ── 10. Social context ────────────────────────────────────────
+  if (social === 'family' && (category === 'park' || category === 'museum')) {
+    chips.push({ icon: 'family_restroom', label: 'Family-friendly · check facilities', color: '#34d399', bg: 'rgba(52,211,153,.10)' });
+  }
+  if (social === 'couple') {
+    const isRomantic = /garden|rooftop|sunset|view|terrace|lake|river|cathedral/i.test(nameLower);
+    if (isRomantic) chips.push({ icon: 'favorite', label: 'Beautiful spot for couples', color: '#f472b6', bg: 'rgba(244,114,182,.12)' });
+  }
+  if (social === 'solo') {
+    const isSoloFriendly = isCafe || category === 'museum' || category === 'park' || /gallery|library|book/i.test(nameLower);
+    if (isSoloFriendly) chips.push({ icon: 'person', label: 'Solo-friendly · great energy alone', color: '#94a3b8', bg: 'rgba(148,163,184,.12)' });
+  }
+
+  // ── 11. Long walk warning ─────────────────────────────────────
+  const transitLabel = (stop.transit_to_next ?? '').toLowerCase();
+  const seemsWalking = transitMins >= 40 && !transitLabel.includes('metro') && !transitLabel.includes('bus') && !transitLabel.includes('taxi') && !transitLabel.includes('uber') && !transitLabel.includes('tram');
+  if (seemsWalking) {
+    chips.push({ icon: 'directions_walk', label: `~${transitMins}-min walk to next stop · wear comfortable shoes`, color: '#94a3b8', bg: 'rgba(148,163,184,.10)' });
+  }
+
+  // ── 12. Tipping customs ───────────────────────────────────────
+  if ((category === 'restaurant' || category === 'cafe') && index <= 2) {
+    for (const [key, tip] of Object.entries(TIPPING_CUSTOMS)) {
+      if (cityLower === key || cityLower.startsWith(key) || key.startsWith(cityLower)) {
+        chips.push({ icon: 'payments', label: tip, color: '#a78bfa', bg: 'rgba(167,139,250,.10)' });
+        break;
+      }
+    }
+  }
+
+  // ── 13. Archetype sensory note ────────────────────────────────
+  if (archetype === 'epicurean' && (category === 'market' || /market|bazar|souk|food hall/i.test(nameLower))) {
+    chips.push({ icon: 'storefront', label: 'Food lover\'s paradise — take your time', color: '#d97706', bg: 'rgba(217,119,6,.12)' });
+  }
+  if (archetype === 'historian' && (category === 'historic' || /fort|palace|temple|ruin|castle/i.test(nameLower))) {
+    chips.push({ icon: 'history_edu', label: 'Rich historical site — bring curiosity', color: '#818cf8', bg: 'rgba(99,102,241,.10)' });
+  }
+
+  // ── 14. Last stop wrap ────────────────────────────────────────
+  if (isLast && !tripContext.flightTime && stopEndMins >= 1080) {
+    chips.push({ icon: 'nights_stay', label: `Day wraps at ${parseTimeLabel(stopEndMins)} — well earned`, color: '#818cf8', bg: 'rgba(99,102,241,.10)' });
+  }
+
+  return chips.slice(0, 3);
+}
+
 // ── Starting point meta ────────────────────────────────────────
 
 const START_ICONS: Record<string, string>    = { hotel:'meeting_room', airport:'flight_land', pin:'place', station:'train', airbnb:'home' };
@@ -636,7 +858,7 @@ function EarlyFinishSection({
 // ── Main export ────────────────────────────────────────────────
 
 export function ItineraryView({
-  stops, selectedPlaces, allPlaces, tripContext, summary, persona, startTime,
+  stops, selectedPlaces, allPlaces, tripContext, summary, persona, weather, city, startTime,
   onRemove, onAddMeal, onAddSuggestion,
 }: Props) {
   // Use AI-suggested start time if provided, otherwise compute from arrival
@@ -762,12 +984,13 @@ export function ItineraryView({
       </div>
 
       {/* ── Itinerary stops ── */}
-      {timeline.map(({ stop, index, startMins: tMins, matchedCategory }) => {
+      {timeline.map(({ stop, index, startMins: tMins, endMins: stopEndMins, matchedCategory }) => {
         const timeLabel    = parseTimeLabel(tMins);
         const isLast       = index === stops.length - 1;
         const transit      = stop.transit_to_next;
         const matchNote    = personaMatchNote(archetype, matchedCategory);
         const reorderReason = detectReorderReason(stop, index, selectedPlaces, archetype, style, tMins);
+        const contextChips = buildContextChips(stop, index, stops.length, tMins, stopEndMins, matchedCategory, weather, persona, tripContext, city);
 
         // Day-change divider: show when stop.day increments vs previous stop
         const prevDay  = index > 0 ? (stops[index - 1].day ?? 1) : null;
@@ -852,6 +1075,22 @@ export function ItineraryView({
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Context intelligence chips */}
+                {contextChips.length > 0 && (
+                  <div className="flex flex-col gap-1 mt-2">
+                    {contextChips.map((chip, ci) => (
+                      <div
+                        key={ci}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                        style={{ background: chip.bg }}
+                      >
+                        <span className="ms fill flex-shrink-0" style={{ fontSize: 11, color: chip.color }}>{chip.icon}</span>
+                        <span style={{ fontSize: 10.5, color: chip.color, fontWeight: 500, lineHeight: 1.3 }}>{chip.label}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
