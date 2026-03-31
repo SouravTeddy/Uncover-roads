@@ -40,10 +40,13 @@ async function nominatimSearch(
   }));
 }
 
+const GENERATION_LIMIT = 5;
+
 export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult, cityGeo }: Props) {
   const { state, dispatch } = useAppStore();
   const ctx = state.tripContext;
   const placesCount = state.selectedPlaces.length;
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const [date, setDate]               = useState(ctx.date);
   const [startType, setStartType]     = useState<StartType>(ctx.startType === 'pin' ? 'hotel' : ctx.startType);
@@ -122,6 +125,12 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
   }
 
   function handleGenerate() {
+    // Enforce generation limit for non-admin users
+    if (state.userRole !== 'admin' && state.generationCount >= GENERATION_LIMIT) {
+      setShowLimitModal(true);
+      return;
+    }
+
     const locationLat  = pinDropResult?.lat ?? selectedLocation?.lat ?? null;
     const locationLon  = pinDropResult?.lon ?? selectedLocation?.lon ?? null;
     const locationName = pinDropResult
@@ -419,6 +428,40 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
           </button>
         </div>
       </div>
+
+      {/* ── Generation limit modal ── */}
+      {showLimitModal && (
+        <div
+          className="fixed inset-0 flex items-end justify-center pb-10 px-5"
+          style={{ zIndex: 60, background: 'rgba(0,0,0,.7)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowLimitModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl px-6 py-7 text-center"
+            style={{ background: 'rgb(18,22,30)', border: '1px solid rgba(255,255,255,.1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'rgba(251,191,36,.12)', border: '1px solid rgba(251,191,36,.2)' }}
+            >
+              <span className="ms fill text-amber-400 text-3xl">workspace_premium</span>
+            </div>
+            <h3 className="font-heading font-bold text-white text-xl mb-2">Beta limit reached</h3>
+            <p className="text-white/45 text-sm leading-relaxed mb-6">
+              You've used all {GENERATION_LIMIT} itinerary generations in the beta.
+              More slots are coming — stay tuned!
+            </p>
+            <button
+              onClick={() => setShowLimitModal(false)}
+              className="w-full h-12 rounded-2xl font-semibold text-sm border border-white/10"
+              style={{ background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)' }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </>,
     document.body,
   );

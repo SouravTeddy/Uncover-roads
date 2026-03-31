@@ -42,6 +42,26 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
   });
 }
 
+// Load role + generation count for the signed-in user
+export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number }> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('role, generation_count')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) return { role: 'user', generationCount: 0 };
+  return {
+    role: data.role === 'admin' ? 'admin' : 'user',
+    generationCount: data.generation_count ?? 0,
+  };
+}
+
+// Increment generation count in Supabase
+export async function incrementGenerationCount(userId: string) {
+  await supabase.rpc('increment_generation_count', { uid: userId });
+}
+
 // Load saved itineraries from Supabase for the signed-in user
 export async function loadSavedItineraries(userId: string): Promise<SavedItinerary[]> {
   const { data, error } = await supabase

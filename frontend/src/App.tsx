@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
-import { syncProfile, loadSavedItineraries } from './shared/userSync';
+import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen } from './modules/login';
 import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
@@ -29,6 +29,10 @@ function ScreenRouter() {
     syncProfile(user).catch(console.warn);
     loadSavedItineraries(user.id).then(items => {
       if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
+    }).catch(console.warn);
+    loadUserProfile(user.id).then(({ role, generationCount }) => {
+      dispatch({ type: 'SET_USER_ROLE', role });
+      dispatch({ type: 'SET_GENERATION_COUNT', count: generationCount });
     }).catch(console.warn);
 
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));

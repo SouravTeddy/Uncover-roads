@@ -51,6 +51,8 @@ export interface AppState {
   weather: WeatherData | null;
   route: RouteData | null;
   savedItineraries: SavedItinerary[];
+  userRole: 'user' | 'admin';
+  generationCount: number;
 }
 
 function getInitialScreen(): Screen {
@@ -81,6 +83,15 @@ function getStoredItineraries(): SavedItinerary[] {
   }
 }
 
+function getStoredGenerationCount(): number {
+  try {
+    const stored = localStorage.getItem('ur_gen_count');
+    return stored ? parseInt(stored, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
@@ -95,6 +106,8 @@ export const initialState: AppState = {
   weather: null,
   route: null,
   savedItineraries: getStoredItineraries(),
+  userRole: 'user',
+  generationCount: getStoredGenerationCount(),
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -116,6 +129,9 @@ export type Action =
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
   | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
+  | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
+  | { type: 'SET_GENERATION_COUNT'; count: number }
+  | { type: 'INCREMENT_GENERATION_COUNT' }
   | { type: 'RESET_MAP' };
 
 // ── Reducer ───────────────────────────────────────────────────
@@ -195,6 +211,19 @@ function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_SAVED_ITINERARIES':
       return { ...state, savedItineraries: action.items };
+
+    case 'SET_USER_ROLE':
+      return { ...state, userRole: action.role };
+
+    case 'SET_GENERATION_COUNT':
+      try { localStorage.setItem('ur_gen_count', String(action.count)); } catch { /* ignore */ }
+      return { ...state, generationCount: action.count };
+
+    case 'INCREMENT_GENERATION_COUNT': {
+      const next = state.generationCount + 1;
+      try { localStorage.setItem('ur_gen_count', String(next)); } catch { /* ignore */ }
+      return { ...state, generationCount: next };
+    }
 
     case 'RESET_MAP':
       return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };

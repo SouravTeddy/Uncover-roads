@@ -4,7 +4,7 @@ import { api } from '../../shared/api';
 import type { ItineraryRequest } from '../../shared/api';
 import type { SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
-import { syncSavedItinerary } from '../../shared/userSync';
+import { syncSavedItinerary, incrementGenerationCount } from '../../shared/userSync';
 
 export function useRoute() {
   const { state, dispatch } = useAppStore();
@@ -55,6 +55,11 @@ export function useRoute() {
       };
       const result = await api.aiItinerary(body);
       dispatch({ type: 'SET_ITINERARY', itinerary: result });
+      dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
+      // Persist count to Supabase if signed in
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) incrementGenerationCount(user.id).catch(console.warn);
+      });
     } catch (err) {
       setError('Could not generate your itinerary. Please try again.');
       console.warn('Itinerary error:', err);
