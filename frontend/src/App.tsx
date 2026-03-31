@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
@@ -17,6 +17,15 @@ import { TripsScreen } from './modules/trips';
 
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  if (isDesktop && state.currentScreen !== 'trips') return <DesktopGate />;
 
   async function handleSignedIn(user: User) {
     // Persist user info for the welcome back screen
@@ -97,6 +106,61 @@ function ScreenRouter() {
       {currentScreen === 'profile'     && <ProfileScreen />}
 
       <BottomNav />
+    </div>
+  );
+}
+
+function DesktopGate() {
+  return (
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center px-8"
+      style={{ background: '#0f141e' }}
+    >
+      {/* Glow blob */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          width: 480, height: 480,
+          background: 'radial-gradient(ellipse, rgba(249,115,22,.10) 0%, transparent 70%)',
+          top: '50%', left: '50%',
+          transform: 'translate(-50%, -60%)',
+        }}
+      />
+
+      <div className="relative flex flex-col items-center text-center max-w-sm gap-6">
+        {/* Icon */}
+        <div
+          className="w-20 h-20 rounded-3xl flex items-center justify-center"
+          style={{ background: 'rgba(249,115,22,.12)', border: '1px solid rgba(249,115,22,.2)' }}
+        >
+          <span className="ms fill text-orange-400" style={{ fontSize: 36 }}>smartphone</span>
+        </div>
+
+        {/* Wordmark */}
+        <div className="flex flex-col gap-1">
+          <p className="font-heading font-bold text-white text-2xl tracking-tight">Uncover Roads</p>
+          <p className="text-white/35 text-xs font-medium uppercase tracking-widest">Travel Planner</p>
+        </div>
+
+        {/* Message */}
+        <div className="flex flex-col gap-2">
+          <p className="text-white/80 text-base font-semibold leading-snug">
+            Built for the road, not the desk.
+          </p>
+          <p className="text-white/40 text-sm leading-relaxed">
+            Uncover Roads is designed for mobile. Open it on your phone for the full experience — maps, itineraries, and navigation the way they're meant to feel.
+          </p>
+        </div>
+
+        {/* QR hint */}
+        <div
+          className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-white/8 w-full justify-center"
+          style={{ background: 'rgba(255,255,255,.03)' }}
+        >
+          <span className="ms fill text-white/30 text-xl">qr_code</span>
+          <p className="text-white/35 text-xs">Scan the QR code on your phone or visit this URL directly</p>
+        </div>
+      </div>
     </div>
   );
 }
