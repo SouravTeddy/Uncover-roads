@@ -235,6 +235,23 @@ function PinDropListener({ active, onDrop }: { active: boolean; onDrop: (latlng:
   return null;
 }
 
+/** Fires once after the map settles on its initial position (after FitBounds) */
+function MapReadyTrigger({ onReady }: { onReady: (bbox: BBox) => void }) {
+  const map = useLeafletMap();
+  const firedRef = useRef(false);
+  useEffect(() => {
+    function handler() {
+      if (firedRef.current) return;
+      firedRef.current = true;
+      const b = map.getBounds();
+      onReady([b.getSouth(), b.getNorth(), b.getWest(), b.getEast()]);
+    }
+    map.once('moveend', handler);
+    return () => { map.off('moveend', handler); };
+  }, [map, onReady]);
+  return null;
+}
+
 /** Pans the map to a target when it changes */
 function MapPanner({ target }: { target: { lat: number; lon: number } | null }) {
   const map = useLeafletMap();
@@ -292,15 +309,20 @@ export function MapScreen() {
     }, [],
   );
 
-  const handleSearchHere = useCallback(async () => {
-    if (!searchBbox || !city || !cityGeo) return;
+  const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
+    const bbox = overrideBbox ?? searchBbox;
+    if (!bbox || !city || !cityGeo) return;
     setSearchHereLoading(true);
     try {
-      const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], searchBbox);
+      const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], bbox);
       const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
-      dispatch({ type: 'MERGE_PLACES', places: withIds });
+      // Initial load: replace. Subsequent search here: merge.
+      dispatch(overrideBbox
+        ? { type: 'SET_PLACES', places: withIds }
+        : { type: 'MERGE_PLACES', places: withIds },
+      );
     } catch (e) { console.error('[MapScreen] searchHere failed:', e); }
-    finally { setSearchHereLoading(false); resetSearchHereRef.current(); }
+    finally { setSearchHereLoading(false); if (!overrideBbox) resetSearchHereRef.current(); }
   }, [searchBbox, city, cityGeo, dispatch]);
 
   const handlePinDrop = useCallback((latlng: { lat: number; lon: number }) => {
@@ -387,6 +409,7 @@ export function MapScreen() {
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
         <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
         <MapPanner target={panTarget} />
+        <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />
       </MapContainer>
 
       {/* Search Here */}
@@ -558,7 +581,7 @@ export function MapScreen() {
             <p className="text-text-1 font-semibold text-sm mb-1">{places.length === 0 ? 'No places found' : 'Could not load places'}</p>
             <p className="text-text-3 text-xs">{city ? `Nothing came back for "${city}"` : 'Please select a city first'}</p>
           </div>
-          {city && <button onClick={() => loadPlaces()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
+          {city && <button onClick={() => handleSearchHere()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
       )}
 
