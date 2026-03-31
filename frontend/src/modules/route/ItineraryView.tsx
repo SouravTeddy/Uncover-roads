@@ -4,7 +4,6 @@ interface Props {
   stops: ItineraryStop[];
   selectedPlaces: Place[];
   startTime?: string;
-  conflictNotes?: string;
   onRemove: (idx: number) => void;
   onAddMeal: () => void;
 }
@@ -117,7 +116,7 @@ function MealGapCard({ label, onAdd }: { label: string; onAdd: () => void }) {
   );
 }
 
-export function ItineraryView({ stops, selectedPlaces, startTime, conflictNotes, onRemove, onAddMeal }: Props) {
+export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAddMeal }: Props) {
   const [startH, startM] = (startTime ?? '9:00').split(':').map(Number);
   const startMins = (startH || 9) * 60 + (startM || 0);
 
@@ -129,9 +128,6 @@ export function ItineraryView({ stops, selectedPlaces, startTime, conflictNotes,
       className="rounded-2xl overflow-hidden border border-white/8 bg-surface/50"
       style={{ margin: '0 4px' }}
     >
-      {conflictNotes && (
-        <p className="text-xs text-zinc-500 mb-3 px-1">{conflictNotes}</p>
-      )}
       {timeline.map(({ stop, index, startMins: tMins }) => {
         const timeLabel = parseTimeLabel(tMins);
         const isLast = index === stops.length - 1;
