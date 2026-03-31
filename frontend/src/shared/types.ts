@@ -2,6 +2,7 @@
 export type Screen =
   | 'login'
   | 'welcome'
+  | 'walkthrough'
   | 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5'
   | 'persona'
   | 'destination'
