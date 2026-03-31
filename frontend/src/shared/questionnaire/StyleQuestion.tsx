@@ -5,7 +5,7 @@ const OPTIONS: { value: TravelStyle; label: string; sub: string; imageUrl: strin
   { value: 'planner',      label: 'Planned',      sub: 'Expected and pristine',  imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=75' },
   { value: 'spontaneous',  label: 'Spontaneous',  sub: 'Freedom and surprise',   imageUrl: 'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=400&q=75' },
   { value: 'balanced',     label: 'Balanced',     sub: 'Best of both worlds',    imageUrl: 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&q=75' },
-  { value: 'adventurous',  label: 'Adventurous',  sub: 'Bold and offbeat',       imageUrl: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=400&q=75' },
+  { value: 'local',        label: 'Local',        sub: 'Live like a local',      imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&q=75' },
 ];
 
 interface Props {

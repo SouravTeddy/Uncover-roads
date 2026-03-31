@@ -12,7 +12,7 @@ export type Screen =
 // ── Onboarding answers ────────────────────────────────────────
 export type Ritual = 'coffee' | 'tea' | 'alcohol' | 'neither';
 export type Sensory = 'visual' | 'taste' | 'history' | 'movement';
-export type TravelStyle = 'planner' | 'spontaneous' | 'balanced' | 'adventurous';
+export type TravelStyle = 'planner' | 'spontaneous' | 'balanced' | 'local';
 export type Attraction = 'historic' | 'culture' | 'markets' | 'nature';
 export type Pace = 'walking' | 'transit' | 'self' | 'any';
 export type Social = 'solo' | 'couple' | 'group' | 'family';
