@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
-import type { Place, MapFilter } from '../../shared/types';
+import type { Place, MapFilter, Category } from '../../shared/types';
 import { TripSheet } from './TripSheet';
 import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
 import { useMapMove } from './useMapMove';
@@ -18,42 +18,92 @@ import { useAppStore } from '../../shared/store';
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
+
+// ── Nominatim place search ──────────────────────────────────────
+
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  name: string;
+  lat: string;
+  lon: string;
+  class: string;
+  type: string;
+}
+
+async function nominatimSearch(
+  query: string,
+  bbox: [number, number, number, number] | null,
+  signal: AbortSignal,
+): Promise<NominatimResult[]> {
+  const [south, north, west, east] = bbox ?? [0, 0, 0, 0];
+  const params = new URLSearchParams({
+    q: query,
+    format: 'json',
+    limit: '5',
+    'accept-language': 'en',
+  });
+  if (bbox) {
+    params.set('viewbox', `${west},${north},${east},${south}`);
+    params.set('bounded', '1');
+  }
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+    headers: { 'Accept-Language': 'en' },
+    signal,
+  });
+  const data = await res.json();
+  // If bounded search returns nothing, retry without bounded
+  if (Array.isArray(data) && data.length === 0 && bbox) {
+    params.delete('bounded');
+    const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { 'Accept-Language': 'en' },
+      signal,
+    });
+    return res2.json();
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+function nominatimToCategory(cls: string, type: string): Category {
+  if (cls === 'amenity') {
+    if (['restaurant', 'bar', 'fast_food', 'food_court', 'biergarten'].includes(type)) return 'restaurant';
+    if (type === 'cafe') return 'cafe';
+    if (type === 'museum') return 'museum';
+  }
+  if (cls === 'tourism') {
+    if (['museum', 'gallery', 'artwork'].includes(type)) return 'museum';
+    if (['attraction', 'viewpoint', 'theme_park'].includes(type)) return 'tourism';
+  }
+  if (cls === 'historic') return 'historic';
+  if (cls === 'leisure' || ['park', 'garden', 'nature_reserve'].includes(type)) return 'park';
+  return 'place';
+}
 
 // ── Clustering helpers ──────────────────────────────────────────
 
 function buildClusters(places: Place[], map: L.Map, gridSize = 38): Place[][] {
   const clusters: Place[][] = [];
   const assigned = new Set<number>();
-
   places.forEach((place, i) => {
     if (assigned.has(i)) return;
     const pt = map.latLngToContainerPoint([place.lat, place.lon]);
     const group: Place[] = [place];
     assigned.add(i);
-
     places.forEach((other, j) => {
       if (i === j || assigned.has(j)) return;
       const op = map.latLngToContainerPoint([other.lat, other.lon]);
-      const dx = pt.x - op.x;
-      const dy = pt.y - op.y;
-      if (Math.sqrt(dx * dx + dy * dy) < gridSize) {
-        group.push(other);
-        assigned.add(j);
-      }
+      const dx = pt.x - op.x; const dy = pt.y - op.y;
+      if (Math.sqrt(dx * dx + dy * dy) < gridSize) { group.push(other); assigned.add(j); }
     });
-
     clusters.push(group);
   });
-
   return clusters;
 }
 
-/** Pan map so a tapped pin sits in the upper-center, clear of the card at the bottom */
 function panToPinAboveCard(map: L.Map, lat: number, lon: number) {
-  // Card + bottom nav ≈ 230px. Shift the center down 90px so the pin ends up ~90px above center.
   const pt = map.project([lat, lon], map.getZoom());
   pt.y += 90;
   map.panTo(map.unproject(pt, map.getZoom()), { animate: true, duration: 0.3 });
@@ -77,21 +127,15 @@ function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: bo
   });
 }
 
+// ── Map sub-components ──────────────────────────────────────────
+
 function MapPins({
-  places,
-  selectedIds,
-  recommendedIds,
-  onPinClick,
+  places, selectedIds, recommendedIds, onPinClick,
 }: {
-  places: Place[];
-  selectedIds: Set<string>;
-  recommendedIds: Set<string>;
-  onPinClick: (place: Place) => void;
+  places: Place[]; selectedIds: Set<string>; recommendedIds: Set<string>; onPinClick: (place: Place) => void;
 }) {
   const map = useLeafletMap();
-  // Individual (non-clustered) place markers keyed by id — allows in-place icon updates
   const pinMarkersRef = useRef<Map<string, L.Marker>>(new Map());
-  // Cluster markers with their member groups — allows in-place cluster icon updates
   const clusterMarkersRef = useRef<Array<{ marker: L.Marker; group: Place[] }>>([]);
 
   const rebuild = useCallback(() => {
@@ -99,23 +143,15 @@ function MapPins({
     pinMarkersRef.current = new Map();
     clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
     clusterMarkersRef.current = [];
-
     const valid = places.filter(p => p.lat && p.lon);
     if (valid.length === 0) return;
-
     buildClusters(valid, map).forEach(group => {
       if (group.length === 1) {
         const place = group[0];
-        const icon = selectedIds.has(place.id)
-          ? makeSelectedIcon(place.category)
-          : recommendedIds.has(place.id)
-            ? makeRecommendedIcon(place.category)
-            : makeIcon(place.category);
+        const icon = selectedIds.has(place.id) ? makeSelectedIcon(place.category)
+          : recommendedIds.has(place.id) ? makeRecommendedIcon(place.category) : makeIcon(place.category);
         const marker = L.marker([place.lat, place.lon], { icon });
-        marker.on('click', () => {
-          panToPinAboveCard(map, place.lat, place.lon);
-          onPinClick(place);
-        });
+        marker.on('click', () => { panToPinAboveCard(map, place.lat, place.lon); onPinClick(place); });
         marker.addTo(map);
         pinMarkersRef.current.set(place.id, marker);
       } else {
@@ -123,9 +159,7 @@ function MapPins({
         const hasSel = group.some(p => selectedIds.has(p.id));
         const clat = group.reduce((s, p) => s + p.lat, 0) / group.length;
         const clon = group.reduce((s, p) => s + p.lon, 0) / group.length;
-        const marker = L.marker([clat, clon], {
-          icon: makeClusterIcon(group.length, hasRec, hasSel),
-        });
+        const marker = L.marker([clat, clon], { icon: makeClusterIcon(group.length, hasRec, hasSel) });
         marker.on('click', () => {
           const bounds = L.latLngBounds(group.map(p => [p.lat, p.lon] as [number, number]));
           map.flyToBounds(bounds, { padding: [72, 72], maxZoom: map.getZoom() + 3, duration: 0.4 });
@@ -136,7 +170,6 @@ function MapPins({
     });
   }, [places, selectedIds, recommendedIds, map, onPinClick]);
 
-  // Rebuild on place list change and on every zoom/pan (clusters are zoom-dependent)
   useEffect(() => {
     rebuild();
     map.on('zoomend moveend', rebuild);
@@ -149,19 +182,14 @@ function MapPins({
     };
   }, [rebuild, map]);
 
-  // Update individual pin icons in-place when selection changes — no flicker for non-clustered pins
   useEffect(() => {
     pinMarkersRef.current.forEach((marker, id) => {
       const place = places.find(p => p.id === id);
       if (!place) return;
-      const icon = selectedIds.has(id)
-        ? makeSelectedIcon(place.category)
-        : recommendedIds.has(id)
-          ? makeRecommendedIcon(place.category)
-          : makeIcon(place.category);
+      const icon = selectedIds.has(id) ? makeSelectedIcon(place.category)
+        : recommendedIds.has(id) ? makeRecommendedIcon(place.category) : makeIcon(place.category);
       marker.setIcon(icon);
     });
-    // Update cluster icons in-place when a clustered place gets selected/deselected
     clusterMarkersRef.current.forEach(({ marker, group }) => {
       const hasRec = group.some(p => recommendedIds.has(p.id));
       const hasSel = group.some(p => selectedIds.has(p.id));
@@ -174,107 +202,94 @@ function MapPins({
 
 function FitBounds({ places, cityGeo }: { places: Place[]; cityGeo: { lat: number; lon: number } | null }) {
   const map = useLeafletMap();
-
   useEffect(() => {
     if (places.length > 0) {
-      const validPlaces = places.filter(p => p.lat && p.lon);
-      if (validPlaces.length > 0) {
-        const bounds = L.latLngBounds(validPlaces.map(p => [p.lat, p.lon]));
-        map.fitBounds(bounds, { padding: [48, 48] });
-      }
+      const valid = places.filter(p => p.lat && p.lon);
+      if (valid.length > 0) map.fitBounds(L.latLngBounds(valid.map(p => [p.lat, p.lon])), { padding: [48, 48] });
     } else if (cityGeo) {
       map.setView([cityGeo.lat, cityGeo.lon], 13);
     }
   }, [places, cityGeo, map]);
-
   return null;
 }
 
 function MapMoveListener({
-  cityCenter,
-  onMove,
+  cityCenter, onMove,
 }: {
   cityCenter: { lat: number; lon: number } | null;
   onMove: (show: boolean, bbox: [number, number, number, number] | null, reset: () => void) => void;
 }) {
   const { showSearchHere, currentBbox, resetSearchHere } = useMapMove(cityCenter);
-
-  useEffect(() => {
-    onMove(showSearchHere, currentBbox, resetSearchHere);
-  }, [showSearchHere, currentBbox, resetSearchHere, onMove]);
-
+  useEffect(() => { onMove(showSearchHere, currentBbox, resetSearchHere); }, [showSearchHere, currentBbox, resetSearchHere, onMove]);
   return null;
 }
 
-function PinDropListener({
-  active,
-  onDrop,
-}: {
-  active: boolean;
-  onDrop: (latlng: { lat: number; lon: number }) => void;
-}) {
+function PinDropListener({ active, onDrop }: { active: boolean; onDrop: (latlng: { lat: number; lon: number }) => void }) {
   const map = useLeafletMap();
   useEffect(() => {
     if (!active) return;
-    const handler = (e: L.LeafletMouseEvent) => {
-      onDrop({ lat: e.latlng.lat, lon: e.latlng.lng });
-    };
+    const handler = (e: L.LeafletMouseEvent) => onDrop({ lat: e.latlng.lat, lon: e.latlng.lng });
     map.once('click', handler);
-    return () => {
-      map.off('click', handler);
-    };
+    return () => { map.off('click', handler); };
   }, [active, map, onDrop]);
   return null;
 }
 
+/** Pans the map to a target when it changes */
+function MapPanner({ target }: { target: { lat: number; lon: number } | null }) {
+  const map = useLeafletMap();
+  useEffect(() => {
+    if (!target) return;
+    panToPinAboveCard(map, target.lat, target.lon);
+  }, [target, map]);
+  return null;
+}
+
+// ── Main screen ─────────────────────────────────────────────────
+
 export function MapScreen() {
   const {
-    city,
-    cityGeo,
-    filteredPlaces,
-    recommendedPlaces,
-    places,
-    selectedPlaces,
-    activeFilter,
-    loading,
-    error,
-    loadPlaces,
-    activePlace,
-    setActivePlace,
-    togglePlace,
-    setFilter,
-    goBack,
+    city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
+    activeFilter, loading, error, loadPlaces, activePlace, setActivePlace,
+    togglePlace, setFilter, goBack,
   } = useMap();
 
   const { dispatch } = useAppStore();
 
-  const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
-  const recommendedIds = useMemo(
-    () => new Set(recommendedPlaces.map(p => p.id)),
-    [recommendedPlaces]
-  );
+  const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
+
   const [showTripSheet, setShowTripSheet] = useState(false);
 
-  // Search Here state
-  const [showSearchHere, setShowSearchHere] = useState(false);
-  const [searchBbox, setSearchBbox] = useState<BBox | null>(null);
+  // Search Here
+  const [showSearchHere, setShowSearchHere]       = useState(false);
+  const [searchBbox, setSearchBbox]               = useState<BBox | null>(null);
   const [searchHereLoading, setSearchHereLoading] = useState(false);
   const resetSearchHereRef = useRef<() => void>(() => {});
 
-  // Drop pin state
-  const [awaitingPinDrop, setAwaitingPinDrop] = useState(false);
-  const [pinDropResult, setPinDropResult] = useState<{ lat: number; lon: number } | null>(null);
+  // Pin drop
+  const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
+  const [pinDropResult, setPinDropResult]         = useState<{ lat: number; lon: number } | null>(null);
+
+  // Pan target (set when user picks a search result)
+  const [panTarget, setPanTarget] = useState<{ lat: number; lon: number } | null>(null);
+
+  // Place search
+  const [searchQuery, setSearchQuery]       = useState('');
+  const [searchResults, setSearchResults]   = useState<NominatimResult[]>([]);
+  const [searchLoading, setSearchLoading]   = useState(false);
+  const [searchOpen, setSearchOpen]         = useState(false);
+  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef     = useRef<AbortController | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null;
 
   const handleMapMove = useCallback(
     (show: boolean, bbox: BBox | null, reset: () => void) => {
-      setShowSearchHere(show);
-      setSearchBbox(bbox);
-      resetSearchHereRef.current = reset;
-    },
-    [],
+      setShowSearchHere(show); setSearchBbox(bbox); resetSearchHereRef.current = reset;
+    }, [],
   );
 
   const handleSearchHere = useCallback(async () => {
@@ -282,28 +297,65 @@ export function MapScreen() {
     setSearchHereLoading(true);
     try {
       const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], searchBbox);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
-        ...p,
-        id: p.id ?? `${p.title}-${i}`,
-      }));
+      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
       dispatch({ type: 'MERGE_PLACES', places: withIds });
-    } catch (e) {
-      console.error('[MapScreen] searchHere failed:', e);
-    } finally {
-      setSearchHereLoading(false);
-      resetSearchHereRef.current();
-    }
+    } catch (e) { console.error('[MapScreen] searchHere failed:', e); }
+    finally { setSearchHereLoading(false); resetSearchHereRef.current(); }
   }, [searchBbox, city, cityGeo, dispatch]);
 
-  // When pin is dropped: store result, re-open sheet so user can continue
-  const handlePinDrop = useCallback(
-    (latlng: { lat: number; lon: number }) => {
-      setPinDropResult(latlng);
-      setAwaitingPinDrop(false);
-      setShowTripSheet(true);
-    },
-    [],
-  );
+  const handlePinDrop = useCallback((latlng: { lat: number; lon: number }) => {
+    setPinDropResult(latlng); setAwaitingPinDrop(false); setShowTripSheet(true);
+  }, []);
+
+  function handleSearchInput(val: string) {
+    setSearchQuery(val);
+    setSearchOpen(true);
+    if (!val.trim()) { setSearchResults([]); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      setSearchLoading(true);
+      try {
+        const bbox = cityGeo?.bbox ?? null;
+        const results = await nominatimSearch(val, bbox, abortRef.current.signal);
+        if (!abortRef.current.signal.aborted) setSearchResults(results.slice(0, 5));
+      } catch {
+        // aborted or network error — ignore
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 320);
+  }
+
+  function handleSelectResult(r: NominatimResult) {
+    const lat = parseFloat(r.lat);
+    const lon = parseFloat(r.lon);
+    const name = r.name || r.display_name.split(',')[0];
+    const category = nominatimToCategory(r.class, r.type);
+    const place: Place = {
+      id: `nominatim-${r.place_id}`,
+      title: name,
+      category,
+      lat,
+      lon,
+    };
+    dispatch({ type: 'MERGE_PLACES', places: [place] });
+    setActivePlace(place);
+    setPanTarget({ lat, lon });
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchOpen(false);
+    searchInputRef.current?.blur();
+  }
+
+  function clearSearch() {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchOpen(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) abortRef.current.abort();
+  }
 
   const counts: Partial<Record<string, number>> = {
     all:         places.length,
@@ -314,13 +366,12 @@ export function MapScreen() {
     historic:    places.filter(p => p.category === 'historic').length,
   };
 
-  const center: [number, number] = cityGeo
-    ? [cityGeo.lat, cityGeo.lon]
-    : [20, 0];
+  const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
   return (
     <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
-      {/* Map — full screen, no sibling overlays on top */}
+
+      {/* Map — full screen */}
       <MapContainer
         center={center}
         zoom={cityGeo ? 13 : 2}
@@ -332,22 +383,16 @@ export function MapScreen() {
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <FitBounds places={filteredPlaces} cityGeo={cityGeo} />
-        <MapPins
-          places={filteredPlaces}
-          selectedIds={selectedIds}
-          recommendedIds={recommendedIds}
-          onPinClick={handlePinClick}
-        />
+        <MapPins places={filteredPlaces} selectedIds={selectedIds} recommendedIds={recommendedIds} onPinClick={handlePinClick} />
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
         <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
+        <MapPanner target={panTarget} />
       </MapContainer>
 
-      {/* Search Here button — shown after panning */}
-      {showSearchHere && (
-        <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />
-      )}
+      {/* Search Here */}
+      {showSearchHere && <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />}
 
-      {/* Drop pin instructional strip */}
+      {/* Drop pin strip */}
       {awaitingPinDrop && (
         <div
           className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-5 py-4"
@@ -360,66 +405,99 @@ export function MapScreen() {
         >
           <span className="text-xl">📍</span>
           <p className="text-white font-semibold text-sm">Tap the map to drop your starting pin</p>
-          <button
-            onClick={() => setAwaitingPinDrop(false)}
-            className="ml-auto text-white/70 text-xs underline underline-offset-2"
-          >
-            Cancel
-          </button>
+          <button onClick={() => setAwaitingPinDrop(false)} className="ml-auto text-white/70 text-xs underline underline-offset-2">Cancel</button>
         </div>
       )}
 
-      {/* ── Each UI element positioned independently ── */}
-
-      {/* Header row: back + city chip */}
+      {/* ── Top overlay ── */}
       <div
-        className="absolute inset-x-0 top-0 flex flex-col gap-3 px-4 pb-3"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', zIndex: 20, pointerEvents: 'none' }}
+        className="absolute inset-x-0 top-0 flex flex-col gap-2 px-4"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.5rem', zIndex: 20, pointerEvents: 'none' }}
       >
-        <div className="flex items-center gap-3" style={{ pointerEvents: 'auto' }}>
+        {/* Row 1: back + search input */}
+        <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
           <button
             onClick={goBack}
-            className="w-10 h-10 rounded-full bg-bg/80 backdrop-blur flex items-center justify-center border border-white/10"
+            className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
+            style={{ background: 'rgba(15,20,30,.82)' }}
           >
             <span className="ms text-text-2 text-base">arrow_back</span>
           </button>
-          <div className="flex items-center gap-2 px-4 h-10 rounded-full bg-bg/80 backdrop-blur border border-white/10">
-            <span className="ms text-text-3 text-base">location_on</span>
-            <span className="text-text-1 font-semibold text-sm">{city || '—'}</span>
-            {places.length > 0 && (
-              <span className="text-text-3 text-xs">{places.length} places</span>
-            )}
+
+          {/* Search input */}
+          <div className="flex-1 relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              lang="en"
+              value={searchQuery}
+              onChange={e => handleSearchInput(e.target.value)}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+              placeholder={`Search places in ${city || 'city'}…`}
+              className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white placeholder-white/30 outline-none"
+              style={{
+                background: 'rgba(15,20,30,.82)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,.1)',
+              }}
+            />
+            {searchLoading ? (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
+            ) : searchQuery ? (
+              <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm">close</button>
+            ) : null}
           </div>
         </div>
+
+        {/* Search results dropdown */}
+        {searchOpen && searchResults.length > 0 && (
+          <div
+            className="mx-12 rounded-2xl overflow-hidden"
+            style={{
+              background: 'rgba(15,20,30,.95)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,.1)',
+              pointerEvents: 'auto',
+            }}
+          >
+            {searchResults.map((r, i) => (
+              <button
+                key={r.place_id}
+                onMouseDown={() => handleSelectResult(r)}
+                className="w-full text-left px-4 py-3 transition-colors active:bg-white/5"
+                style={{ borderBottom: i < searchResults.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}
+              >
+                <p className="text-white text-sm font-medium truncate">{r.name || r.display_name.split(',')[0]}</p>
+                <p className="text-white/35 text-xs truncate mt-0.5">{r.display_name.split(',').slice(1, 3).join(',').trim()}</p>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
-          <FilterBar
-            active={activeFilter as MapFilter}
-            counts={counts}
-            onSelect={setFilter}
-          />
+          <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={setFilter} />
         </div>
       </div>
 
-      {/* Loading spinner — only shown while fetching */}
+      {/* Loading — tiny spinner, corner, barely visible */}
       {loading && (
         <div
-          className="absolute flex items-center gap-2 px-3 h-8 rounded-full"
+          className="absolute"
           style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 5.5rem)',
+            top: 'calc(env(safe-area-inset-top, 0px) + 0.6rem)',
             right: '1rem',
-            zIndex: 20,
+            zIndex: 25,
             pointerEvents: 'none',
-            background: 'rgba(15,20,30,.75)',
-            backdropFilter: 'blur(6px)',
-            border: '1px solid rgba(255,255,255,.08)',
           }}
         >
-          <span className="ms text-primary text-sm animate-spin">autorenew</span>
-          <span className="text-white/70 text-xs font-medium">Loading</span>
+          <span className="ms text-white/25 animate-spin" style={{ fontSize: 16 }}>autorenew</span>
         </div>
       )}
 
-      {/* Pin card + itinerary bar — stacked column, grows upward from bottom anchor */}
+      {/* Pin card + itinerary bar */}
       {(activePlace || selectedPlaces.length >= 2) && (
         <div
           className="absolute inset-x-4 flex flex-col gap-2"
@@ -434,34 +512,24 @@ export function MapScreen() {
               onClose={() => setActivePlace(null)}
             />
           )}
-
           {selectedPlaces.length >= 2 && (
             <div
               className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
               style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
             >
-              {/* Place dots */}
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <div className="flex -space-x-1.5">
                   {selectedPlaces.slice(0, 5).map((_, i) => (
                     <div
                       key={i}
                       className="w-4 h-4 rounded-full border-2"
-                      style={{
-                        background: '#f97316',
-                        borderColor: 'rgba(15,20,30,1)',
-                        opacity: 1 - i * 0.14,
-                        zIndex: 5 - i,
-                      }}
+                      style={{ background: '#f97316', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
                     />
                   ))}
                 </div>
-                <span className="text-text-1 text-sm font-semibold">
-                  {selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}
-                </span>
+                <span className="text-text-1 text-sm font-semibold">{selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}</span>
                 <span className="text-text-3 text-xs">added</span>
               </div>
-              {/* CTA */}
               <button
                 onClick={() => setShowTripSheet(true)}
                 className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
@@ -475,38 +543,22 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Empty / error state */}
+      {/* Error state */}
       {!loading && error && (
         <div
           className="absolute flex flex-col items-center gap-3 px-6 py-5 rounded-2xl text-center"
           style={{
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 20,
-            background: 'rgba(15,23,42,.92)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,.1)',
-            minWidth: '220px',
+            top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            zIndex: 20, background: 'rgba(15,23,42,.92)', backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255,255,255,.1)', minWidth: '220px',
           }}
         >
           <span className="ms text-text-3 text-3xl">location_off</span>
           <div>
-            <p className="text-text-1 font-semibold text-sm mb-1">
-              {places.length === 0 ? 'No places found' : 'Could not load places'}
-            </p>
-            <p className="text-text-3 text-xs">
-              {city ? `Nothing came back for "${city}"` : 'Please select a city first'}
-            </p>
+            <p className="text-text-1 font-semibold text-sm mb-1">{places.length === 0 ? 'No places found' : 'Could not load places'}</p>
+            <p className="text-text-3 text-xs">{city ? `Nothing came back for "${city}"` : 'Please select a city first'}</p>
           </div>
-          {city && (
-            <button
-              onClick={() => loadPlaces()}
-              className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold"
-            >
-              Try again
-            </button>
-          )}
+          {city && <button onClick={() => loadPlaces()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
       )}
 
