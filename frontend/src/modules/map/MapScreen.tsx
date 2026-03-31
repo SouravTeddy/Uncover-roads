@@ -217,10 +217,15 @@ function MapPins({
 
 function FitBounds({ places, cityGeo }: { places: Place[]; cityGeo: { lat: number; lon: number } | null }) {
   const map = useLeafletMap();
+  const initialFitDone = useRef(false);
   useEffect(() => {
+    if (initialFitDone.current) return;   // only auto-fit once — user controls view after that
     if (places.length > 0) {
       const valid = places.filter(p => p.lat && p.lon);
-      if (valid.length > 0) map.fitBounds(L.latLngBounds(valid.map(p => [p.lat, p.lon])), { padding: [48, 48] });
+      if (valid.length > 0) {
+        map.fitBounds(L.latLngBounds(valid.map(p => [p.lat, p.lon])), { padding: [48, 48] });
+        initialFitDone.current = true;
+      }
     } else if (cityGeo) {
       map.setView([cityGeo.lat, cityGeo.lon], 13);
     }
