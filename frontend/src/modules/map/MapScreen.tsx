@@ -111,16 +111,19 @@ function panToPinAboveCard(map: L.Map, lat: number, lon: number) {
 }
 
 function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: boolean) {
-  const accent = (hasSelected || hasRecommended) ? '#f97316' : '#374151';
-  const ring   = (hasSelected || hasRecommended) ? 'rgba(249,115,22,.25)' : 'rgba(255,255,255,.07)';
+  // Our Picks clusters get an orange ring; selected-only clusters get a white ring; plain = no ring
+  const bg     = hasSelected ? '#ffffff' : '#1c2230';
+  const ring   = hasSelected ? 'rgba(255,255,255,.18)' : hasRecommended ? 'rgba(249,115,22,.22)' : 'rgba(255,255,255,.07)';
+  const color  = hasSelected ? '#0f141e' : '#fff';
+  const border = hasSelected ? '2px solid rgba(0,0,0,.10)' : '2px solid rgba(255,255,255,.18)';
   const inner  = count >= 10 ? 44 : count >= 5 ? 38 : 32;
   const outer  = inner + 10;
   const fs     = count >= 10 ? 14 : 13;
   return L.divIcon({
     className: '',
     html: `<div style="width:${outer}px;height:${outer}px;border-radius:50%;background:${ring};display:flex;align-items:center;justify-content:center">
-      <div style="width:${inner}px;height:${inner}px;border-radius:50%;background:${accent};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.22)">
-        <span style="font-weight:700;color:#fff;font-size:${fs}px;font-family:system-ui,sans-serif;letter-spacing:-0.5px;line-height:1">${count}</span>
+      <div style="width:${inner}px;height:${inner}px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.55);border:${border}">
+        <span style="font-weight:700;color:${color};font-size:${fs}px;font-family:system-ui,sans-serif;letter-spacing:-0.5px;line-height:1">${count}</span>
       </div>
     </div>`,
     iconSize: [outer, outer],
@@ -627,7 +630,7 @@ export function MapScreen() {
                     <div
                       key={i}
                       className="w-4 h-4 rounded-full border-2"
-                      style={{ background: '#f97316', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
+                      style={{ background: '#ffffff', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
                     />
                   ))}
                 </div>
