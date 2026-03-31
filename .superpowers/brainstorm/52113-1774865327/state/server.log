@@ -1,0 +1,8 @@
+{"type":"server-started","port":59455,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:59455","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/our-picks-pins.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/search-here-cta.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/tripsheet-start.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/pin-drop-modes.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/smart-itinerary.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/52113-1774865327/content/waiting-1.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,7 @@
+{"type":"server-started","port":63416,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63416","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/48217-1774862253/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/48217-1774862253/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/48217-1774862253/content/trip-context-approach.html"}
+{"source":"user-event","type":"click","text":"A\n    \n      Bottom sheet, after \"Create Itinerary\"\n      When the user taps Create Itinerary on the map, a modal sheet slides up asking 3–4 quick questions (date, starting point, days). They answer and hit Generate. No new screen in the navigation.","choice":"a","id":null,"timestamp":1774862345755}
+{"source":"user-event","type":"click","text":"A\n    \n      Bottom sheet, after \"Create Itinerary\"\n      When the user taps Create Itinerary on the map, a modal sheet slides up asking 3–4 quick questions (date, starting point, days). They answer and hit Generate. No new screen in the navigation.","choice":"a","id":null,"timestamp":1774862352820}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/48217-1774862253/content/waiting-1.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/48217-1774862253/content/itinerary-display.html"}
+{"type":"server-stopped","reason":"idle timeout"}

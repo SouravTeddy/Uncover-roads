@@ -1,0 +1,95 @@
+<h2>Pin Drop Mode — P1 vs P2</h2>
+<p class="subtitle">What the screen looks like when the user taps "Drop pin"</p>
+
+<div class="split">
+
+  <!-- P1 -->
+  <div class="mockup">
+    <div class="mockup-header">P1 — Sheet collapses, crosshair mode</div>
+    <div class="mockup-body" style="background:#0f172a;min-height:340px;position:relative;overflow:hidden;border-radius:0 0 8px 8px">
+      <!-- Fake map tiles -->
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,#1a2744 0%,#0f172a 50%,#1a2744 100%)">
+        <!-- Grid lines to suggest map -->
+        <div style="position:absolute;inset:0;opacity:0.06" style="background-image:linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px);background-size:40px 40px"></div>
+        <!-- Some fake roads -->
+        <div style="position:absolute;top:40%;left:0;right:0;height:2px;background:rgba(255,255,255,.07)"></div>
+        <div style="position:absolute;top:65%;left:0;right:0;height:1px;background:rgba(255,255,255,.05)"></div>
+        <div style="position:absolute;top:0;bottom:0;left:35%;width:2px;background:rgba(255,255,255,.07)"></div>
+        <div style="position:absolute;top:0;bottom:0;left:70%;width:1px;background:rgba(255,255,255,.05)"></div>
+      </div>
+
+      <!-- Crosshair in exact center -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%)">
+        <!-- Pin with pulse ring -->
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:48px;height:48px;border-radius:50%;border:2px solid rgba(249,115,22,.4);animation:none"></div>
+          <div style="width:32px;height:32px;border-radius:50% 50% 50% 0;background:#f97316;transform:rotate(-45deg);box-shadow:0 0 16px rgba(249,115,22,.6)"></div>
+          <!-- Pin shadow line -->
+          <div style="width:4px;height:12px;background:linear-gradient(to bottom,rgba(249,115,22,.3),transparent);margin-top:-2px"></div>
+        </div>
+      </div>
+
+      <!-- Thin collapsed sheet handle at bottom -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(15,23,42,.95);border-top:1px solid rgba(255,255,255,.1);padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div style="width:36px;height:3px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          <div style="flex:1;background:rgba(255,255,255,.06);border-radius:10px;padding:8px 12px;font-size:11px;color:#94a3b8;border:1px solid rgba(255,255,255,.08)">Pan map to your location…</div>
+          <div style="background:#f97316;border-radius:10px;padding:8px 14px;font-size:11px;color:#fff;font-weight:600;white-space:nowrap">Confirm ✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P2 -->
+  <div class="mockup">
+    <div class="mockup-header">P2 — Sheet stays, tap map strip above</div>
+    <div class="mockup-body" style="background:#0f172a;min-height:340px;position:relative;overflow:hidden;border-radius:0 0 8px 8px">
+      <!-- Map — upper portion only -->
+      <div style="position:absolute;top:0;left:0;right:0;bottom:180px;background:linear-gradient(135deg,#1a2744 0%,#0f172a 50%,#1a2744 100%)">
+        <!-- Roads -->
+        <div style="position:absolute;top:40%;left:0;right:0;height:2px;background:rgba(255,255,255,.07)"></div>
+        <div style="position:absolute;top:0;bottom:0;left:50%;width:2px;background:rgba(255,255,255,.07)"></div>
+        <!-- Tap indicator -->
+        <div style="position:absolute;top:45%;left:55%;transform:translate(-50%,-50%)">
+          <div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#f97316;transform:rotate(-45deg);box-shadow:0 0 12px rgba(249,115,22,.5)"></div>
+        </div>
+        <!-- Tap hint label -->
+        <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:5px 12px;font-size:10px;color:#e2e8f0;white-space:nowrap">👆 Tap to drop your pin</div>
+      </div>
+
+      <!-- Sheet stays up -->
+      <div style="position:absolute;bottom:0;left:0;right:0;background:#1e293b;border-top:2px solid rgba(255,255,255,.08);border-radius:16px 16px 0 0;padding:12px 14px">
+        <div style="display:flex;justify-content:center;margin-bottom:10px">
+          <div style="width:36px;height:3px;border-radius:2px;background:rgba(255,255,255,.2)"></div>
+        </div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Starting from</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:10px;border:1px solid rgba(255,255,255,.1)">✈ Airport</div>
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:10px;border:1px solid rgba(255,255,255,.1)">🏨 Hotel</div>
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(20,184,166,.15);color:#14b8a6;font-size:10px;border:1px solid rgba(20,184,166,.3)">📍 Drop pin ←</div>
+        </div>
+        <div style="background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);border-radius:10px;padding:8px 10px;font-size:11px;color:#14b8a6">
+          📍 Tap anywhere on the map above
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="options" style="margin-top:1.5rem">
+  <div class="option" data-choice="p1" onclick="toggleSelect(this)">
+    <div class="letter">P1</div>
+    <div class="content">
+      <h3>Sheet collapses to handle bar</h3>
+      <p>Full map visible, orange pin tracks map center, "Confirm" button at bottom. User pans the map to position the pin, then confirms. Most control, most screen space.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="p2" onclick="toggleSelect(this)">
+    <div class="letter">P2</div>
+    <div class="content">
+      <h3>Sheet stays, tap in the visible map strip</h3>
+      <p>Sheet stays up showing context. A small map strip above the sheet is tappable. Faster (one tap), but the tappable area is small and you can't pan.</p>
+    </div>
+  </div>
+</div>

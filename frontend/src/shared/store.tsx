@@ -115,6 +115,7 @@ export type Action =
   | { type: 'SET_WEATHER'; weather: WeatherData }
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
+  | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
   | { type: 'RESET_MAP' };
 
 // ── Reducer ───────────────────────────────────────────────────
@@ -191,6 +192,9 @@ function reducer(state: AppState, action: Action): AppState {
       }
       return { ...state, savedItineraries: updated };
     }
+
+    case 'SET_SAVED_ITINERARIES':
+      return { ...state, savedItineraries: action.items };
 
     case 'RESET_MAP':
       return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };
