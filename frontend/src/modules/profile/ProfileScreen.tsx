@@ -212,25 +212,8 @@ export function ProfileScreen() {
 
         {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
-        {/* ── Save ── */}
-        <div className="mt-6">
-          <button
-            onClick={saveProfile}
-            disabled={saving}
-            className={`w-full h-14 rounded-2xl font-heading font-bold text-base transition-all ${
-              saved ? 'bg-green-600 text-white' : saving ? 'bg-surface text-text-3 cursor-not-allowed' : 'bg-primary text-white'
-            }`}
-          >
-            {saved ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="ms fill text-base">check_circle</span>Saved!
-              </span>
-            ) : saving ? 'Saving…' : 'Save Preferences'}
-          </button>
-        </div>
-
         {/* ── Sign out ── */}
-        <div className="mt-3 mb-8">
+        <div className="mt-6">
           <button
             onClick={handleSignOut}
             disabled={signingOut}
@@ -245,6 +228,23 @@ export function ProfileScreen() {
                 Sign out
               </>
             )}
+          </button>
+        </div>
+
+        {/* ── Save ── */}
+        <div className="mt-3 mb-8">
+          <button
+            onClick={saveProfile}
+            disabled={saving}
+            className={`w-full h-14 rounded-2xl font-heading font-bold text-base transition-all ${
+              saved ? 'bg-green-600 text-white' : saving ? 'bg-surface text-text-3 cursor-not-allowed' : 'bg-primary text-white'
+            }`}
+          >
+            {saved ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="ms fill text-base">check_circle</span>Saved!
+              </span>
+            ) : saving ? 'Saving…' : 'Save Preferences'}
           </button>
         </div>
       </div>
