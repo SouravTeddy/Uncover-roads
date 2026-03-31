@@ -68,7 +68,7 @@ export function ProfileScreen() {
       {/* Body */}
       <div
         className="flex-1 overflow-y-auto px-5"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
+        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
 
         {/* ── Account section ── */}
