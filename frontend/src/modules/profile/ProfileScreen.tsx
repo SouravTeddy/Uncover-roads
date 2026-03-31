@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { useProfile } from './useProfile';
 import { RitualQuestion, MotivationQuestion, StyleQuestion, AttractionQuestion, PaceQuestion } from '../../shared/questionnaire';
 import type { Ritual, Sensory, TravelStyle, Attraction, Pace } from '../../shared/types';
-import { ARCHETYPE_EMOJI } from '../persona/types';
+import {
+  ARCHETYPE_EMOJI,
+  ARCHETYPE_COLORS,
+  ARCHETYPE_SHORT,
+  VENUE_ICONS,
+  BIAS_ICONS,
+} from '../persona/types';
 
 type Section = 'ritual' | 'motivation' | 'style' | 'attractions' | 'pace' | null;
 
@@ -14,10 +20,21 @@ export function ProfileScreen() {
     setOpenSection(prev => (prev === s ? null : s));
   }
 
-  const emoji = persona ? (ARCHETYPE_EMOJI[persona.archetype] ?? '◆') : '◆';
+  const color  = persona ? (ARCHETYPE_COLORS[persona.archetype] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' }) : null;
+  const emoji  = persona ? (ARCHETYPE_EMOJI[persona.archetype] ?? '◆') : '◆';
+
+  // Top 3 archetype scores, normalised to 100
+  const topScores = persona?.scores
+    ? Object.entries(persona.scores)
+        .filter(([, v]) => v > 0)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+    : [];
+  const maxScore = topScores[0]?.[1] ?? 1;
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
+
       {/* Header */}
       <div
         className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
@@ -27,19 +44,131 @@ export function ProfileScreen() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 pb-32">
-        {/* Persona summary */}
-        {persona && (
-          <div className="mt-5 mb-6 bg-surface rounded-2xl p-5">
-            <div className="font-heading font-bold text-text-1 text-xl mb-1">
-              {emoji} {persona.archetype_name}
+      <div className="flex-1 overflow-y-auto px-5 pb-36">
+
+        {/* ── Persona breakdown ── */}
+        {persona && color && (
+          <>
+            {/* Archetype hero card */}
+            <div
+              className="relative mt-5 rounded-2xl overflow-hidden"
+              style={{
+                background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
+                border: `1px solid ${color.primary}28`,
+              }}
+            >
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `radial-gradient(ellipse 70% 60% at 0% 50%, ${color.glow} 0%, transparent 65%)`,
+                }}
+              />
+              <div className="relative flex items-center gap-4 px-5 py-4">
+                <div
+                  className="text-4xl leading-none flex-shrink-0"
+                  style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}
+                >
+                  {emoji}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-heading font-bold text-white text-base leading-tight">
+                    {persona.archetype_name}
+                  </div>
+                  <p className="text-white/55 text-xs mt-0.5 leading-relaxed line-clamp-2">
+                    {persona.archetype_desc}
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-text-2 text-sm">{persona.archetype_desc}</p>
-          </div>
+
+            {/* Archetype match bars */}
+            {topScores.length > 0 && (
+              <div className="mt-4 bg-surface rounded-2xl px-4 py-4">
+                <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">
+                  Archetype Match
+                </p>
+                <div className="flex flex-col gap-3">
+                  {topScores.map(([arch, score], i) => {
+                    const c = ARCHETYPE_COLORS[arch] ?? { primary: '#3b82f6', glow: '' };
+                    const pct = Math.round((score / maxScore) * 100);
+                    return (
+                      <div key={arch} className="flex items-center gap-3">
+                        {/* Rank dot */}
+                        <div
+                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold"
+                          style={{ background: i === 0 ? c.primary : `${c.primary}40`, color: i === 0 ? '#fff' : c.primary }}
+                        >
+                          {i + 1}
+                        </div>
+                        {/* Label */}
+                        <span className="text-text-2 text-xs w-24 flex-shrink-0">
+                          {ARCHETYPE_SHORT[arch] ?? arch}
+                        </span>
+                        {/* Bar */}
+                        <div className="flex-1 h-1.5 bg-white/8 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%`, background: c.primary }}
+                          />
+                        </div>
+                        {/* Score */}
+                        <span className="text-text-3 text-[10px] w-7 text-right flex-shrink-0">{score}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Trip focus + venues — side by side on wider screens, stacked on small */}
+            <div className="mt-3 grid grid-cols-2 gap-3">
+
+              {/* Itinerary biases */}
+              {persona.itinerary_bias && persona.itinerary_bias.length > 0 && (
+                <div className="bg-surface rounded-2xl px-4 py-4">
+                  <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">
+                    Trip Focus
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {persona.itinerary_bias.map(bias => (
+                      <div key={bias} className="flex items-center gap-2">
+                        <span
+                          className="ms fill text-sm flex-shrink-0"
+                          style={{ color: color.primary }}
+                        >
+                          {BIAS_ICONS[bias] ?? 'label'}
+                        </span>
+                        <span className="text-text-2 text-xs capitalize">{bias}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Venue priorities */}
+              {persona.venue_filters && persona.venue_filters.length > 0 && (
+                <div className="bg-surface rounded-2xl px-4 py-4">
+                  <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">
+                    Venues
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {persona.venue_filters.map(v => (
+                      <div key={v} className="flex items-center gap-2">
+                        <span className="ms text-sm text-text-3 flex-shrink-0">
+                          {VENUE_ICONS[v] ?? 'place'}
+                        </span>
+                        <span className="text-text-2 text-xs capitalize">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
-        {/* Editable sections */}
-        <div className="font-heading font-semibold text-text-3 text-xs uppercase tracking-wide mb-3">
+        {/* ── Edit Preferences ── */}
+        <div className="font-heading font-semibold text-text-3 text-xs uppercase tracking-wide mt-6 mb-3">
           Edit Preferences
         </div>
 

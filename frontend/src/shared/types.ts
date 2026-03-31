@@ -55,8 +55,9 @@ export interface Persona {
   attractions: Attraction[];
   pace: Pace | null;
   social: Social | null;
-  insight: string;
-  traits: PersonaTraits;
+  insight?: string;
+  traits?: PersonaTraits;
+  scores?: Record<string, number>;
   archetypeData: PersonaArchetypeData;
   venue_filters: string[];
   itinerary_bias: string[];
