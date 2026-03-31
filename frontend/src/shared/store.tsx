@@ -55,8 +55,26 @@ export interface AppState {
   generationCount: number;
 }
 
+// ── Session persistence (survives tab switches, clears on tab close) ──────────
+
+function ssGet<T>(key: string): T | null {
+  try {
+    const v = sessionStorage.getItem(key);
+    return v ? (JSON.parse(v) as T) : null;
+  } catch { return null; }
+}
+
+function ssSave(key: string, value: unknown) {
+  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+}
+
 function getInitialScreen(): Screen {
   try {
+    // Restore map session if user was mid-session
+    const sessionScreen = ssGet<Screen>('ur_ss_screen');
+    if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
+      return sessionScreen;
+    }
     const stored = localStorage.getItem('ur_persona');
     if (stored) return 'welcome';
   } catch {
@@ -96,11 +114,11 @@ export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
   persona: getStoredPersona(),
-  city: '',
-  cityGeo: null,
-  places: [],
-  selectedPlaces: [],
-  activeFilter: 'all',
+  city:           ssGet<string>('ur_ss_city')    ?? '',
+  cityGeo:        ssGet<GeoData>('ur_ss_geo')    ?? null,
+  places:         ssGet<Place[]>('ur_ss_places') ?? [],
+  selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
+  activeFilter:   ssGet<MapFilter | 'all'>('ur_ss_filter') ?? 'all',
   tripContext: defaultTripCtx,
   itinerary: null,
   weather: null,
@@ -139,6 +157,7 @@ export type Action =
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'GO_TO':
+      ssSave('ur_ss_screen', action.screen);
       return { ...state, currentScreen: action.screen };
 
     case 'SET_OB_ANSWER':
@@ -157,34 +176,43 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'SET_CITY':
+      ssSave('ur_ss_city', action.city);
+      ssSave('ur_ss_places', []);
+      ssSave('ur_ss_sel', []);
+      ssSave('ur_ss_geo', null);
       return { ...state, city: action.city, places: [], selectedPlaces: [], cityGeo: null };
 
     case 'SET_CITY_GEO':
+      ssSave('ur_ss_geo', action.geo);
       return { ...state, cityGeo: action.geo };
 
     case 'SET_PLACES':
+      ssSave('ur_ss_places', action.places);
       return { ...state, places: action.places };
 
     case 'MERGE_PLACES': {
       const existingIds = new Set(state.places.map(p => p.id));
       const newPlaces = action.places.filter(p => !existingIds.has(p.id));
-      return { ...state, places: [...state.places, ...newPlaces] };
+      const merged = [...state.places, ...newPlaces];
+      ssSave('ur_ss_places', merged);
+      return { ...state, places: merged };
     }
 
     case 'TOGGLE_PLACE': {
       const exists = state.selectedPlaces.some(p => p.id === action.place.id);
-      return {
-        ...state,
-        selectedPlaces: exists
-          ? state.selectedPlaces.filter(p => p.id !== action.place.id)
-          : [...state.selectedPlaces, action.place],
-      };
+      const updated = exists
+        ? state.selectedPlaces.filter(p => p.id !== action.place.id)
+        : [...state.selectedPlaces, action.place];
+      ssSave('ur_ss_sel', updated);
+      return { ...state, selectedPlaces: updated };
     }
 
     case 'SET_SELECTED_PLACES':
+      ssSave('ur_ss_sel', action.places);
       return { ...state, selectedPlaces: action.places };
 
     case 'SET_FILTER':
+      ssSave('ur_ss_filter', action.filter);
       return { ...state, activeFilter: action.filter };
 
     case 'SET_TRIP_CONTEXT':
@@ -226,6 +254,10 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'RESET_MAP':
+      ssSave('ur_ss_city', '');
+      ssSave('ur_ss_geo', null);
+      ssSave('ur_ss_places', []);
+      ssSave('ur_ss_sel', []);
       return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };
 
     default:
