@@ -51,6 +51,14 @@ function buildClusters(places: Place[], map: L.Map, gridSize = 38): Place[][] {
   return clusters;
 }
 
+/** Pan map so a tapped pin sits in the upper-center, clear of the card at the bottom */
+function panToPinAboveCard(map: L.Map, lat: number, lon: number) {
+  // Card + bottom nav ≈ 230px. Shift the center down 90px so the pin ends up ~90px above center.
+  const pt = map.project([lat, lon], map.getZoom());
+  pt.y += 90;
+  map.panTo(map.unproject(pt, map.getZoom()), { animate: true, duration: 0.3 });
+}
+
 function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: boolean) {
   const accent = (hasSelected || hasRecommended) ? '#f97316' : '#374151';
   const ring   = (hasSelected || hasRecommended) ? 'rgba(249,115,22,.25)' : 'rgba(255,255,255,.07)';
@@ -104,7 +112,10 @@ function MapPins({
             ? makeRecommendedIcon(place.category)
             : makeIcon(place.category);
         const marker = L.marker([place.lat, place.lon], { icon });
-        marker.on('click', () => onPinClick(place));
+        marker.on('click', () => {
+          panToPinAboveCard(map, place.lat, place.lon);
+          onPinClick(place);
+        });
         marker.addTo(map);
         pinMarkersRef.current.set(place.id, marker);
       } else {
