@@ -6,19 +6,13 @@ import { WeatherCanvas } from './WeatherCanvas';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary, Place } from '../../shared/types';
 
-const START_TYPE_META: Record<string, { icon: string; label: string }> = {
-  hotel:   { icon: 'meeting_room', label: 'Hotel' },
-  airport: { icon: 'flight_land',  label: 'Airport' },
-  pin:     { icon: 'place',        label: 'Drop Pin' },
-  station: { icon: 'train',        label: 'Station' },
-  airbnb:  { icon: 'home',         label: 'Airbnb' },
-};
-
 const WEATHER_ICONS: Record<string, string> = {
   sunny: 'wb_sunny', clear: 'wb_sunny',
   rain: 'water_drop', drizzle: 'water_drop',
-  snow: 'ac_unit', cloud: 'cloud', overcast: 'cloud',
-  fog: 'foggy', mist: 'foggy', thunder: 'thunderstorm', storm: 'thunderstorm',
+  snow: 'ac_unit',
+  cloud: 'cloud', overcast: 'cloud',
+  fog: 'foggy', mist: 'foggy',
+  thunder: 'thunderstorm', storm: 'thunderstorm',
 };
 
 function getWeatherIcon(condition: string): string {
@@ -28,8 +22,6 @@ function getWeatherIcon(condition: string): string {
   }
   return 'wb_sunny';
 }
-
-const HERO_HEIGHT = 220;
 
 export function RouteScreen() {
   const {
@@ -53,19 +45,6 @@ export function RouteScreen() {
   const { tripContext, places } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
 
-  const startMeta = START_TYPE_META[tripContext.startType] ?? START_TYPE_META.hotel;
-  const locationLabel = tripContext.locationName || startMeta.label;
-
-  const formattedDate = (() => {
-    try {
-      return new Date(tripContext.date).toLocaleDateString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric',
-      });
-    } catch {
-      return tripContext.date;
-    }
-  })();
-
   function handleAddSuggestion(place: Place) {
     dispatch({ type: 'TOGGLE_PLACE', place });
   }
@@ -73,89 +52,65 @@ export function RouteScreen() {
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
 
-      {/* ── Hero: weather + city info ── */}
-      <div className="relative flex-shrink-0" style={{ height: HERO_HEIGHT }}>
-        {/* Weather canvas fills the hero */}
-        {weather
-          ? <WeatherCanvas condition={weather.condition} height={HERO_HEIGHT} />
-          : (
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(160deg, rgba(30,58,138,.25) 0%, rgba(15,20,30,0) 100%)' }}
-            />
-          )
-        }
+      {/* ── Full-screen weather canvas (behind everything) ── */}
+      {weather && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+          <WeatherCanvas condition={weather.condition} />
+        </div>
+      )}
 
-        {/* Dark gradient at bottom so text is legible */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, rgba(10,14,20,.92) 0%, rgba(10,14,20,.4) 55%, transparent 100%)' }}
-        />
-
-        {/* Top row: back + share */}
-        <div
-          className="absolute left-0 right-0 flex items-center justify-between px-4"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-        >
+      {/* ── Header ── */}
+      <div
+        className="flex-shrink-0 flex items-center justify-between px-4 border-b border-white/6"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+          paddingBottom: '1rem',
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={goBack}
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(8px)' }}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,.07)' }}
           >
-            <span className="ms text-white/80 text-base">arrow_back</span>
+            <span className="ms text-text-2 text-base">arrow_back</span>
           </button>
-          <button
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(8px)' }}
-            onClick={() => {}}
-          >
-            <span className="ms text-white/80 text-base">share</span>
-          </button>
+          <h1 className="font-heading font-bold text-text-1 text-base truncate">
+            {city ? `Your ${city} Journey` : 'Itinerary'}
+          </h1>
         </div>
 
-        {/* Bottom row: city + date chip + weather badge */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 flex items-end justify-between">
-          <div>
-            <h1 className="font-heading font-bold text-white text-2xl leading-tight">
-              {city || 'Itinerary'}
-            </h1>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className="text-white/50 text-xs">{formattedDate}</span>
-              {/* Starting point chip */}
-              <div
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-white/15"
-                style={{ background: 'rgba(255,255,255,.08)' }}
-              >
-                <span className="ms fill text-teal-400" style={{ fontSize: 11 }}>{startMeta.icon}</span>
-                <span className="text-white/70 text-[10px] font-medium">{locationLabel}</span>
-                {tripContext.arrivalTime && (
-                  <span className="text-white/40 text-[10px]">· {tripContext.arrivalTime}</span>
-                )}
-              </div>
-            </div>
-          </div>
-
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Weather badge */}
           {weather && (
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 flex-shrink-0"
-              style={{ background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)' }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-white/10"
+              style={{ background: 'rgba(255,255,255,.07)' }}
             >
-              <span className="ms fill text-amber-400 text-sm">{getWeatherIcon(weather.condition)}</span>
-              <span className="text-white font-bold text-sm">{weather.temp}°</span>
-              <span className="text-white/50 text-xs hidden sm:inline">{weather.condition}</span>
+              <span className="ms fill text-sky-300 text-sm">{getWeatherIcon(weather.condition)}</span>
+              <span className="text-text-2 text-xs">{weather.condition}</span>
+              <span className="text-text-1 text-xs font-bold">{weather.temp}°</span>
             </div>
           )}
+          <button
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,.07)' }}
+            onClick={() => {}}
+          >
+            <span className="ms text-text-2 text-sm">share</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Summary chips (conflict + tips) ── */}
+      {/* ── Summary chips (transport / tip / conflict) ── */}
       {tab === 'active' && itinerary?.summary && !loading && (
         <SummaryChips summary={itinerary.summary} />
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 px-4 py-3 flex-shrink-0">
+      <div className="flex gap-1 px-4 py-3 flex-shrink-0" style={{ position: 'relative', zIndex: 1 }}>
         {(['active', 'saved'] as const).map(t => (
           <button
             key={t}
@@ -170,7 +125,7 @@ export function RouteScreen() {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto px-4 pb-28" style={{ position: 'relative', zIndex: 1 }}>
         {tab === 'active' && (
           <>
             {loading && (
@@ -211,10 +166,7 @@ export function RouteScreen() {
         )}
 
         {tab === 'saved' && (
-          <SavedList
-            items={savedItineraries}
-            onOpen={() => {}}
-          />
+          <SavedList items={savedItineraries} onOpen={() => {}} />
         )}
       </div>
 
@@ -226,6 +178,7 @@ export function RouteScreen() {
             background: 'rgba(10,14,20,.95)',
             backdropFilter: 'blur(12px)',
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+            zIndex: 2,
           }}
         >
           <button
@@ -267,40 +220,24 @@ function SummaryChips({ summary }: SummaryProps) {
   const chips: { icon: string; text: string; color: string; bg: string }[] = [];
 
   if (summary.best_transport) {
-    chips.push({
-      icon: 'directions_transit',
-      text: summary.best_transport,
-      color: 'text-sky-400',
-      bg: 'rgba(14,165,233,.12)',
-    });
+    chips.push({ icon: 'directions_transit', text: summary.best_transport,        color: 'text-sky-400',    bg: 'rgba(14,165,233,.12)' });
   }
   if (summary.pro_tip) {
-    const tip = summary.pro_tip.length > 48
-      ? summary.pro_tip.slice(0, 48) + '…'
-      : summary.pro_tip;
-    chips.push({
-      icon: 'lightbulb',
-      text: tip,
-      color: 'text-amber-400',
-      bg: 'rgba(251,191,36,.12)',
-    });
+    const tip = summary.pro_tip.length > 52 ? summary.pro_tip.slice(0, 52) + '…' : summary.pro_tip;
+    chips.push({ icon: 'lightbulb',          text: tip,                             color: 'text-amber-400',  bg: 'rgba(251,191,36,.12)' });
   }
   if (summary.conflict_notes) {
-    const note = summary.conflict_notes.length > 48
-      ? summary.conflict_notes.slice(0, 48) + '…'
-      : summary.conflict_notes;
-    chips.push({
-      icon: 'info',
-      text: note,
-      color: 'text-orange-400',
-      bg: 'rgba(251,146,60,.12)',
-    });
+    const note = summary.conflict_notes.length > 52 ? summary.conflict_notes.slice(0, 52) + '…' : summary.conflict_notes;
+    chips.push({ icon: 'info',               text: note,                            color: 'text-orange-400', bg: 'rgba(251,146,60,.12)' });
   }
 
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex gap-2 px-4 pb-2 flex-shrink-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+    <div
+      className="flex gap-2 px-4 pb-2 flex-shrink-0 overflow-x-auto"
+      style={{ scrollbarWidth: 'none', position: 'relative', zIndex: 1 }}
+    >
       {chips.map((chip, i) => (
         <div
           key={i}
@@ -317,13 +254,7 @@ function SummaryChips({ summary }: SummaryProps) {
 
 // ── Saved list ─────────────────────────────────────────────────
 
-function SavedList({
-  items,
-  onOpen,
-}: {
-  items: SavedItinerary[];
-  onOpen: (id: string) => void;
-}) {
+function SavedList({ items, onOpen }: { items: SavedItinerary[]; onOpen: (id: string) => void }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center py-12 gap-3">
@@ -338,7 +269,7 @@ function SavedList({
   }
 
   return (
-    <div className="flex flex-col gap-3 pt-2 px-4">
+    <div className="flex flex-col gap-3 pt-1">
       {items.map(item => (
         <button
           key={item.id}
@@ -347,8 +278,7 @@ function SavedList({
         >
           <div className="font-heading font-bold text-text-1 text-sm">{item.city}</div>
           <div className="text-text-3 text-xs mt-1">
-            {new Date(item.date).toLocaleDateString()} ·{' '}
-            {item.itinerary.itinerary.length} stops
+            {new Date(item.date).toLocaleDateString()} · {item.itinerary.itinerary.length} stops
           </div>
         </button>
       ))}

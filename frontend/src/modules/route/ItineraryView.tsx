@@ -199,7 +199,10 @@ export function ItineraryView({
   // Resolve start time: use tripContext.arrivalTime if available, else startTime param, else 9:00
   const resolvedStartTime = tripContext.arrivalTime ?? startTime ?? '9:00';
   const [startH, startM] = resolvedStartTime.split(':').map(Number);
-  const startMins = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
+  const arrivalMins = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
+  // Hotel/airport: add 1 hr buffer so user can rest/settle before first stop
+  const restBuffer = (tripContext.startType === 'hotel' || tripContext.startType === 'airport') ? 60 : 0;
+  const startMins = arrivalMins + restBuffer;
 
   const timeline = buildTimeline(stops, startMins, selectedPlaces);
   const mealGaps = detectMealGaps(timeline);
@@ -236,18 +239,16 @@ export function ItineraryView({
       {/* ── Starting point ── */}
       <div className="flex gap-3 px-4 py-4 border-b border-white/6">
         <div className="flex flex-col items-center" style={{ width: 52 }}>
-          {tripContext.arrivalTime ? (
-            <span className="text-teal-400 text-xs font-semibold">{tripContext.arrivalTime}</span>
-          ) : (
-            <span className="text-text-3 text-xs font-semibold">Start</span>
-          )}
+          <span className="text-teal-400 text-xs font-semibold leading-tight text-center">
+            {tripContext.arrivalTime ?? 'Start'}
+          </span>
           <div
             className="w-3 h-3 rounded-full mt-1 mb-1 flex-shrink-0"
             style={{ background: 'rgb(45,212,191)' }}
           />
           <div className="w-px flex-1 bg-white/10 min-h-[24px]" />
         </div>
-        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
           <div className="flex items-center gap-1.5">
             <span className="ms fill text-teal-400" style={{ fontSize: 13 }}>{startIcon}</span>
             <span className="text-text-3 font-bold uppercase tracking-wider" style={{ fontSize: 10 }}>
@@ -255,6 +256,14 @@ export function ItineraryView({
             </span>
           </div>
           <div className="font-heading font-bold text-text-1 text-sm">{locationLabel}</div>
+          {restBuffer > 0 && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="ms fill text-teal-400/60" style={{ fontSize: 11 }}>bedtime</span>
+              <span className="text-teal-400/60 text-[10px]">
+                Rest & settle in · adventure starts at {parseTimeLabel(startMins)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
