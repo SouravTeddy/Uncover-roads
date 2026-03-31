@@ -1,10 +1,27 @@
 import { useAppStore } from '../../shared/store';
 import { CitySearch } from './CitySearch';
-import { TRENDING_CITIES } from './types';
+import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
+import { ARCHETYPE_COLORS } from '../persona/types';
 import { api } from '../../shared/api';
+import type { SavedItinerary } from '../../shared/types';
 
 export function DestinationScreen() {
-  const { dispatch } = useAppStore();
+  const { state, dispatch } = useAppStore();
+  const { persona, savedItineraries } = state;
+
+  // Real user info from localStorage
+  const rawUser = localStorage.getItem('ur_user');
+  const user: { name: string; avatar: string | null } | null = rawUser ? JSON.parse(rawUser) : null;
+
+  const archetype  = persona?.archetype ?? null;
+  const color      = archetype ? (ARCHETYPE_COLORS[archetype] ?? ARCHETYPE_COLORS.voyager) : null;
+  const citySuggestions = archetype
+    ? (ARCHETYPE_CITIES[archetype] ?? DEFAULT_CITIES)
+    : DEFAULT_CITIES;
+
+  const recentTrips = [...savedItineraries]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 3);
 
   async function selectCity(name: string) {
     dispatch({ type: 'SET_CITY', city: name });
@@ -21,118 +38,160 @@ export function DestinationScreen() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude: lat, longitude: lon } = pos.coords;
-      dispatch({
-        type: 'SET_TRIP_CONTEXT',
-        ctx: { locationLat: lat, locationLon: lon },
-      });
+      dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { locationLat: lat, locationLon: lon } });
       dispatch({ type: 'GO_TO', screen: 'map' });
     });
   }
 
-  // Group trending cities for the bento layout
-  const lg = TRENDING_CITIES.find(c => c.size === 'lg')!;
-  const md = TRENDING_CITIES.find(c => c.size === 'md')!;
-  const smCities = TRENDING_CITIES.filter(c => c.size === 'sm');
-
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
+
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 border-b border-white/6 flex-shrink-0">
+      <header
+        className="flex items-center justify-between px-5 border-b border-white/6 flex-shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: '1rem' }}
+      >
         <h1 className="font-heading font-bold text-text-1 text-lg">Uncover Roads</h1>
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-surface">
-          <img src="https://i.pravatar.cc/80?img=11" alt="" className="w-full h-full object-cover" />
+        <div
+          className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(59,130,246,.15)', border: '1px solid rgba(59,130,246,.2)' }}
+        >
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-primary font-bold text-sm">
+              {(user?.name ?? 'U')[0].toUpperCase()}
+            </span>
+          )}
         </div>
       </header>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-24">
+      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
+
         <h2 className="font-heading font-extrabold text-text-1 text-2xl mb-5 tracking-tight">
           Where to next?
         </h2>
 
         {/* Search */}
-        <div className="mb-4">
+        <div className="mb-3">
           <CitySearch onSelect={selectCity} />
         </div>
 
         {/* Use location */}
         <button
           onClick={useLocation}
-          className="w-full flex items-center justify-center gap-3 h-12 rounded-2xl bg-primary/10 text-primary font-medium text-sm border border-primary/20 mb-6"
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl font-medium text-sm border border-primary/20 mb-8"
+          style={{ background: 'rgba(59,130,246,.08)', color: '#60a5fa' }}
         >
           <span className="ms text-base">near_me</span>
-          Get My Current Location
+          Use my current location
         </button>
 
-        {/* Trending section */}
-        <p className="text-text-3 text-xs uppercase tracking-widest mb-1">Curated Selection</p>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-heading font-bold text-text-1 text-lg">Trending Destinations</h2>
-          <button className="text-primary text-xs font-semibold">View all</button>
+        {/* ── Persona city suggestions ── */}
+        <div className="mb-7">
+          <div className="flex items-center gap-2 mb-3">
+            {color ? (
+              <>
+                <div
+                  className="w-1.5 h-4 rounded-full flex-shrink-0"
+                  style={{ background: color.primary }}
+                />
+                <p className="font-heading font-bold text-text-1 text-base">
+                  For {persona?.archetype_name ?? 'explorers'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-1.5 h-4 rounded-full flex-shrink-0 bg-primary" />
+                <p className="font-heading font-bold text-text-1 text-base">Popular destinations</p>
+              </>
+            )}
+          </div>
+
+          <div
+            className="flex gap-3 overflow-x-auto pb-1"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {citySuggestions.map(city => (
+              <button
+                key={city.name}
+                onClick={() => selectCity(city.name)}
+                className="flex-shrink-0 flex flex-col justify-between rounded-2xl px-4 py-3.5 text-left transition-all active:scale-95"
+                style={{
+                  width: 130,
+                  height: 110,
+                  background: color
+                    ? `linear-gradient(140deg, ${color.glow}, rgba(255,255,255,.03))`
+                    : 'rgba(255,255,255,.04)',
+                  border: color
+                    ? `1px solid ${color.primary}25`
+                    : '1px solid rgba(255,255,255,.08)',
+                }}
+              >
+                <span className="text-2xl leading-none">{city.emoji}</span>
+                <div>
+                  <p className="font-heading font-bold text-white text-sm leading-tight">{city.name}</p>
+                  <p className="text-white/35 text-[10px] mt-0.5">{city.country}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Bento grid */}
-        <div className="flex flex-col gap-3">
-          {/* Large card */}
-          <BentoCity city={lg} onSelect={selectCity} className="aspect-[2/1]" />
-
-          {/* Medium card */}
-          <BentoCity city={md} onSelect={selectCity} className="aspect-[2/1]" />
-
-          {/* Small cards - 2 per row */}
-          {[0, 1].map(row => (
-            <div key={row} className="grid grid-cols-2 gap-3">
-              {smCities.slice(row * 2, row * 2 + 2).map(city => (
-                <BentoCity key={city.name} city={city} onSelect={selectCity} className="aspect-square" />
+        {/* ── Recent trips ── */}
+        {recentTrips.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1.5 h-4 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,.2)' }} />
+              <p className="font-heading font-bold text-text-1 text-base">Jump back in</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {recentTrips.map(trip => (
+                <RecentTripCard key={trip.id} trip={trip} onSelect={selectCity} />
               ))}
             </div>
-          ))}
-        </div>
-
-        {/* AI section */}
-        <div className="mt-6 bg-surface rounded-2xl p-5">
-          <h3 className="font-heading font-bold text-text-1 text-base mb-2">
-            Can&apos;t decide where to go?
-          </h3>
-          <p className="text-text-2 text-sm mb-4">
-            Let Uncover Roads AI analyze your travel style and recommend the perfect destination.
-          </p>
-          <button className="px-5 py-2.5 rounded-2xl bg-primary/10 text-primary font-semibold text-sm border border-primary/20">
-            Ask Uncover Roads AI
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function BentoCity({
-  city,
+function RecentTripCard({
+  trip,
   onSelect,
-  className,
 }: {
-  city: (typeof TRENDING_CITIES)[number];
-  onSelect: (name: string) => void;
-  className: string;
+  trip: SavedItinerary;
+  onSelect: (city: string) => void;
 }) {
+  const stopCount = trip.itinerary?.itinerary?.length ?? 0;
+  const date = new Date(trip.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const archetype = trip.persona?.archetype ?? '';
+  const color = ARCHETYPE_COLORS[archetype] ?? { primary: '#60a5fa', glow: 'rgba(96,165,250,.15)' };
+
   return (
-    <div
-      onClick={() => onSelect(city.name)}
-      className={`relative overflow-hidden rounded-2xl cursor-pointer ${className}`}
+    <button
+      onClick={() => onSelect(trip.city)}
+      className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[.99]"
+      style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)' }}
     >
-      <img src={city.imageUrl} alt={city.name} className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-      {city.badge && (
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-primary/80 text-white text-xs font-bold">
-          {city.badge}
-        </div>
-      )}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h3 className="font-heading font-bold text-white text-lg">{city.name}</h3>
-        {city.description && (
-          <p className="text-white/70 text-xs">{city.description}</p>
-        )}
+      {/* Dot */}
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: color.glow, border: `1px solid ${color.primary}30` }}
+      >
+        <span className="ms fill text-base" style={{ color: color.primary }}>route</span>
       </div>
-    </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-white text-sm truncate">{trip.city}</p>
+        <p className="text-white/35 text-xs mt-0.5">{date} · {stopCount} stop{stopCount !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Arrow */}
+      <span className="ms text-white/20 text-base flex-shrink-0">arrow_forward</span>
+    </button>
   );
 }
