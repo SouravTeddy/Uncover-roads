@@ -518,6 +518,32 @@ function MealGapCard({ label, timeRange, onAdd }: { label: string; timeRange: st
   );
 }
 
+// ── Day divider ────────────────────────────────────────────────
+
+function DayDivider({ day }: { day: number }) {
+  return (
+    <div className="relative flex items-center justify-center py-5 px-4">
+      {/* Horizontal rules */}
+      <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(249,115,22,.3) 20%, rgba(249,115,22,.3) 80%, transparent)' }} />
+      {/* Centre pill */}
+      <div
+        className="relative flex items-center gap-2 px-4 py-2 rounded-full border"
+        style={{
+          background: 'rgba(249,115,22,.10)',
+          borderColor: 'rgba(249,115,22,.25)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <span className="ms fill text-orange-400" style={{ fontSize: 14 }}>wb_twilight</span>
+        <span className="font-heading font-bold text-orange-300" style={{ fontSize: 12, letterSpacing: '0.05em' }}>
+          Day {day}
+        </span>
+        <span className="text-orange-400/50" style={{ fontSize: 10 }}>continues</span>
+      </div>
+    </div>
+  );
+}
+
 function SuggestionCard({
   slot, isSelected, archetype, onAdd,
 }: {
@@ -723,6 +749,11 @@ export function ItineraryView({
         const matchNote    = personaMatchNote(archetype, matchedCategory);
         const reorderReason = detectReorderReason(stop, index, selectedPlaces, archetype, style, tMins);
 
+        // Day-change divider: show when stop.day increments vs previous stop
+        const prevDay  = index > 0 ? (stops[index - 1].day ?? 1) : null;
+        const thisDay  = stop.day ?? 1;
+        const showDayDivider = prevDay !== null && thisDay > prevDay;
+
         // Meal gap cards at this position (only if not covered by a suggestion slot)
         const gapAfter = mealGaps.filter(g =>
           g.insertAfterIndex === index && !coveredMealGapPositions.has(index)
@@ -733,6 +764,7 @@ export function ItineraryView({
 
         return (
           <div key={index}>
+            {showDayDivider && <DayDivider day={thisDay} />}
             <div className="flex gap-3 px-4 py-4 border-b border-white/6">
               {/* Spine */}
               <div className="flex flex-col items-center" style={{ width: 52 }}>
