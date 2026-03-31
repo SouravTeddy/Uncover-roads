@@ -708,19 +708,27 @@ def build_persona_response(ob_answers: dict, city: str, travel_date: str = None)
     archetype = list(scores.keys())[0]
     arch_data = ARCHETYPES.get(archetype, {})
 
+    # Build display-safe top_matches — relative percentages only, no raw scores
+    top_raw = [(k, v) for k, v in scores.items() if v > 0][:3]
+    max_score = top_raw[0][1] if top_raw else 1
+    top_matches = [
+        {"arch": k, "pct": round((v / max_score) * 100)}
+        for k, v in top_raw
+    ]
+
     persona = {
-        "archetype":     archetype,
-        "ritual":        ob_answers.get("ritual"),
-        "sensory":       ob_answers.get("sensory"),
-        "pace":          ob_answers.get("pace"),
-        "style":         ob_answers.get("style"),
-        "social":        ob_answers.get("social"),
-        "attractions":   ob_answers.get("attractions", []),
+        "archetype":      archetype,
+        "ritual":         ob_answers.get("ritual"),
+        "sensory":        ob_answers.get("sensory"),
+        "pace":           ob_answers.get("pace"),
+        "style":          ob_answers.get("style"),
+        "social":         ob_answers.get("social"),
+        "attractions":    ob_answers.get("attractions", []),
         "archetype_name": arch_data.get("name", archetype),
         "archetype_desc": arch_data.get("desc", ""),
-        "venue_filters": arch_data.get("venue_filters", []),
+        "venue_filters":  arch_data.get("venue_filters", []),
         "itinerary_bias": arch_data.get("itinerary_bias", []),
-        "scores":        scores,
+        "top_matches":    top_matches,
     }
 
     conflict_result = run_conflict_check(city, persona, travel_date)

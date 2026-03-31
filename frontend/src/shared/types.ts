@@ -48,6 +48,11 @@ export interface PersonaArchetypeData {
   itinerary_bias: string[];
 }
 
+export interface TopMatch {
+  arch: string;
+  pct: number;
+}
+
 export interface Persona {
   archetype: string;
   archetype_name: string;
@@ -60,7 +65,7 @@ export interface Persona {
   social: Social | null;
   insight?: string;
   traits?: PersonaTraits;
-  scores?: Record<string, number>;
+  top_matches?: TopMatch[];
   archetypeData: PersonaArchetypeData;
   venue_filters: string[];
   itinerary_bias: string[];

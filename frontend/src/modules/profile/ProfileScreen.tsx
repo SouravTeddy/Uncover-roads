@@ -41,13 +41,7 @@ export function ProfileScreen() {
   const color    = persona ? (ARCHETYPE_COLORS[persona.archetype] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' }) : null;
   const emoji    = persona ? (ARCHETYPE_EMOJI[persona.archetype] ?? '◆') : '◆';
 
-  const topScores = persona?.scores
-    ? Object.entries(persona.scores)
-        .filter(([, v]) => v > 0)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 3)
-    : [];
-  const maxScore = topScores[0]?.[1] ?? 1;
+  const topMatches = persona?.top_matches ?? [];
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
@@ -136,13 +130,12 @@ export function ProfileScreen() {
             </div>
 
             {/* Archetype match bars */}
-            {topScores.length > 0 && (
+            {topMatches.length > 0 && (
               <div className="mb-3 bg-surface rounded-2xl px-4 py-4">
                 <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Archetype Match</p>
                 <div className="flex flex-col gap-3">
-                  {topScores.map(([arch, score], i) => {
+                  {topMatches.map(({ arch, pct }, i) => {
                     const c = ARCHETYPE_COLORS[arch] ?? { primary: '#3b82f6', glow: '' };
-                    const pct = Math.round((score / maxScore) * 100);
                     return (
                       <div key={arch} className="flex items-center gap-3">
                         <div
@@ -155,7 +148,7 @@ export function ProfileScreen() {
                         <div className="flex-1 h-1.5 bg-white/8 rounded-full overflow-hidden">
                           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: c.primary }} />
                         </div>
-                        <span className="text-text-3 text-[10px] w-7 text-right flex-shrink-0">{score}</span>
+                        <span className="text-text-3 text-[10px] w-7 text-right flex-shrink-0">{pct}%</span>
                       </div>
                     );
                   })}
