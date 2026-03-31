@@ -52,7 +52,7 @@ export function WelcomeBackScreen() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-between px-6 py-12"
+      className="min-h-screen w-full flex flex-col items-center justify-between px-6 pt-12 pb-8"
       style={{
         background:
           "linear-gradient(rgba(10,14,20,.6) 0%, rgba(10,14,20,.85) 50%, rgba(10,14,20,1) 100%), url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80') center/cover no-repeat",
@@ -141,9 +141,11 @@ export function WelcomeBackScreen() {
       {/* Bottom: sign out */}
       <button
         onClick={signOut}
-        className="text-white/30 text-sm hover:text-white/50 transition-colors"
+        className="text-white/30 text-sm hover:text-white/50 transition-colors text-center px-6 leading-relaxed"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        Not {firstName}? Sign in with a different account
+        Not {firstName}?{' '}
+        <span className="underline underline-offset-2">Sign in with a different account</span>
       </button>
     </div>
   );
