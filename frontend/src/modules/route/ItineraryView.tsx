@@ -14,7 +14,7 @@ interface Props {
   onAddSuggestion: (place: Place) => void;
 }
 
-// ── Helpers ────────────────────────────────────────────────────
+// ── Time helpers ───────────────────────────────────────────────
 
 function parseTimeLabel(mins: number): string {
   const h = Math.floor(mins / 60) % 24;
@@ -37,21 +37,21 @@ function parseTransitMins(s?: string): number {
   return (mm ? parseInt(mm[1]) : 0) + (hh ? parseInt(hh[1]) * 60 : 0) || 10;
 }
 
-// ── Conflict chips parsed from conflict_notes text ─────────────
+// ── Conflict chip parser ───────────────────────────────────────
 
 interface ConflictChip { icon: string; label: string; color: string; bg: string }
 
 function parseConflictChips(notes: string): ConflictChip[] {
   const chips: ConflictChip[] = [];
-  if (/ramadan/i.test(notes))            chips.push({ icon: 'nights_stay',   label: 'Ramadan',        color: '#c084fc', bg: 'rgba(168,85,247,.12)' });
-  if (/heat|hot/i.test(notes))           chips.push({ icon: 'thermometer',   label: 'Heat',           color: '#fbbf24', bg: 'rgba(245,158,11,.12)' });
-  if (/jet.?lag|long.?haul/i.test(notes))chips.push({ icon: 'flight',        label: 'Jet lag',        color: '#818cf8', bg: 'rgba(99,102,241,.12)' });
-  if (/altitude|elevation/i.test(notes)) chips.push({ icon: 'landscape',     label: 'Altitude',       color: '#2dd4bf', bg: 'rgba(20,184,166,.12)' });
+  if (/ramadan/i.test(notes))               chips.push({ icon: 'nights_stay',        label: 'Ramadan',        color: '#c084fc', bg: 'rgba(168,85,247,.12)' });
+  if (/heat|hot/i.test(notes))              chips.push({ icon: 'thermometer',         label: 'Heat',           color: '#fbbf24', bg: 'rgba(245,158,11,.12)' });
+  if (/jet.?lag|long.?haul/i.test(notes))   chips.push({ icon: 'flight',              label: 'Jet lag',        color: '#818cf8', bg: 'rgba(99,102,241,.12)' });
+  if (/altitude|elevation/i.test(notes))    chips.push({ icon: 'landscape',           label: 'Altitude',       color: '#2dd4bf', bg: 'rgba(20,184,166,.12)' });
   if (/late|rest.*tomorrow|evening.*arrival|night/i.test(notes)) chips.push({ icon: 'bedtime', label: 'Late arrival', color: '#94a3b8', bg: 'rgba(148,163,184,.12)' });
-  if (/tight|packed|busy|rush/i.test(notes)) chips.push({ icon: 'timer',     label: 'Tight schedule', color: '#fb923c', bg: 'rgba(251,146,60,.12)' });
-  if (/dress|modest|religious/i.test(notes)) chips.push({ icon: 'checkroom', label: 'Dress code',     color: '#a78bfa', bg: 'rgba(167,139,250,.12)' });
-  if (/alcohol|dry city|no.*bar/i.test(notes)) chips.push({ icon: 'no_drinks', label: 'Dry city',     color: '#6b7280', bg: 'rgba(107,114,128,.12)' });
-  if (/walkab|transit|metro/i.test(notes)) chips.push({ icon: 'directions_transit', label: 'Use transit', color: '#38bdf8', bg: 'rgba(56,189,248,.12)' });
+  if (/tight|packed|busy|rush/i.test(notes)) chips.push({ icon: 'timer',             label: 'Tight schedule', color: '#fb923c', bg: 'rgba(251,146,60,.12)' });
+  if (/dress|modest|religious/i.test(notes)) chips.push({ icon: 'checkroom',          label: 'Dress code',     color: '#a78bfa', bg: 'rgba(167,139,250,.12)' });
+  if (/alcohol|dry city|no.*bar/i.test(notes)) chips.push({ icon: 'no_drinks',        label: 'Dry city',       color: '#6b7280', bg: 'rgba(107,114,128,.12)' });
+  if (/walkab|transit|metro/i.test(notes))   chips.push({ icon: 'directions_transit', label: 'Use transit',    color: '#38bdf8', bg: 'rgba(56,189,248,.12)' });
   return chips;
 }
 
@@ -59,11 +59,11 @@ function parseConflictChips(notes: string): ConflictChip[] {
 
 function tagStyle(tag: string): { bg: string; color: string; icon: string; label: string } {
   switch (tag) {
-    case 'heat':     return { bg: 'rgba(245,158,11,.12)',  color: '#fbbf24', icon: 'thermometer',  label: 'Heat' };
-    case 'jetlag':   return { bg: 'rgba(99,102,241,.12)',  color: '#818cf8', icon: 'flight',        label: 'Jet lag' };
-    case 'ramadan':  return { bg: 'rgba(168,85,247,.12)',  color: '#c084fc', icon: 'nights_stay',   label: 'Ramadan' };
-    case 'altitude': return { bg: 'rgba(20,184,166,.12)',  color: '#2dd4bf', icon: 'landscape',     label: 'Altitude' };
-    default:         return { bg: 'rgba(255,255,255,.06)', color: '#9ca3af', icon: 'label',         label: tag };
+    case 'heat':     return { bg: 'rgba(245,158,11,.12)',  color: '#fbbf24', icon: 'thermometer', label: 'Heat' };
+    case 'jetlag':   return { bg: 'rgba(99,102,241,.12)',  color: '#818cf8', icon: 'flight',       label: 'Jet lag' };
+    case 'ramadan':  return { bg: 'rgba(168,85,247,.12)',  color: '#c084fc', icon: 'nights_stay',  label: 'Ramadan' };
+    case 'altitude': return { bg: 'rgba(20,184,166,.12)',  color: '#2dd4bf', icon: 'landscape',    label: 'Altitude' };
+    default:         return { bg: 'rgba(255,255,255,.06)', color: '#9ca3af', icon: 'label',        label: tag };
   }
 }
 
@@ -79,6 +79,84 @@ function personaMatchNote(archetype: string | undefined, category: string | null
   if (a === 'explorer'      && (category === 'park' || category === 'tourism'))     return 'Fuels your explorer spirit';
   if (a === 'slowtraveller' && (category === 'cafe' || category === 'park'))        return 'Perfect for slow travel';
   if (a === 'pulse'         && (category === 'restaurant' || category === 'place')) return "Right in the city's pulse";
+  return null;
+}
+
+// ── Reorder reason detection ───────────────────────────────────
+// Returns a reason string only when the persona + conflict context makes it meaningful.
+// Returns null when we can't give a clear, honest reason.
+
+function detectReorderReason(
+  stop: ItineraryStop,
+  itineraryIdx: number,
+  selectedPlaces: Place[],
+  archetype: string | undefined,
+  style: string | null | undefined,
+  tMins: number,
+): string | null {
+  const nameLower = (stop.place ?? '').toLowerCase();
+  const originalIdx = selectedPlaces.findIndex(p => {
+    const t = p.title.toLowerCase();
+    return t === nameLower || nameLower.includes(t.slice(0, 8)) || t.includes(nameLower.slice(0, 8));
+  });
+  if (originalIdx === -1 || originalIdx === itineraryIdx) return null;
+
+  const matchedPlace = selectedPlaces[originalIdx];
+  const category = matchedPlace?.category ?? null;
+  const a = (archetype ?? '').toLowerCase();
+  const s = (style ?? '').toLowerCase();
+  const tags = stop.tags ?? [];
+  const hasHeat = tags.includes('heat');
+  const stopName = (stop.place ?? '').toLowerCase();
+
+  const isMorning      = tMins < 660;   // before 11 AM
+  const isMidday       = tMins >= 660  && tMins <= 840;   // 11 AM–2 PM
+  const isLateAfternoon = tMins >= 960 && tMins < 1080;   // 4–6 PM
+  const isEvening      = tMins >= 1080; // after 6 PM
+
+  // Outdoor stop moved to morning due to heat conflict
+  if (hasHeat && isMorning && (category === 'park' || category === 'tourism' || category === 'place')) {
+    return 'Morning · before peak heat';
+  }
+
+  // Museum/historic moved to morning
+  // Only valid for personas who benefit from quieter spaces.
+  // NOT for: local style (want local life), wanderer/pulse (want atmosphere), slowtraveller (pace is intentional)
+  if (isMorning && (category === 'museum' || category === 'historic')) {
+    if (s === 'local' || a === 'wanderer' || a === 'pulse' || a === 'slowtraveller') return null;
+    return 'Morning · more space to take it in';
+  }
+
+  // Viewpoint/scenic moved to late afternoon
+  // Only meaningful for personas who care about light/atmosphere
+  if (isLateAfternoon && (category === 'tourism' || category === 'park')) {
+    if (a === 'voyager' || a === 'explorer' || a === 'wanderer') {
+      return 'Afternoon · golden hour light';
+    }
+    return null;
+  }
+
+  // Restaurant/cafe moved to midday
+  if (isMidday && (category === 'restaurant' || category === 'cafe')) {
+    if (a === 'epicurean') return 'Lunch hour · prime time for food';
+    return 'Midday · keeps energy up';
+  }
+
+  // Nightlife/bar placed in evening (name-based, no category for bars)
+  const isNightlifeByName = /\b(bar|pub|club|lounge|cocktail|rooftop)\b/i.test(stopName);
+  if (isEvening && isNightlifeByName) {
+    if (a === 'pulse') return 'Evening · when the city comes alive';
+    return 'Moved to evening atmosphere';
+  }
+
+  // Market/street moved to morning — only meaningful for wanderer/pulse who want local vibe
+  const isMarketByName = /\b(market|bazaar|souk|street food)\b/i.test(stopName);
+  if (isMorning && isMarketByName) {
+    if (a === 'wanderer' || a === 'pulse' || s === 'local') return 'Morning · when locals are out';
+    return null;
+  }
+
+  // No clear reason we can honestly state
   return null;
 }
 
@@ -139,6 +217,136 @@ function detectMealGaps(timeline: StopWithTime[]): MealGap[] {
   return gaps;
 }
 
+// ── Suggestion slot builder ────────────────────────────────────
+
+interface SuggestionSlot {
+  place: Place;
+  insertAfterIndex: number; // -1 = after last stop (early finish section)
+  triggerType: 'meal_gap' | 'early_finish' | 'enroute' | 'variety' | 'persona' | 'fallback';
+  detail?: string; // context string: meal label+time, next stop name, end time, variety category, etc.
+}
+
+function buildSuggestions(
+  stops: ItineraryStop[],
+  timeline: StopWithTime[],
+  selectedPlaces: Place[],
+  allPlaces: Place[],
+  mealGaps: MealGap[],
+  endMins: number,
+  archetype: string | undefined,
+): { slots: SuggestionSlot[]; coveredMealGapPositions: Set<number> } {
+  const selectedIds = new Set(selectedPlaces.map(p => p.id));
+  const stopNames   = new Set(stops.map(s => (s.place ?? '').toLowerCase()));
+
+  const pool = allPlaces.filter(p => {
+    if (selectedIds.has(p.id)) return false;
+    const t = p.title.toLowerCase();
+    return !Array.from(stopNames).some(n => n.includes(t.slice(0, 8)) || t.includes(n.slice(0, 8)));
+  });
+
+  const usedPlaceIds       = new Set<string>();
+  const takenPositions     = new Set<number>();
+  const coveredMealGapPositions = new Set<number>();
+  const slots: SuggestionSlot[] = [];
+
+  function pick(filter?: (p: Place) => boolean): Place | undefined {
+    return pool.find(p => !usedPlaceIds.has(p.id) && (!filter || filter(p)));
+  }
+
+  function addSlot(slot: SuggestionSlot) {
+    usedPlaceIds.add(slot.place.id);
+    takenPositions.add(slot.insertAfterIndex);
+    slots.push(slot);
+  }
+
+  // 1. Meal gap → prefer a food place from pool; else fall back to MealGapCard (handled outside)
+  for (const gap of mealGaps) {
+    const foodPlace = pick(p => p.category === 'restaurant' || p.category === 'cafe');
+    if (foodPlace) {
+      const reason = archetype === 'epicurean'
+        ? `Your food-focused day needs a ${gap.label.toLowerCase()} stop`
+        : `No ${gap.label.toLowerCase()} · ${gap.timeRange}`;
+      addSlot({ place: foodPlace, insertAfterIndex: gap.insertAfterIndex, triggerType: 'meal_gap', detail: reason });
+      coveredMealGapPositions.add(gap.insertAfterIndex);
+    }
+  }
+
+  // 2. Enroute: transit > 45 min between two stops
+  for (const entry of timeline) {
+    if (entry.index >= stops.length - 1) continue;
+    if (takenPositions.has(entry.index)) continue;
+    const transitMins = parseTransitMins(entry.stop.transit_to_next);
+    if (transitMins >= 45) {
+      const nextStop = stops[entry.index + 1];
+      const p = pick();
+      if (p) addSlot({ place: p, insertAfterIndex: entry.index, triggerType: 'enroute', detail: nextStop?.place });
+    }
+  }
+
+  // 3. Category variety: all selected places same category → suggest something different
+  const cats = selectedPlaces.map(p => p.category);
+  const uniqueCats = new Set(cats);
+  if (uniqueCats.size === 1 && cats.length >= 2) {
+    const dominantCat = cats[0];
+    const varietyPlace = pick(p => p.category !== dominantCat);
+    // Find a free slot position
+    for (let pos = 0; pos < stops.length - 1; pos++) {
+      if (!takenPositions.has(pos)) {
+        if (varietyPlace) {
+          const catLabel = (CATEGORY_LABELS[dominantCat] ?? dominantCat).toLowerCase();
+          addSlot({ place: varietyPlace, insertAfterIndex: pos, triggerType: 'variety', detail: `Only ${catLabel} stops so far · adds variety` });
+        }
+        break;
+      }
+    }
+  }
+
+  // 4. Persona match: fill remaining gaps between stops (max 1 more between-stop suggestion)
+  if (stops.length > 1) {
+    for (let pos = 0; pos < stops.length - 1; pos++) {
+      if (takenPositions.has(pos)) continue;
+      let personaPlace: Place | undefined;
+      if (archetype === 'historian')     personaPlace = pick(p => p.category === 'museum' || p.category === 'historic');
+      else if (archetype === 'epicurean')personaPlace = pick(p => p.category === 'restaurant' || p.category === 'cafe');
+      else if (archetype === 'explorer') personaPlace = pick(p => p.category === 'park');
+      else if (archetype === 'slowtraveller') personaPlace = pick(p => p.category === 'cafe' || p.category === 'park');
+      else personaPlace = pick();
+      if (personaPlace) {
+        addSlot({ place: personaPlace, insertAfterIndex: pos, triggerType: 'persona' });
+      }
+      break; // only one persona suggestion between stops
+    }
+  }
+
+  // 5. Early finish: show 1–2 suggestions after last stop
+  const EARLY_FINISH_THRESHOLD = 17 * 60; // 5 PM
+  if (endMins < EARLY_FINISH_THRESHOLD) {
+    const endLabel = parseTimeLabel(endMins);
+    const extraCount = endMins < 15 * 60 ? 2 : 1; // before 3 PM → show 2
+    for (let i = 0; i < extraCount; i++) {
+      const p = pick();
+      if (p) addSlot({ place: p, insertAfterIndex: -1, triggerType: 'early_finish', detail: endLabel });
+    }
+  }
+
+  return { slots, coveredMealGapPositions };
+}
+
+// Derives display reason from slot context
+function slotReason(slot: SuggestionSlot, archetype: string | undefined, place: Place): string {
+  const label = CATEGORY_LABELS[place.category] ?? 'Place';
+  switch (slot.triggerType) {
+    case 'meal_gap':    return slot.detail ?? 'Missing a meal stop here';
+    case 'enroute':     return slot.detail ? `On the way to ${slot.detail}` : 'Fits your route';
+    case 'variety':     return slot.detail ?? 'Adds variety to your day';
+    case 'early_finish':return slot.detail ? `Day ends at ${slot.detail} · room for one more` : 'Room to add more';
+    case 'persona':     return personaMatchNote(archetype, place.category) ?? `Nearby ${label}`;
+    default:            return `Nearby ${label}`;
+  }
+}
+
+// ── Starting point meta ────────────────────────────────────────
+
 const START_ICONS: Record<string, string>    = { hotel:'meeting_room', airport:'flight_land', pin:'place', station:'train', airbnb:'home' };
 const START_SUBTEXTS: Record<string, string> = { hotel:'Check-in', airport:'Landing', pin:'Starting here', station:'Arriving', airbnb:'Check-in' };
 
@@ -152,23 +360,16 @@ function TripSummaryBar({
 }) {
   const durationH = Math.round((endMins - startMins) / 60 * 10) / 10;
   const durationLabel = durationH >= 1 ? `${durationH}h` : `${Math.round(endMins - startMins)}m`;
-
-  // Unique conflict flags from per-stop tags
   const uniqueTags = [...new Set(allTags)];
 
   return (
     <div className="px-4 py-3 border-b border-white/6" style={{ background: 'rgba(255,255,255,.025)' }}>
-      {/* Row 1: time span + stop count + duration */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1.5">
           <span className="ms fill text-primary" style={{ fontSize: 13 }}>schedule</span>
-          <span className="text-text-1 font-bold" style={{ fontSize: 13 }}>
-            {parseTimeLabel(startMins)}
-          </span>
+          <span className="text-text-1 font-bold" style={{ fontSize: 13 }}>{parseTimeLabel(startMins)}</span>
           <span className="ms text-text-3" style={{ fontSize: 14 }}>arrow_forward</span>
-          <span className="text-text-1 font-bold" style={{ fontSize: 13 }}>
-            {parseTimeLabel(endMins)}
-          </span>
+          <span className="text-text-1 font-bold" style={{ fontSize: 13 }}>{parseTimeLabel(endMins)}</span>
           <span className="text-text-3" style={{ fontSize: 11 }}>({durationLabel})</span>
         </div>
         <div className="flex items-center gap-1">
@@ -176,8 +377,6 @@ function TripSummaryBar({
           <span className="text-text-2 font-semibold" style={{ fontSize: 12 }}>{stopCount} stops</span>
         </div>
       </div>
-
-      {/* Row 2: cost + transport + conflict flags */}
       {(summary?.estimated_cost || summary?.best_transport || uniqueTags.length > 0) && (
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           {summary?.estimated_cost && (
@@ -209,15 +408,10 @@ function TripSummaryBar({
 
 function ConflictNotices({ notes, proTip }: { notes?: string; proTip?: string }) {
   if (!notes && !proTip) return null;
-
   const chips = notes ? parseConflictChips(notes) : [];
-  // If we parsed chips, don't show raw text — chips tell the story visually.
-  // If nothing parsed, fall back to a compact single-line note.
   const showRawNote = notes && chips.length === 0;
-
   return (
     <div className="border-b border-white/6">
-      {/* Conflict chips row */}
       {chips.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
           <span className="ms fill text-text-3" style={{ fontSize: 13 }}>tune</span>
@@ -229,16 +423,12 @@ function ConflictNotices({ notes, proTip }: { notes?: string; proTip?: string })
           ))}
         </div>
       )}
-
-      {/* Raw fallback */}
       {showRawNote && (
         <div className="flex items-center gap-2 px-4 py-2.5">
           <span className="ms fill text-orange-400 flex-shrink-0" style={{ fontSize: 13 }}>info</span>
           <p className="text-text-3 text-xs leading-snug line-clamp-2">{notes}</p>
         </div>
       )}
-
-      {/* Pro tip — compact single row */}
       {proTip && (
         <div className="flex items-start gap-2 px-4 py-2.5" style={{ background: chips.length > 0 ? undefined : 'rgba(251,191,36,.04)' }}>
           <span className="ms fill text-amber-400 flex-shrink-0 mt-0.5" style={{ fontSize: 13 }}>lightbulb</span>
@@ -271,13 +461,21 @@ function MealGapCard({ label, timeRange, onAdd }: { label: string; timeRange: st
 }
 
 function SuggestionCard({
-  place, isSelected, archetype, onAdd,
+  slot, isSelected, archetype, onAdd,
 }: {
-  place: Place; isSelected: boolean; archetype?: string; onAdd: () => void;
+  slot: SuggestionSlot; isSelected: boolean; archetype?: string; onAdd: () => void;
 }) {
+  const { place } = slot;
   const icon   = CATEGORY_ICONS[place.category] ?? 'location_on';
-  const label  = CATEGORY_LABELS[place.category] ?? 'Place';
-  const reason = personaMatchNote(archetype, place.category) ?? `Nearby ${label}`;
+  const reason = slotReason(slot, archetype, place);
+
+  // Icon for the reason context
+  const reasonIcon =
+    slot.triggerType === 'meal_gap'     ? 'restaurant' :
+    slot.triggerType === 'enroute'      ? 'route' :
+    slot.triggerType === 'variety'      ? 'shuffle' :
+    slot.triggerType === 'early_finish' ? 'add_circle' :
+    'auto_awesome';
 
   return (
     <div className="mx-4 my-2 flex items-center gap-3 px-3 py-3 rounded-xl border border-primary/15" style={{ background: 'rgba(59,130,246,.06)' }}>
@@ -287,7 +485,7 @@ function SuggestionCard({
       <div className="flex-1 min-w-0">
         <p className="text-text-1 text-xs font-semibold truncate">{place.title}</p>
         <div className="flex items-center gap-1 mt-0.5">
-          <span className="ms fill" style={{ fontSize: 10, color: 'rgba(96,165,250,.65)' }}>auto_awesome</span>
+          <span className="ms fill" style={{ fontSize: 10, color: 'rgba(96,165,250,.65)' }}>{reasonIcon}</span>
           <p style={{ fontSize: 10, color: 'rgba(96,165,250,.75)', fontWeight: 500 }}>{reason}</p>
         </div>
       </div>
@@ -303,43 +501,73 @@ function SuggestionCard({
   );
 }
 
-// ── Main ───────────────────────────────────────────────────────
+function EarlyFinishSection({
+  slots, selectedIds, archetype, onAdd,
+}: {
+  slots: SuggestionSlot[]; selectedIds: Set<string>; archetype?: string; onAdd: (place: Place) => void;
+}) {
+  if (slots.length === 0) return null;
+  const endLabel = slots[0].detail ?? 'early';
+  return (
+    <div className="border-t border-white/6 pt-2 pb-1">
+      <div className="flex items-center gap-2 px-4 py-2">
+        <span className="ms fill text-primary/60" style={{ fontSize: 13 }}>add_circle</span>
+        <p className="text-text-3 font-semibold" style={{ fontSize: 11 }}>
+          Day wraps at {endLabel} · you have time to add more
+        </p>
+      </div>
+      {slots.map((slot, i) => (
+        <SuggestionCard
+          key={i}
+          slot={slot}
+          isSelected={selectedIds.has(slot.place.id)}
+          archetype={archetype}
+          onAdd={() => onAdd(slot.place)}
+        />
+      ))}
+    </div>
+  );
+}
 
-export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, summary, persona, startTime, onRemove, onAddMeal, onAddSuggestion }: Props) {
+// ── Main export ────────────────────────────────────────────────
+
+export function ItineraryView({
+  stops, selectedPlaces, allPlaces, tripContext, summary, persona, startTime,
+  onRemove, onAddMeal, onAddSuggestion,
+}: Props) {
   const resolvedStart = tripContext.arrivalTime ?? startTime ?? '9:00';
   const [startH, startM] = resolvedStart.split(':').map(Number);
-  const arrivalMins  = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
-  const restBuffer   = (tripContext.startType === 'hotel' || tripContext.startType === 'airport') ? 60 : 0;
-  const startMins    = arrivalMins + restBuffer;
+  const arrivalMins = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
+  const restBuffer  = (tripContext.startType === 'hotel' || tripContext.startType === 'airport') ? 60 : 0;
+  const startMins   = arrivalMins + restBuffer;
 
-  const timeline  = buildTimeline(stops, startMins, selectedPlaces);
-  const mealGaps  = detectMealGaps(timeline);
-  const lastStop  = timeline[timeline.length - 1];
-  const endMins   = lastStop ? lastStop.endMins : startMins + 60;
+  const timeline = buildTimeline(stops, startMins, selectedPlaces);
+  const mealGaps = detectMealGaps(timeline);
+  const lastStop = timeline[timeline.length - 1];
+  const endMins  = lastStop ? lastStop.endMins : startMins + 60;
+  const allTags  = stops.flatMap(s => s.tags ?? []);
 
-  // Collect all unique conflict tags across stops for the summary bar
-  const allTags = stops.flatMap(s => s.tags ?? []);
+  const archetype = persona?.archetype;
+  const style     = persona?.style;
 
-  // Between-stop suggestions
+  const { slots, coveredMealGapPositions } = buildSuggestions(
+    stops, timeline, selectedPlaces, allPlaces, mealGaps, endMins, archetype,
+  );
+
   const selectedIds = new Set(selectedPlaces.map(p => p.id));
-  const stopNames   = new Set(stops.map(s => (s.place ?? '').toLowerCase()));
-  const suggestions = allPlaces
-    .filter(p => {
-      if (selectedIds.has(p.id)) return false;
-      const t = p.title.toLowerCase();
-      return !Array.from(stopNames).some(n => n.includes(t.slice(0, 8)) || t.includes(n.slice(0, 8)));
-    })
-    .slice(0, 4);
 
-  const suggestionSlots = new Map<number, Place>();
-  if (suggestions.length > 0 && stops.length > 1) suggestionSlots.set(0, suggestions[0]);
-  if (suggestions.length > 1 && stops.length > 3) suggestionSlots.set(2, suggestions[1]);
-  if (suggestions.length > 2 && stops.length > 5) suggestionSlots.set(4, suggestions[2]);
+  // Separate early-finish slots from between-stop slots
+  const betweenSlots  = slots.filter(s => s.insertAfterIndex >= 0);
+  const afterLastSlots = slots.filter(s => s.insertAfterIndex === -1);
+
+  // Reorder banner: if any stop has a reorder reason, show a subtle chip at top
+  const hasAnyReorder = timeline.some(({ stop, index, startMins: tMins }) =>
+    detectReorderReason(stop, index, selectedPlaces, archetype, style, tMins) !== null
+  );
 
   const startIcon    = START_ICONS[tripContext.startType]    ?? 'place';
   const startSubtext = START_SUBTEXTS[tripContext.startType] ?? 'Starting here';
   const locationLabel = tripContext.locationName || startSubtext;
-  const archetype    = persona?.archetype;
 
   return (
     <div className="rounded-2xl overflow-hidden border border-white/8 bg-surface/50" style={{ margin: '0 4px 8px' }}>
@@ -353,8 +581,18 @@ export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, s
         allTags={allTags}
       />
 
-      {/* ── Conflict notices + pro tip (visual chips, not text wall) ── */}
+      {/* ── Conflict notices + pro tip ── */}
       <ConflictNotices notes={summary?.conflict_notes} proTip={summary?.pro_tip} />
+
+      {/* ── Reorder banner (only when stops were reordered for a clear reason) ── */}
+      {hasAnyReorder && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-white/6" style={{ background: 'rgba(99,102,241,.06)' }}>
+          <span className="ms fill text-indigo-400 flex-shrink-0" style={{ fontSize: 13 }}>edit_road</span>
+          <p className="text-indigo-300 font-medium" style={{ fontSize: 11 }}>
+            Stops reordered for a better flow
+          </p>
+        </div>
+      )}
 
       {/* ── Starting point ── */}
       <div className="flex gap-3 px-4 py-4 border-b border-white/6">
@@ -382,14 +620,21 @@ export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, s
         </div>
       </div>
 
-      {/* ── Stops ── */}
+      {/* ── Itinerary stops ── */}
       {timeline.map(({ stop, index, startMins: tMins, matchedCategory }) => {
-        const timeLabel = parseTimeLabel(tMins);
-        const isLast    = index === stops.length - 1;
-        const transit   = stop.transit_to_next;
-        const gapAfter  = mealGaps.filter(g => g.insertAfterIndex === index);
-        const suggAfter = suggestionSlots.get(index);
-        const matchNote = personaMatchNote(archetype, matchedCategory);
+        const timeLabel    = parseTimeLabel(tMins);
+        const isLast       = index === stops.length - 1;
+        const transit      = stop.transit_to_next;
+        const matchNote    = personaMatchNote(archetype, matchedCategory);
+        const reorderReason = detectReorderReason(stop, index, selectedPlaces, archetype, style, tMins);
+
+        // Meal gap cards at this position (only if not covered by a suggestion slot)
+        const gapAfter = mealGaps.filter(g =>
+          g.insertAfterIndex === index && !coveredMealGapPositions.has(index)
+        );
+
+        // Between-stop suggestion at this position
+        const suggAfter = !isLast ? betweenSlots.find(s => s.insertAfterIndex === index) : undefined;
 
         return (
           <div key={index}>
@@ -408,6 +653,17 @@ export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, s
                   <button onClick={() => onRemove(index)} className="ms text-text-3 flex-shrink-0" style={{ fontSize: 18 }}>close</button>
                 </div>
 
+                {/* Reorder reason pill */}
+                {reorderReason && (
+                  <div
+                    className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(99,102,241,.12)' }}
+                  >
+                    <span className="ms fill" style={{ fontSize: 10, color: '#818cf8' }}>swap_vert</span>
+                    <span style={{ fontSize: 10, color: '#818cf8', fontWeight: 600 }}>{reorderReason}</span>
+                  </div>
+                )}
+
                 {/* Insider tip */}
                 {stop.tip && (
                   <div className="mt-1.5 px-2.5 py-1.5 rounded-lg border-l-2 border-primary/50" style={{ background: 'rgba(59,130,246,.06)' }}>
@@ -415,7 +671,7 @@ export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, s
                   </div>
                 )}
 
-                {/* Persona match + duration + transit in one compact row */}
+                {/* Persona match + duration + transit */}
                 <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                   {matchNote && (
                     <div className="flex items-center gap-1">
@@ -454,21 +710,31 @@ export function ItineraryView({ stops, selectedPlaces, allPlaces, tripContext, s
               </div>
             </div>
 
+            {/* Meal gap fallback (no food place in pool) */}
             {gapAfter.map(gap => (
               <MealGapCard key={gap.label} label={gap.label} timeRange={gap.timeRange} onAdd={onAddMeal} />
             ))}
 
-            {!isLast && suggAfter && (
+            {/* Between-stop suggestion */}
+            {suggAfter && (
               <SuggestionCard
-                place={suggAfter}
-                isSelected={selectedIds.has(suggAfter.id)}
+                slot={suggAfter}
+                isSelected={selectedIds.has(suggAfter.place.id)}
                 archetype={archetype}
-                onAdd={() => onAddSuggestion(suggAfter)}
+                onAdd={() => onAddSuggestion(suggAfter.place)}
               />
             )}
           </div>
         );
       })}
+
+      {/* ── Early finish suggestions (after last stop) ── */}
+      <EarlyFinishSection
+        slots={afterLastSlots}
+        selectedIds={selectedIds}
+        archetype={archetype}
+        onAdd={onAddSuggestion}
+      />
     </div>
   );
 }
