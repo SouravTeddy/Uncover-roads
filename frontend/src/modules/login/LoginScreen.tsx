@@ -136,14 +136,6 @@ export function LoginScreen() {
                 )}
               </button>
 
-              {/* Fallback: skip auth and go straight to onboarding */}
-              <button
-                onClick={continueToOnboarding}
-                className="w-full text-white/30 text-sm py-2 hover:text-white/50 transition-colors"
-              >
-                Continue without signing in
-              </button>
-
               <p className="text-center text-[0.68rem] text-white/20 leading-relaxed mt-5">
                 By continuing, you agree to our{' '}
                 <span className="text-white/40 cursor-pointer">Terms</span> and{' '}
