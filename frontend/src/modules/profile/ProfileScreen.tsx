@@ -238,6 +238,8 @@ export function ProfileScreen() {
               </span>
             ) : saving ? 'Saving…' : 'Save Preferences'}
           </button>
+        </div>
+
         {/* ── Contact ── */}
         <div className="flex flex-col items-center gap-1 mb-8">
           <p className="text-white/20 text-xs text-center">Feedback or business enquiry?</p>
