@@ -448,7 +448,7 @@ export function MapScreen() {
       </MapContainer>
 
       {/* Search Here */}
-      {showSearchHere && <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} />}
+      {showSearchHere && <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} empty={searchHereEmpty} />}
 
       {/* Drop pin strip */}
       {awaitingPinDrop && (
