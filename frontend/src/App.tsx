@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
+import { supabase } from './shared/supabase';
 
 import { LoginScreen } from './modules/login';
 import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
@@ -11,7 +13,19 @@ import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 
 function ScreenRouter() {
-  const { state } = useAppStore();
+  const { state, dispatch } = useAppStore();
+
+  // Handle Supabase OAuth redirect: on SIGNED_IN, send new users to onboarding
+  // and returning users (who already have a persona) to the destination screen.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        const hasPersona = Boolean(localStorage.getItem('ur_persona'));
+        dispatch({ type: 'GO_TO', screen: hasPersona ? 'destination' : 'ob1' });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [dispatch]);
   const { currentScreen } = state;
 
   return (
