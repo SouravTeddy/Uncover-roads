@@ -7,6 +7,13 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 export const supabase = createClient(
   supabaseUrl  || 'https://placeholder.supabase.co',
   supabaseKey  || 'placeholder-key',
+  {
+    auth: {
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  },
 );
 
 export const supabaseReady = Boolean(supabaseUrl && supabaseKey);
