@@ -199,7 +199,8 @@ function buildTimeline(stops: ItineraryStop[], startMins: number, selectedPlaces
 function detectMealGaps(timeline: StopWithTime[]): MealGap[] {
   const gaps: MealGap[] = [];
   const lunchStart = 720, lunchEnd = 840;
-  const hasLunch = timeline.some(t => t.isFoodStop && t.startMins < lunchEnd && t.endMins > lunchStart);
+  // Use a 40-min buffer: a cafe ending at 11:40 counts as covering lunch
+  const hasLunch = timeline.some(t => t.isFoodStop && t.startMins < lunchEnd && t.endMins > lunchStart - 40);
   if (!hasLunch) {
     const beforeLunch = timeline.filter(t => t.startMins < lunchEnd);
     const insertAfter = beforeLunch.length > 0 ? beforeLunch[beforeLunch.length - 1].index : -1;
@@ -207,7 +208,7 @@ function detectMealGaps(timeline: StopWithTime[]): MealGap[] {
     if (spansLunch) gaps.push({ label: 'Lunch', insertAfterIndex: insertAfter, timeRange: '12:00 – 2:00 PM' });
   }
   const dinnerStart = 1110, dinnerEnd = 1230;
-  const hasDinner = timeline.some(t => t.isFoodStop && t.startMins < dinnerEnd && t.endMins > dinnerStart);
+  const hasDinner = timeline.some(t => t.isFoodStop && t.startMins < dinnerEnd && t.endMins > dinnerStart - 40);
   if (!hasDinner) {
     const beforeDinner = timeline.filter(t => t.startMins < dinnerEnd);
     const insertAfter = beforeDinner.length > 0 ? beforeDinner[beforeDinner.length - 1].index : -1;
@@ -224,6 +225,29 @@ interface SuggestionSlot {
   insertAfterIndex: number; // -1 = after last stop (early finish section)
   triggerType: 'meal_gap' | 'early_finish' | 'enroute' | 'variety' | 'persona' | 'fallback';
   detail?: string; // context string: meal label+time, next stop name, end time, variety category, etc.
+}
+
+// Returns a filter for the pool that matches the persona's preferred categories.
+// Falls back to undefined (= no filter) for wanderer who benefits from any suggestion.
+function personaCategoryFilter(archetype: string | undefined): ((p: Place) => boolean) | undefined {
+  const a = (archetype ?? '').toLowerCase();
+  if (a === 'historian')     return p => p.category === 'museum' || p.category === 'historic';
+  if (a === 'epicurean')     return p => p.category === 'restaurant' || p.category === 'cafe';
+  if (a === 'explorer')      return p => p.category === 'park' || p.category === 'tourism';
+  if (a === 'slowtraveller') return p => p.category === 'cafe' || p.category === 'park';
+  if (a === 'voyager')       return p => p.category === 'museum' || p.category === 'historic' || p.category === 'tourism';
+  if (a === 'pulse')         return p => p.category === 'restaurant' || p.category === 'place';
+  return undefined; // wanderer: no filter — organic discovery
+}
+
+// Evenly spaced between-stop positions across the itinerary (0 = after stop 0, etc.)
+function evenPositions(stopCount: number, desiredCount: number): number[] {
+  const maxPos = stopCount - 2; // last valid between-stop index
+  if (maxPos < 0 || desiredCount === 0) return [];
+  if (desiredCount === 1) return [Math.floor(maxPos / 2)];
+  const step = maxPos / (desiredCount - 1);
+  return Array.from({ length: desiredCount }, (_, i) => Math.round(step * i))
+    .filter((v, i, a) => a.indexOf(v) === i); // dedupe
 }
 
 function buildSuggestions(
@@ -244,13 +268,21 @@ function buildSuggestions(
     return !Array.from(stopNames).some(n => n.includes(t.slice(0, 8)) || t.includes(n.slice(0, 8)));
   });
 
-  const usedPlaceIds       = new Set<string>();
-  const takenPositions     = new Set<number>();
+  const usedPlaceIds            = new Set<string>();
+  const takenPositions          = new Set<number>();
   const coveredMealGapPositions = new Set<number>();
   const slots: SuggestionSlot[] = [];
 
+  const personaFilter = personaCategoryFilter(archetype);
+  const a = (archetype ?? '').toLowerCase();
+
   function pick(filter?: (p: Place) => boolean): Place | undefined {
     return pool.find(p => !usedPlaceIds.has(p.id) && (!filter || filter(p)));
+  }
+
+  // Pick persona-preferred first, fall back to any unselected place
+  function pickPersona(): Place | undefined {
+    return (personaFilter ? pick(personaFilter) : undefined) ?? pick();
   }
 
   function addSlot(slot: SuggestionSlot) {
@@ -259,72 +291,86 @@ function buildSuggestions(
     slots.push(slot);
   }
 
-  // 1. Meal gap → prefer a food place from pool; else fall back to MealGapCard (handled outside)
+  // ── 1. Meal gaps ─────────────────────────────────────────────
+  // Only suggest food if neither the stop at that position nor the next stop is already food.
+  // This prevents "cafe → pizza bar suggestion" situations.
   for (const gap of mealGaps) {
+    const prevEntry = timeline.find(t => t.index === gap.insertAfterIndex);
+    const nextEntry = timeline.find(t => t.index === gap.insertAfterIndex + 1);
+    if (prevEntry?.isFoodStop || nextEntry?.isFoodStop) {
+      // Existing food stop nearby — no suggestion needed, just suppress MealGapCard
+      coveredMealGapPositions.add(gap.insertAfterIndex);
+      continue;
+    }
     const foodPlace = pick(p => p.category === 'restaurant' || p.category === 'cafe');
     if (foodPlace) {
-      const reason = archetype === 'epicurean'
+      const reason = a === 'epicurean'
         ? `Your food-focused day needs a ${gap.label.toLowerCase()} stop`
-        : `No ${gap.label.toLowerCase()} · ${gap.timeRange}`;
+        : `No ${gap.label.toLowerCase()} stop · ${gap.timeRange}`;
       addSlot({ place: foodPlace, insertAfterIndex: gap.insertAfterIndex, triggerType: 'meal_gap', detail: reason });
       coveredMealGapPositions.add(gap.insertAfterIndex);
     }
   }
 
-  // 2. Enroute: transit > 45 min between two stops
-  for (const entry of timeline) {
-    if (entry.index >= stops.length - 1) continue;
-    if (takenPositions.has(entry.index)) continue;
-    const transitMins = parseTransitMins(entry.stop.transit_to_next);
-    if (transitMins >= 45) {
-      const nextStop = stops[entry.index + 1];
-      const p = pick();
-      if (p) addSlot({ place: p, insertAfterIndex: entry.index, triggerType: 'enroute', detail: nextStop?.place });
+  // ── 2. Variety — only for wanderer / voyager / pulse ─────────
+  // Historians with all-museum stops chose that intentionally. Don't fight their persona.
+  const varietyArchetypes = ['wanderer', 'voyager', 'pulse'];
+  const cats = selectedPlaces.map(p => p.category);
+  const uniqueCats = new Set(cats);
+  if (uniqueCats.size === 1 && cats.length >= 3 && varietyArchetypes.includes(a)) {
+    const dominantCat = cats[0];
+    const varietyPlace = pick(p => p.category !== dominantCat);
+    if (varietyPlace) {
+      // Place at the midpoint of the trip, away from meal-gap positions
+      const mid = Math.floor((stops.length - 2) / 2);
+      const pos = takenPositions.has(mid) ? mid + 1 : mid;
+      if (pos < stops.length - 1) {
+        const catLabel = (CATEGORY_LABELS[dominantCat] ?? dominantCat).toLowerCase();
+        addSlot({ place: varietyPlace, insertAfterIndex: pos, triggerType: 'variety', detail: `Only ${catLabel} stops so far · adds variety` });
+      }
     }
   }
 
-  // 3. Category variety: all selected places same category → suggest something different
-  const cats = selectedPlaces.map(p => p.category);
-  const uniqueCats = new Set(cats);
-  if (uniqueCats.size === 1 && cats.length >= 2) {
-    const dominantCat = cats[0];
-    const varietyPlace = pick(p => p.category !== dominantCat);
-    // Find a free slot position
-    for (let pos = 0; pos < stops.length - 1; pos++) {
-      if (!takenPositions.has(pos)) {
-        if (varietyPlace) {
-          const catLabel = (CATEGORY_LABELS[dominantCat] ?? dominantCat).toLowerCase();
-          addSlot({ place: varietyPlace, insertAfterIndex: pos, triggerType: 'variety', detail: `Only ${catLabel} stops so far · adds variety` });
-        }
+  // ── 3. Persona-matched suggestions — evenly distributed ──────
+  // Number of between-stop suggestions: 1 for short trips, 2 for longer
+  const betweenDesired = stops.length >= 4 ? 2 : 1;
+  const targetPositions = evenPositions(stops.length, betweenDesired);
+
+  for (const targetPos of targetPositions) {
+    // Find the nearest free position to the target
+    let pos = targetPos;
+    for (let offset = 0; offset <= 2; offset++) {
+      if (!takenPositions.has(targetPos + offset) && targetPos + offset < stops.length - 1) {
+        pos = targetPos + offset;
+        break;
+      }
+      if (!takenPositions.has(targetPos - offset) && targetPos - offset >= 0) {
+        pos = targetPos - offset;
         break;
       }
     }
-  }
+    if (takenPositions.has(pos)) continue;
 
-  // 4. Persona match: fill remaining gaps between stops (max 1 more between-stop suggestion)
-  if (stops.length > 1) {
-    for (let pos = 0; pos < stops.length - 1; pos++) {
-      if (takenPositions.has(pos)) continue;
-      let personaPlace: Place | undefined;
-      if (archetype === 'historian')     personaPlace = pick(p => p.category === 'museum' || p.category === 'historic');
-      else if (archetype === 'epicurean')personaPlace = pick(p => p.category === 'restaurant' || p.category === 'cafe');
-      else if (archetype === 'explorer') personaPlace = pick(p => p.category === 'park');
-      else if (archetype === 'slowtraveller') personaPlace = pick(p => p.category === 'cafe' || p.category === 'park');
-      else personaPlace = pick();
-      if (personaPlace) {
-        addSlot({ place: personaPlace, insertAfterIndex: pos, triggerType: 'persona' });
-      }
-      break; // only one persona suggestion between stops
+    // For enroute (transit > 45 min): prefer persona category, use enroute trigger
+    const entry = timeline.find(t => t.index === pos);
+    const transitMins = parseTransitMins(entry?.stop.transit_to_next);
+    if (transitMins >= 45) {
+      const nextStop = stops[pos + 1];
+      const p = pickPersona();
+      if (p) addSlot({ place: p, insertAfterIndex: pos, triggerType: 'enroute', detail: nextStop?.place });
+    } else {
+      const p = pickPersona();
+      if (p) addSlot({ place: p, insertAfterIndex: pos, triggerType: 'persona' });
     }
   }
 
-  // 5. Early finish: show 1–2 suggestions after last stop
-  const EARLY_FINISH_THRESHOLD = 17 * 60; // 5 PM
-  if (endMins < EARLY_FINISH_THRESHOLD) {
+  // ── 4. Early finish — persona-preferred suggestions after last stop ──
+  const EARLY_FINISH = 17 * 60; // 5 PM
+  if (endMins < EARLY_FINISH) {
     const endLabel = parseTimeLabel(endMins);
-    const extraCount = endMins < 15 * 60 ? 2 : 1; // before 3 PM → show 2
+    const extraCount = endMins < 15 * 60 ? 2 : 1;
     for (let i = 0; i < extraCount; i++) {
-      const p = pick();
+      const p = pickPersona();
       if (p) addSlot({ place: p, insertAfterIndex: -1, triggerType: 'early_finish', detail: endLabel });
     }
   }
