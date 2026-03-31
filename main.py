@@ -142,29 +142,54 @@ def map_data(
 (
   node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
   way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
+  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name:en"]({bbox_str});
+  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name:en"]({bbox_str});
   node["amenity"~"restaurant|cafe|bar|food_court"]["name"]({bbox_str});
+  node["amenity"~"restaurant|cafe|bar|food_court"]["name:en"]({bbox_str});
   node["amenity"="museum"]["name"]({bbox_str});
   way["amenity"="museum"]["name"]({bbox_str});
+  node["amenity"="museum"]["name:en"]({bbox_str});
+  way["amenity"="museum"]["name:en"]({bbox_str});
   node["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
   way["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
+  node["leisure"~"park|garden|nature_reserve"]["name:en"]({bbox_str});
+  way["leisure"~"park|garden|nature_reserve"]["name:en"]({bbox_str});
   node["historic"]["name"]({bbox_str});
   way["historic"]["name"]({bbox_str});
+  node["historic"]["name:en"]({bbox_str});
+  way["historic"]["name:en"]({bbox_str});
   node["amenity"="marketplace"]["name"]({bbox_str});
   node["amenity"="cafe"]["name"]({bbox_str});
 );
-out center 150;
+out center 200;
 """
         data = fetch_overpass(query)
 
         places = []
-        seen   = set()
+        seen_ids  = set()  # dedupe by OSM element id (handles duplicate results from name + name:en queries)
+        seen_names = set() # dedupe by resolved name
 
         for el in data.get("elements", []):
-            tags = el.get("tags", {})
-            name = tags.get("name", "").strip()
-            if not name or name in seen:
+            el_id = f"{el.get('type','')}-{el.get('id','')}"
+            if el_id in seen_ids:
                 continue
-            seen.add(name)
+            seen_ids.add(el_id)
+
+            tags = el.get("tags", {})
+            # Prefer English / Latin-script names in priority order
+            name = (
+                tags.get("name:en") or
+                tags.get("int_name") or       # international name (often Latin)
+                tags.get("name:ja_rm") or     # Japanese romanized
+                tags.get("name:ko_rm") or     # Korean romanized
+                tags.get("name:zh_pinyin") or # Chinese pinyin
+                tags.get("name:ar_rm") or     # Arabic romanized
+                tags.get("name:th_rm") or     # Thai romanized
+                tags.get("name", "")
+            ).strip()
+            if not name or name in seen_names:
+                continue
+            seen_names.add(name)
 
             # Category resolution
             amenity = tags.get("amenity", "")
@@ -464,12 +489,16 @@ CRITICAL RULES — FOLLOW STRICTLY:
 - Return ONLY the exact places listed in SELECTED PLACES above. Do NOT add, invent, or substitute any other venues.
 - Stops are already ordered optimally — preserve this exact order
 - Assign realistic durations based on venue type (museum: 1.5-2h, café: 30-45min, park: 45-60min)
-- Start time: use arrival_time if provided, otherwise 9:00 AM
+- ALL place names in the output MUST be in English. Never use local-script names (Japanese, Arabic, Thai, etc).
+- Start time logic:
+    * If arrival_time is between 00:00-05:59 (late night / very early): set itinerary start to 08:00 AM, note rest period in conflict_notes
+    * If arrival_time is between 06:00-08:59: start 1 hour after arrival
+    * If arrival_time is provided and 09:00 or later: use arrival_time + 30 min for hotel/airport, else arrival_time directly
+    * If no arrival_time: default start is 09:00 AM
 - For half day: end by 14:00 unless arrival time says otherwise
 - If conflict overrides exist, follow them strictly
 - If jet lag adjustment is true, reduce day 1 intensity by 50% and add rest window 14:00-16:00
 - If departure day with flight time, ensure last venue ends 3 hours before flight
-- If arrival time is between 0:00-6:00 (late night/early morning): note in conflict_notes that ideal start is ~10:00 AM
 - transit_to_next must be a realistic walking/transit time string like "12 min walk" or "8 min by metro"
 - tip: ONE sentence only, max 12 words, one specific insider detail — not a paragraph
 - Add tags to each stop when relevant: use short labels from this set:
@@ -495,7 +524,8 @@ Return ONLY a valid JSON object, no markdown, no explanation:
     "estimated_cost": "₹500-1000 per person",
     "best_transport": "Metro and walking",
     "pro_tip": "One overall trip tip",
-    "conflict_notes": "Any adaptations made — thin/tight schedule, conflicts resolved"
+    "conflict_notes": "Any adaptations made — thin/tight schedule, conflicts resolved",
+    "suggested_start_time": "9:00 AM"
   }}
 }}"""
 
