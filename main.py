@@ -239,23 +239,34 @@ out center 200;
         }
 
         # Centre point for distance filter:
-        # use lat/lon params if provided, else geocoded city centre, else bbox centre
-        if lat is not None and lon is not None:
-            city_lat, city_lon = lat, lon
+        # When a bbox is provided (Search Here), use the bbox centre so the
+        # distance filter stays relative to what the user is actually viewing.
+        # Only fall back to city lat/lon for the initial city-wide load.
+        if south is not None and north is not None and west is not None and east is not None:
+            center_lat = (south + north) / 2
+            center_lon = (west  + east)  / 2
+        elif lat is not None and lon is not None:
+            center_lat, center_lon = lat, lon
         elif 'geo' in dir() and 'lat' in geo:
-            city_lat, city_lon = geo["lat"], geo["lon"]
+            center_lat, center_lon = geo["lat"], geo["lon"]
         else:
-            city_lat = (south + north) / 2 if south is not None else 0
-            city_lon = (west  + east)  / 2 if west  is not None else 0
+            center_lat, center_lon = 0, 0
 
         def dist(p):
-            return ((p["lat"] - city_lat)**2 + (p["lon"] - city_lon)**2) ** 0.5
+            return ((p["lat"] - center_lat)**2 + (p["lon"] - center_lon)**2) ** 0.5
+
+        # Radius: half the bbox diagonal, capped at 0.22 deg (~25 km) for city loads
+        # and expanded to fit the viewport for Search Here
+        if south is not None and north is not None and west is not None and east is not None:
+            radius = max((north - south) / 2, (east - west) / 2) * 1.1
+        else:
+            radius = 0.22
 
         places = [
             p for p in places
             if p["title"].lower() not in EXCLUDE
             and len(p["title"]) > 3
-            and dist(p) < 0.22
+            and dist(p) < radius
         ]
 
         places = sorted(places, key=dist)[:80]
