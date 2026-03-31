@@ -1,7 +1,27 @@
+import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
+import { supabase } from '../../shared/supabase';
 
 export function LoginScreen() {
   const { dispatch } = useAppStore();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function signInWithGoogle() {
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+    // On success Supabase redirects the browser to Google — no further action needed here.
+  }
 
   function proceed() {
     dispatch({ type: 'GO_TO', screen: 'ob1' });
@@ -32,11 +52,18 @@ export function LoginScreen() {
           <h2 className="text-2xl font-bold text-white mb-1 font-heading">Welcome back</h2>
           <p className="text-white/40 text-sm mb-6">Sign in to continue your journey</p>
 
+          {error && (
+            <div className="mb-4 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-red-400 text-xs">{error}</p>
+            </div>
+          )}
+
           {/* Auth buttons */}
           <div className="flex flex-col gap-3 mb-5">
             <button
               onClick={proceed}
-              className="flex items-center justify-center gap-3 h-13 rounded-2xl bg-white text-black font-heading font-semibold text-[0.95rem] cursor-pointer border-none"
+              className="flex items-center justify-center gap-3 h-13 rounded-2xl bg-white text-black font-heading font-semibold text-[0.95rem] cursor-pointer border-none opacity-50"
+              disabled
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M14.5 2.5c.8 1 1.3 2.3 1.2 3.6-1.2.1-2.5-.7-3.3-1.6-.8-.9-1.3-2.2-1.1-3.5 1.3-.1 2.5.6 3.2 1.5zm4.5 12.8c-.7 1.4-1 2-1.8 3.2-.9 1.4-2.2 3.5-3.8 3.5-1.4 0-1.8-.9-3.7-.9s-2.4.9-3.8.9c-1.5 0-2.8-2-3.7-3.4C.4 16.2 0 12.9 1.2 10.7c.9-1.5 2.4-2.5 4-2.5 1.6 0 2.6.9 3.9.9 1.3 0 2.1-.9 3.9-.9 1.4 0 2.8.8 3.7 2.1z"/>
@@ -45,15 +72,20 @@ export function LoginScreen() {
             </button>
 
             <button
-              onClick={proceed}
-              className="flex items-center justify-center gap-3 h-13 rounded-2xl bg-white/6 text-white font-heading font-semibold text-[0.95rem] cursor-pointer border border-white/12"
+              onClick={signInWithGoogle}
+              disabled={loading}
+              className="flex items-center justify-center gap-3 h-13 rounded-2xl bg-white/6 text-white font-heading font-semibold text-[0.95rem] cursor-pointer border border-white/12 disabled:opacity-60"
             >
-              <svg width="20" height="20" viewBox="0 0 20 20">
-                <path fill="#4285F4" d="M19.6 10.2c0-.7-.1-1.4-.2-2H10v3.8h5.4c-.2 1.2-1 2.3-2 3l3.2 2.5c1.9-1.7 3-4.3 3-7.3z"/>
-                <path fill="#34A853" d="M10 20c2.7 0 5-0.9 6.6-2.5l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1H1.1v2.6C2.8 17.7 6.2 20 10 20z"/>
-                <path fill="#FBBC05" d="M4.4 11.9c-.2-.6-.3-1.2-.3-1.9s.1-1.3.3-1.9V5.5H1.1C.4 6.9 0 8.4 0 10s.4 3.1 1.1 4.5l3.3-2.6z"/>
-                <path fill="#EA4335" d="M10 3.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8C14.9.9 12.7 0 10 0 6.2 0 2.8 2.3 1.1 5.5l3.3 2.6c.8-2.4 3-4.2 5.6-4.2z"/>
-              </svg>
+              {loading ? (
+                <span className="ms text-white animate-spin text-lg">autorenew</span>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 20 20">
+                  <path fill="#4285F4" d="M19.6 10.2c0-.7-.1-1.4-.2-2H10v3.8h5.4c-.2 1.2-1 2.3-2 3l3.2 2.5c1.9-1.7 3-4.3 3-7.3z"/>
+                  <path fill="#34A853" d="M10 20c2.7 0 5-0.9 6.6-2.5l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1H1.1v2.6C2.8 17.7 6.2 20 10 20z"/>
+                  <path fill="#FBBC05" d="M4.4 11.9c-.2-.6-.3-1.2-.3-1.9s.1-1.3.3-1.9V5.5H1.1C.4 6.9 0 8.4 0 10s.4 3.1 1.1 4.5l3.3-2.6z"/>
+                  <path fill="#EA4335" d="M10 3.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8C14.9.9 12.7 0 10 0 6.2 0 2.8 2.3 1.1 5.5l3.3 2.6c.8-2.4 3-4.2 5.6-4.2z"/>
+                </svg>
+              )}
               Continue with Google
             </button>
           </div>
