@@ -3,6 +3,21 @@ import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
 import type { Place, MapFilter } from '../../shared/types';
 
+// Maps persona venue_filter/itinerary_bias values → OSM category values that actually exist in map data
+const VENUE_TO_CATEGORY: Record<string, string> = {
+  restaurant: 'restaurant', cafe: 'cafe',    park: 'park',
+  museum:     'museum',     historic: 'historic', tourism: 'tourism',
+  // Aliases
+  gallery:    'museum',     monument: 'historic', heritage: 'historic',
+  culture:    'museum',     art:      'museum',
+  market:     'place',      markets:  'place',    storefront: 'place',
+  bar:        'restaurant', rooftop:  'restaurant', wine: 'restaurant',
+  food:       'restaurant', gastronomy: 'restaurant', dining: 'restaurant',
+  local:      'cafe',       neighbourhood: 'place', varied: 'place',
+  outdoor:    'park',       nature: 'park',       adventure: 'park',
+  nightlife:  'place',      club: 'place',        events: 'place',
+};
+
 export function useMap() {
   const { state, dispatch } = useAppStore();
   const [loading, setLoading] = useState(false);
@@ -17,12 +32,19 @@ export function useMap() {
     if (city && places.length === 0) {
       loadPlaces();
     }
-    // Load recommended eagerly so Our Picks pins are colored on "All" tab too
     if (city && persona && recommendedPlaces.length === 0) {
       loadRecommended();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city]);
+
+  // Re-run recommended when places load (clientSideFallback needs places populated)
+  useEffect(() => {
+    if (places.length > 0 && recommendedPlaces.length === 0 && persona) {
+      loadRecommended();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [places.length]);
 
   async function loadPlaces() {
     setLoading(true);
@@ -62,22 +84,44 @@ export function useMap() {
     }
   }
 
-  // Fallback: filter loaded places by persona.venue_filters categories + add a generic reason
+  /**
+   * Client-side fallback: maps persona venue_filters + itinerary_bias
+   * to actual OSM categories and marks matching places as recommended.
+   */
   function clientSideFallback(): Place[] {
-    if (!persona) return [];
-    const filters = new Set(persona.venue_filters ?? []);
-    return places
-      .filter(p => filters.has(p.category))
-      .map(p => ({
-        ...p,
-        reason: `Matches your interest in ${p.category}`,
-      }));
+    if (!persona || places.length === 0) return [];
+
+    const signals = [
+      ...(persona.venue_filters ?? []),
+      ...(persona.itinerary_bias ?? []),
+    ];
+
+    const targetCategories = new Set<string>();
+    signals.forEach(v => {
+      const cat = VENUE_TO_CATEGORY[v.toLowerCase()];
+      if (cat) targetCategories.add(cat);
+    });
+
+    // If no mapping resolved, mark all places (better than showing nothing)
+    if (targetCategories.size === 0) {
+      return places.map(p => ({ ...p, reason: 'Curated for your travel style' }));
+    }
+
+    const matched = places
+      .filter(p => targetCategories.has(p.category))
+      .map(p => ({ ...p, reason: `Recommended for your travel style` }));
+
+    // Always return at least a third of all places so the map isn't sparse
+    if (matched.length < Math.ceil(places.length / 3)) {
+      return places.map(p => ({ ...p, reason: 'Curated for your travel style' }));
+    }
+    return matched;
   }
 
+  // "Our Picks" tab shows ALL places (not just recommended subset) so map stays rich.
+  // Recommended pins are visually distinct via blue icon — filter just communicates intent.
   const filteredPlaces: Place[] =
-    activeFilter === 'recommended'
-      ? recommendedPlaces
-      : activeFilter === 'all'
+    activeFilter === 'all' || activeFilter === 'recommended'
       ? places
       : places.filter(p => p.category === (activeFilter as string));
 
