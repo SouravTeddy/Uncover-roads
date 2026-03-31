@@ -52,6 +52,17 @@ export function ProfileScreen() {
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
       >
         <span className="font-heading font-bold text-text-1 text-lg">Profile</span>
+        <button
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(239,68,68,.10)' }}
+        >
+          {signingOut
+            ? <span className="ms animate-spin text-red-400 text-base">autorenew</span>
+            : <span className="ms fill text-red-400 text-base">logout</span>
+          }
+        </button>
       </div>
 
       {/* Body */}
@@ -212,27 +223,8 @@ export function ProfileScreen() {
 
         {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
-        {/* ── Sign out ── */}
-        <div className="mt-6">
-          <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="w-full h-12 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 border border-red-500/20 text-red-400 disabled:opacity-50"
-            style={{ background: 'rgba(239,68,68,.08)' }}
-          >
-            {signingOut ? (
-              <span className="ms animate-spin text-base">autorenew</span>
-            ) : (
-              <>
-                <span className="ms fill text-base">logout</span>
-                Sign out
-              </>
-            )}
-          </button>
-        </div>
-
         {/* ── Save ── */}
-        <div className="mt-3 mb-8">
+        <div className="mt-6 mb-8">
           <button
             onClick={saveProfile}
             disabled={saving}
