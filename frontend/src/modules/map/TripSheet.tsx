@@ -6,6 +6,7 @@ import type { CityResult, GeoData, StartType } from '../../shared/types';
 interface Props {
   onClose: () => void;
   onRequestPinDrop: () => void;
+  onClearPin: () => void;
   pinDropResult: { lat: number; lon: number } | null;
   cityGeo: GeoData | null;
 }
@@ -39,7 +40,7 @@ async function nominatimSearch(
   }));
 }
 
-export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }: Props) {
+export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult, cityGeo }: Props) {
   const { state, dispatch } = useAppStore();
   const ctx = state.tripContext;
   const placesCount = state.selectedPlaces.length;
@@ -62,7 +63,14 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
   const abortRef    = useRef<AbortController | null>(null);
   const resultsRef  = useRef<HTMLDivElement | null>(null);
 
-  const needsArrival = startType === 'airport' || startType === 'hotel';
+  // needsArrival only applies when hotel/airport chip is active (not drop pin)
+  const needsArrival = !pinDropResult && (startType === 'airport' || startType === 'hotel');
+  // Drop pin has its own "start time" field
+  const showTimeField = needsArrival || !!pinDropResult;
+  const timeLabel = pinDropResult
+    ? 'What time do you start?'
+    : startType === 'hotel' ? 'What time do you check in?' : 'What time do you land?';
+  const timeIcon = pinDropResult ? 'schedule' : startType === 'hotel' ? 'meeting_room' : 'flight_land';
   const canGenerate  = !!date;
 
   // Smart hints
@@ -125,7 +133,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
       ctx: {
         date,
         startType:   pinDropResult ? 'pin' : startType,
-        arrivalTime: needsArrival && arrivalTime ? arrivalTime : null,
+        arrivalTime: showTimeField && arrivalTime ? arrivalTime : null,
         days,
         dayNumber:   1,
         locationLat,
@@ -222,6 +230,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
                         setLocationQuery('');
                         setSelectedLocation(null);
                         setSearchResults([]);
+                        if (pinDropResult) onClearPin();
                       }}
                       className="flex flex-col items-center gap-1 py-2.5 rounded-2xl transition-all"
                       style={{
@@ -315,12 +324,9 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
               )}
             </Field>
 
-            {/* ── Check-in / arrival time ── */}
-            {needsArrival && (
-              <Field
-                icon={startType === 'hotel' ? 'meeting_room' : 'flight_land'}
-                label={startType === 'hotel' ? 'What time do you check in?' : 'What time do you land?'}
-              >
+            {/* ── Check-in / arrival / start time ── */}
+            {showTimeField && (
+              <Field icon={timeIcon} label={timeLabel}>
                 <input
                   type="time"
                   value={arrivalTime}
@@ -384,14 +390,6 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
                 </Hint>
               )}
 
-              {!tooManyPlaces && days >= estimatedDays && placesCount > 0 && (
-                <Hint icon="check_circle" color="rgba(74,222,128,1)" bg="rgba(34,197,94,.08)" border="rgba(34,197,94,.2)">
-                  {days === 1 && placesCount <= 4
-                    ? 'Great selection for a full day — just the right amount to explore without rushing.'
-                    : `${days} days feels right for ${placesCount} places. You'll have room to breathe.`
-                  }
-                </Hint>
-              )}
             </Field>
 
           </div>
