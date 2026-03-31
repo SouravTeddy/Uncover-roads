@@ -1,47 +1,74 @@
-export interface TrendingCity {
+export interface CityCard {
   name: string;
-  description: string;
-  imageUrl: string;
-  badge?: string;
-  size: 'lg' | 'md' | 'sm';
+  country: string;
+  emoji: string;
 }
 
-export const TRENDING_CITIES: TrendingCity[] = [
-  {
-    name: 'Tokyo',
-    description: 'The neon-lit future of tradition.',
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80',
-    badge: 'Most Searched',
-    size: 'lg',
-  },
-  {
-    name: 'Paris',
-    description: 'Romance in every cobblestone.',
-    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80',
-    size: 'md',
-  },
-  {
-    name: 'New York',
-    description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&q=80',
-    size: 'sm',
-  },
-  {
-    name: 'Kyoto',
-    description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&q=80',
-    size: 'sm',
-  },
-  {
-    name: 'London',
-    description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80',
-    size: 'sm',
-  },
-  {
-    name: 'Bangalore',
-    description: '',
-    imageUrl: 'https://images.unsplash.com/photo-1566552881560-0be862a7c445?w=600&q=80',
-    size: 'sm',
-  },
+export const ARCHETYPE_CITIES: Record<string, CityCard[]> = {
+  historian: [
+    { name: 'Rome',       country: 'Italy',          emoji: '🏛️' },
+    { name: 'Athens',     country: 'Greece',         emoji: '⚡' },
+    { name: 'Istanbul',   country: 'Turkey',         emoji: '🕌' },
+    { name: 'Kyoto',      country: 'Japan',          emoji: '⛩️' },
+    { name: 'Cairo',      country: 'Egypt',          emoji: '🏺' },
+    { name: 'Prague',     country: 'Czech Republic', emoji: '🏰' },
+  ],
+  epicurean: [
+    { name: 'Barcelona',    country: 'Spain',    emoji: '🥘' },
+    { name: 'Tokyo',        country: 'Japan',    emoji: '🍜' },
+    { name: 'Naples',       country: 'Italy',    emoji: '🍕' },
+    { name: 'Bangkok',      country: 'Thailand', emoji: '🌶️' },
+    { name: 'Lyon',         country: 'France',   emoji: '🥐' },
+    { name: 'Mexico City',  country: 'Mexico',   emoji: '🌮' },
+  ],
+  wanderer: [
+    { name: 'Lisbon',      country: 'Portugal',   emoji: '🌊' },
+    { name: 'Tbilisi',     country: 'Georgia',    emoji: '🍷' },
+    { name: 'Porto',       country: 'Portugal',   emoji: '🌉' },
+    { name: 'Marrakech',   country: 'Morocco',    emoji: '🌴' },
+    { name: 'Chiang Mai',  country: 'Thailand',   emoji: '🐘' },
+    { name: 'Medellín',    country: 'Colombia',   emoji: '🌺' },
+  ],
+  voyager: [
+    { name: 'Singapore',  country: 'Singapore',     emoji: '🦁' },
+    { name: 'Dubai',      country: 'UAE',           emoji: '🏙️' },
+    { name: 'Hong Kong',  country: 'China',         emoji: '🌃' },
+    { name: 'Sydney',     country: 'Australia',     emoji: '🦘' },
+    { name: 'Reykjavik',  country: 'Iceland',       emoji: '🌋' },
+    { name: 'Cape Town',  country: 'South Africa',  emoji: '🌍' },
+  ],
+  explorer: [
+    { name: 'Queenstown',  country: 'New Zealand',  emoji: '🏔️' },
+    { name: 'Banff',       country: 'Canada',       emoji: '🦌' },
+    { name: 'Reykjavik',   country: 'Iceland',      emoji: '🌋' },
+    { name: 'Interlaken',  country: 'Switzerland',  emoji: '⛰️' },
+    { name: 'Kathmandu',   country: 'Nepal',        emoji: '🏔️' },
+    { name: 'Ushuaia',     country: 'Argentina',    emoji: '🦅' },
+  ],
+  slowtraveller: [
+    { name: 'Kyoto',          country: 'Japan',   emoji: '🌸' },
+    { name: 'Ubud',           country: 'Bali',    emoji: '🌿' },
+    { name: 'Santorini',      country: 'Greece',  emoji: '🌅' },
+    { name: 'Florence',       country: 'Italy',   emoji: '🎨' },
+    { name: 'Oaxaca',         country: 'Mexico',  emoji: '🎭' },
+    { name: 'Luang Prabang',  country: 'Laos',    emoji: '🙏' },
+  ],
+  pulse: [
+    { name: 'Berlin',     country: 'Germany',      emoji: '🎵' },
+    { name: 'Bangkok',    country: 'Thailand',     emoji: '🌆' },
+    { name: 'Miami',      country: 'USA',          emoji: '🏖️' },
+    { name: 'Amsterdam',  country: 'Netherlands',  emoji: '🚲' },
+    { name: 'Seoul',      country: 'South Korea',  emoji: '✨' },
+    { name: 'Ibiza',      country: 'Spain',        emoji: '🎉' },
+  ],
+};
+
+// Fallback cities shown before persona is created
+export const DEFAULT_CITIES: CityCard[] = [
+  { name: 'Tokyo',     country: 'Japan',       emoji: '🌸' },
+  { name: 'Paris',     country: 'France',      emoji: '🗼' },
+  { name: 'New York',  country: 'USA',         emoji: '🗽' },
+  { name: 'Lisbon',    country: 'Portugal',    emoji: '🌊' },
+  { name: 'Bangkok',   country: 'Thailand',    emoji: '🌴' },
+  { name: 'Rome',      country: 'Italy',       emoji: '🏛️' },
 ];
