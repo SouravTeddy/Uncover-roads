@@ -35,14 +35,25 @@ function ScreenRouter() {
   }
 
   useEffect(() => {
-    // Check for session immediately — catches the OAuth redirect case
-    // where the session is already established before the listener fires
+    const initialScreen = state.currentScreen;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) handleSignedIn(session.user);
+      if (!session?.user) return;
+      if (initialScreen === 'login') {
+        // Just came back from OAuth redirect — navigate the user in
+        handleSignedIn(session.user);
+      } else {
+        // Returning user opened the app — sync data in background, don't navigate
+        syncProfile(session.user).catch(console.warn);
+        loadSavedItineraries(session.user.id).then(items => {
+          if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
+        }).catch(console.warn);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      // Only handle fresh sign-ins (not session restores on app open)
+      if (event === 'SIGNED_IN' && session?.user && initialScreen === 'login') {
         handleSignedIn(session.user);
       }
     });
