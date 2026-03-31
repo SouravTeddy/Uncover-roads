@@ -34,7 +34,8 @@ export function LoginScreen() {
   }, []);
 
   function continueToOnboarding() {
-    dispatch({ type: 'GO_TO', screen: 'ob1' });
+    const seen = Boolean(localStorage.getItem('ur_walkthrough_seen'));
+    dispatch({ type: 'GO_TO', screen: seen ? 'ob1' : 'walkthrough' });
   }
 
   async function signInWithGoogle() {

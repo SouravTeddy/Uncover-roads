@@ -5,7 +5,7 @@ import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
-import { LoginScreen, WelcomeBackScreen } from './modules/login';
+import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
@@ -36,7 +36,14 @@ function ScreenRouter() {
     }).catch(console.warn);
 
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));
-    dispatch({ type: 'GO_TO', screen: hasPersona ? 'destination' : 'ob1' });
+    const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
+    if (hasPersona) {
+      dispatch({ type: 'GO_TO', screen: 'destination' });
+    } else if (hasSeenWalkthrough) {
+      dispatch({ type: 'GO_TO', screen: 'ob1' });
+    } else {
+      dispatch({ type: 'GO_TO', screen: 'walkthrough' });
+    }
   }
 
   useEffect(() => {
@@ -73,9 +80,10 @@ function ScreenRouter() {
       className="relative w-full"
       style={{ background: '#0f172a', minHeight: '100dvh' }}
     >
-      {currentScreen === 'login'       && <LoginScreen />}
-      {currentScreen === 'welcome'     && <WelcomeBackScreen />}
-      {currentScreen === 'ob1'         && <OB1Ritual />}
+      {currentScreen === 'login'        && <LoginScreen />}
+      {currentScreen === 'welcome'      && <WelcomeBackScreen />}
+      {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
+      {currentScreen === 'ob1'          && <OB1Ritual />}
       {currentScreen === 'ob2'         && <OB2Motivation />}
       {currentScreen === 'ob3'         && <OB3Style />}
       {currentScreen === 'ob4'         && <OB4LocationType />}
