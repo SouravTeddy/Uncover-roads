@@ -62,7 +62,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
   const abortRef    = useRef<AbortController | null>(null);
   const resultsRef  = useRef<HTMLDivElement | null>(null);
 
-  const needsArrival = startType === 'airport';
+  const needsArrival = startType === 'airport' || startType === 'hotel';
   const canGenerate  = !!date;
 
   // Smart hints
@@ -315,9 +315,12 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
               )}
             </Field>
 
-            {/* ── Arrival time (airport / station) ── */}
+            {/* ── Check-in / arrival time ── */}
             {needsArrival && (
-              <Field icon="flight_land" label="What time do you land?">
+              <Field
+                icon={startType === 'hotel' ? 'meeting_room' : 'flight_land'}
+                label={startType === 'hotel' ? 'What time do you check in?' : 'What time do you land?'}
+              >
                 <input
                   type="time"
                   value={arrivalTime}
@@ -329,12 +332,22 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
                     border: '1px solid rgba(255,255,255,.09)',
                   }}
                 />
-                {isVeryLate && (
+                {isVeryLate && startType === 'hotel' && (
+                  <Hint icon="bedtime" color="rgba(167,139,250,1)" bg="rgba(139,92,246,.1)" border="rgba(139,92,246,.2)">
+                    Late check-in — by then you'll be ready to rest. We'll plan a fresh start for tomorrow morning.
+                  </Hint>
+                )}
+                {isLateArrival && !isVeryLate && startType === 'hotel' && (
+                  <Hint icon="nights_stay" color="rgba(94,234,212,1)" bg="rgba(20,184,166,.08)" border="rgba(20,184,166,.2)">
+                    Evening check-in — perfect time to settle in and enjoy a quiet dinner nearby. Your adventure begins tomorrow.
+                  </Hint>
+                )}
+                {isVeryLate && startType === 'airport' && (
                   <Hint icon="bedtime" color="rgba(167,139,250,1)" bg="rgba(139,92,246,.1)" border="rgba(139,92,246,.2)">
                     Arriving that late, your body will thank you for a proper rest. We'll have everything ready for a fresh start tomorrow morning.
                   </Hint>
                 )}
-                {isLateArrival && !isVeryLate && (
+                {isLateArrival && !isVeryLate && startType === 'airport' && (
                   <Hint icon="nights_stay" color="rgba(94,234,212,1)" bg="rgba(20,184,166,.08)" border="rgba(20,184,166,.2)">
                     Evening arrival — perfect time to settle in and grab a quiet dinner. Your full adventure starts tomorrow.
                   </Hint>
