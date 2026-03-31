@@ -8,6 +8,7 @@ import { PinCard } from './PinCard';
 import type { Place, MapFilter, Category } from '../../shared/types';
 import { TripSheet } from './TripSheet';
 import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
+import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
 import { mapData } from '../../shared/api';
@@ -130,9 +131,11 @@ function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: bo
 // ── Map sub-components ──────────────────────────────────────────
 
 function MapPins({
-  places, selectedIds, recommendedIds, onPinClick,
+  places, selectedIds, recommendedIds, onPinClick, onClusterExpand,
 }: {
-  places: Place[]; selectedIds: Set<string>; recommendedIds: Set<string>; onPinClick: (place: Place) => void;
+  places: Place[]; selectedIds: Set<string>; recommendedIds: Set<string>;
+  onPinClick: (place: Place) => void;
+  onClusterExpand: (group: Place[], lat: number, lon: number) => void;
 }) {
   const map = useLeafletMap();
   const pinMarkersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -162,13 +165,22 @@ function MapPins({
         const marker = L.marker([clat, clon], { icon: makeClusterIcon(group.length, hasRec, hasSel) });
         marker.on('click', () => {
           const bounds = L.latLngBounds(group.map(p => [p.lat, p.lon] as [number, number]));
-          map.flyToBounds(bounds, { padding: [72, 72], maxZoom: map.getZoom() + 3, duration: 0.4 });
+          // Check if zooming in would actually help (i.e. map isn't already at max zoom)
+          const targetZoom = map.getBoundsZoom(bounds, false, L.point(72, 72));
+          const atMaxZoom  = map.getZoom() >= map.getMaxZoom();
+          const wouldHelp  = targetZoom > map.getZoom() && !atMaxZoom;
+          if (wouldHelp) {
+            map.flyToBounds(bounds, { padding: [72, 72], duration: 0.4 });
+          } else {
+            // Already at max zoom or places too close to separate — show picker
+            onClusterExpand(group, clat, clon);
+          }
         });
         marker.addTo(map);
         clusterMarkersRef.current.push({ marker, group });
       }
     });
-  }, [places, selectedIds, recommendedIds, map, onPinClick]);
+  }, [places, selectedIds, recommendedIds, map, onPinClick, onClusterExpand]);
 
   useEffect(() => {
     rebuild();
@@ -279,7 +291,11 @@ export function MapScreen() {
 
   const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
-  const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
+  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); }, [setActivePlace]);
+  const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
+  const handleClusterExpand = useCallback((group: Place[], lat: number, lon: number) => {
+    setClusterGroup({ places: group, lat, lon });
+  }, []);
 
   const [showTripSheet, setShowTripSheet] = useState(false);
 
@@ -409,7 +425,7 @@ export function MapScreen() {
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         <FitBounds places={filteredPlaces} cityGeo={cityGeo} />
-        <MapPins places={filteredPlaces} selectedIds={selectedIds} recommendedIds={recommendedIds} onPinClick={handlePinClick} />
+        <MapPins places={filteredPlaces} selectedIds={selectedIds} recommendedIds={recommendedIds} onPinClick={handlePinClick} onClusterExpand={handleClusterExpand} />
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
         <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
         <MapPanner target={panTarget} />
@@ -521,6 +537,55 @@ export function MapScreen() {
           }}
         >
           <span className="ms text-white/25 animate-spin" style={{ fontSize: 16 }}>autorenew</span>
+        </div>
+      )}
+
+      {/* Cluster picker — shown when cluster can't zoom in further */}
+      {clusterGroup && !activePlace && (
+        <div
+          className="absolute inset-x-4"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
+        >
+          <div
+            className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+            style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)' }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+              <div className="flex items-center gap-2">
+                <span className="ms fill text-primary" style={{ fontSize: 14 }}>layers</span>
+                <span className="text-text-2 font-semibold" style={{ fontSize: 12 }}>
+                  {clusterGroup.places.length} places here
+                </span>
+              </div>
+              <button onClick={() => setClusterGroup(null)}>
+                <span className="ms text-text-3" style={{ fontSize: 16 }}>close</span>
+              </button>
+            </div>
+            {clusterGroup.places.map((place, i) => {
+              const icon  = CATEGORY_ICONS[place.category] ?? 'location_on';
+              const label = CATEGORY_LABELS[place.category] ?? 'Place';
+              return (
+                <button
+                  key={place.id}
+                  onClick={() => { setClusterGroup(null); handlePinClick(place); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-white/5"
+                  style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,.06)' : undefined }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(59,130,246,.12)' }}
+                  >
+                    <span className="ms fill text-primary" style={{ fontSize: 14 }}>{icon}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-text-1 font-semibold text-sm truncate">{place.title}</p>
+                    <p className="text-text-3" style={{ fontSize: 10 }}>{label}</p>
+                  </div>
+                  <span className="ms text-text-3" style={{ fontSize: 14 }}>chevron_right</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
