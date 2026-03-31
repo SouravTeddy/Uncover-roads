@@ -306,11 +306,12 @@ export function MapScreen() {
   );
 
   const counts: Partial<Record<string, number>> = {
-    all: places.length,
-    museum: places.filter(p => p.category === 'museum').length,
-    park: places.filter(p => p.category === 'park').length,
-    restaurant: places.filter(p => p.category === 'restaurant').length,
-    historic: places.filter(p => p.category === 'historic').length,
+    all:         places.length,
+    recommended: recommendedPlaces.length,
+    museum:      places.filter(p => p.category === 'museum').length,
+    park:        places.filter(p => p.category === 'park').length,
+    restaurant:  places.filter(p => p.category === 'restaurant').length,
+    historic:    places.filter(p => p.category === 'historic').length,
   };
 
   const center: [number, number] = cityGeo
