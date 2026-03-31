@@ -556,34 +556,53 @@ def weather(city: str = Query(...)):
 # =========================================
 @app.get("/place-image")
 def place_image(name: str = Query(...), city: str = Query(...)):
+    VALID_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+    wiki_base    = "https://en.wikipedia.org/w/api.php"
+    commons_base = "https://commons.wikimedia.org/w/api.php"
+
+    # 1. Wikipedia article thumbnail
     try:
-        base   = "https://en.wikipedia.org/w/api.php"
-        search = requests.get(base, params={
+        search = requests.get(wiki_base, params={
             "action": "query", "list": "search",
             "srsearch": f"{name} {city}",
             "format": "json", "srlimit": 1
-        }, timeout=8).json()
-
+        }, timeout=4).json()
         results = search.get("query", {}).get("search", [])
-        if not results:
-            return {"image": None}
-
-        title  = results[0]["title"]
-        images = requests.get(base, params={
-            "action": "query", "titles": title,
-            "prop": "pageimages", "pithumbsize": 600,
-            "format": "json"
-        }, timeout=8).json()
-
-        for page in images.get("query", {}).get("pages", {}).values():
-            thumb = page.get("thumbnail", {})
-            if thumb.get("source"):
-                return {"image": thumb["source"], "title": title}
-
-        return {"image": None}
+        if results:
+            title = results[0]["title"]
+            images = requests.get(wiki_base, params={
+                "action": "query", "titles": title,
+                "prop": "pageimages", "pithumbsize": 600,
+                "format": "json"
+            }, timeout=4).json()
+            for page in images.get("query", {}).get("pages", {}).values():
+                thumb = page.get("thumbnail", {})
+                if thumb.get("source"):
+                    return {"image": thumb["source"]}
     except Exception as e:
-        print("PLACE IMAGE ERROR:", e)
-        return {"image": None}
+        print("PLACE IMAGE wikipedia error:", e)
+
+    # 2. Wikimedia Commons image search (broader: covers landmarks without Wikipedia articles)
+    try:
+        commons = requests.get(commons_base, params={
+            "action": "query", "generator": "search",
+            "gsrsearch": f"{name} {city}",
+            "gsrnamespace": "6",          # File namespace only
+            "prop": "imageinfo",
+            "iiprop": "url",
+            "iiurlwidth": 600,
+            "format": "json", "gsrlimit": 5
+        }, timeout=4).json()
+        for page in commons.get("query", {}).get("pages", {}).values():
+            info_list = page.get("imageinfo", [])
+            for info in info_list:
+                url = info.get("thumburl") or info.get("url", "")
+                if url and any(url.lower().split("?")[0].endswith(ext) for ext in VALID_EXTS):
+                    return {"image": url}
+    except Exception as e:
+        print("PLACE IMAGE commons error:", e)
+
+    return {"image": None}
 
 
 # =========================================
