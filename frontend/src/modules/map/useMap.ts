@@ -17,15 +17,12 @@ export function useMap() {
     if (city && places.length === 0) {
       loadPlaces();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
-
-  useEffect(() => {
-    if (activeFilter === 'recommended' && recommendedPlaces.length === 0 && city && persona) {
+    // Load recommended eagerly so Our Picks pins are colored on "All" tab too
+    if (city && persona && recommendedPlaces.length === 0) {
       loadRecommended();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilter]);
+  }, [city]);
 
   async function loadPlaces() {
     setLoading(true);
@@ -105,6 +102,7 @@ export function useMap() {
     cityGeo,
     places,
     filteredPlaces,
+    recommendedPlaces,
     selectedPlaces,
     activeFilter,
     loading: loading || recLoading,
