@@ -57,7 +57,7 @@ export function ProfileScreen() {
       {/* Body */}
       <div
         className="flex-1 overflow-y-auto px-5"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 7rem)' }}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 1rem)' }}
       >
 
         {/* ── Account section ── */}
@@ -212,8 +212,25 @@ export function ProfileScreen() {
 
         {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
+        {/* ── Save ── */}
+        <div className="mt-6">
+          <button
+            onClick={saveProfile}
+            disabled={saving}
+            className={`w-full h-14 rounded-2xl font-heading font-bold text-base transition-all ${
+              saved ? 'bg-green-600 text-white' : saving ? 'bg-surface text-text-3 cursor-not-allowed' : 'bg-primary text-white'
+            }`}
+          >
+            {saved ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="ms fill text-base">check_circle</span>Saved!
+              </span>
+            ) : saving ? 'Saving…' : 'Save Preferences'}
+          </button>
+        </div>
+
         {/* ── Sign out ── */}
-        <div className="mt-8 mb-4">
+        <div className="mt-3 mb-8">
           <button
             onClick={handleSignOut}
             disabled={signingOut}
@@ -230,26 +247,6 @@ export function ProfileScreen() {
             )}
           </button>
         </div>
-      </div>
-
-      {/* Save footer */}
-      <div
-        className="absolute inset-x-0 bottom-0 bg-bg border-t border-white/8 px-5 py-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
-      >
-        <button
-          onClick={saveProfile}
-          disabled={saving}
-          className={`w-full h-14 rounded-2xl font-heading font-bold text-base transition-all ${
-            saved ? 'bg-green-600 text-white' : saving ? 'bg-surface text-text-3 cursor-not-allowed' : 'bg-primary text-white'
-          }`}
-        >
-          {saved ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="ms fill text-base">check_circle</span>Saved!
-            </span>
-          ) : saving ? 'Saving…' : 'Save Preferences'}
-        </button>
       </div>
     </div>
   );
