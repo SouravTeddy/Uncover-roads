@@ -54,6 +54,20 @@ function calcStartMins(tripContext: TripContext, aiStartTime?: string): number {
   return arrivalMins;
 }
 
+function parseStopTimeMins(t?: string): number | null {
+  if (!t) return null;
+  const m12 = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (m12) {
+    let h = parseInt(m12[1]); const mn = parseInt(m12[2]);
+    if (m12[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m12[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + mn;
+  }
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  return null;
+}
+
 // ── Category styling ──────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -111,7 +125,12 @@ export function NavScreen() {
   let running = startMins;
   for (let i = 0; i < stops.length; i++) {
     const stop = stops[i];
-    if (i > 0) {
+    if (i === 0) {
+      // Use AI-assigned time for first stop so source→first gap is realistic
+      const aiMins = parseStopTimeMins(stop.time);
+      if (aiMins !== null && aiMins > startMins) running = aiMins;
+      else running = startMins + 20;
+    } else {
       const prev = stops[i - 1];
       running += Math.max(30, parseDurationMins(prev.duration));
       running += parseTransitMins(prev.transit_to_next);
