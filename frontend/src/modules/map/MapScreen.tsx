@@ -24,7 +24,7 @@ L.Icon.Default.mergeOptions({
 
 // ── Clustering helpers ──────────────────────────────────────────
 
-function buildClusters(places: Place[], map: L.Map, gridSize = 55): Place[][] {
+function buildClusters(places: Place[], map: L.Map, gridSize = 38): Place[][] {
   const clusters: Place[][] = [];
   const assigned = new Set<number>();
 
@@ -221,6 +221,7 @@ export function MapScreen() {
     city,
     cityGeo,
     filteredPlaces,
+    recommendedPlaces,
     places,
     selectedPlaces,
     activeFilter,
@@ -238,8 +239,8 @@ export function MapScreen() {
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(
-    () => new Set(filteredPlaces.filter(p => p.reason).map(p => p.id)),
-    [filteredPlaces]
+    () => new Set(recommendedPlaces.map(p => p.id)),
+    [recommendedPlaces]
   );
   const handlePinClick = useCallback((p: Place) => setActivePlace(p), [setActivePlace]);
   const [showTripSheet, setShowTripSheet] = useState(false);
@@ -387,26 +388,24 @@ export function MapScreen() {
         </div>
       </div>
 
-      {/* Live / Loading indicator — top-right */}
-      <div
-        className="absolute flex items-center gap-2 px-3 py-2 rounded-full border border-white/10"
-        style={{
-          top: 'calc(env(safe-area-inset-top, 0px) + 5.5rem)',
-          right: '1.25rem',
-          zIndex: 20,
-          pointerEvents: 'none',
-          background: 'rgba(29,33,41,.6)',
-          backdropFilter: 'blur(6px)',
-        }}
-      >
-        {loading
-          ? <span className="ms text-primary text-base animate-spin">autorenew</span>
-          : <div className="w-2 h-2 rounded-full bg-[#70F8E8] animate-pulse" />
-        }
-        <span className="text-white text-xs font-bold tracking-widest uppercase">
-          {loading ? 'Loading' : 'Exploring'}
-        </span>
-      </div>
+      {/* Loading spinner — only shown while fetching */}
+      {loading && (
+        <div
+          className="absolute flex items-center gap-2 px-3 h-8 rounded-full"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 5.5rem)',
+            right: '1rem',
+            zIndex: 20,
+            pointerEvents: 'none',
+            background: 'rgba(15,20,30,.75)',
+            backdropFilter: 'blur(6px)',
+            border: '1px solid rgba(255,255,255,.08)',
+          }}
+        >
+          <span className="ms text-primary text-sm animate-spin">autorenew</span>
+          <span className="text-white/70 text-xs font-medium">Loading</span>
+        </div>
+      )}
 
       {/* Pin card */}
       {activePlace && (
