@@ -10,6 +10,14 @@ export function LoginScreen() {
   const [error, setError]           = useState<string | null>(null);
 
   useEffect(() => {
+    // Show any OAuth error returned in the URL (e.g. provider not configured)
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get('error_description') ?? params.get('error');
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const meta = session.user.user_metadata ?? {};
