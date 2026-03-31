@@ -267,7 +267,7 @@ function MapPanner({ target }: { target: { lat: number; lon: number } | null }) 
 export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
-    activeFilter, loading, error, loadPlaces, activePlace, setActivePlace,
+    activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, goBack,
   } = useMap();
 
