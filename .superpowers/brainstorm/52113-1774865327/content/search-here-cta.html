@@ -1,0 +1,97 @@
+<h2>Issue 2 — "Search Here" CTA</h2>
+<p class="subtitle">When the user pans the map, a button appears to search for places in the current view. Where should it live and when does it appear?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;min-height:180px;position:relative;overflow:hidden">
+      <!-- Fake map background -->
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);opacity:0.9"></div>
+      <!-- Header bar -->
+      <div style="position:relative;display:flex;gap:8px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:36px;flex:1;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Filter chips -->
+      <div style="position:relative;display:flex;gap:6px;margin-bottom:14px">
+        <div style="height:28px;width:40px;border-radius:14px;background:rgba(99,102,241,.3);border:1px solid rgba(99,102,241,.4)"></div>
+        <div style="height:28px;width:56px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:28px;width:52px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Search here button — top center below filters -->
+      <div style="position:relative;display:flex;justify-content:center">
+        <div style="background:rgba(15,23,42,.88);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:7px 16px;display:flex;align-items:center;gap:6px;backdrop-filter:blur(6px);box-shadow:0 4px 16px rgba(0,0,0,.4)">
+          <span style="font-size:12px">🔍</span>
+          <span style="color:#fff;font-size:12px;font-weight:600">Search this area</span>
+        </div>
+      </div>
+      <!-- Pins scattered -->
+      <div style="position:absolute;bottom:30px;left:40px;width:12px;height:12px;border-radius:50%;background:#3b82f6;opacity:0.6"></div>
+      <div style="position:absolute;bottom:50px;right:50px;width:12px;height:12px;border-radius:50%;background:#3b82f6;opacity:0.6"></div>
+    </div>
+    <div class="card-body">
+      <h3>A — Top-center, below filter bar</h3>
+      <p>Button floats centered below the filter chips. Appears after map is dragged, disappears after search. Familiar pattern (Google Maps style).</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;min-height:180px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);opacity:0.9"></div>
+      <!-- Header bar -->
+      <div style="position:relative;display:flex;gap:8px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:36px;flex:1;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Filter chips -->
+      <div style="position:relative;display:flex;gap:6px;margin-bottom:14px">
+        <div style="height:28px;width:40px;border-radius:14px;background:rgba(99,102,241,.3);border:1px solid rgba(99,102,241,.4)"></div>
+        <div style="height:28px;width:56px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:28px;width:52px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Search here button — top right -->
+      <div style="position:relative;display:flex;justify-content:flex-end">
+        <div style="background:rgba(99,102,241,.85);border:1px solid rgba(99,102,241,.6);border-radius:20px;padding:7px 14px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 16px rgba(99,102,241,.3)">
+          <span style="font-size:12px">🔍</span>
+          <span style="color:#fff;font-size:12px;font-weight:600">Search here</span>
+        </div>
+      </div>
+      <!-- Pins -->
+      <div style="position:absolute;bottom:30px;left:40px;width:12px;height:12px;border-radius:50%;background:#3b82f6;opacity:0.6"></div>
+      <div style="position:absolute;bottom:50px;right:50px;width:12px;height:12px;border-radius:50%;background:#3b82f6;opacity:0.6"></div>
+    </div>
+    <div class="card-body">
+      <h3>B — Top-right, primary color pill</h3>
+      <p>Indigo pill anchored top-right, consistent with the live indicator position. Stands out boldly as a primary action.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;min-height:180px;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);opacity:0.9"></div>
+      <!-- Header bar -->
+      <div style="position:relative;display:flex;gap:8px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+        <div style="height:36px;flex:1;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Filter chips -->
+      <div style="position:relative;display:flex;gap:6px;margin-bottom:36px">
+        <div style="height:28px;width:40px;border-radius:14px;background:rgba(99,102,241,.3);border:1px solid rgba(99,102,241,.4)"></div>
+        <div style="height:28px;width:56px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"></div>
+      </div>
+      <!-- Search here — center of map, mid-screen -->
+      <div style="position:relative;display:flex;justify-content:center">
+        <div style="background:rgba(15,23,42,.9);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:8px 18px;display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.5)">
+          <span style="width:6px;height:6px;border-radius:50%;background:#70F8E8;display:inline-block"></span>
+          <span style="color:#fff;font-size:12px;font-weight:600">Search this area</span>
+          <span style="color:#64748b;font-size:10px">→</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Center of map (mid-screen)</h3>
+      <p>Appears in the middle of the visible map area. Hard to miss, feels like the map itself is prompting you. Disappears on tap.</p>
+    </div>
+  </div>
+
+</div>

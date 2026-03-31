@@ -3,6 +3,8 @@ import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
 import type { ItineraryRequest } from '../../shared/api';
 import type { SavedItinerary } from '../../shared/types';
+import { supabase } from '../../shared/supabase';
+import { syncSavedItinerary } from '../../shared/userSync';
 
 export function useRoute() {
   const { state, dispatch } = useAppStore();
@@ -89,7 +91,7 @@ export function useRoute() {
     buildItinerary();
   }
 
-  function saveItinerary() {
+  async function saveItinerary() {
     if (!itinerary || !persona) return;
     const saved: SavedItinerary = {
       id: Date.now().toString(),
@@ -99,6 +101,9 @@ export function useRoute() {
       persona,
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
+    // Sync to Supabase if signed in
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) syncSavedItinerary(user.id, saved).catch(console.warn);
   }
 
   function goBack() {

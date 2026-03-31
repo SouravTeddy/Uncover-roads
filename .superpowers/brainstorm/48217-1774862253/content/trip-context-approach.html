@@ -1,0 +1,36 @@
+<h2>Issue 2 — Trip Context Questions</h2>
+<p class="subtitle">Before generating an itinerary, the app needs a few travel details. Where should these questions live?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Bottom sheet, after "Create Itinerary"</h3>
+      <p>When the user taps <strong>Create Itinerary</strong> on the map, a modal sheet slides up asking 3–4 quick questions (date, starting point, days). They answer and hit <strong>Generate</strong>. No new screen in the navigation.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Dedicated "Trip Setup" screen</h3>
+      <p>A new full-screen step is inserted between the map and the itinerary. The user sees a clean form with travel date, starting point type, arrival time, and number of days. Feels like a natural checkpoint.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Inline in the itinerary loading screen</h3>
+      <p>While the itinerary is generating, a small card asks the questions one at a time. Answers refine the result live. Feels minimal but couples form + loading state.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <p class="label">Questions to collect</p>
+  <ul style="margin:.5rem 0 0 1.2rem;color:var(--text-2);font-size:.9rem;line-height:1.9">
+    <li>📅 Travel date</li>
+    <li>🏨 Starting point — hotel, airport, station, or Airbnb</li>
+    <li>🕐 Arrival / flight time <em>(if airport/station)</em></li>
+    <li>📆 Number of days &amp; which day of the trip</li>
+  </ul>
+</div>

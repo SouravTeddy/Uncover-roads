@@ -1,0 +1,61 @@
+import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
+import type { Persona, SavedItinerary } from './types';
+
+// Called on SIGNED_IN — upserts the user's profile from their Google data
+export async function syncProfile(user: User) {
+  const meta = user.user_metadata ?? {};
+  await supabase.from('profiles').upsert({
+    id: user.id,
+    email: user.email,
+    full_name: meta.full_name ?? meta.name ?? null,
+    avatar_url: meta.avatar_url ?? meta.picture ?? null,
+  });
+}
+
+// Called when persona is set (onboarding complete) — upserts so it stays in sync
+export async function syncPersona(userId: string, persona: Persona) {
+  await supabase.from('personas').upsert({
+    user_id: userId,
+    archetype: persona.archetype,
+    archetype_name: persona.archetype_name,
+    answers: {
+      ritual: persona.ritual,
+      sensory: persona.sensory,
+      style: persona.style,
+      attractions: persona.attractions,
+      pace: persona.pace,
+      social: persona.social,
+    },
+  }, { onConflict: 'user_id' });
+}
+
+// Called when user saves an itinerary
+export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
+  await supabase.from('saved_itineraries').upsert({
+    id: item.id,
+    user_id: userId,
+    city: item.city,
+    date: item.date,
+    itinerary: item.itinerary,
+    persona: item.persona,
+  });
+}
+
+// Load saved itineraries from Supabase for the signed-in user
+export async function loadSavedItineraries(userId: string): Promise<SavedItinerary[]> {
+  const { data, error } = await supabase
+    .from('saved_itineraries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(row => ({
+    id: row.id,
+    city: row.city,
+    date: row.date,
+    itinerary: row.itinerary,
+    persona: row.persona,
+  }));
+}

@@ -1,0 +1,39 @@
+<h2>Issue 3 — Smarter Itinerary Display</h2>
+<p class="subtitle">Two approaches to making the itinerary feel intelligent and aware</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Enriched stops + gap cards</h3>
+      <p>Each stop shows the AI's <em>why</em> (e.g. "Chosen for your love of history — best visited before crowds"). Detected gaps in the schedule (no lunch stop between 12–2pm, no dinner stop by 7pm) are surfaced as inline suggestion cards: <strong>"No restaurant in your lunch window — add one?"</strong> with a shortcut back to the map.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Summary header + inline gap nudges</h3>
+      <p>A persona-aware summary banner at the top ("Built for your Curator style — 4 cultural stops, 1 lunch break"). Missing meal windows show a subtle nudge row inline in the timeline. Less verbose per-stop, more overview-focused.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <p class="label">Weather animation — always shown on the itinerary screen</p>
+  <div class="options" style="margin-top:.75rem">
+    <div class="option" data-choice="w1" onclick="toggleSelect(this)">
+      <div class="letter">W1</div>
+      <div class="content">
+        <h3>Animated background gradient</h3>
+        <p>The header area shifts color + motion based on weather — sunny → warm amber pulse, rainy → cool blue falling drops, cloudy → slow grey drift. Subtle and performant.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="w2" onclick="toggleSelect(this)">
+      <div class="letter">W2</div>
+      <div class="content">
+        <h3>Canvas particle animation</h3>
+        <p>Rain drops, snow flakes, or sun rays drawn on a canvas overlay. More visually rich but heavier. Works best when weather is dramatic.</p>
+      </div>
+    </div>
+  </div>
+</div>

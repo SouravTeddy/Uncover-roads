@@ -1,0 +1,83 @@
+<h2>Issue 3 — Trip Details Sheet: Starting Point</h2>
+<p class="subtitle">After tapping Hotel / Airport / Station, how should the name/location input work?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;min-height:220px">
+      <!-- Sheet mockup -->
+      <div style="background:#1e293b;border-radius:16px;padding:14px;border:1px solid rgba(255,255,255,.08)">
+        <!-- Start type chips -->
+        <div style="font-size:10px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Starting from</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="padding:6px 12px;border-radius:20px;background:#f97316;color:#fff;font-size:11px;font-weight:600">✈ Airport</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🏨 Hotel</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🚉 Station</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🏠 Airbnb</div>
+        </div>
+        <!-- Inline search input slides in below chips -->
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(249,115,22,.4);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px">🔍</span>
+          <span style="color:#94a3b8;font-size:12px">Search airport name…</span>
+        </div>
+        <div style="margin-top:6px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06);overflow:hidden">
+          <div style="padding:8px 12px;font-size:11px;color:#e2e8f0;border-bottom:1px solid rgba(255,255,255,.06)">Indira Gandhi Intl Airport</div>
+          <div style="padding:8px 12px;font-size:11px;color:#94a3b8">Chhatrapati Shivaji Airport</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Inline search below chips</h3>
+      <p>Selecting Airport/Hotel/Station reveals a search bar that slides in below the chip row. Autocomplete suggestions appear beneath it. Clean and compact.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;min-height:220px">
+      <div style="background:#1e293b;border-radius:16px;padding:14px;border:1px solid rgba(255,255,255,.08)">
+        <div style="font-size:10px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Starting from</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="padding:6px 12px;border-radius:20px;background:#f97316;color:#fff;font-size:11px;font-weight:600">✈ Airport</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🏨 Hotel</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🚉 Station</div>
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(255,255,255,.06);color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,.1)">🏠 Airbnb</div>
+          <!-- Drop a pin chip -->
+          <div style="padding:6px 12px;border-radius:20px;background:rgba(20,184,166,.15);color:#14b8a6;font-size:11px;border:1px solid rgba(20,184,166,.3)">📍 Drop pin</div>
+        </div>
+        <!-- Selected: Airport with a full row -->
+        <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:12px;padding:10px 12px">
+          <div style="font-size:10px;color:#f97316;margin-bottom:6px">Airport name</div>
+          <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px">🔍</span>
+            <span style="color:#94a3b8;font-size:12px">Indira Gandhi Intl Airport</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — 5th chip "Drop pin" + name field card</h3>
+      <p>"Drop a pin on map" is its own chip alongside the others. When a named type is selected, a labeled card with search input expands. More structured, slightly taller.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <p class="label">When "Drop pin" is tapped — what happens?</p>
+  <div class="options" style="margin-top:.75rem">
+    <div class="option" data-choice="pin1" onclick="toggleSelect(this)">
+      <div class="letter">P1</div>
+      <div class="content">
+        <h3>Sheet collapses, map enters pin-drop mode</h3>
+        <p>Sheet slides down to a thin handle bar. Map is full-screen with a crosshair/target in the center and a "Confirm location" button. User pans until the pin is where they want, taps confirm, sheet comes back up.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="pin2" onclick="toggleSelect(this)">
+      <div class="letter">P2</div>
+      <div class="content">
+        <h3>Sheet stays, tap anywhere on the map behind it</h3>
+        <p>Sheet stays open but map behind it becomes interactive. User taps a spot on the visible map (above the sheet). A pin drops there. Simpler but limited to the visible map strip.</p>
+      </div>
+    </div>
+  </div>
+</div>

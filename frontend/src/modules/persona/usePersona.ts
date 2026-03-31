@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
+import { supabase } from '../../shared/supabase';
+import { syncPersona } from '../../shared/userSync';
 
 export function usePersona() {
   const { state, dispatch } = useAppStore();
@@ -23,6 +25,9 @@ export function usePersona() {
           },
         };
         dispatch({ type: 'SET_PERSONA', persona: personaWithData });
+        // Sync to Supabase if signed in
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) syncPersona(user.id, personaWithData).catch(console.warn);
       }
     } catch (err) {
       setError('Could not build your persona. Please try again.');

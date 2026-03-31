@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
+import { syncProfile, loadSavedItineraries } from './shared/userSync';
 
 import { LoginScreen } from './modules/login';
 import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
@@ -15,11 +16,22 @@ import { ProfileScreen } from './modules/profile';
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
 
-  // Handle Supabase OAuth redirect: on SIGNED_IN, send new users to onboarding
-  // and returning users (who already have a persona) to the destination screen.
+  // Handle Supabase OAuth redirect: sync profile + itineraries, then navigate.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user = session.user;
+
+        // Sync Google profile data to Supabase
+        syncProfile(user).catch(console.warn);
+
+        // Load their saved itineraries from Supabase and merge into app state
+        loadSavedItineraries(user.id).then(items => {
+          if (items.length > 0) {
+            dispatch({ type: 'SET_SAVED_ITINERARIES', items });
+          }
+        }).catch(console.warn);
+
         const hasPersona = Boolean(localStorage.getItem('ur_persona'));
         dispatch({ type: 'GO_TO', screen: hasPersona ? 'destination' : 'ob1' });
       }
