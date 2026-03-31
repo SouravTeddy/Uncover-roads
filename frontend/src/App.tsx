@@ -53,8 +53,8 @@ function ScreenRouter() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only handle fresh sign-ins (not session restores on app open)
-      if (event === 'SIGNED_IN' && session?.user && initialScreen === 'login') {
+      // Handle fresh sign-ins AND initial session from OAuth code exchange
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && initialScreen === 'login') {
         handleSignedIn(session.user);
       }
     });
