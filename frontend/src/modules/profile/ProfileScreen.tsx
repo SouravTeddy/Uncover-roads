@@ -223,6 +223,17 @@ export function ProfileScreen() {
 
         {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
 
+        {/* ── Contact ── */}
+        <div className="mt-8 flex flex-col items-center gap-1">
+          <p className="text-white/20 text-xs text-center">Feedback or business enquiry?</p>
+          <a
+            href="mailto:sourav.bis93@gmail.com"
+            className="text-white/35 text-xs text-center hover:text-white/55 transition-colors"
+          >
+            sourav.bis93@gmail.com · Sourav
+          </a>
+        </div>
+
         {/* ── Save ── */}
         <div className="mt-6 mb-8">
           <button
