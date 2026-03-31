@@ -9,7 +9,7 @@ const NAV_ITEMS: { screen: Screen | 'community'; icon: string; label: string }[]
   { screen: 'profile',     icon: 'person',    label: 'Profile'   },
 ];
 
-const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5']);
+const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'route', 'nav']);
 
 // Screens that should highlight the Explore tab (map is part of the explore flow)
 const EXPLORE_SCREENS = new Set<Screen>(['destination', 'map']);

@@ -42,8 +42,15 @@ export function RouteScreen() {
   } = useRoute();
 
   const { state, dispatch } = useAppStore();
-  const { tripContext, places } = state;
+  const { tripContext, places, persona } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    saveItinerary();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
 
   function handleAddSuggestion(place: Place) {
     dispatch({ type: 'TOGGLE_PLACE', place });
@@ -154,6 +161,7 @@ export function RouteScreen() {
                 allPlaces={places}
                 tripContext={tripContext}
                 summary={itinerary.summary}
+                persona={persona}
                 onRemove={removeStop}
                 onAddMeal={() => {
                   dispatch({ type: 'SET_FILTER', filter: 'restaurant' });
@@ -183,17 +191,20 @@ export function RouteScreen() {
         >
           <button
             onClick={() => setShowRecSheet(true)}
-            className="flex-1 h-12 rounded-2xl bg-surface border border-white/10 text-text-2 font-semibold text-sm flex items-center justify-center gap-2"
+            className="w-11 h-12 rounded-2xl bg-surface border border-white/10 text-text-2 flex items-center justify-center flex-shrink-0"
           >
             <span className="ms fill text-base">edit_location</span>
-            Modify
           </button>
           <button
-            onClick={saveItinerary}
-            className="flex-1 h-12 rounded-2xl bg-surface border border-white/10 text-text-2 font-semibold text-sm flex items-center justify-center gap-2"
+            onClick={handleSave}
+            className={`flex-1 h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              saved
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-surface border border-white/15 text-text-1'
+            }`}
           >
-            <span className="ms fill text-base">bookmark</span>
-            Save
+            <span className="ms fill text-base">{saved ? 'check_circle' : 'bookmark_add'}</span>
+            {saved ? 'Saved!' : 'Save Trip'}
           </button>
           <button
             onClick={goToNav}

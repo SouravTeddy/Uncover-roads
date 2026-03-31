@@ -16,43 +16,78 @@ const LOCATION_TYPES: { value: StartType; label: string; icon: string }[] = [
   { value: 'airport', label: 'Airport', icon: 'flight_land' },
 ];
 
-async function nominatimSearch(
-  query: string,
-  cityGeo: GeoData | null,
-  signal?: AbortSignal,
-): Promise<CityResult[]> {
-  const params = new URLSearchParams({ q: query, format: 'json', limit: '6', 'accept-language': 'en' });
-  if (cityGeo) {
-    const [south, north, west, east] = cityGeo.bbox;
-    params.set('viewbox', `${west},${north},${east},${south}`);
-    params.set('bounded', '1'); // strictly limit to city bounding box
-  }
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en' },
-    signal,
-  });
-  const data = await res.json();
-  // If bounded search returns nothing (e.g. airport outside city bbox), retry without bounded
-  if (Array.isArray(data) && data.length === 0 && cityGeo) {
-    params.set('bounded', '0');
-    const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { 'Accept-Language': 'en' },
-      signal,
-    });
-    const data2 = await res2.json();
-    return (Array.isArray(data2) ? data2 : []).map((r: { display_name: string; lat: string; lon: string }) => ({
-      name: r.display_name.split(',')[0],
-      country: r.display_name,
-      lat: parseFloat(r.lat),
-      lon: parseFloat(r.lon),
-    }));
-  }
-  return (Array.isArray(data) ? data : []).map((r: { display_name: string; lat: string; lon: string }) => ({
+type NominatimRaw = { display_name: string; lat: string; lon: string; class?: string; type?: string };
+
+function toResult(r: NominatimRaw): CityResult {
+  return {
     name: r.display_name.split(',')[0],
     country: r.display_name,
     lat: parseFloat(r.lat),
     lon: parseFloat(r.lon),
-  }));
+  };
+}
+
+// Filter raw Nominatim results to only relevant types for hotel / airport searches
+function filterByPlaceType(results: NominatimRaw[], placeType: 'hotel' | 'airport'): NominatimRaw[] {
+  if (placeType === 'hotel') {
+    const isHotel = (r: NominatimRaw) =>
+      (r.class === 'tourism'  && r.type === 'hotel') ||
+      (r.class === 'building' && r.type === 'hotel') ||
+      /\b(hotel|hostel|inn|resort|lodge|suites|motel|ritz|hilton|marriott|sheraton|hyatt|westin|ibis|novotel|intercontinental|four seasons|mandarin)\b/i.test(r.display_name);
+    const filtered = results.filter(isHotel);
+    return filtered.length > 0 ? filtered : results; // fall back to unfiltered if nothing matches
+  }
+  if (placeType === 'airport') {
+    const isAirport = (r: NominatimRaw) =>
+      r.class === 'aeroway' ||
+      /\b(airport|aerodrome|airfield|international|narita|haneda|heathrow|changi|incheon|cdg|orly|jfk|lax|dxb)\b/i.test(r.display_name);
+    return results.filter(isAirport);
+  }
+  return results;
+}
+
+async function nominatimSearch(
+  query: string,
+  cityGeo: GeoData | null,
+  signal?: AbortSignal,
+  placeType?: 'hotel' | 'airport',
+): Promise<CityResult[]> {
+  // Append type keyword so Nominatim biases results correctly
+  const searchQuery = placeType === 'hotel'
+    ? `${query} hotel`
+    : placeType === 'airport'
+    ? `${query} airport`
+    : query;
+
+  const params = new URLSearchParams({ q: searchQuery, format: 'json', limit: '10', 'accept-language': 'en' });
+
+  // Hotels: search within city bounds. Airports: never bound — they're usually outside city bbox.
+  if (cityGeo && placeType !== 'airport') {
+    const [south, north, west, east] = cityGeo.bbox;
+    params.set('viewbox', `${west},${north},${east},${south}`);
+    params.set('bounded', '1');
+  }
+
+  const doFetch = async (p: URLSearchParams) => {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${p}`, {
+      headers: { 'Accept-Language': 'en' },
+      signal,
+    });
+    return (await res.json()) as NominatimRaw[];
+  };
+
+  let data = await doFetch(params);
+
+  // Retry without bounded if we got nothing (hotel near city edge, etc.)
+  if (Array.isArray(data) && data.length === 0 && cityGeo && placeType !== 'airport') {
+    params.set('bounded', '0');
+    data = await doFetch(params);
+  }
+
+  if (!Array.isArray(data)) return [];
+
+  const filtered = placeType ? filterByPlaceType(data, placeType) : data;
+  return filtered.slice(0, 6).map(toResult);
 }
 
 const GENERATION_LIMIT = 5;
@@ -110,7 +145,7 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
       const { signal } = abortRef.current;
       setSearchLoading(true);
       try {
-        const results = await nominatimSearch(query, cityGeo, signal);
+        const results = await nominatimSearch(query, cityGeo, signal, startType === 'hotel' ? 'hotel' : startType === 'airport' ? 'airport' : undefined);
         if (!signal.aborted) {
           setSearchResults(results);
           setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
@@ -121,7 +156,7 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
         if (!signal.aborted) setSearchLoading(false);
       }
     }, 300);
-  }, [cityGeo]);
+  }, [cityGeo, startType]);
 
   useEffect(() => () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

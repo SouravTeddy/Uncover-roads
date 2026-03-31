@@ -265,7 +265,12 @@ function buildSuggestions(
   const pool = allPlaces.filter(p => {
     if (selectedIds.has(p.id)) return false;
     const t = p.title.toLowerCase();
-    return !Array.from(stopNames).some(n => n.includes(t.slice(0, 8)) || t.includes(n.slice(0, 8)));
+    // Use 12-char prefix to avoid false-positives like "Tokyo Museum" vs "Tokyo Tower"
+    return !Array.from(stopNames).some(n => {
+      if (n === t) return true;
+      const prefix = Math.min(t.length, n.length, 12);
+      return prefix >= 6 && (n.startsWith(t.slice(0, prefix)) || t.startsWith(n.slice(0, prefix)));
+    });
   });
 
   const usedPlaceIds            = new Set<string>();
@@ -339,27 +344,36 @@ function buildSuggestions(
   for (const targetPos of targetPositions) {
     // Find the nearest free position to the target
     let pos = targetPos;
+    let found = false;
     for (let offset = 0; offset <= 2; offset++) {
       if (!takenPositions.has(targetPos + offset) && targetPos + offset < stops.length - 1) {
-        pos = targetPos + offset;
-        break;
+        pos = targetPos + offset; found = true; break;
       }
-      if (!takenPositions.has(targetPos - offset) && targetPos - offset >= 0) {
-        pos = targetPos - offset;
-        break;
+      if (offset > 0 && !takenPositions.has(targetPos - offset) && targetPos - offset >= 0) {
+        pos = targetPos - offset; found = true; break;
       }
     }
-    if (takenPositions.has(pos)) continue;
+    if (!found || takenPositions.has(pos)) continue;
+
+    const prevEntry = timeline.find(t => t.index === pos);
+    const nextEntry = timeline.find(t => t.index === pos + 1);
+    const adjacentIsFood = prevEntry?.isFoodStop || nextEntry?.isFoodStop;
 
     // For enroute (transit > 45 min): prefer persona category, use enroute trigger
-    const entry = timeline.find(t => t.index === pos);
-    const transitMins = parseTransitMins(entry?.stop.transit_to_next);
+    const transitMins = parseTransitMins(prevEntry?.stop.transit_to_next);
+    const nextStop = stops[pos + 1];
+
     if (transitMins >= 45) {
-      const nextStop = stops[pos + 1];
-      const p = pickPersona();
+      // Avoid suggesting food when adjacent stop is already food
+      const p = adjacentIsFood
+        ? pick(p => p.category !== 'restaurant' && p.category !== 'cafe')
+        : pickPersona();
       if (p) addSlot({ place: p, insertAfterIndex: pos, triggerType: 'enroute', detail: nextStop?.place });
     } else {
-      const p = pickPersona();
+      // Avoid food suggestion adjacent to food stop (unless epicurean)
+      const p = (adjacentIsFood && a !== 'epicurean')
+        ? pick(p => p.category !== 'restaurant' && p.category !== 'cafe')
+        : pickPersona();
       if (p) addSlot({ place: p, insertAfterIndex: pos, triggerType: 'persona' });
     }
   }
@@ -369,8 +383,12 @@ function buildSuggestions(
   if (endMins < EARLY_FINISH) {
     const endLabel = parseTimeLabel(endMins);
     const extraCount = endMins < 15 * 60 ? 2 : 1;
+    const lastEntry = timeline[timeline.length - 1];
     for (let i = 0; i < extraCount; i++) {
-      const p = pickPersona();
+      // Don't suggest food right after the last stop if it's already food
+      const p = (lastEntry?.isFoodStop && a !== 'epicurean')
+        ? pick(p => p.category !== 'restaurant' && p.category !== 'cafe')
+        : pickPersona();
       if (p) addSlot({ place: p, insertAfterIndex: -1, triggerType: 'early_finish', detail: endLabel });
     }
   }
@@ -423,14 +441,8 @@ function TripSummaryBar({
           <span className="text-text-2 font-semibold" style={{ fontSize: 12 }}>{stopCount} stops</span>
         </div>
       </div>
-      {(summary?.estimated_cost || summary?.best_transport || uniqueTags.length > 0) && (
+      {(summary?.best_transport || uniqueTags.length > 0) && (
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          {summary?.estimated_cost && (
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,.1)' }}>
-              <span className="ms fill text-green-400" style={{ fontSize: 11 }}>payments</span>
-              <span className="text-green-400 font-medium" style={{ fontSize: 10 }}>{summary.estimated_cost}</span>
-            </div>
-          )}
           {summary?.best_transport && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: 'rgba(56,189,248,.1)' }}>
               <span className="ms fill text-sky-400" style={{ fontSize: 11 }}>directions_transit</span>
@@ -581,11 +593,44 @@ export function ItineraryView({
   stops, selectedPlaces, allPlaces, tripContext, summary, persona, startTime,
   onRemove, onAddMeal, onAddSuggestion,
 }: Props) {
+  // Use AI-suggested start time if provided, otherwise compute from arrival
+  const aiStartTime = summary?.suggested_start_time;
   const resolvedStart = tripContext.arrivalTime ?? startTime ?? '9:00';
   const [startH, startM] = resolvedStart.split(':').map(Number);
   const arrivalMins = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
-  const restBuffer  = (tripContext.startType === 'hotel' || tripContext.startType === 'airport') ? 60 : 0;
-  const startMins   = arrivalMins + restBuffer;
+
+  // Smart rest buffer: for overnight arrivals (midnight–5:59 AM), rest until 8 AM
+  // For early morning arrivals (6–8:59 AM), add 60 min. Otherwise standard buffer.
+  const isOvernightArrival = arrivalMins < 6 * 60;
+  const isEarlyMorning     = arrivalMins >= 6 * 60 && arrivalMins < 9 * 60;
+  const hasBase = tripContext.startType === 'hotel' || tripContext.startType === 'airport';
+
+  let startMins: number;
+  if (aiStartTime) {
+    // Parse "9:00 AM" / "14:00" / "9:00" formats
+    const m24 = aiStartTime.match(/^(\d{1,2}):(\d{2})$/);
+    const m12 = aiStartTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (m12) {
+      let h = parseInt(m12[1]); const min = parseInt(m12[2]); const ampm = m12[3].toUpperCase();
+      if (ampm === 'PM' && h !== 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+      startMins = h * 60 + min;
+    } else if (m24) {
+      startMins = parseInt(m24[1]) * 60 + parseInt(m24[2]);
+    } else {
+      startMins = 9 * 60; // fallback
+    }
+  } else if (isOvernightArrival && hasBase) {
+    startMins = 8 * 60; // rest until 8 AM
+  } else if (isEarlyMorning && hasBase) {
+    startMins = arrivalMins + 60;
+  } else if (hasBase) {
+    startMins = arrivalMins + 30;
+  } else {
+    startMins = arrivalMins;
+  }
+
+  const restBuffer = startMins - arrivalMins; // kept for display purposes
 
   const timeline = buildTimeline(stops, startMins, selectedPlaces);
   const mealGaps = detectMealGaps(timeline);
@@ -644,7 +689,7 @@ export function ItineraryView({
       <div className="flex gap-3 px-4 py-4 border-b border-white/6">
         <div className="flex flex-col items-center" style={{ width: 52 }}>
           <span className="font-semibold leading-tight text-center" style={{ fontSize: 11, color: 'rgb(45,212,191)' }}>
-            {tripContext.arrivalTime ?? 'Start'}
+            {parseTimeLabel(startMins)}
           </span>
           <div className="w-3 h-3 rounded-full mt-1 mb-1 flex-shrink-0" style={{ background: 'rgb(45,212,191)' }} />
           <div className="w-px flex-1 bg-white/10 min-h-[24px]" />
@@ -655,11 +700,15 @@ export function ItineraryView({
             <span className="text-text-3 font-bold uppercase tracking-wider" style={{ fontSize: 10 }}>{startSubtext}</span>
           </div>
           <div className="font-heading font-bold text-text-1 text-sm">{locationLabel}</div>
-          {restBuffer > 0 && (
+          {tripContext.arrivalTime && restBuffer > 0 && (
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="ms fill" style={{ fontSize: 11, color: 'rgba(45,212,191,.55)' }}>bedtime</span>
+              <span className="ms fill" style={{ fontSize: 11, color: 'rgba(45,212,191,.55)' }}>
+                {isOvernightArrival ? 'bedtime' : 'timelapse'}
+              </span>
               <span style={{ fontSize: 10, color: 'rgba(45,212,191,.55)' }}>
-                Rest & settle in · starts at {parseTimeLabel(startMins)}
+                {isOvernightArrival
+                  ? `Arrived ${tripContext.arrivalTime} · resting until ${parseTimeLabel(startMins)}`
+                  : `Arrived ${tripContext.arrivalTime} · settling in`}
               </span>
             </div>
           )}

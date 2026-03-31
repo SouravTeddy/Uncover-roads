@@ -121,6 +121,7 @@ export interface ItinerarySummary {
   best_transport?: string;
   pro_tip?: string;
   conflict_notes?: string;
+  suggested_start_time?: string;
 }
 
 export interface Itinerary {
