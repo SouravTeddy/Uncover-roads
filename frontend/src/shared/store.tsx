@@ -56,7 +56,7 @@ export interface AppState {
 function getInitialScreen(): Screen {
   try {
     const stored = localStorage.getItem('ur_persona');
-    if (stored) return 'destination';
+    if (stored) return 'welcome';
   } catch {
     // ignore
   }

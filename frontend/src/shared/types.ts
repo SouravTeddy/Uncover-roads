@@ -1,6 +1,7 @@
 // ── Screen navigation ─────────────────────────────────────────
 export type Screen =
   | 'login'
+  | 'welcome'
   | 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5'
   | 'persona'
   | 'destination'
