@@ -53,8 +53,25 @@ export function makeIcon(category: string): L.DivIcon {
   });
 }
 
-/** Selected pin — orange, user added it to itinerary */
+/** Selected pin — white, user added it to itinerary */
 export function makeSelectedIcon(category: string): L.DivIcon {
+  const icon = CATEGORY_ICONS[category] ?? 'location_on';
+  return L.divIcon({
+    className: '',
+    html: pinHtml(
+      '#ffffff',
+      icon,
+      '#0f141e',
+      34,
+      '0 0 0 3px rgba(255,255,255,.18), 0 3px 10px rgba(0,0,0,.55)',
+    ),
+    iconSize:   [34, 34],
+    iconAnchor: [17, 34],
+  });
+}
+
+/** Recommended pin (Our Picks) — orange, AI-surfaced */
+export function makeRecommendedIcon(category: string): L.DivIcon {
   const icon = CATEGORY_ICONS[category] ?? 'location_on';
   return L.divIcon({
     className: '',
@@ -64,23 +81,6 @@ export function makeSelectedIcon(category: string): L.DivIcon {
       '#fff',
       34,
       '0 0 0 3px rgba(249,115,22,.25), 0 3px 10px rgba(0,0,0,.55)',
-    ),
-    iconSize:   [34, 34],
-    iconAnchor: [17, 34],
-  });
-}
-
-/** Recommended pin (Our Picks) — primary blue, AI-surfaced */
-export function makeRecommendedIcon(category: string): L.DivIcon {
-  const icon = CATEGORY_ICONS[category] ?? 'location_on';
-  return L.divIcon({
-    className: '',
-    html: pinHtml(
-      '#3b82f6',
-      icon,
-      '#fff',
-      34,
-      '0 0 0 3px rgba(59,130,246,.25), 0 3px 10px rgba(0,0,0,.55)',
     ),
     iconSize:   [34, 34],
     iconAnchor: [17, 34],
