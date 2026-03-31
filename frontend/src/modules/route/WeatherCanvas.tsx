@@ -1,5 +1,6 @@
 interface Props {
   condition: string;
+  height?: number;
 }
 
 type WeatherType = 'sunny' | 'rain' | 'cloud' | 'snow' | 'thunder' | 'none';
@@ -17,7 +18,7 @@ function classify(condition: string): WeatherType {
 const DROP_COUNT = 14;
 const SNOW_COUNT = 20;
 
-export function WeatherCanvas({ condition }: Props) {
+export function WeatherCanvas({ condition, height = 220 }: Props) {
   const type = classify(condition);
 
   if (type === 'none') {
@@ -25,7 +26,7 @@ export function WeatherCanvas({ condition }: Props) {
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none"
         style={{
-          height: 140,
+          height,
           background: 'linear-gradient(to bottom, rgba(59,130,246,.08) 0%, transparent 100%)',
         }}
         aria-hidden
@@ -37,7 +38,7 @@ export function WeatherCanvas({ condition }: Props) {
     return (
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        style={{ height }}
         aria-hidden
       >
         {[0, 1, 2].map(i => (
@@ -68,7 +69,7 @@ export function WeatherCanvas({ condition }: Props) {
     return (
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        style={{ height }}
         aria-hidden
       >
         <div
@@ -111,7 +112,7 @@ export function WeatherCanvas({ condition }: Props) {
     return (
       <div
         className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        style={{ height }}
         aria-hidden
       >
         <div
@@ -141,7 +142,7 @@ export function WeatherCanvas({ condition }: Props) {
   return (
     <div
       className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-      style={{ height: 140 }}
+      style={{ height }}
       aria-hidden
     >
       {[0, 1].map(i => (

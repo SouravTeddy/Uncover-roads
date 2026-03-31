@@ -1,12 +1,19 @@
-import type { ItineraryStop, Place } from '../../shared/types';
+import type { ItineraryStop, ItinerarySummary, Place, TripContext } from '../../shared/types';
+import { CATEGORY_ICONS, CATEGORY_LABELS } from '../map/types';
 
 interface Props {
   stops: ItineraryStop[];
   selectedPlaces: Place[];
+  allPlaces: Place[];
+  tripContext: TripContext;
+  summary?: ItinerarySummary;
   startTime?: string;
   onRemove: (idx: number) => void;
   onAddMeal: () => void;
+  onAddSuggestion: (place: Place) => void;
 }
+
+// ── Helpers ────────────────────────────────────────────────────
 
 function tagStyle(tag: string): { bg: string; text: string; label: string } {
   switch (tag) {
@@ -96,6 +103,26 @@ function detectMealGaps(timeline: StopWithTime[]): MealGap[] {
   return gaps;
 }
 
+// ── Starting point meta ────────────────────────────────────────
+
+const START_ICONS: Record<string, string> = {
+  hotel:   'meeting_room',
+  airport: 'flight_land',
+  pin:     'place',
+  station: 'train',
+  airbnb:  'home',
+};
+
+const START_SUBTEXTS: Record<string, string> = {
+  hotel:   'Check-in',
+  airport: 'Landing',
+  pin:     'Starting here',
+  station: 'Arriving at station',
+  airbnb:  'Check-in',
+};
+
+// ── Sub-components ─────────────────────────────────────────────
+
 function MealGapCard({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-white/6 bg-orange/5">
@@ -116,23 +143,139 @@ function MealGapCard({ label, onAdd }: { label: string; onAdd: () => void }) {
   );
 }
 
-export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAddMeal }: Props) {
-  const [startH, startM] = (startTime ?? '9:00').split(':').map(Number);
-  const startMins = (startH || 9) * 60 + (startM || 0);
+function SuggestionCard({
+  place,
+  isSelected,
+  onAdd,
+}: {
+  place: Place;
+  isSelected: boolean;
+  onAdd: () => void;
+}) {
+  const icon = CATEGORY_ICONS[place.category] ?? 'location_on';
+  const label = CATEGORY_LABELS[place.category] ?? 'Place';
+  return (
+    <div
+      className="mx-4 my-2 flex items-center gap-3 px-3 py-3 rounded-xl border border-primary/15"
+      style={{ background: 'rgba(59,130,246,.06)' }}
+    >
+      <div
+        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: 'rgba(59,130,246,.12)' }}
+      >
+        <span className="ms fill text-primary text-base">{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-text-1 text-xs font-semibold truncate">{place.title}</p>
+        <p className="text-text-3 text-[10px]">Nearby · {label}</p>
+      </div>
+      <button
+        onClick={onAdd}
+        className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          isSelected
+            ? 'bg-primary/15 text-primary border border-primary/20'
+            : 'bg-primary text-white'
+        }`}
+      >
+        {isSelected ? 'Added' : '+ Add'}
+      </button>
+    </div>
+  );
+}
+
+// ── Main export ────────────────────────────────────────────────
+
+export function ItineraryView({
+  stops,
+  selectedPlaces,
+  allPlaces,
+  tripContext,
+  summary,
+  startTime,
+  onRemove,
+  onAddMeal,
+  onAddSuggestion,
+}: Props) {
+  // Resolve start time: use tripContext.arrivalTime if available, else startTime param, else 9:00
+  const resolvedStartTime = tripContext.arrivalTime ?? startTime ?? '9:00';
+  const [startH, startM] = resolvedStartTime.split(':').map(Number);
+  const startMins = (isNaN(startH) ? 9 : startH) * 60 + (isNaN(startM) ? 0 : startM);
 
   const timeline = buildTimeline(stops, startMins, selectedPlaces);
   const mealGaps = detectMealGaps(timeline);
 
+  // Build suggestion list: unselected places, not already in stops by name
+  const selectedIds = new Set(selectedPlaces.map(p => p.id));
+  const stopNames = new Set(stops.map(s => (s.place ?? '').toLowerCase()));
+  const suggestions = allPlaces
+    .filter(p => {
+      if (selectedIds.has(p.id)) return false;
+      const t = p.title.toLowerCase();
+      return !Array.from(stopNames).some(n => n.includes(t.slice(0, 8)) || t.includes(n.slice(0, 8)));
+    })
+    .slice(0, 4);
+
+  // Decide which stops get a suggestion after them
+  const suggestionSlots = new Map<number, Place>();
+  if (suggestions.length > 0 && stops.length > 1) suggestionSlots.set(0, suggestions[0]);
+  if (suggestions.length > 1 && stops.length > 3) suggestionSlots.set(2, suggestions[1]);
+  if (suggestions.length > 2 && stops.length > 5) suggestionSlots.set(4, suggestions[2]);
+
+  const startIcon = START_ICONS[tripContext.startType] ?? 'place';
+  const startSubtext = START_SUBTEXTS[tripContext.startType] ?? 'Starting here';
+  const locationLabel = tripContext.locationName || startSubtext;
+
+  // pro_tip card
+  const proTip = summary?.pro_tip;
+
   return (
     <div
       className="rounded-2xl overflow-hidden border border-white/8 bg-surface/50"
-      style={{ margin: '0 4px' }}
+      style={{ margin: '0 4px 8px' }}
     >
+      {/* ── Starting point ── */}
+      <div className="flex gap-3 px-4 py-4 border-b border-white/6">
+        <div className="flex flex-col items-center" style={{ width: 52 }}>
+          {tripContext.arrivalTime ? (
+            <span className="text-teal-400 text-xs font-semibold">{tripContext.arrivalTime}</span>
+          ) : (
+            <span className="text-text-3 text-xs font-semibold">Start</span>
+          )}
+          <div
+            className="w-3 h-3 rounded-full mt-1 mb-1 flex-shrink-0"
+            style={{ background: 'rgb(45,212,191)' }}
+          />
+          <div className="w-px flex-1 bg-white/10 min-h-[24px]" />
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="ms fill text-teal-400" style={{ fontSize: 13 }}>{startIcon}</span>
+            <span className="text-text-3 font-bold uppercase tracking-wider" style={{ fontSize: 10 }}>
+              {startSubtext}
+            </span>
+          </div>
+          <div className="font-heading font-bold text-text-1 text-sm">{locationLabel}</div>
+        </div>
+      </div>
+
+      {/* ── Pro tip card (if any) ── */}
+      {proTip && (
+        <div
+          className="flex items-start gap-2.5 px-4 py-3 border-b border-white/6"
+          style={{ background: 'rgba(251,191,36,.06)' }}
+        >
+          <span className="ms fill text-amber-400 text-sm mt-0.5 flex-shrink-0">lightbulb</span>
+          <p className="text-text-2 text-xs leading-relaxed">{proTip}</p>
+        </div>
+      )}
+
+      {/* ── Itinerary stops ── */}
       {timeline.map(({ stop, index, startMins: tMins }) => {
         const timeLabel = parseTimeLabel(tMins);
         const isLast = index === stops.length - 1;
         const transit = stop.transit_to_next;
         const gapAfter = mealGaps.filter(g => g.insertAfterIndex === index);
+        const suggestionAfter = suggestionSlots.get(index);
 
         return (
           <div key={index}>
@@ -175,9 +318,20 @@ export function ItineraryView({ stops, selectedPlaces, startTime, onRemove, onAd
                 )}
               </div>
             </div>
+
+            {/* Meal gap cards */}
             {gapAfter.map(gap => (
               <MealGapCard key={gap.label} label={gap.label} onAdd={onAddMeal} />
             ))}
+
+            {/* Between-stop suggestion card */}
+            {!isLast && suggestionAfter && (
+              <SuggestionCard
+                place={suggestionAfter}
+                isSelected={selectedIds.has(suggestionAfter.id)}
+                onAdd={() => onAddSuggestion(suggestionAfter)}
+              />
+            )}
           </div>
         );
       })}
