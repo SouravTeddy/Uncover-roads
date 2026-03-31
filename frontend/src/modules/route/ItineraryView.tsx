@@ -175,10 +175,30 @@ interface StopWithTime {
 
 interface MealGap { label: string; insertAfterIndex: number; timeRange: string }
 
+function parseStopTimeMins(t?: string): number | null {
+  if (!t) return null;
+  const m12 = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (m12) {
+    let h = parseInt(m12[1]); const mn = parseInt(m12[2]);
+    if (m12[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m12[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + mn;
+  }
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return parseInt(m24[1]) * 60 + parseInt(m24[2]);
+  return null;
+}
+
 function buildTimeline(stops: ItineraryStop[], startMins: number, selectedPlaces: Place[]): StopWithTime[] {
   let running = startMins;
   return stops.map((stop, i) => {
-    if (i > 0) {
+    if (i === 0) {
+      // Use AI-assigned time for first stop — it already accounts for travel
+      // from the start point (hotel/airport) to the first venue.
+      const aiMins = parseStopTimeMins(stop.time);
+      if (aiMins !== null && aiMins > startMins) running = aiMins;
+      else running = startMins + 20; // default 20-min travel from source
+    } else {
       const prev = stops[i - 1];
       running += Math.max(30, parseDurationMins(prev.duration));
       running += parseTransitMins(prev.transit_to_next);
