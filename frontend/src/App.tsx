@@ -152,13 +152,19 @@ function DesktopGate() {
           </p>
         </div>
 
-        {/* QR hint */}
+        {/* QR code */}
         <div
-          className="flex items-center gap-2.5 px-4 py-3 rounded-2xl border border-white/8 w-full justify-center"
+          className="flex flex-col items-center gap-3 px-6 py-5 rounded-2xl border border-white/8 w-full"
           style={{ background: 'rgba(255,255,255,.03)' }}
         >
-          <span className="ms fill text-white/30 text-xl">qr_code</span>
-          <p className="text-white/35 text-xs">Scan the QR code on your phone or visit this URL directly</p>
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://uncover-roads.vercel.app/&bgcolor=151b26&color=f97316&margin=2&qzone=1"
+            alt="Scan to open on mobile"
+            width={160}
+            height={160}
+            className="rounded-xl"
+          />
+          <p className="text-white/30 text-xs">Scan to open on your phone</p>
         </div>
       </div>
     </div>
