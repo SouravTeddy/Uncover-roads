@@ -299,10 +299,12 @@ export function MapScreen() {
 
   const [showTripSheet, setShowTripSheet] = useState(false);
 
-  // Search Here
+  // Search Here — bbox stored in ref so handleSearchHere always reads the latest value
+  // without needing to be recreated (eliminates stale-closure silent-fail on click)
   const [showSearchHere, setShowSearchHere]       = useState(false);
-  const [searchBbox, setSearchBbox]               = useState<BBox | null>(null);
+  const searchBboxRef                             = useRef<BBox | null>(null);
   const [searchHereLoading, setSearchHereLoading] = useState(false);
+  const [searchHereEmpty, setSearchHereEmpty]     = useState(false);
   const resetSearchHereRef = useRef<() => void>(() => {});
 
   // Pin drop
@@ -325,25 +327,35 @@ export function MapScreen() {
 
   const handleMapMove = useCallback(
     (show: boolean, bbox: BBox | null, reset: () => void) => {
-      setShowSearchHere(show); setSearchBbox(bbox); resetSearchHereRef.current = reset;
+      setShowSearchHere(show);
+      searchBboxRef.current = bbox;          // always up-to-date, no re-render needed
+      resetSearchHereRef.current = reset;
     }, [],
   );
 
   const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
-    const bbox = overrideBbox ?? searchBbox;
+    const bbox = overrideBbox ?? searchBboxRef.current;
     if (!bbox || !city || !cityGeo) return;
     setSearchHereLoading(true);
+    setSearchHereEmpty(false);
     try {
       const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], bbox);
       const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
-      // Initial load: replace. Subsequent search here: merge.
+      if (withIds.length === 0 && !overrideBbox) {
+        setSearchHereEmpty(true);
+        setTimeout(() => setSearchHereEmpty(false), 2500);
+      }
       dispatch(overrideBbox
         ? { type: 'SET_PLACES', places: withIds }
         : { type: 'MERGE_PLACES', places: withIds },
       );
-    } catch (e) { console.error('[MapScreen] searchHere failed:', e); }
+    } catch (e) {
+      console.error('[MapScreen] searchHere failed:', e);
+      setSearchHereEmpty(true);
+      setTimeout(() => setSearchHereEmpty(false), 2500);
+    }
     finally { setSearchHereLoading(false); if (!overrideBbox) resetSearchHereRef.current(); }
-  }, [searchBbox, city, cityGeo, dispatch]);
+  }, [city, cityGeo, dispatch]);
 
   const handlePinDrop = useCallback((latlng: { lat: number; lon: number }) => {
     setPinDropResult(latlng); setAwaitingPinDrop(false); setShowTripSheet(true);
