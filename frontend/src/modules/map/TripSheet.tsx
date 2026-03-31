@@ -187,6 +187,7 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
       ? 'Custom pin'
       : (selectedLocation?.name ?? (locationQuery.trim() || null));
 
+    dispatch({ type: 'SET_ITINERARY', itinerary: null });
     dispatch({
       type: 'SET_TRIP_CONTEXT',
       ctx: {
