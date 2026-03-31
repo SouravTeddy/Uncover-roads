@@ -11,10 +11,8 @@ interface Props {
 }
 
 const LOCATION_TYPES: { value: StartType; label: string; icon: string }[] = [
-  { value: 'hotel',   label: 'Hotel',    icon: 'hotel' },
-  { value: 'airbnb',  label: 'Rental',   icon: 'home' },
-  { value: 'airport', label: 'Airport',  icon: 'flight_land' },
-  { value: 'station', label: 'Station',  icon: 'train' },
+  { value: 'hotel',   label: 'Hotel',   icon: 'hotel' },
+  { value: 'airport', label: 'Airport', icon: 'flight_land' },
 ];
 
 async function nominatimSearch(
@@ -64,7 +62,7 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
   const abortRef    = useRef<AbortController | null>(null);
   const resultsRef  = useRef<HTMLDivElement | null>(null);
 
-  const needsArrival = startType === 'airport' || startType === 'station';
+  const needsArrival = startType === 'airport';
   const canGenerate  = !!date;
 
   // Smart hints
@@ -212,10 +210,10 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
 
             {/* ── Starting point ── */}
             <Field icon="near_me" label="Where do you start from?">
-              {/* Type chips */}
-              <div className="grid grid-cols-4 gap-2 mb-3">
+              {/* Type chips: Hotel | Airport | Drop a Pin */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 {LOCATION_TYPES.map(t => {
-                  const active = startType === t.value;
+                  const active = startType === t.value && !pinDropResult;
                   return (
                     <button
                       key={t.value}
@@ -231,99 +229,95 @@ export function TripSheet({ onClose, onRequestPinDrop, pinDropResult, cityGeo }:
                         border: active ? '1px solid rgba(59,130,246,.4)' : '1px solid rgba(255,255,255,.07)',
                       }}
                     >
-                      <span
-                        className="ms fill"
-                        style={{ fontSize: 18, color: active ? '#3b82f6' : 'rgba(255,255,255,.35)' }}
-                      >
+                      <span className="ms fill" style={{ fontSize: 18, color: active ? '#3b82f6' : 'rgba(255,255,255,.35)' }}>
                         {t.icon}
                       </span>
-                      <span
-                        className="font-medium"
-                        style={{ fontSize: 10, color: active ? '#93c5fd' : 'rgba(255,255,255,.4)' }}
-                      >
+                      <span className="font-medium" style={{ fontSize: 10, color: active ? '#93c5fd' : 'rgba(255,255,255,.4)' }}>
                         {t.label}
                       </span>
                     </button>
                   );
                 })}
-              </div>
-
-              {/* Location search */}
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 ms text-white/30" style={{ fontSize: 16 }}>
-                  search
-                </span>
-                <input
-                  type="text"
-                  value={locationQuery}
-                  onChange={e => handleLocationInput(e.target.value)}
-                  placeholder={`Name of your ${startType}…`}
-                  className="w-full h-11 rounded-2xl text-white text-sm pl-9 pr-9"
-                  style={{
-                    background: 'rgba(255,255,255,.05)',
-                    border: '1px solid rgba(255,255,255,.09)',
-                  }}
-                />
-                {searchLoading && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-base animate-spin">autorenew</span>
-                )}
-                {selectedLocation && !searchLoading && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-primary text-base">check_circle</span>
-                )}
-              </div>
-
-              {searchResults.length > 0 && (
-                <div
-                  ref={resultsRef}
-                  className="mt-1.5 rounded-2xl overflow-hidden"
-                  style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)' }}
-                >
-                  {searchResults.map((r, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSelectLocation(r)}
-                      className="w-full text-left px-4 py-3 transition-colors active:bg-white/5"
-                      style={{ borderBottom: i < searchResults.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}
-                    >
-                      <div className="text-white text-sm font-medium truncate">{r.name}</div>
-                      <div className="text-white/35 text-xs truncate mt-0.5">{r.country}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Drop pin */}
-              {pinDropResult ? (
-                <div
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-2xl mt-2"
-                  style={{ background: 'rgba(20,184,166,.1)', border: '1px solid rgba(20,184,166,.25)' }}
-                >
-                  <span className="ms fill text-teal-400" style={{ fontSize: 16 }}>location_on</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-teal-300 text-sm font-medium">Pin dropped </span>
-                    <span className="text-white/35 text-xs">
-                      {pinDropResult.lat.toFixed(4)}, {pinDropResult.lon.toFixed(4)}
-                    </span>
-                  </div>
-                  <button onClick={handleDropPin} className="text-teal-400 text-xs font-semibold underline-offset-2 underline shrink-0">
-                    Move
-                  </button>
-                </div>
-              ) : (
+                {/* Drop a pin chip */}
                 <button
                   onClick={handleDropPin}
-                  className="w-full flex items-center gap-2 px-3 h-10 rounded-2xl text-white/40 text-sm mt-2 transition-colors active:bg-white/5"
-                  style={{ border: '1px dashed rgba(255,255,255,.12)' }}
+                  className="flex flex-col items-center gap-1 py-2.5 rounded-2xl transition-all"
+                  style={{
+                    background: pinDropResult ? 'rgba(20,184,166,.15)' : 'rgba(255,255,255,.04)',
+                    border: pinDropResult ? '1px solid rgba(20,184,166,.35)' : '1px solid rgba(255,255,255,.07)',
+                  }}
                 >
-                  <span className="ms" style={{ fontSize: 16 }}>my_location</span>
-                  Or drop a pin on the map
+                  <span className="ms fill" style={{ fontSize: 18, color: pinDropResult ? '#2dd4bf' : 'rgba(255,255,255,.35)' }}>
+                    my_location
+                  </span>
+                  <span className="font-medium" style={{ fontSize: 10, color: pinDropResult ? '#5eead4' : 'rgba(255,255,255,.4)' }}>
+                    {pinDropResult ? 'Pin set' : 'Drop pin'}
+                  </span>
                 </button>
+              </div>
+
+              {/* Location search — only when not using drop pin */}
+              {!pinDropResult && (
+                <>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 ms text-white/30" style={{ fontSize: 16 }}>
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={locationQuery}
+                      onChange={e => handleLocationInput(e.target.value)}
+                      placeholder={`Name of your ${startType}…`}
+                      className="w-full h-11 rounded-2xl text-white text-sm pl-9 pr-9"
+                      style={{
+                        background: 'rgba(255,255,255,.05)',
+                        border: '1px solid rgba(255,255,255,.09)',
+                      }}
+                    />
+                    {searchLoading && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-base animate-spin">autorenew</span>
+                    )}
+                    {selectedLocation && !searchLoading && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-primary text-base">check_circle</span>
+                    )}
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <div
+                      ref={resultsRef}
+                      className="mt-1.5 rounded-2xl overflow-hidden"
+                      style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)' }}
+                    >
+                      {searchResults.map((r, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSelectLocation(r)}
+                          className="w-full text-left px-4 py-3 transition-colors active:bg-white/5"
+                          style={{ borderBottom: i < searchResults.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}
+                        >
+                          <div className="text-white text-sm font-medium truncate">{r.name}</div>
+                          <div className="text-white/35 text-xs truncate mt-0.5">{r.country}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Pin coordinates confirmation */}
+              {pinDropResult && (
+                <div className="flex items-center gap-2 mt-2 px-1">
+                  <span className="ms fill text-teal-400" style={{ fontSize: 13 }}>check_circle</span>
+                  <span className="text-teal-300/70 text-xs">
+                    {pinDropResult.lat.toFixed(4)}, {pinDropResult.lon.toFixed(4)}
+                  </span>
+                </div>
               )}
             </Field>
 
             {/* ── Arrival time (airport / station) ── */}
             {needsArrival && (
-              <Field icon="flight_land" label={startType === 'airport' ? 'What time do you land?' : 'What time do you arrive?'}>
+              <Field icon="flight_land" label="What time do you land?">
                 <input
                   type="time"
                   value={arrivalTime}

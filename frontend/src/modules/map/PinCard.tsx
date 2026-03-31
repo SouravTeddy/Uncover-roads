@@ -97,14 +97,6 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
           <div className="font-heading font-bold text-text-1 leading-snug line-clamp-2" style={{ fontSize: 14 }}>
             {place.title}
           </div>
-          {place.reason && (
-            <div className="flex items-start gap-1 mt-0.5">
-              <span className="ms text-primary flex-shrink-0" style={{ fontSize: 11 }}>auto_awesome</span>
-              <span className="text-primary/90 leading-snug line-clamp-2" style={{ fontSize: 10 }}>
-                {place.reason}
-              </span>
-            </div>
-          )}
         </div>
       </div>
 
