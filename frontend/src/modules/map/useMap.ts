@@ -28,23 +28,13 @@ export function useMap() {
 
   const { city, places, selectedPlaces, activeFilter, cityGeo, persona } = state;
 
+  // Recommended places load once we have places to filter against
   useEffect(() => {
-    if (city && places.length === 0) {
-      loadPlaces();
-    }
-    if (city && persona && recommendedPlaces.length === 0) {
+    if (city && persona && places.length > 0 && recommendedPlaces.length === 0) {
       loadRecommended();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
-
-  // Re-run recommended when places load (clientSideFallback needs places populated)
-  useEffect(() => {
-    if (places.length > 0 && recommendedPlaces.length === 0 && persona) {
-      loadRecommended();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [places.length]);
+  }, [city, places.length]);
 
   async function loadPlaces() {
     setLoading(true);
