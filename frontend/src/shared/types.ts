@@ -7,6 +7,7 @@ export type Screen =
   | 'destination'
   | 'map'
   | 'route'
+  | 'trips'
   | 'nav'
   | 'profile';
 

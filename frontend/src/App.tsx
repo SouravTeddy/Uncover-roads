@@ -13,6 +13,7 @@ import { MapScreen } from './modules/map';
 import { RouteScreen } from './modules/route';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
+import { TripsScreen } from './modules/trips';
 
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
@@ -79,6 +80,7 @@ function ScreenRouter() {
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}
       {currentScreen === 'route'       && <RouteScreen />}
+      {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
 
