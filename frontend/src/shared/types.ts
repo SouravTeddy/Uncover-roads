@@ -107,6 +107,7 @@ export interface TripContext {
 // ── Itinerary ─────────────────────────────────────────────────
 export interface ItineraryStop {
   place: string;
+  day?: number;
   lat?: number;
   lon?: number;
   tip?: string;
