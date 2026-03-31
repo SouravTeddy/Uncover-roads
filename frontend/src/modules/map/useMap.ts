@@ -112,10 +112,10 @@ export function useMap() {
       .map(p => ({ ...p, reason: `Recommended for your travel style` }));
   }
 
-  // "Our Picks" tab shows ALL places (not just recommended subset) so map stays rich.
-  // Recommended pins are visually distinct via blue icon — filter just communicates intent.
   const filteredPlaces: Place[] =
-    activeFilter === 'all' || activeFilter === 'recommended'
+    activeFilter === 'recommended'
+      ? recommendedPlaces
+      : activeFilter === 'all'
       ? places
       : places.filter(p => p.category === (activeFilter as string));
 
