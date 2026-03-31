@@ -61,7 +61,7 @@ export function ProfileScreen() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 pb-36">
+      <div className="flex-1 overflow-y-auto px-5 pb-52">
 
         {/* ── Account section ── */}
         <div className="mt-5 mb-1">
