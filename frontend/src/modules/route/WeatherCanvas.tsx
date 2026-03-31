@@ -1,5 +1,9 @@
+import type React from 'react';
+
 interface Props {
   condition: string;
+  /** Pass a pixel number for a fixed-height strip, or omit for full-screen overlay */
+  height?: number;
 }
 
 type WeatherType = 'sunny' | 'rain' | 'cloud' | 'snow' | 'thunder' | 'none';
@@ -14,19 +18,24 @@ function classify(condition: string): WeatherType {
   return 'none';
 }
 
-const DROP_COUNT = 14;
-const SNOW_COUNT = 20;
+const DROP_COUNT = 18;
+const SNOW_COUNT = 24;
 
-export function WeatherCanvas({ condition }: Props) {
+export function WeatherCanvas({ condition, height }: Props) {
   const type = classify(condition);
+
+  // When no height given, canvas stretches to fill parent (use absolute inset-0)
+  const sizeStyle: React.CSSProperties = height != null
+    ? { height }
+    : { top: 0, left: 0, right: 0, bottom: 0 };
 
   if (type === 'none') {
     return (
       <div
-        className="absolute top-0 left-0 right-0 pointer-events-none"
+        className="absolute pointer-events-none"
         style={{
-          height: 140,
-          background: 'linear-gradient(to bottom, rgba(59,130,246,.08) 0%, transparent 100%)',
+          ...sizeStyle,
+          background: 'linear-gradient(to bottom, rgba(59,130,246,.06) 0%, transparent 50%)',
         }}
         aria-hidden
       />
@@ -36,8 +45,8 @@ export function WeatherCanvas({ condition }: Props) {
   if (type === 'sunny') {
     return (
       <div
-        className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        className="absolute pointer-events-none overflow-hidden"
+        style={sizeStyle}
         aria-hidden
       >
         {[0, 1, 2].map(i => (
@@ -45,12 +54,12 @@ export function WeatherCanvas({ condition }: Props) {
             key={i}
             className="absolute rounded-full"
             style={{
-              width: 200 + i * 60,
-              height: 200 + i * 60,
-              top: -80 - i * 30,
+              width: 220 + i * 70,
+              height: 220 + i * 70,
+              top: -90 - i * 30,
               left: '50%',
               transform: 'translateX(-50%)',
-              background: 'radial-gradient(circle, rgba(251,191,36,.18) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(251,191,36,.16) 0%, transparent 70%)',
               animation: `weather-pulse ${4 + i}s ease-in-out infinite`,
               animationDelay: `${i * 1.2}s`,
             }}
@@ -58,7 +67,7 @@ export function WeatherCanvas({ condition }: Props) {
         ))}
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, rgba(251,191,36,.07) 0%, transparent 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, rgba(251,191,36,.06) 0%, transparent 60%)' }}
         />
       </div>
     );
@@ -67,23 +76,23 @@ export function WeatherCanvas({ condition }: Props) {
   if (type === 'rain' || type === 'thunder') {
     return (
       <div
-        className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        className="absolute pointer-events-none overflow-hidden"
+        style={sizeStyle}
         aria-hidden
       >
         <div
           className="absolute inset-0"
           style={{
             background: type === 'thunder'
-              ? 'linear-gradient(to bottom, rgba(99,102,241,.12) 0%, transparent 100%)'
-              : 'linear-gradient(to bottom, rgba(59,130,246,.1) 0%, transparent 100%)',
+              ? 'linear-gradient(to bottom, rgba(99,102,241,.1) 0%, transparent 70%)'
+              : 'linear-gradient(to bottom, rgba(59,130,246,.08) 0%, transparent 70%)',
           }}
         />
         {type === 'thunder' && (
           <div
             className="absolute inset-0"
             style={{
-              background: 'rgba(255,255,255,.15)',
+              background: 'rgba(255,255,255,.12)',
               animation: 'weather-flicker 3s ease-in-out infinite',
             }}
           />
@@ -91,15 +100,17 @@ export function WeatherCanvas({ condition }: Props) {
         {Array.from({ length: DROP_COUNT }, (_, i) => (
           <div
             key={i}
-            className="absolute rounded-full"
+            className="absolute"
             style={{
               width: 1.5,
-              height: 10 + Math.random() * 8,
-              left: `${(i / DROP_COUNT) * 100 + Math.random() * 5}%`,
-              top: 0,
-              background: 'rgba(147,197,253,.55)',
-              animation: `weather-fall ${1.2 + Math.random() * 0.8}s linear infinite`,
-              animationDelay: `${(i / DROP_COUNT) * 1.5}s`,
+              height: 12 + (i % 5) * 4,
+              left: `${(i / DROP_COUNT) * 105}%`,
+              top: `-${(i % 3) * 10}%`,
+              background: 'rgba(147,197,253,.45)',
+              borderRadius: 2,
+              animation: `weather-fall ${1.1 + (i % 4) * 0.25}s linear infinite`,
+              animationDelay: `${(i / DROP_COUNT) * 2}s`,
+              transform: 'rotate(-12deg)',
             }}
           />
         ))}
@@ -110,26 +121,26 @@ export function WeatherCanvas({ condition }: Props) {
   if (type === 'snow') {
     return (
       <div
-        className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-        style={{ height: 140 }}
+        className="absolute pointer-events-none overflow-hidden"
+        style={sizeStyle}
         aria-hidden
       >
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, rgba(226,232,240,.08) 0%, transparent 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, rgba(226,232,240,.07) 0%, transparent 70%)' }}
         />
         {Array.from({ length: SNOW_COUNT }, (_, i) => (
           <div
             key={i}
             className="absolute rounded-full"
             style={{
-              width: 4 + Math.random() * 3,
-              height: 4 + Math.random() * 3,
-              left: `${Math.random() * 100}%`,
+              width: 3 + (i % 4),
+              height: 3 + (i % 4),
+              left: `${(i / SNOW_COUNT) * 100}%`,
               top: 0,
-              background: 'rgba(255,255,255,.65)',
-              animation: `weather-fall ${2.5 + Math.random() * 1.5}s linear infinite`,
-              animationDelay: `${Math.random() * 3}s`,
+              background: 'rgba(255,255,255,.6)',
+              animation: `weather-fall ${2.5 + (i % 5) * 0.4}s linear infinite`,
+              animationDelay: `${(i / SNOW_COUNT) * 3}s`,
             }}
           />
         ))}
@@ -140,8 +151,8 @@ export function WeatherCanvas({ condition }: Props) {
   // cloud / overcast / fog
   return (
     <div
-      className="absolute top-0 left-0 right-0 pointer-events-none overflow-hidden"
-      style={{ height: 140 }}
+      className="absolute pointer-events-none overflow-hidden"
+      style={sizeStyle}
       aria-hidden
     >
       {[0, 1].map(i => (
@@ -152,7 +163,7 @@ export function WeatherCanvas({ condition }: Props) {
             width: '120%',
             height: '100%',
             left: '-10%',
-            background: `linear-gradient(to bottom, rgba(148,163,184,${0.07 + i * 0.04}) 0%, transparent 100%)`,
+            background: `linear-gradient(to bottom, rgba(148,163,184,${0.06 + i * 0.04}) 0%, transparent 70%)`,
             animation: `weather-drift ${8 + i * 3}s ease-in-out infinite alternate`,
             animationDelay: `${i * 2}s`,
           }}

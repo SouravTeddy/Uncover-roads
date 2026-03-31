@@ -4,7 +4,24 @@ import { ItineraryView } from './ItineraryView';
 import { RecSheet } from './RecSheet';
 import { WeatherCanvas } from './WeatherCanvas';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary } from '../../shared/types';
+import type { SavedItinerary, Place } from '../../shared/types';
+
+const WEATHER_ICONS: Record<string, string> = {
+  sunny: 'wb_sunny', clear: 'wb_sunny',
+  rain: 'water_drop', drizzle: 'water_drop',
+  snow: 'ac_unit',
+  cloud: 'cloud', overcast: 'cloud',
+  fog: 'foggy', mist: 'foggy',
+  thunder: 'thunderstorm', storm: 'thunderstorm',
+};
+
+function getWeatherIcon(condition: string): string {
+  const c = condition.toLowerCase();
+  for (const [key, icon] of Object.entries(WEATHER_ICONS)) {
+    if (c.includes(key)) return icon;
+  }
+  return 'wb_sunny';
+}
 
 export function RouteScreen() {
   const {
@@ -24,56 +41,76 @@ export function RouteScreen() {
     goToNav,
   } = useRoute();
 
-  const { dispatch } = useAppStore();
+  const { state, dispatch } = useAppStore();
+  const { tripContext, places } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
+
+  function handleAddSuggestion(place: Place) {
+    dispatch({ type: 'TOGGLE_PLACE', place });
+  }
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-      {weather && <WeatherCanvas condition={weather.condition} />}
 
-      {/* Weather badge */}
+      {/* ── Full-screen weather canvas (behind everything) ── */}
       {weather && (
-        <div
-          className="absolute flex items-center gap-2 px-3 py-2 rounded-full bg-surface/80 border border-white/8"
-          style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 4.5rem)',
-            right: '1rem',
-            backdropFilter: 'blur(8px)',
-            zIndex: 5,
-          }}
-        >
-          <span className="ms fill text-primary text-sm">wb_sunny</span>
-          <span className="text-text-2 text-xs">{weather.condition}</span>
-          <span className="text-text-1 text-xs font-bold">{weather.temp}°</span>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+          <WeatherCanvas condition={weather.condition} />
         </div>
       )}
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div
-        className="flex items-center justify-between px-4 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
+        className="flex-shrink-0 flex items-center justify-between px-4 border-b border-white/6"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+          paddingBottom: '1rem',
+          position: 'relative',
+          zIndex: 1,
+        }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={goBack}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-none"
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,.07)' }}
           >
             <span className="ms text-text-2 text-base">arrow_back</span>
           </button>
-          <h1 className="font-heading font-bold text-text-1 text-lg">
-            {city ? `${city} — ` : ''}Itinerary
+          <h1 className="font-heading font-bold text-text-1 text-base truncate">
+            {city ? `Your ${city} Journey` : 'Itinerary'}
           </h1>
         </div>
-        <button
-          className="w-10 h-10 rounded-full flex items-center justify-center"
-          onClick={() => {}}
-        >
-          <span className="ms text-text-2 text-base">share</span>
-        </button>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Weather badge */}
+          {weather && (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-white/10"
+              style={{ background: 'rgba(255,255,255,.07)' }}
+            >
+              <span className="ms fill text-sky-300 text-sm">{getWeatherIcon(weather.condition)}</span>
+              <span className="text-text-2 text-xs">{weather.condition}</span>
+              <span className="text-text-1 text-xs font-bold">{weather.temp}°</span>
+            </div>
+          )}
+          <button
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,.07)' }}
+            onClick={() => {}}
+          >
+            <span className="ms text-text-2 text-sm">share</span>
+          </button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 px-4 py-3 flex-shrink-0">
+      {/* ── Summary chips (transport / tip / conflict) ── */}
+      {tab === 'active' && itinerary?.summary && !loading && (
+        <SummaryChips summary={itinerary.summary} />
+      )}
+
+      {/* ── Tabs ── */}
+      <div className="flex gap-1 px-4 py-3 flex-shrink-0" style={{ position: 'relative', zIndex: 1 }}>
         {(['active', 'saved'] as const).map(t => (
           <button
             key={t}
@@ -87,8 +124,8 @@ export function RouteScreen() {
         ))}
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-4 pb-28">
+      {/* ── Body ── */}
+      <div className="flex-1 overflow-y-auto px-4 pb-28" style={{ position: 'relative', zIndex: 1 }}>
         {tab === 'active' && (
           <>
             {loading && (
@@ -114,29 +151,35 @@ export function RouteScreen() {
               <ItineraryView
                 stops={itinerary.itinerary}
                 selectedPlaces={selectedPlaces}
+                allPlaces={places}
+                tripContext={tripContext}
+                summary={itinerary.summary}
                 onRemove={removeStop}
                 onAddMeal={() => {
                   dispatch({ type: 'SET_FILTER', filter: 'restaurant' });
                   dispatch({ type: 'GO_TO', screen: 'map' });
                 }}
+                onAddSuggestion={handleAddSuggestion}
               />
             )}
           </>
         )}
 
         {tab === 'saved' && (
-          <SavedList
-            items={savedItineraries}
-            onOpen={() => {}}
-          />
+          <SavedList items={savedItineraries} onOpen={() => {}} />
         )}
       </div>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       {tab === 'active' && itinerary && !loading && (
         <div
-          className="absolute inset-x-0 bottom-0 bg-bg/95 border-t border-white/8 px-4 py-3 flex gap-3"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
+          className="absolute inset-x-0 bottom-0 border-t border-white/8 px-4 py-3 flex gap-3"
+          style={{
+            background: 'rgba(10,14,20,.95)',
+            backdropFilter: 'blur(12px)',
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)',
+            zIndex: 2,
+          }}
         >
           <button
             onClick={() => setShowRecSheet(true)}
@@ -167,13 +210,51 @@ export function RouteScreen() {
   );
 }
 
-function SavedList({
-  items,
-  onOpen,
-}: {
-  items: SavedItinerary[];
-  onOpen: (id: string) => void;
-}) {
+// ── Summary chips ──────────────────────────────────────────────
+
+interface SummaryProps {
+  summary: { best_transport?: string; pro_tip?: string; conflict_notes?: string };
+}
+
+function SummaryChips({ summary }: SummaryProps) {
+  const chips: { icon: string; text: string; color: string; bg: string }[] = [];
+
+  if (summary.best_transport) {
+    chips.push({ icon: 'directions_transit', text: summary.best_transport,        color: 'text-sky-400',    bg: 'rgba(14,165,233,.12)' });
+  }
+  if (summary.pro_tip) {
+    const tip = summary.pro_tip.length > 52 ? summary.pro_tip.slice(0, 52) + '…' : summary.pro_tip;
+    chips.push({ icon: 'lightbulb',          text: tip,                             color: 'text-amber-400',  bg: 'rgba(251,191,36,.12)' });
+  }
+  if (summary.conflict_notes) {
+    const note = summary.conflict_notes.length > 52 ? summary.conflict_notes.slice(0, 52) + '…' : summary.conflict_notes;
+    chips.push({ icon: 'info',               text: note,                            color: 'text-orange-400', bg: 'rgba(251,146,60,.12)' });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div
+      className="flex gap-2 px-4 pb-2 flex-shrink-0 overflow-x-auto"
+      style={{ scrollbarWidth: 'none', position: 'relative', zIndex: 1 }}
+    >
+      {chips.map((chip, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full flex-shrink-0 border border-white/8"
+          style={{ background: chip.bg }}
+        >
+          <span className={`ms fill ${chip.color} text-sm`}>{chip.icon}</span>
+          <span className="text-text-2 text-xs">{chip.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Saved list ─────────────────────────────────────────────────
+
+function SavedList({ items, onOpen }: { items: SavedItinerary[]; onOpen: (id: string) => void }) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center py-12 gap-3">
@@ -197,8 +278,7 @@ function SavedList({
         >
           <div className="font-heading font-bold text-text-1 text-sm">{item.city}</div>
           <div className="text-text-3 text-xs mt-1">
-            {new Date(item.date).toLocaleDateString()} ·{' '}
-            {item.itinerary.itinerary.length} stops
+            {new Date(item.date).toLocaleDateString()} · {item.itinerary.itinerary.length} stops
           </div>
         </button>
       ))}
