@@ -1,63 +1,88 @@
 import L from 'leaflet';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  restaurant: '#ef4444',
-  cafe: '#f97316',
-  park: '#22c55e',
-  museum: '#8b5cf6',
-  historic: '#a16207',
-  tourism: '#0ea5e9',
-  place: '#64748b',
+const CATEGORY_ICONS: Record<string, string> = {
+  restaurant: 'restaurant',
+  cafe:       'local_cafe',
+  park:       'park',
+  museum:     'museum',
+  historic:   'account_balance',
+  tourism:    'photo_camera',
+  place:      'location_on',
 };
 
+function pinHtml(
+  bg: string,
+  iconName: string,
+  iconColor: string,
+  size: number,
+  shadow: string,
+  border = 'none',
+): string {
+  const fontSize = Math.round(size * 0.46);
+  return `<div style="
+    width:${size}px;height:${size}px;
+    border-radius:50% 50% 50% 0;
+    background:${bg};
+    border:${border};
+    transform:rotate(-45deg);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:${shadow};
+  "><span class="ms fill" style="
+    transform:rotate(45deg);
+    font-size:${fontSize}px;
+    color:${iconColor};
+    line-height:1;
+  ">${iconName}</span></div>`;
+}
+
+/** Default pin — neutral dark, no category color */
 export function makeIcon(category: string): L.DivIcon {
-  const color = CATEGORY_COLORS[category] ?? '#64748b';
+  const icon = CATEGORY_ICONS[category] ?? 'location_on';
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:28px;height:28px;border-radius:50% 50% 50% 0;
-      transform:rotate(-45deg);background:${color};
-      border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,.35);
-    "></div>`,
-    iconSize: [28, 28],
+    html: pinHtml(
+      '#1c2230',
+      icon,
+      'rgba(255,255,255,.45)',
+      28,
+      '0 1.5px 5px rgba(0,0,0,.45)',
+      '1.5px solid rgba(255,255,255,.10)',
+    ),
+    iconSize:   [28, 28],
     iconAnchor: [14, 28],
   });
 }
 
+/** Selected pin — orange, user added it to itinerary */
 export function makeSelectedIcon(category: string): L.DivIcon {
-  const color = CATEGORY_COLORS[category] ?? '#64748b';
+  const icon = CATEGORY_ICONS[category] ?? 'location_on';
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:32px;height:32px;border-radius:50% 50% 50% 0;
-      transform:rotate(-45deg);background:${color};
-      border:3px solid #ffffff;
-      box-shadow:0 0 0 3px ${color},0 0 12px 2px ${color}80,0 3px 8px rgba(0,0,0,.5);
-    "></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
+    html: pinHtml(
+      '#f97316',
+      icon,
+      '#fff',
+      34,
+      '0 0 0 3px rgba(249,115,22,.25), 0 3px 10px rgba(0,0,0,.55)',
+    ),
+    iconSize:   [34, 34],
+    iconAnchor: [17, 34],
   });
 }
 
-export function makeRecommendedIcon(_category: string): L.DivIcon {
+/** Recommended pin (Our Picks) — primary blue, AI-surfaced */
+export function makeRecommendedIcon(category: string): L.DivIcon {
+  const icon = CATEGORY_ICONS[category] ?? 'location_on';
   return L.divIcon({
     className: '',
-    html: `<div style="position:relative;width:36px;height:36px;">
-      <div style="
-        width:36px;height:36px;border-radius:50% 50% 50% 0;
-        transform:rotate(-45deg);
-        background:linear-gradient(135deg,#f59e0b,#d97706);
-        border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4);
-      "></div>
-      <div style="
-        position:absolute;top:-4px;right:-4px;
-        width:16px;height:16px;border-radius:50%;
-        background:#fbbf24;border:1.5px solid white;
-        display:flex;align-items:center;justify-content:center;
-        font-size:9px;line-height:1;
-      ">⭐</div>
-    </div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 36],
+    html: pinHtml(
+      '#3b82f6',
+      icon,
+      '#fff',
+      34,
+      '0 0 0 3px rgba(59,130,246,.25), 0 3px 10px rgba(0,0,0,.55)',
+    ),
+    iconSize:   [34, 34],
+    iconAnchor: [17, 34],
   });
 }
