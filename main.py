@@ -138,16 +138,21 @@ def map_data(
             bbox_str = f"{b[0]},{b[2]},{b[1]},{b[3]}"
 
         query = f"""
-[out:json][timeout:15];
+[out:json][timeout:25];
 (
   node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
+  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
   node["amenity"~"restaurant|cafe|bar|food_court"]["name"]({bbox_str});
   node["amenity"="museum"]["name"]({bbox_str});
+  way["amenity"="museum"]["name"]({bbox_str});
   node["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
+  way["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
   node["historic"]["name"]({bbox_str});
+  way["historic"]["name"]({bbox_str});
   node["amenity"="marketplace"]["name"]({bbox_str});
+  node["amenity"="cafe"]["name"]({bbox_str});
 );
-out center 40;
+out center 150;
 """
         data = fetch_overpass(query)
 
@@ -225,10 +230,10 @@ out center 40;
             p for p in places
             if p["title"].lower() not in EXCLUDE
             and len(p["title"]) > 3
-            and dist(p) < 0.18
+            and dist(p) < 0.22
         ]
 
-        places = sorted(places, key=dist)[:30]
+        places = sorted(places, key=dist)[:80]
 
         print(f"MAP DATA: {len(places)} filtered places for {city}")
         return places

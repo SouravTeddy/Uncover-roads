@@ -107,15 +107,9 @@ export function useMap() {
       return places.map(p => ({ ...p, reason: 'Curated for your travel style' }));
     }
 
-    const matched = places
+    return places
       .filter(p => targetCategories.has(p.category))
       .map(p => ({ ...p, reason: `Recommended for your travel style` }));
-
-    // Always return at least a third of all places so the map isn't sparse
-    if (matched.length < Math.ceil(places.length / 3)) {
-      return places.map(p => ({ ...p, reason: 'Curated for your travel style' }));
-    }
-    return matched;
   }
 
   // "Our Picks" tab shows ALL places (not just recommended subset) so map stays rich.
