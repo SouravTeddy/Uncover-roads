@@ -345,7 +345,10 @@ export function MapScreen() {
 
   const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
     const bbox = overrideBbox ?? searchBboxRef.current;
-    if (!bbox || !city || !cityGeo) return;
+    if (!bbox || !city || !cityGeo) {
+      if (overrideBbox) setInitialLoading(false);
+      return;
+    }
     setSearchHereLoading(true);
     setSearchHereEmpty(false);
     try {
