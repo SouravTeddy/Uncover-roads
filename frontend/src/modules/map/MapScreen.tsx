@@ -11,6 +11,7 @@ import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
+import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { mapData } from '../../shared/api';
 import type { BBox } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
@@ -305,6 +306,7 @@ export function MapScreen() {
     setClusterGroup({ places: group, lat, lon });
   }, []);
 
+  const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
 
   // Search Here — bbox stored in ref so handleSearchHere always reads the latest value
@@ -362,7 +364,11 @@ export function MapScreen() {
       setSearchHereEmpty(true);
       setTimeout(() => setSearchHereEmpty(false), 2500);
     }
-    finally { setSearchHereLoading(false); if (!overrideBbox) resetSearchHereRef.current(); }
+    finally {
+      setSearchHereLoading(false);
+      if (!overrideBbox) resetSearchHereRef.current();
+      else setInitialLoading(false);
+    }
   }, [city, cityGeo, dispatch]);
 
   const handlePinDrop = useCallback((latlng: { lat: number; lon: number }) => {
@@ -451,6 +457,9 @@ export function MapScreen() {
         <MapPanner target={panTarget} />
         <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />
       </MapContainer>
+
+      {/* Initial load overlay */}
+      <MapLoadingOverlay visible={initialLoading} />
 
       {/* Search Here */}
       {showSearchHere && <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} empty={searchHereEmpty} />}
