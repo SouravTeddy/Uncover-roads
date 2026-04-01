@@ -35,15 +35,19 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
   // Cycle messages while visible
   useEffect(() => {
     if (!visible) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       setMsgOpacity(0);
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         idxRef.current = (idxRef.current + 1) % messagesRef.current.length;
         setMsgText(messagesRef.current[idxRef.current]);
         setMsgOpacity(1);
       }, 400);
     }, 1800);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeoutId);
+    };
   }, [visible]);
 
   if (!visible) return null;
@@ -68,6 +72,7 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
       >
         {/* Spinner */}
         <div
+          className="animate-spin"
           style={{
             width: 38,
             height: 38,
@@ -75,7 +80,6 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
             border: '3px solid rgba(59,130,246,0.18)',
             borderTopColor: '#3b82f6',
             margin: '0 auto 14px',
-            animation: 'map-overlay-spin 1s linear infinite',
           }}
         />
         {/* Cycling message */}
@@ -104,12 +108,6 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
           hang tight
         </p>
       </div>
-
-      <style>{`
-        @keyframes map-overlay-spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
