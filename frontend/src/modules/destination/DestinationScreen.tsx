@@ -38,7 +38,31 @@ export function DestinationScreen() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude: lat, longitude: lon } = pos.coords;
-      dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { locationLat: lat, locationLon: lon } });
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+          { headers: { 'Accept-Language': 'en' } },
+        );
+        const data = await res.json();
+        const addr = data.address ?? {};
+        const cityName: string =
+          addr.city ?? addr.town ?? addr.village ?? addr.county ?? data.display_name.split(',')[0];
+        // Nominatim returns bbox as [south, north, west, east] strings
+        const bb: [number, number, number, number] = data.boundingbox
+          ? [
+              parseFloat(data.boundingbox[0]),
+              parseFloat(data.boundingbox[1]),
+              parseFloat(data.boundingbox[2]),
+              parseFloat(data.boundingbox[3]),
+            ]
+          : [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05];
+        dispatch({ type: 'SET_CITY', city: cityName });
+        dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: bb } });
+      } catch {
+        // Reverse geocode failed — use raw coords with a default bbox
+        dispatch({ type: 'SET_CITY', city: 'My Location' });
+        dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
+      }
       dispatch({ type: 'GO_TO', screen: 'map' });
     });
   }
