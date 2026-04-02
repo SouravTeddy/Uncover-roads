@@ -708,7 +708,6 @@ export function MapScreen() {
       {showTripSheet && (
         <TripSheet
           onClose={() => setShowTripSheet(false)}
-          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
           onClearPin={() => setPinDropResult(null)}
           onGPSLocation={handleGPSLocation}
           pinDropResult={pinDropResult}
