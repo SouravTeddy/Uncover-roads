@@ -169,6 +169,20 @@ export function WalkthroughScreen() {
         </div>
       </div>
 
+      {/* Disclaimer */}
+      <div className="flex-shrink-0 px-6 pb-2 text-center">
+        <p className="text-white/20 text-[11px] leading-relaxed">
+          MVP beta — expect bugs.{' '}
+          <a
+            href="mailto:sourav.bis93@gmail.com"
+            className="underline underline-offset-2 hover:text-white/40 transition-colors"
+          >
+            sourav.bis93@gmail.com
+          </a>
+          {' '}for feedback.
+        </p>
+      </div>
+
       {/* Bottom controls */}
       <div
         className="flex-shrink-0 px-6 pb-10"
