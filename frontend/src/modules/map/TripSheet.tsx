@@ -5,7 +5,6 @@ import type { CityResult, GeoData, StartType } from '../../shared/types';
 
 interface Props {
   onClose: () => void;
-  onRequestPinDrop: () => void;
   onClearPin: () => void;
   onGPSLocation: (latlng: { lat: number; lon: number }) => void;
   pinDropResult: { lat: number; lon: number } | null;
@@ -93,7 +92,7 @@ async function nominatimSearch(
 
 const GENERATION_LIMIT = 5;
 
-export function TripSheet({ onClose, onRequestPinDrop, onClearPin, onGPSLocation, pinDropResult, cityGeo }: Props) {
+export function TripSheet({ onClose, onClearPin, onGPSLocation, pinDropResult, cityGeo }: Props) {
   const { state, dispatch } = useAppStore();
   const ctx = state.tripContext;
   const placesCount = state.selectedPlaces.length;
@@ -200,10 +199,6 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, onGPSLocation
     setSearchResults([]);
   }
 
-  function handleDropPin() {
-    onRequestPinDrop();
-    onClose();
-  }
 
   function handleGenerate() {
     // Enforce generation limit for non-admin users
