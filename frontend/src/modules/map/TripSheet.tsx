@@ -7,6 +7,7 @@ interface Props {
   onClose: () => void;
   onRequestPinDrop: () => void;
   onClearPin: () => void;
+  onGPSLocation: (latlng: { lat: number; lon: number }) => void;
   pinDropResult: { lat: number; lon: number } | null;
   cityGeo: GeoData | null;
 }
@@ -92,7 +93,7 @@ async function nominatimSearch(
 
 const GENERATION_LIMIT = 5;
 
-export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult, cityGeo }: Props) {
+export function TripSheet({ onClose, onRequestPinDrop, onClearPin, onGPSLocation, pinDropResult, cityGeo }: Props) {
   const { state, dispatch } = useAppStore();
   const ctx = state.tripContext;
   const placesCount = state.selectedPlaces.length;
@@ -115,6 +116,36 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef    = useRef<AbortController | null>(null);
   const resultsRef  = useRef<HTMLDivElement | null>(null);
+
+  // GPS state
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError]     = useState<string | null>(null);
+
+  function handleUseMyLocation() {
+    if (!navigator.geolocation) {
+      setGpsError('GPS not supported on this device');
+      setTimeout(() => setGpsError(null), 3000);
+      return;
+    }
+    setGpsLoading(true);
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setGpsLoading(false);
+        onGPSLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      err => {
+        setGpsLoading(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsError('Location permission denied');
+        } else {
+          setGpsError('Could not get location');
+        }
+        setTimeout(() => setGpsError(null), 3000);
+      },
+      { timeout: 10000, maximumAge: 30000 },
+    );
+  }
 
   // needsArrival only applies when hotel/airport chip is active (not drop pin)
   const needsArrival = !pinDropResult && (startType === 'airport' || startType === 'hotel');
@@ -307,23 +338,35 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
                     </button>
                   );
                 })}
-                {/* Drop a pin chip */}
+                {/* My location chip */}
                 <button
-                  onClick={handleDropPin}
+                  onClick={handleUseMyLocation}
+                  disabled={gpsLoading}
                   className="flex flex-col items-center gap-1 py-2.5 rounded-2xl transition-all"
                   style={{
                     background: pinDropResult ? 'rgba(20,184,166,.15)' : 'rgba(255,255,255,.04)',
                     border: pinDropResult ? '1px solid rgba(20,184,166,.35)' : '1px solid rgba(255,255,255,.07)',
                   }}
                 >
-                  <span className="ms fill" style={{ fontSize: 18, color: pinDropResult ? '#2dd4bf' : 'rgba(255,255,255,.35)' }}>
-                    my_location
+                  <span
+                    className={`ms fill${gpsLoading ? ' animate-spin' : ''}`}
+                    style={{ fontSize: 18, color: pinDropResult ? '#2dd4bf' : gpsLoading ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.35)' }}
+                  >
+                    {gpsLoading ? 'autorenew' : 'my_location'}
                   </span>
                   <span className="font-medium" style={{ fontSize: 10, color: pinDropResult ? '#5eead4' : 'rgba(255,255,255,.4)' }}>
-                    {pinDropResult ? 'Pin set' : 'Drop pin'}
+                    {pinDropResult ? 'Located' : gpsLoading ? 'Locating…' : 'My location'}
                   </span>
                 </button>
               </div>
+
+              {/* GPS error */}
+              {gpsError && (
+                <div className="flex items-center gap-2 mt-2 px-1">
+                  <span className="ms fill text-red-400" style={{ fontSize: 13 }}>location_off</span>
+                  <span className="text-red-400/80 text-xs">{gpsError}</span>
+                </div>
+              )}
 
               {/* Location search — only when not using drop pin */}
               {!pinDropResult && (
