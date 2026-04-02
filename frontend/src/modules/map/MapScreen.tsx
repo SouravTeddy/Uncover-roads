@@ -378,25 +378,6 @@ export function MapScreen() {
     setPinDropResult(latlng); setAwaitingPinDrop(false); setShowTripSheet(true);
   }, []);
 
-  const handleGPSLocation = useCallback(async (latlng: { lat: number; lon: number }) => {
-    setPinDropResult(latlng);
-    setPanTarget(latlng);
-    // Build a ~1.5 km bbox around the GPS point and fetch places
-    const delta = 0.015;
-    const bbox: BBox = [latlng.lat - delta, latlng.lat + delta, latlng.lon - delta, latlng.lon + delta];
-    setSearchHereLoading(true);
-    try {
-      const gpsCity = city || 'location';
-      const data = await mapData(gpsCity, latlng.lat, latlng.lon, [], bbox);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
-      dispatch({ type: 'MERGE_PLACES', places: withIds });
-    } catch (e) {
-      console.error('[MapScreen] GPS location fetch failed:', e);
-    } finally {
-      setSearchHereLoading(false);
-    }
-  }, [city, dispatch]);
-
   function handleSearchInput(val: string) {
     setSearchQuery(val);
     setSearchOpen(true);
@@ -708,8 +689,8 @@ export function MapScreen() {
       {showTripSheet && (
         <TripSheet
           onClose={() => setShowTripSheet(false)}
+          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
           onClearPin={() => setPinDropResult(null)}
-          onGPSLocation={handleGPSLocation}
           pinDropResult={pinDropResult}
           cityGeo={cityGeo}
         />
