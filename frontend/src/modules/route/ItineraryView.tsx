@@ -659,10 +659,11 @@ const START_SUBTEXTS: Record<string, string> = { hotel:'Check-in', airport:'Land
 // ── Sub-components ─────────────────────────────────────────────
 
 function TripSummaryBar({
-  startMins, endMins, stopCount, summary, allTags,
+  startMins, endMins, stopCount, summary, allTags, energyLevel,
 }: {
   startMins: number; endMins: number; stopCount: number;
   summary?: ItinerarySummary; allTags: string[];
+  energyLevel: 'light' | 'moderate' | 'heavy';
 }) {
   const durationH = Math.round((endMins - startMins) / 60 * 10) / 10;
   const durationLabel = durationH >= 1 ? `${durationH}h` : `${Math.round(endMins - startMins)}m`;
@@ -682,6 +683,20 @@ function TripSummaryBar({
           <span className="ms fill text-text-3" style={{ fontSize: 13 }}>location_on</span>
           <span className="text-text-2 font-semibold" style={{ fontSize: 12 }}>{stopCount} stops</span>
         </div>
+        {/* Energy level */}
+        {(() => {
+          const cfg = energyLevel === 'heavy'
+            ? { icon: 'local_fire_department', label: 'Packed day', color: '#f87171', bg: 'rgba(248,113,113,.12)' }
+            : energyLevel === 'moderate'
+            ? { icon: 'directions_walk', label: 'Moderate pace', color: '#fbbf24', bg: 'rgba(251,191,36,.12)' }
+            : { icon: 'self_improvement', label: 'Relaxed day', color: '#34d399', bg: 'rgba(52,211,153,.12)' };
+          return (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: cfg.bg }}>
+              <span className="ms fill" style={{ fontSize: 11, color: cfg.color }}>{cfg.icon}</span>
+              <span className="font-medium" style={{ fontSize: 10, color: cfg.color }}>{cfg.label}</span>
+            </div>
+          );
+        })()}
       </div>
       {(summary?.best_transport || uniqueTags.length > 0) && (
         <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -906,6 +921,13 @@ export function ItineraryView({
   const endMins  = lastStop ? lastStop.endMins : startMins + 60;
   const allTags  = stops.flatMap(s => s.tags ?? []);
 
+  const totalStopMins    = stops.reduce((s, stop) => s + parseDurationMins(stop.duration), 0);
+  const totalTransitMins = stops.reduce((s, stop) => s + parseTransitMins(stop.transit_to_next), 0);
+  const totalDayMins     = totalStopMins + totalTransitMins;
+  const energyLevel: 'light' | 'moderate' | 'heavy' =
+    stops.length >= 6 || totalDayMins >= 7 * 60 ? 'heavy' :
+    stops.length >= 4 || totalDayMins >= 4.5 * 60 ? 'moderate' : 'light';
+
   const archetype = persona?.archetype;
   const style     = persona?.style;
 
@@ -914,6 +936,25 @@ export function ItineraryView({
   );
 
   const selectedIds = new Set(selectedPlaces.map(p => p.id));
+
+  // Pre-compute "if unavailable" alternatives for museum/historic stops
+  const stopNames = new Set(stops.map(s => (s.place ?? '').toLowerCase()));
+  const closedAlts = new Map<number, Place>();
+  timeline.forEach(({ index, matchedCategory }) => {
+    if (matchedCategory !== 'museum' && matchedCategory !== 'historic') return;
+    const alt = allPlaces.find(p =>
+      !selectedIds.has(p.id) &&
+      (p.category === 'museum' || p.category === 'historic') &&
+      !Array.from(stopNames).some(n => {
+        const t = p.title.toLowerCase();
+        return t === n || (n.length >= 6 && (t.startsWith(n.slice(0, 6)) || n.startsWith(t.slice(0, 6))));
+      })
+    );
+    if (alt) closedAlts.set(index, alt);
+  });
+
+  // Booking-flag keywords
+  const BOOKING_KEYWORDS = /eiffel|louvre|uffizi|colosseum|vatican|sagrada|acropolis|versailles|rijksmuseum|anne frank|prado|tate modern|british museum|metropolitan|moma|guggenheim|alhambra|disney|universal|harry potter|burj khalifa|angkor|machu picchu|taj mahal/i;
 
   // Separate early-finish slots from between-stop slots
   const betweenSlots  = slots.filter(s => s.insertAfterIndex >= 0);
@@ -938,10 +979,19 @@ export function ItineraryView({
         stopCount={stops.length}
         summary={summary}
         allTags={allTags}
+        energyLevel={energyLevel}
       />
 
       {/* ── Conflict notices + pro tip ── */}
       <ConflictNotices notes={summary?.conflict_notes} proTip={summary?.pro_tip} />
+
+      {/* ── Day narrative ── */}
+      {summary?.day_narrative && (
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/6" style={{ background: 'rgba(255,255,255,.015)' }}>
+          <span className="ms fill text-primary/60 flex-shrink-0" style={{ fontSize: 13 }}>auto_awesome</span>
+          <p className="text-text-2 leading-snug" style={{ fontSize: 11, fontStyle: 'italic' }}>{summary.day_narrative}</p>
+        </div>
+      )}
 
       {/* ── Reorder banner (only when stops were reordered for a clear reason) ── */}
       {hasAnyReorder && (
@@ -1023,6 +1073,18 @@ export function ItineraryView({
                   <button onClick={() => onRemove(index)} className="ms text-text-3 flex-shrink-0" style={{ fontSize: 18 }}>close</button>
                 </div>
 
+                {/* Booking flag */}
+                {(matchedCategory === 'museum' || matchedCategory === 'historic' || matchedCategory === 'tourism') &&
+                  BOOKING_KEYWORDS.test((stop.place ?? '').toLowerCase()) && (
+                  <div
+                    className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 rounded-lg"
+                    style={{ background: 'rgba(244,114,182,.12)', border: '1px solid rgba(244,114,182,.2)' }}
+                  >
+                    <span className="ms fill" style={{ fontSize: 11, color: '#f472b6' }}>confirmation_number</span>
+                    <span style={{ fontSize: 10, color: '#f472b6', fontWeight: 600 }}>Book tickets in advance — sells out fast</span>
+                  </div>
+                )}
+
                 {/* Reorder reason pill */}
                 {reorderReason && (
                   <div
@@ -1053,6 +1115,12 @@ export function ItineraryView({
                     <div className="flex items-center gap-1">
                       <span className="ms text-text-3" style={{ fontSize: 11 }}>schedule</span>
                       <span className="text-text-3" style={{ fontSize: 10 }}>{stop.duration}</span>
+                    </div>
+                  )}
+                  {stop.cost_estimate && (
+                    <div className="flex items-center gap-1">
+                      <span className="ms fill text-text-3" style={{ fontSize: 11 }}>payments</span>
+                      <span className="text-text-3" style={{ fontSize: 10 }}>{stop.cost_estimate}</span>
                     </div>
                   )}
                   {!isLast && transit && (
@@ -1091,6 +1159,16 @@ export function ItineraryView({
                         <span style={{ fontSize: 10.5, color: chip.color, fontWeight: 500, lineHeight: 1.3 }}>{chip.label}</span>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* If unavailable alternative */}
+                {closedAlts.get(index) && (
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className="ms text-text-3 flex-shrink-0" style={{ fontSize: 10 }}>swap_horiz</span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)' }}>
+                      If unavailable → {closedAlts.get(index)!.title}
+                    </span>
                   </div>
                 )}
               </div>
