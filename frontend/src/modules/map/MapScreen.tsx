@@ -350,15 +350,32 @@ export function MapScreen() {
 
   const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
     const bbox = overrideBbox ?? searchBboxRef.current;
-    if (!bbox || !city || !cityGeo) {
+    if (!bbox || !city) {
       if (overrideBbox) setInitialLoading(false);
       return;
     }
     setSearchHereLoading(true);
     setSearchHereEmpty(false);
     try {
-      const data = await mapData(city, cityGeo.lat, cityGeo.lon, [], bbox);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
+      let raw: Place[];
+
+      if (overrideBbox) {
+        // Initial city load — use the full city-level bbox from geocode so cities
+        // with lower OSM density (Montreal, Toronto, etc.) still return results.
+        // The zoom-13 viewport bbox is too small for anything outside dense European cores.
+        if (cityGeo?.bbox) {
+          raw = await mapData(city, cityGeo.lat, cityGeo.lon, [], cityGeo.bbox);
+        } else {
+          // cityGeo missing (geocode failed earlier) — let the backend geocode by name
+          raw = await api.mapData(city);
+        }
+      } else {
+        // User-triggered "Search Here" — use the viewport bbox as-is
+        if (!cityGeo) { setSearchHereLoading(false); return; }
+        raw = await mapData(city, cityGeo.lat, cityGeo.lon, [], bbox);
+      }
+
+      const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
       if (withIds.length === 0 && !overrideBbox) {
         setSearchHereEmpty(true);
         setTimeout(() => setSearchHereEmpty(false), 2500);
@@ -369,10 +386,20 @@ export function MapScreen() {
       );
     } catch (e) {
       console.error('[MapScreen] searchHere failed:', e);
-      setSearchHereEmpty(true);
-      setTimeout(() => setSearchHereEmpty(false), 2500);
-    }
-    finally {
+      if (overrideBbox) {
+        // Initial load failed — retry with city-name fallback (backend geocodes for us)
+        try {
+          const fallback = await api.mapData(city);
+          const withIds = (Array.isArray(fallback) ? fallback : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
+          dispatch({ type: 'SET_PLACES', places: withIds });
+        } catch {
+          // both paths failed — leave map empty, user can Search Here manually
+        }
+      } else {
+        setSearchHereEmpty(true);
+        setTimeout(() => setSearchHereEmpty(false), 2500);
+      }
+    } finally {
       setSearchHereLoading(false);
       if (!overrideBbox) resetSearchHereRef.current();
       else setInitialLoading(false);
