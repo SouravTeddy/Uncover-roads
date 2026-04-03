@@ -262,20 +262,22 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
         >
           <div className="space-y-6 pb-2">
 
-            {/* ── Travel date ── */}
-            <Field icon="calendar_today" label="When are you heading out?">
-              <input
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full h-11 rounded-2xl text-white text-sm px-4"
-                style={{
-                  colorScheme: 'dark',
-                  background: 'rgba(255,255,255,.05)',
-                  border: '1px solid rgba(255,255,255,.09)',
-                }}
-              />
-            </Field>
+            {/* ── Travel date — only shown if not already set from explore screen ── */}
+            {!ctx.date && (
+              <Field icon="calendar_today" label="When are you heading out?">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="w-full h-11 rounded-2xl text-white text-sm px-4"
+                  style={{
+                    colorScheme: 'dark',
+                    background: 'rgba(255,255,255,.05)',
+                    border: '1px solid rgba(255,255,255,.09)',
+                  }}
+                />
+              </Field>
+            )}
 
             {/* ── Starting point ── */}
             <Field icon="near_me" label="Where do you start from?">
