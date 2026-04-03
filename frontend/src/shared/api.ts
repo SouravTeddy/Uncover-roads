@@ -129,4 +129,15 @@ export const api = {
     get<{ profile: Record<string, unknown> }>(
       `/city-profile?city=${encodeURIComponent(city)}`
     ),
+
+  events: (city: string, startDate: string, endDate: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams({
+      city,
+      start_date: startDate,
+      end_date:   endDate,
+    });
+    if (lat !== undefined) params.set('lat', String(lat));
+    if (lon !== undefined) params.set('lon', String(lon));
+    return get<Place[]>(`/events?${params}`);
+  },
 };

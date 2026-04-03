@@ -23,8 +23,9 @@ app.add_middleware(
     allow_credentials=False,
 )
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-OPENWEATHER_KEY   = os.environ.get("OPENWEATHER_KEY", "")
+ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
+OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
+TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 
 # ── Overpass endpoints (ordered by reliability) ──
 OVERPASS_ENDPOINTS = [
@@ -678,6 +679,101 @@ def city_profile_endpoint(city: str = Query(...)):
         profile = get_city_profile(city)
         return {"city": city, "profile": profile, "found": bool(profile)}
     except Exception as e:
+        return {"error": str(e)}
+
+
+# =========================================
+# EVENTS (Ticketmaster Discovery API)
+# =========================================
+@app.get("/events")
+def events(
+    city:       str   = Query(...),
+    lat:        float = Query(None),
+    lon:        float = Query(None),
+    start_date: str   = Query(...),   # YYYY-MM-DD
+    end_date:   str   = Query(...),   # YYYY-MM-DD
+):
+    if not TICKETMASTER_KEY:
+        return {"error": "No Ticketmaster API key configured"}
+    try:
+        params = {
+            "apikey":        TICKETMASTER_KEY,
+            "city":          city,
+            "startDateTime": f"{start_date}T00:00:00Z",
+            "endDateTime":   f"{end_date}T23:59:59Z",
+            "size":          20,
+            "sort":          "date,asc",
+            "locale":        "*",
+            "includeTBA":    "no",
+            "includeTBD":    "no",
+        }
+        res  = requests.get(
+            "https://app.ticketmaster.com/discovery/v2/events.json",
+            params=params,
+            timeout=10,
+        )
+        data = res.json()
+
+        raw_events = (
+            data.get("_embedded", {}).get("events", [])
+            if res.status_code == 200 else []
+        )
+
+        places = []
+        for ev in raw_events:
+            venues = ev.get("_embedded", {}).get("venues", [])
+            if not venues:
+                continue
+            venue = venues[0]
+            loc   = venue.get("location", {})
+            try:
+                ev_lat = float(loc.get("latitude",  0))
+                ev_lon = float(loc.get("longitude", 0))
+            except (TypeError, ValueError):
+                continue
+            if ev_lat == 0 and ev_lon == 0:
+                continue
+
+            # Pick best image (prefer 16_9 ratio, then largest)
+            images    = ev.get("images", [])
+            img_url   = None
+            preferred = [i for i in images if i.get("ratio") == "16_9" and not i.get("fallback")]
+            if preferred:
+                img_url = max(preferred, key=lambda i: i.get("width", 0)).get("url")
+            elif images:
+                img_url = max(images, key=lambda i: i.get("width", 0)).get("url")
+
+            dates      = ev.get("dates", {})
+            start      = dates.get("start", {})
+            event_date = start.get("localDate", start_date)
+            event_time = start.get("localTime", "")
+
+            segment = ""
+            cls     = ev.get("classifications", [])
+            if cls:
+                segment = cls[0].get("segment", {}).get("name", "")
+
+            places.append({
+                "id":       f"tm-{ev.get('id', '')}",
+                "title":    ev.get("name", "Event"),
+                "lat":      ev_lat,
+                "lon":      ev_lon,
+                "category": "event",
+                "imageUrl": img_url,
+                "tags": {
+                    "event_date": event_date,
+                    "event_time": event_time,
+                    "venue":      venue.get("name", ""),
+                    "genre":      segment,
+                    "website":    ev.get("url", ""),
+                },
+            })
+
+        print(f"EVENTS: {len(places)} events for {city} ({start_date}–{end_date})")
+        return places
+
+    except Exception as e:
+        print("EVENTS ERROR:", e)
         return {"error": str(e)}
 
 
