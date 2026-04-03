@@ -1117,12 +1117,6 @@ export function ItineraryView({
                       <span className="text-text-3" style={{ fontSize: 10 }}>{stop.duration}</span>
                     </div>
                   )}
-                  {stop.cost_estimate && (
-                    <div className="flex items-center gap-1">
-                      <span className="ms fill text-text-3" style={{ fontSize: 11 }}>payments</span>
-                      <span className="text-text-3" style={{ fontSize: 10 }}>{stop.cost_estimate}</span>
-                    </div>
-                  )}
                   {!isLast && transit && (
                     <div className="flex items-center gap-1">
                       <span className="ms text-text-3" style={{ fontSize: 11 }}>directions_walk</span>

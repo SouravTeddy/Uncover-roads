@@ -514,7 +514,6 @@ CRITICAL RULES — FOLLOW STRICTLY:
 - If departure day with flight time, ensure last venue ends 3 hours before flight
 - transit_to_next must be a realistic walking/transit time string like "12 min walk" or "8 min by metro"
 - tip: ONE sentence only, max 12 words, one specific insider detail — not a paragraph
-- cost_estimate: one short string for the estimated entry fee or spend at this venue (e.g. "~€14 entry", "Free", "~€20–35/person"). Use local currency. If genuinely unknown, omit the field.
 - day_narrative in summary: ONE sentence (max 8 words) capturing the day's rhythm, e.g. "Art-heavy morning, leisurely lunch, golden close."
 - Add tags to each stop when relevant: use short labels from this set:
   heat (hot weather), jetlag (long-haul arrival), ramadan (religious observance period),
@@ -531,13 +530,11 @@ Return ONLY a valid JSON object, no markdown, no explanation:
       "category": "museum",
       "tip": "Specific insider tip",
       "transit_to_next": "10 min walk",
-      "tags": ["optional", "array", "of", "short", "conflict-aware", "labels"],
-      "cost_estimate": "~€14 entry"
+      "tags": ["optional", "array", "of", "short", "conflict-aware", "labels"]
     }}
   ],
   "summary": {{
     "total_places": 5,
-    "estimated_cost": "₹500-1000 per person",
     "best_transport": "Metro and walking",
     "pro_tip": "One overall trip tip",
     "conflict_notes": "Any adaptations made — thin/tight schedule, conflicts resolved",

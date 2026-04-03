@@ -120,12 +120,10 @@ export interface ItineraryStop {
   duration?: string;
   transit_to_next?: string;
   tags?: string[];
-  cost_estimate?: string;
 }
 
 export interface ItinerarySummary {
   total_places?: number;
-  estimated_cost?: string;
   best_transport?: string;
   pro_tip?: string;
   conflict_notes?: string;
