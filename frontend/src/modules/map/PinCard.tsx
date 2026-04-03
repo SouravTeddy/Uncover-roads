@@ -25,6 +25,11 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
       setImageLoading(false);
       return;
     }
+    // Events already carry their image from Ticketmaster — no Wikipedia lookup needed
+    if (place.category === 'event') {
+      setImageLoading(false);
+      return;
+    }
     let cancelled = false;
     setImageLoading(true);
     setImageUrl(null);
@@ -32,18 +37,34 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
       .then(url => { if (!cancelled) { setImageUrl(url); setImageLoading(false); } })
       .catch(() => { if (!cancelled) setImageLoading(false); });
     return () => { cancelled = true; };
-  }, [place.id, place.imageUrl, place.title, city]);
+  }, [place.id, place.imageUrl, place.title, city, place.category]);
 
-  function handleExplore() {
-    const q = encodeURIComponent(`${place.title} ${city}`);
-    window.open(`https://www.google.com/search?q=${q}`, '_blank', 'noopener,noreferrer');
-  }
+
+  const isEvent = place.category === 'event';
+
+  // Format event date + time
+  const eventDateLabel = (() => {
+    if (!tags.event_date) return null;
+    const d = new Date(`${tags.event_date}T00:00:00`);
+    const date = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!tags.event_time) return date;
+    const [h, m] = tags.event_time.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${date} · ${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+  })();
 
   // Compact info pills from OSM tags
   const infoPills: { icon: string; text: string }[] = [];
-  if (tags.opening_hours) infoPills.push({ icon: 'schedule', text: tags.opening_hours });
-  if (tags.cuisine) infoPills.push({ icon: 'restaurant_menu', text: tags.cuisine.replace(/_/g, ' ') });
-  if (tags.website) infoPills.push({ icon: 'language', text: 'Website' });
+  if (isEvent) {
+    if (eventDateLabel) infoPills.push({ icon: 'event', text: eventDateLabel });
+    if (tags.venue)     infoPills.push({ icon: 'location_on', text: tags.venue });
+    if (tags.genre)     infoPills.push({ icon: 'sell', text: tags.genre });
+  } else {
+    if (tags.opening_hours) infoPills.push({ icon: 'schedule', text: tags.opening_hours });
+    if (tags.cuisine) infoPills.push({ icon: 'restaurant_menu', text: tags.cuisine.replace(/_/g, ' ') });
+    if (tags.website) infoPills.push({ icon: 'language', text: 'Website' });
+  }
 
   return (
     <div
@@ -142,11 +163,16 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
           {isSelected ? 'Added' : 'Add to Itinerary'}
         </button>
         <button
-          onClick={handleExplore}
+          onClick={() => {
+            const url = isEvent && tags.website
+              ? tags.website
+              : `https://www.google.com/search?q=${encodeURIComponent(`${place.title} ${city}`)}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
           className="flex items-center gap-1 px-3 h-9 rounded-xl border border-white/10 text-text-2 font-medium"
           style={{ background: 'rgba(255,255,255,.04)', fontSize: 12 }}
         >
-          More
+          {isEvent ? 'Tickets' : 'More'}
           <span className="ms" style={{ fontSize: 13 }}>open_in_new</span>
         </button>
       </div>

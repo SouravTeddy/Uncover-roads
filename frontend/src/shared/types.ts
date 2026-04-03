@@ -79,7 +79,7 @@ export interface GeoData {
 }
 
 // ── Places / Map ──────────────────────────────────────────────
-export type Category = 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism' | 'place';
+export type Category = 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism' | 'place' | 'event';
 export type MapFilter = Category | 'all' | 'recommended';
 
 export interface Place {

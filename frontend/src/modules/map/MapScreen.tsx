@@ -12,7 +12,7 @@ import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
-import { mapData } from '../../shared/api';
+import { mapData, api } from '../../shared/api';
 import type { BBox } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 
@@ -296,7 +296,11 @@ export function MapScreen() {
     togglePlace, setFilter, goBack,
   } = useMap();
 
-  const { dispatch } = useAppStore();
+  const { state, dispatch } = useAppStore();
+
+  // Date gate — ask for travel date before loading pins if not already set
+  const [dateGateCleared, setDateGateCleared] = useState(() => !!state.tripContext.date);
+  const [dateGateValue, setDateGateValue]     = useState(state.tripContext.date ?? '');
 
   const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
@@ -316,6 +320,11 @@ export function MapScreen() {
   const [searchHereLoading, setSearchHereLoading] = useState(false);
   const [searchHereEmpty, setSearchHereEmpty]     = useState(false);
   const resetSearchHereRef = useRef<() => void>(() => {});
+
+  // Events
+  const [eventsLoaded, setEventsLoaded]         = useState(false);
+  const [eventsLoading, setEventsLoading]       = useState(false);
+  const [eventsNoDate, setEventsNoDate]         = useState(false);
 
   // Pin drop
   const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
@@ -378,6 +387,43 @@ export function MapScreen() {
     setPinDropResult(latlng); setAwaitingPinDrop(false); setShowTripSheet(true);
   }, []);
 
+  async function loadEvents() {
+    const date = state.tripContext.date;
+    if (!date || !city) return;
+    // Compute end date = start + (days - 1)
+    const days    = Math.max(1, state.tripContext.days ?? 1);
+    const start   = new Date(date);
+    const end     = new Date(start);
+    end.setDate(end.getDate() + days - 1);
+    const endDate = end.toISOString().slice(0, 10);
+    setEventsLoading(true);
+    try {
+      const data = await api.events(city, date, endDate, cityGeo?.lat, cityGeo?.lon);
+      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
+        ...p,
+        id: p.id ?? `event-${i}`,
+      }));
+      dispatch({ type: 'MERGE_PLACES', places: withIds });
+      setEventsLoaded(true);
+    } catch (e) {
+      console.error('[MapScreen] loadEvents failed:', e);
+    } finally {
+      setEventsLoading(false);
+    }
+  }
+
+  function handleFilterSelect(f: MapFilter) {
+    setFilter(f);
+    if (f === 'event' && !eventsLoaded) {
+      if (!state.tripContext.date) {
+        setEventsNoDate(true);
+        setTimeout(() => setEventsNoDate(false), 3000);
+        return;
+      }
+      loadEvents();
+    }
+  }
+
   function handleSearchInput(val: string) {
     setSearchQuery(val);
     setSearchOpen(true);
@@ -428,9 +474,11 @@ export function MapScreen() {
     if (abortRef.current) abortRef.current.abort();
   }
 
+  const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
-    all:         places.length,
+    all:         places.filter(p => p.category !== 'event').length,
     recommended: recommendedPlaces.length,
+    event:       eventsLoaded ? eventPlaces.length : undefined,
     museum:      places.filter(p => p.category === 'museum').length,
     park:        places.filter(p => p.category === 'park').length,
     restaurant:  places.filter(p => p.category === 'restaurant').length,
@@ -458,7 +506,7 @@ export function MapScreen() {
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
         <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
         <MapPanner target={panTarget} />
-        <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />
+        {dateGateCleared && <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />}
       </MapContainer>
 
       {/* Initial load overlay */}
@@ -553,9 +601,31 @@ export function MapScreen() {
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
-          <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={setFilter} />
+          <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={handleFilterSelect} />
         </div>
       </div>
+
+      {/* Events loading spinner */}
+      {eventsLoading && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(15,20,30,.88)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.1)' }}
+        >
+          <span className="ms text-primary animate-spin" style={{ fontSize: 15 }}>autorenew</span>
+          <span className="text-white/70 text-xs font-medium">Loading events…</span>
+        </div>
+      )}
+
+      {/* Events no-date toast */}
+      {eventsNoDate && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(245,158,11,.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(245,158,11,.3)' }}
+        >
+          <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>calendar_today</span>
+          <span className="text-amber-300 text-xs font-medium">Set a travel date to see events</span>
+        </div>
+      )}
 
       {/* Loading — tiny spinner, corner, barely visible */}
       {loading && (
@@ -684,6 +754,71 @@ export function MapScreen() {
           </div>
           {city && <button onClick={() => handleSearchHere()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
+      )}
+
+      {/* Date gate — shown when map opens without a travel date */}
+      {!dateGateCleared && (
+        <>
+          <div className="fixed inset-0" style={{ zIndex: 40, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(2px)' }} />
+          <div
+            className="fixed inset-x-0 bottom-0 rounded-t-3xl px-6 pt-5 flex flex-col"
+            style={{
+              zIndex: 41,
+              background: 'rgb(18,22,30)',
+              borderTop: '1px solid rgba(255,255,255,.08)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
+            }}
+          >
+            <div className="flex justify-center mb-5">
+              <div className="w-9 h-1 rounded-full bg-white/20" />
+            </div>
+
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="ms fill text-primary" style={{ fontSize: 20 }}>calendar_today</span>
+              <h2 className="font-heading font-bold text-white text-lg">When are you visiting?</h2>
+            </div>
+            <p className="text-white/40 text-sm mb-5 ml-8">
+              We'll find what's on in {city} for your dates.
+            </p>
+
+            <input
+              type="date"
+              value={dateGateValue}
+              onChange={e => setDateGateValue(e.target.value)}
+              className="w-full h-12 rounded-2xl text-white text-sm px-4 mb-4"
+              style={{
+                colorScheme: 'dark',
+                background: 'rgba(255,255,255,.05)',
+                border: '1px solid rgba(255,255,255,.09)',
+              }}
+            />
+
+            <button
+              onClick={() => {
+                if (dateGateValue) {
+                  dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { date: dateGateValue } });
+                }
+                setDateGateCleared(true);
+              }}
+              className="w-full h-13 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mb-3"
+              style={{
+                background: dateGateValue
+                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                  : 'rgba(59,130,246,.5)',
+              }}
+            >
+              <span className="ms fill" style={{ fontSize: 18 }}>explore</span>
+              Show me {city}
+            </button>
+
+            <button
+              onClick={() => setDateGateCleared(true)}
+              className="text-white/30 text-sm text-center py-1 hover:text-white/50 transition-colors"
+            >
+              Skip for now
+            </button>
+          </div>
+        </>
       )}
 
       {showTripSheet && (
