@@ -26,6 +26,7 @@ app.add_middleware(
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
+YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
 # ── Overpass endpoints (ordered by reliability) ──
 OVERPASS_ENDPOINTS = [
@@ -769,7 +770,72 @@ def events(
                 },
             })
 
-        print(f"EVENTS: {len(places)} events for {city} ({start_date}–{end_date})")
+        # ── Yelp Events (merged in if key is configured) ──
+        if YELP_API_KEY:
+            try:
+                from datetime import datetime as _dt
+                start_ts = int(_dt.strptime(start_date, "%Y-%m-%d").timestamp())
+                end_ts   = int(_dt.strptime(end_date,   "%Y-%m-%d").replace(hour=23, minute=59, second=59).timestamp())
+
+                yelp_params = {
+                    "location":   city,
+                    "start_date": start_ts,
+                    "end_date":   end_ts,
+                    "limit":      50,
+                    "sort_on":    "time_start",
+                    "sort_by":    "asc",
+                }
+                if lat is not None and lon is not None:
+                    yelp_params["latitude"]  = lat
+                    yelp_params["longitude"] = lon
+                    yelp_params["radius"]    = 20000   # 20 km
+
+                yelp_res  = requests.get(
+                    "https://api.yelp.com/v3/events",
+                    params=yelp_params,
+                    headers={"Authorization": f"Bearer {YELP_API_KEY}"},
+                    timeout=10,
+                )
+                yelp_data = yelp_res.json()
+                existing_titles = {p["title"].lower() for p in places}
+
+                for ev in yelp_data.get("events", []):
+                    ev_lat = ev.get("latitude")
+                    ev_lon = ev.get("longitude")
+                    if not ev_lat or not ev_lon:
+                        continue
+                    name = ev.get("name", "Event")
+                    if name.lower() in existing_titles:
+                        continue   # skip duplicates already from Ticketmaster
+                    existing_titles.add(name.lower())
+
+                    time_start = ev.get("time_start", "")
+                    event_date = time_start[:10] if time_start else start_date
+                    event_time = time_start[11:16] if len(time_start) > 10 else ""
+
+                    loc       = ev.get("location", {})
+                    venue_str = ", ".join(filter(None, [loc.get("address1", ""), loc.get("city", "")]))
+
+                    places.append({
+                        "id":       f"yelp-{ev.get('id', '')}",
+                        "title":    name,
+                        "lat":      ev_lat,
+                        "lon":      ev_lon,
+                        "category": "event",
+                        "imageUrl": ev.get("image_url"),
+                        "tags": {
+                            "event_date": event_date,
+                            "event_time": event_time,
+                            "venue":      venue_str,
+                            "genre":      ev.get("category", "").replace("_", " ").title(),
+                            "website":    ev.get("event_site_url", ""),
+                        },
+                    })
+                print(f"EVENTS (Yelp): added {len(yelp_data.get('events', []))} Yelp events")
+            except Exception as ye:
+                print(f"EVENTS Yelp error (non-fatal): {ye}")
+
+        print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
         return places
 
     except Exception as e:
