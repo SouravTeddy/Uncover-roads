@@ -4,7 +4,7 @@ import { ItineraryView } from './ItineraryView';
 import { RecSheet } from './RecSheet';
 import { WeatherCanvas } from './WeatherCanvas';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary, Place } from '../../shared/types';
+import type { SavedItinerary, Place, ItineraryStop } from '../../shared/types';
 
 const WEATHER_ICONS: Record<string, string> = {
   sunny: 'wb_sunny', clear: 'wb_sunny',
@@ -21,6 +21,73 @@ function getWeatherIcon(condition: string): string {
     if (c.includes(key)) return icon;
   }
   return 'wb_sunny';
+}
+
+function downloadICS(stops: ItineraryStop[], date: string, city: string): void {
+  function toICSDateTime(dateStr: string, timeStr?: string): string {
+    const parts = dateStr.split('-');
+    const y = parts[0]; const m = parts[1]; const d = parts[2];
+    let h = 9, min = 0;
+    if (timeStr) {
+      const m12 = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      const m24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+      if (m12) {
+        h = parseInt(m12[1]); min = parseInt(m12[2]);
+        if (m12[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+        if (m12[3].toUpperCase() === 'AM' && h === 12) h = 0;
+      } else if (m24) { h = parseInt(m24[1]); min = parseInt(m24[2]); }
+    }
+    return `${y}${m}${d}T${String(h).padStart(2, '0')}${String(min).padStart(2, '0')}00`;
+  }
+
+  function parseDurMins(s?: string): number {
+    if (!s) return 60;
+    const hm = s.match(/(\d+\.?\d*)\s*h/i);
+    const mm = s.match(/(\d+)\s*min/i);
+    return (hm ? parseFloat(hm[1]) * 60 : 0) + (mm ? parseInt(mm[1]) : 0) || 60;
+  }
+
+  function addMinsDT(dtStr: string, mins: number): string {
+    const yr = parseInt(dtStr.slice(0, 4));
+    const mo = parseInt(dtStr.slice(4, 6)) - 1;
+    const dy = parseInt(dtStr.slice(6, 8));
+    const hr = parseInt(dtStr.slice(9, 11));
+    const mn = parseInt(dtStr.slice(11, 13));
+    const dt = new Date(yr, mo, dy, hr, mn + mins);
+    return `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}T${String(dt.getHours()).padStart(2, '0')}${String(dt.getMinutes()).padStart(2, '0')}00`;
+  }
+
+  const lines: string[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Uncover Roads//EN',
+    'CALSCALE:GREGORIAN',
+  ];
+
+  stops.forEach((stop, i) => {
+    const dtStart = toICSDateTime(date, stop.time);
+    const dtEnd   = addMinsDT(dtStart, parseDurMins(stop.duration));
+    const desc    = (stop.tip ?? '').replace(/[\\;,]/g, ' ');
+    lines.push(
+      'BEGIN:VEVENT',
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:${stop.place}`,
+      ...(desc ? [`DESCRIPTION:${desc}`] : []),
+      `LOCATION:${city}`,
+      `UID:stop-${i}-${date}@uncover-roads`,
+      'END:VEVENT',
+    );
+  });
+
+  lines.push('END:VCALENDAR');
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${city.replace(/\s+/g, '-')}-itinerary.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function RouteScreen() {
@@ -104,7 +171,12 @@ export function RouteScreen() {
           <button
             className="w-9 h-9 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(255,255,255,.07)' }}
-            onClick={() => {}}
+            title="Export to Calendar"
+            onClick={() => {
+              if (itinerary && tripContext.date && city) {
+                downloadICS(itinerary.itinerary, tripContext.date, city);
+              }
+            }}
           >
             <span className="ms text-text-2 text-sm">share</span>
           </button>

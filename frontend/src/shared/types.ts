@@ -120,6 +120,7 @@ export interface ItineraryStop {
   duration?: string;
   transit_to_next?: string;
   tags?: string[];
+  cost_estimate?: string;
 }
 
 export interface ItinerarySummary {
@@ -129,6 +130,7 @@ export interface ItinerarySummary {
   pro_tip?: string;
   conflict_notes?: string;
   suggested_start_time?: string;
+  day_narrative?: string;
 }
 
 export interface Itinerary {
