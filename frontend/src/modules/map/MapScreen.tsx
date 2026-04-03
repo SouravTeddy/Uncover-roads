@@ -298,10 +298,6 @@ export function MapScreen() {
 
   const { state, dispatch } = useAppStore();
 
-  // Date gate — ask for travel date before loading pins if not already set
-  const [dateGateCleared, setDateGateCleared] = useState(() => !!state.tripContext.date);
-  const [dateGateValue, setDateGateValue]     = useState(state.tripContext.date ?? '');
-
   const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
   const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); }, [setActivePlace]);
@@ -506,7 +502,7 @@ export function MapScreen() {
         <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
         <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
         <MapPanner target={panTarget} />
-        {dateGateCleared && <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />}
+        <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />
       </MapContainer>
 
       {/* Initial load overlay */}
@@ -754,71 +750,6 @@ export function MapScreen() {
           </div>
           {city && <button onClick={() => handleSearchHere()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
-      )}
-
-      {/* Date gate — shown when map opens without a travel date */}
-      {!dateGateCleared && (
-        <>
-          <div className="fixed inset-0" style={{ zIndex: 40, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(2px)' }} />
-          <div
-            className="fixed inset-x-0 bottom-0 rounded-t-3xl px-6 pt-5 flex flex-col"
-            style={{
-              zIndex: 41,
-              background: 'rgb(18,22,30)',
-              borderTop: '1px solid rgba(255,255,255,.08)',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
-            }}
-          >
-            <div className="flex justify-center mb-5">
-              <div className="w-9 h-1 rounded-full bg-white/20" />
-            </div>
-
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="ms fill text-primary" style={{ fontSize: 20 }}>calendar_today</span>
-              <h2 className="font-heading font-bold text-white text-lg">When are you visiting?</h2>
-            </div>
-            <p className="text-white/40 text-sm mb-5 ml-8">
-              We'll find what's on in {city} for your dates.
-            </p>
-
-            <input
-              type="date"
-              value={dateGateValue}
-              onChange={e => setDateGateValue(e.target.value)}
-              className="w-full h-12 rounded-2xl text-white text-sm px-4 mb-4"
-              style={{
-                colorScheme: 'dark',
-                background: 'rgba(255,255,255,.05)',
-                border: '1px solid rgba(255,255,255,.09)',
-              }}
-            />
-
-            <button
-              onClick={() => {
-                if (dateGateValue) {
-                  dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { date: dateGateValue } });
-                }
-                setDateGateCleared(true);
-              }}
-              className="w-full h-13 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mb-3"
-              style={{
-                background: dateGateValue
-                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
-                  : 'rgba(59,130,246,.5)',
-              }}
-            >
-              <span className="ms fill" style={{ fontSize: 18 }}>explore</span>
-              Show me {city}
-            </button>
-
-            <button
-              onClick={() => setDateGateCleared(true)}
-              className="text-white/30 text-sm text-center py-1 hover:text-white/50 transition-colors"
-            >
-              Skip for now
-            </button>
-          </div>
-        </>
       )}
 
       {showTripSheet && (
