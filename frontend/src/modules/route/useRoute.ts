@@ -29,6 +29,16 @@ export function useRoute() {
     setLoading(true);
     setError(null);
     try {
+      // For multi-day trips, each day's travel_date = base date + (dayNumber - 1)
+      const baseDate = state.tripContext.date;
+      const dayOffset = (state.tripContext.dayNumber ?? 1) - 1;
+      let travelDate = baseDate;
+      if (dayOffset > 0 && baseDate) {
+        const d = new Date(baseDate + 'T12:00:00');
+        d.setDate(d.getDate() + dayOffset);
+        travelDate = d.toISOString().slice(0, 10);
+      }
+
       const body: ItineraryRequest = {
         city: state.city,
         lat: state.cityGeo.lat,
@@ -42,7 +52,8 @@ export function useRoute() {
         trip_context: {
           start_type: state.tripContext.startType,
           arrival_time: state.tripContext.arrivalTime,
-          travel_date: state.tripContext.date,
+          travel_date: travelDate,
+          total_days: state.tripContext.days,
           flight_time: state.tripContext.flightTime,
           is_long_haul: state.tripContext.isLongHaul,
           location_lat: state.tripContext.locationLat,

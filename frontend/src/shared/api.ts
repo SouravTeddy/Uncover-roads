@@ -45,7 +45,8 @@ export interface ItineraryRequest {
   trip_context: {
     start_type: string;
     arrival_time: string | null;
-    travel_date: string;
+    travel_date: string | null;
+    total_days?: number;
     flight_time: string | null;
     is_long_haul: boolean;
     location_lat: number | null;

@@ -504,9 +504,11 @@ CRITICAL RULES — FOLLOW STRICTLY:
 - Assign realistic durations based on venue type (museum: 1.5-2h, café: 30-45min, park: 45-60min)
 - ALL place names in the output MUST be in English. Never use local-script names (Japanese, Arabic, Thai, etc).
 - Start time logic:
-    * If arrival_time is between 00:00-05:59 (late night / very early): set itinerary start to 08:00 AM, note rest period in conflict_notes
+    * If arrival_time is between 00:00-05:59 (late night / very early): set itinerary start to 09:00 AM, note rest in conflict_notes
     * If arrival_time is between 06:00-08:59: start 1 hour after arrival
-    * If arrival_time is provided and 09:00 or later: use arrival_time + 30 min for hotel/airport, else arrival_time directly
+    * If arrival_time is between 09:00-16:59: use arrival_time + 30 min for hotel/airport, or arrival_time directly for other start types
+    * If arrival_time is between 17:00-19:59 (evening arrival): this is an evening arrival — set start to 09:00 AM. Note in conflict_notes that the evening is for settling in and dinner nearby
+    * If arrival_time is 20:00 or later (very late / night arrival): rest is essential. Set start to 09:00 AM. Note in conflict_notes that Day 1 begins fresh after a late-night arrival
     * If no arrival_time: default start is 09:00 AM
 - For half day: end by 14:00 unless arrival time says otherwise
 - If conflict overrides exist, follow them strictly
