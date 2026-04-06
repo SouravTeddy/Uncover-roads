@@ -188,11 +188,21 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
       ? 'Custom pin'
       : (selectedLocation?.name ?? (locationQuery.trim() || null));
 
+    // Late/evening arrival → the actual sightseeing day is the next calendar day.
+    // Shift the itinerary date forward by 1 so the header, ICS export, and AI
+    // all operate on the correct date rather than the arrival date.
+    let itineraryDate = date;
+    if (isLateArrival && date) {
+      const d = new Date(date + 'T12:00:00');
+      d.setDate(d.getDate() + 1);
+      itineraryDate = d.toISOString().slice(0, 10);
+    }
+
     dispatch({ type: 'SET_ITINERARY', itinerary: null });
     dispatch({
       type: 'SET_TRIP_CONTEXT',
       ctx: {
-        date,
+        date:        itineraryDate,
         startType:   pinDropResult ? 'pin' : startType,
         arrivalTime: showTimeField && arrivalTime ? arrivalTime : null,
         days,
