@@ -3,6 +3,8 @@ import { useRoute } from './useRoute';
 import { ItineraryView } from './ItineraryView';
 import { RecSheet } from './RecSheet';
 import { WeatherCanvas } from './WeatherCanvas';
+import { AmbientVideo } from './AmbientVideo';
+import { SCENE_GENERATING } from './sceneMap';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary, Place, ItineraryStop } from '../../shared/types';
 
@@ -104,6 +106,7 @@ export function RouteScreen() {
     removeStop,
     saveItinerary,
     buildItinerary,
+    addSuggestion,
     goBack,
     goToNav,
   } = useRoute();
@@ -112,6 +115,9 @@ export function RouteScreen() {
   const { tripContext, places, persona } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [currentScene, setCurrentScene] = useState(() =>
+    loading ? SCENE_GENERATING : ''
+  );
 
   function handleSave() {
     saveItinerary();
@@ -120,15 +126,25 @@ export function RouteScreen() {
   }
 
   function handleAddSuggestion(place: Place) {
-    dispatch({ type: 'TOGGLE_PLACE', place });
+    addSuggestion(place);
   }
 
   return (
-    <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
+    <div className="fixed inset-0 flex flex-col" style={{ zIndex: 20, background: 'transparent' }}>
 
-      {/* ── Full-screen weather canvas (behind everything) ── */}
+      {/* ── Ambient scene video (fullscreen, behind everything) ── */}
+      <AmbientVideo
+        src={currentScene}
+        timeMins={(() => {
+          const t = tripContext.arrivalTime ?? '9:00';
+          const [h, m] = t.split(':').map(Number);
+          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
+        })()}
+      />
+
+      {/* ── Weather particle layer (above video, below content) ── */}
       {weather && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
           <WeatherCanvas condition={weather.condition} />
         </div>
       )}
@@ -140,7 +156,9 @@ export function RouteScreen() {
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
           paddingBottom: '1rem',
           position: 'relative',
-          zIndex: 1,
+          zIndex: 2,
+          background: 'rgba(10,14,20,0.72)',
+          backdropFilter: 'blur(16px)',
         }}
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -189,7 +207,10 @@ export function RouteScreen() {
       )}
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 px-4 py-3 flex-shrink-0" style={{ position: 'relative', zIndex: 1 }}>
+      <div
+        className="flex gap-1 px-4 py-3 flex-shrink-0"
+        style={{ position: 'relative', zIndex: 2, background: 'rgba(10,14,20,0.55)', backdropFilter: 'blur(12px)' }}
+      >
         {(['active', 'saved'] as const).map(t => (
           <button
             key={t}
@@ -204,11 +225,11 @@ export function RouteScreen() {
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto px-4 pb-28" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="flex-1 overflow-y-auto px-4 pb-28" style={{ position: 'relative', zIndex: 2 }}>
         {tab === 'active' && (
           <>
             {loading && (
-              <div className="flex flex-col items-center justify-center h-56 gap-4">
+              <div className="flex flex-col items-center justify-center h-56 gap-4" ref={_ => { if (SCENE_GENERATING) setCurrentScene(SCENE_GENERATING); }}>
                 <span className="ms text-primary text-4xl animate-spin">autorenew</span>
                 <p className="text-text-2 text-sm">Building your journey…</p>
               </div>
@@ -242,6 +263,7 @@ export function RouteScreen() {
                   dispatch({ type: 'GO_TO', screen: 'map' });
                 }}
                 onAddSuggestion={handleAddSuggestion}
+                onSceneChange={setCurrentScene}
               />
             )}
           </>
