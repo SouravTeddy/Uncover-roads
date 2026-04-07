@@ -24,10 +24,11 @@ export function useRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function buildItinerary() {
+  async function buildItinerary(overridePlaces?: typeof state.selectedPlaces) {
     if (!persona || !state.cityGeo) return;
     setLoading(true);
     setError(null);
+    const placesToUse = overridePlaces ?? state.selectedPlaces;
     try {
       // For multi-day trips, each day's travel_date = base date + (dayNumber - 1)
       const baseDate = state.tripContext.date;
@@ -60,7 +61,7 @@ export function useRoute() {
           location_lon: state.tripContext.locationLon,
           location_name: state.tripContext.locationName,
         },
-        selected_places: state.selectedPlaces.map(p => ({
+        selected_places: placesToUse.map(p => ({
           id: p.id, title: p.title, lat: p.lat, lon: p.lon,
         })),
       };
@@ -122,6 +123,19 @@ export function useRoute() {
     if (user) syncSavedItinerary(user.id, saved).catch(console.warn);
   }
 
+  function addSuggestion(place: import('../../shared/types').Place) {
+    // Skip if already selected
+    if (state.selectedPlaces.some(p => p.id === place.id)) return;
+    // Ensure the place exists in the places pool so map can show it
+    if (!state.places.some(p => p.id === place.id)) {
+      dispatch({ type: 'MERGE_PLACES', places: [place] });
+    }
+    const newSelected = [...state.selectedPlaces, place];
+    dispatch({ type: 'SET_SELECTED_PLACES', places: newSelected });
+    dispatch({ type: 'SET_ITINERARY', itinerary: null });
+    buildItinerary(newSelected);
+  }
+
   function goBack() {
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
@@ -143,6 +157,7 @@ export function useRoute() {
     removeStop,
     saveItinerary,
     buildItinerary,
+    addSuggestion,
     goBack,
     goToNav,
   };

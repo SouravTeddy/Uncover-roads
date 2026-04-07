@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import type { ItineraryStop, ItinerarySummary, Place, TripContext, Persona, WeatherData } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from '../map/types';
+import { resolveScene } from './sceneMap';
 
 interface Props {
   stops: ItineraryStop[];
@@ -14,6 +16,7 @@ interface Props {
   onRemove: (idx: number) => void;
   onAddMeal: () => void;
   onAddSuggestion: (place: Place) => void;
+  onSceneChange?: (src: string) => void;
 }
 
 // ── Time helpers ───────────────────────────────────────────────
@@ -874,8 +877,11 @@ function EarlyFinishSection({
 
 export function ItineraryView({
   stops, selectedPlaces, allPlaces, tripContext, summary, persona, weather, city, startTime,
-  onRemove, onAddMeal, onAddSuggestion,
+  onRemove, onAddMeal, onAddSuggestion, onSceneChange,
 }: Props) {
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const timelineRef   = useRef<ReturnType<typeof buildTimeline>>([]);
+  const weatherRef    = useRef(weather);
   // Use AI-suggested start time if provided, otherwise compute from arrival
   const aiStartTime = summary?.suggested_start_time;
   const resolvedStart = tripContext.arrivalTime ?? startTime ?? '9:00';
@@ -916,6 +922,9 @@ export function ItineraryView({
   const restBuffer = startMins - arrivalMins; // kept for display purposes
 
   const timeline = buildTimeline(stops, startMins, selectedPlaces);
+  timelineRef.current = timeline;
+  weatherRef.current  = weather;
+
   const mealGaps = detectMealGaps(timeline);
   const lastStop = timeline[timeline.length - 1];
   const endMins  = lastStop ? lastStop.endMins : startMins + 60;
@@ -969,8 +978,54 @@ export function ItineraryView({
   const startSubtext = START_SUBTEXTS[tripContext.startType] ?? 'Starting here';
   const locationLabel = tripContext.locationName || startSubtext;
 
+  // ── Scene tracking via IntersectionObserver ────────────────────
+  useEffect(() => {
+    if (!onSceneChange || !containerRef.current) return;
+
+    // Fire initial scene from first stop
+    const first = timelineRef.current[0];
+    if (first) {
+      onSceneChange(resolveScene({
+        stopName:  first.stop.place ?? '',
+        timeMins:  first.startMins,
+        category:  first.matchedCategory,
+        weather:   weatherRef.current ? { condition: weatherRef.current.condition, temp: weatherRef.current.temp } : null,
+      }));
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      let bestRatio = 0;
+      let bestIdx   = -1;
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+          bestRatio = entry.intersectionRatio;
+          bestIdx   = parseInt((entry.target as HTMLElement).dataset.stopIdx ?? '-1');
+        }
+      });
+      if (bestIdx < 0) return;
+      const tEntry = timelineRef.current[bestIdx];
+      if (!tEntry) return;
+      onSceneChange(resolveScene({
+        stopName:  tEntry.stop.place ?? '',
+        timeMins:  tEntry.startMins,
+        category:  tEntry.matchedCategory,
+        weather:   weatherRef.current ? { condition: weatherRef.current.condition, temp: weatherRef.current.temp } : null,
+      }));
+    }, { threshold: [0.3, 0.6] });
+
+    const els = containerRef.current.querySelectorAll<HTMLElement>('[data-stop-idx]');
+    els.forEach(el => observer.observe(el));
+
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onSceneChange, stops.length]);
+
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/8 bg-surface/50" style={{ margin: '0 4px 8px' }}>
+    <div
+      ref={containerRef}
+      className="rounded-2xl overflow-hidden border border-white/10"
+      style={{ margin: '0 4px 8px', background: 'rgba(10,14,20,0.52)', backdropFilter: 'blur(14px)' }}
+    >
 
       {/* ── Trip summary bar ── */}
       <TripSummaryBar
@@ -1058,7 +1113,10 @@ export function ItineraryView({
         return (
           <div key={index}>
             {showDayDivider && <DayDivider day={thisDay} />}
-            <div className="flex gap-3 px-4 py-4 border-b border-white/6">
+            <div
+              className="flex gap-3 px-4 py-4 border-b border-white/6"
+              data-stop-idx={String(index)}
+            >
               {/* Spine */}
               <div className="flex flex-col items-center" style={{ width: 52 }}>
                 <span className="text-text-3 font-semibold" style={{ fontSize: 11 }}>{timeLabel}</span>
