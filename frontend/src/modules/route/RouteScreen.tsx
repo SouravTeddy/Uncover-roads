@@ -239,7 +239,7 @@ export function RouteScreen() {
               <div className="flex flex-col items-center justify-center h-56 gap-4">
                 <p className="text-red-400 text-sm">{error}</p>
                 <button
-                  onClick={buildItinerary}
+                  onClick={() => buildItinerary()}
                   className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm"
                 >
                   Retry
