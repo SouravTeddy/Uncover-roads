@@ -1,6 +1,7 @@
 // modules/map/MapLibreMap.tsx
 import { useRef, useCallback } from 'react';
-import Map, { MapRef, ViewStateChangeEvent } from 'react-map-gl/maplibre';
+import Map from 'react-map-gl/maplibre';
+import type { MapRef, ViewStateChangeEvent } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
 
