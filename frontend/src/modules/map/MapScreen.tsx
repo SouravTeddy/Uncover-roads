@@ -330,6 +330,14 @@ export function MapScreen() {
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
+  const routeGeojson = state.route?.geojson
+    ? ({
+        type: 'Feature',
+        properties: {},
+        geometry: state.route.geojson,
+      } as GeoJSON.Feature<GeoJSON.LineString>)
+    : null;
+
   return (
     <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
 
@@ -342,6 +350,7 @@ export function MapScreen() {
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
         onClick={handleMapClick}
+        routeGeojson={routeGeojson}
       />
 
       {/* Initial load overlay */}
