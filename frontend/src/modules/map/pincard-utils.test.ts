@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterTypes, getHoursLabel, parseOpenClose } from './pincard-utils';
+import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl } from './pincard-utils';
 
 const WEEKDAYS = [
   'Monday: 9:00 AM – 11:00 PM',
@@ -60,5 +60,17 @@ describe('parseOpenClose', () => {
 
   it('returns original line if unparseable', () => {
     expect(parseOpenClose('Monday: Closed', true)).toBe('Monday: Closed');
+  });
+});
+
+describe('getDirectionsUrl', () => {
+  it('returns Apple Maps URL for iPhone user agent', () => {
+    const url = getDirectionsUrl(12.9, 77.6, 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0)');
+    expect(url).toBe('maps://maps.apple.com/?q=12.9,77.6');
+  });
+
+  it('returns Google Maps URL for Android user agent', () => {
+    const url = getDirectionsUrl(12.9, 77.6, 'Mozilla/5.0 (Linux; Android 12)');
+    expect(url).toBe('https://maps.google.com/maps?q=12.9,77.6');
   });
 });
