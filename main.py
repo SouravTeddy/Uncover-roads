@@ -37,6 +37,7 @@ GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 # Session token store: maps session_id -> google_session_token
 # Session tokens make autocomplete keystrokes FREE — only Place Details is billed
 _session_tokens: dict[str, str] = {}
+_SESSION_TOKEN_MAX = 10000  # max concurrent sessions to prevent unbounded growth
 
 # Simple rate limiting: max 100 Google calls per IP per hour
 _rate_limit: dict[str, list[float]] = defaultdict(list)
@@ -45,10 +46,15 @@ RATE_LIMIT_MAX = 100
 
 def _check_rate_limit(ip: str) -> bool:
     now = _time()
-    _rate_limit[ip] = [t for t in _rate_limit[ip] if now - t < RATE_LIMIT_WINDOW]
-    if len(_rate_limit[ip]) >= RATE_LIMIT_MAX:
+    recent = [t for t in _rate_limit[ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(recent) >= RATE_LIMIT_MAX:
+        _rate_limit[ip] = recent
         return False
-    _rate_limit[ip].append(now)
+    recent.append(now)
+    if recent:
+        _rate_limit[ip] = recent
+    elif ip in _rate_limit:
+        del _rate_limit[ip]
     return True
 
 # ── Overpass endpoints (ordered by current reliability) ──
@@ -883,9 +889,9 @@ def root():
 # GOOGLE PLACES AUTOCOMPLETE
 # =========================================
 @app.get("/places-autocomplete")
-async def places_autocomplete(
+def places_autocomplete(
     request: Request,
-    input: str,
+    query: str,
     session_id: str,
     types: str = "(cities)",
 ):
@@ -897,15 +903,21 @@ async def places_autocomplete(
     if not GOOGLE_PLACES_API_KEY:
         return {"predictions": []}
 
-    if not _check_rate_limit(request.client.host):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
     if session_id not in _session_tokens:
+        if len(_session_tokens) >= _SESSION_TOKEN_MAX:
+            # Evict oldest 10% of sessions when at capacity
+            evict_count = _SESSION_TOKEN_MAX // 10
+            for k in list(_session_tokens.keys())[:evict_count]:
+                del _session_tokens[k]
         _session_tokens[session_id] = str(uuid.uuid4())
     session_token = _session_tokens[session_id]
 
     params = {
-        "input": input,
+        "input": query,
         "types": types,
         "sessiontoken": session_token,
         "key": GOOGLE_PLACES_API_KEY,
@@ -913,13 +925,16 @@ async def places_autocomplete(
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/autocomplete/json", params=params, timeout=5)
         data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"predictions": [], "error": status or "UNKNOWN_ERROR"}
         return {
             "predictions": [
                 {
                     "place_id": p["place_id"],
                     "description": p["description"],
-                    "main_text": p["structured_formatting"]["main_text"],
-                    "secondary_text": p["structured_formatting"].get("secondary_text", ""),
+                    "main_text": p.get("structured_formatting", {}).get("main_text", p["description"]),
+                    "secondary_text": p.get("structured_formatting", {}).get("secondary_text", ""),
                 }
                 for p in data.get("predictions", [])
             ]
@@ -932,7 +947,7 @@ async def places_autocomplete(
 # GEOCODE PLACE
 # =========================================
 @app.get("/geocode-place")
-async def geocode_place(request: Request, place_id: str, session_id: str):
+def geocode_place(request: Request, place_id: str, session_id: str):
     """
     Get lat/lon + name from a place_id after autocomplete selection.
     This ENDS the session token (billing event: $0.017).
@@ -940,7 +955,8 @@ async def geocode_place(request: Request, place_id: str, session_id: str):
     if not GOOGLE_PLACES_API_KEY:
         return {"lat": None, "lon": None}
 
-    if not _check_rate_limit(request.client.host):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
     session_token = _session_tokens.pop(session_id, None)
@@ -956,6 +972,9 @@ async def geocode_place(request: Request, place_id: str, session_id: str):
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
         data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"lat": None, "lon": None, "error": status or "UNKNOWN_ERROR"}
         result = data.get("result", {})
         loc = result.get("geometry", {}).get("location", {})
         return {
@@ -972,7 +991,7 @@ async def geocode_place(request: Request, place_id: str, session_id: str):
 # FIND PLACE ID
 # =========================================
 @app.get("/find-place-id")
-async def find_place_id(request: Request, name: str, lat: float, lon: float):
+def find_place_id(request: Request, name: str, lat: float, lon: float):
     """
     Resolve Google place_id from an OSM place name + coordinates.
     Called once per unique pin tap — result cached client-side.
@@ -981,7 +1000,8 @@ async def find_place_id(request: Request, name: str, lat: float, lon: float):
     if not GOOGLE_PLACES_API_KEY:
         return {"place_id": None}
 
-    if not _check_rate_limit(request.client.host):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
     params = {
@@ -994,6 +1014,9 @@ async def find_place_id(request: Request, name: str, lat: float, lon: float):
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/findplacefromtext/json", params=params, timeout=5)
         data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"place_id": None, "error": status or "UNKNOWN_ERROR"}
         candidates = data.get("candidates", [])
         if candidates:
             return {"place_id": candidates[0]["place_id"], "name": candidates[0].get("name")}
@@ -1006,7 +1029,7 @@ async def find_place_id(request: Request, name: str, lat: float, lon: float):
 # PLACE DETAILS
 # =========================================
 @app.get("/place-details")
-async def place_details(request: Request, place_id: str):
+def place_details(request: Request, place_id: str):
     """
     Fetch Google Place Details. Cost: $0.017/call.
     Task 2 will add Supabase cache on top of this.
@@ -1016,7 +1039,8 @@ async def place_details(request: Request, place_id: str):
                 "rating": None, "rating_count": None, "phone": None, "website": None,
                 "price_level": None, "open_now": None, "weekday_text": [], "photo_ref": None, "types": []}
 
-    if not _check_rate_limit(request.client.host):
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
     params = {
@@ -1027,6 +1051,12 @@ async def place_details(request: Request, place_id: str):
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
         data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"place_id": place_id, "name": None, "address": None, "lat": None, "lon": None,
+                    "rating": None, "rating_count": None, "phone": None, "website": None,
+                    "price_level": None, "open_now": None, "weekday_text": [], "photo_ref": None,
+                    "types": [], "error": status or "UNKNOWN_ERROR"}
         result = data.get("result", {})
 
         photo_ref = None
