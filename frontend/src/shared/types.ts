@@ -198,5 +198,4 @@ export interface PlaceDetails {
   weekday_text?: string[];
   photo_ref?: string;
   types?: string[];
-  error?: string;
 }
