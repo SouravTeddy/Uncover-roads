@@ -4,6 +4,7 @@ import Map from 'react-map-gl/maplibre';
 import type { MapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
+import { MapLibreRoute } from './MapLibreRoute';
 
 // OpenFreeMap — completely free, no token required, OSM-based, global CDN
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -16,6 +17,7 @@ interface Props {
   onPlaceClick: (place: Place) => void;
   onMoveEnd: (center: [number, number], zoom: number) => void;
   onClick?: (lngLat: { lat: number; lng: number }) => void;
+  routeGeojson?: GeoJSON.Feature<GeoJSON.LineString> | null;
   children?: React.ReactNode;
 }
 
@@ -27,6 +29,7 @@ export function MapLibreMap({
   onPlaceClick,
   onMoveEnd,
   onClick,
+  routeGeojson,
   children,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -52,6 +55,7 @@ export function MapLibreMap({
       onMoveEnd={handleMoveEnd}
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
     >
+      <MapLibreRoute geojson={routeGeojson ?? null} />
       <MapLibreMarkers
         places={places}
         selectedPlace={selectedPlace}
