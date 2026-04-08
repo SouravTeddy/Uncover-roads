@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useRef } from 'react';
+import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
+import type { MapRef } from 'react-map-gl/maplibre';
 import { useAppStore } from '../../shared/store';
 import type { ItineraryStop, Place, TripContext } from '../../shared/types';
 import { CATEGORY_ICONS } from '../map/types';
@@ -93,19 +93,91 @@ function personaMatchNote(archetype: string | undefined, category: string | null
   return null;
 }
 
-// ── Mini map fit-bounds ────────────────────────────────────────
+// OpenFreeMap style — same as main map
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
-function FitBounds({ coords }: { coords: [number, number][] }) {
-  const map = useMap();
-  const fitted = useRef(false);
-  useEffect(() => {
-    if (fitted.current || coords.length < 2) return;
+// ── Mini map component ────────────────────────────────────────
+
+function MiniMap({ coords }: { coords: [number, number][] }) {
+  const mapRef = useRef<MapRef>(null);
+
+  // Fit bounds after map loads
+  const handleLoad = () => {
+    if (!mapRef.current || coords.length < 2) return;
+    const lats = coords.map(c => c[0]);
+    const lons = coords.map(c => c[1]);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons);
+    const maxLon = Math.max(...lons);
     try {
-      map.fitBounds(L.latLngBounds(coords), { padding: [24, 24], animate: false });
-      fitted.current = true;
+      mapRef.current.fitBounds(
+        [[minLon, minLat], [maxLon, maxLat]],
+        { padding: 24, animate: false }
+      );
     } catch { /* ignore */ }
-  }, [map, coords]);
-  return null;
+  };
+
+  // Build GeoJSON line
+  const lineGeoJSON: GeoJSON.Feature<GeoJSON.LineString> = {
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      // MapLibre uses [lon, lat]
+      coordinates: coords.map(([lat, lon]) => [lon, lat]),
+    },
+    properties: {},
+  };
+
+  const center = coords[0];
+
+  return (
+    <Map
+      ref={mapRef}
+      initialViewState={{
+        latitude: center[0],
+        longitude: center[1],
+        zoom: 13,
+      }}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle={STYLE_URL}
+      interactive={false}
+      onLoad={handleLoad}
+    >
+      <Source id="route" type="geojson" data={lineGeoJSON}>
+        <Layer
+          id="route-line"
+          type="line"
+          paint={{
+            'line-color': '#f97316',
+            'line-width': 2.5,
+            'line-opacity': 0.7,
+            'line-dasharray': [2, 2],
+          }}
+        />
+      </Source>
+      {coords.map((c, i) => {
+        const isFirst = i === 0;
+        const isLast = i === coords.length - 1;
+        const color = isFirst ? '#4ade80' : isLast ? '#f97316' : '#ffffff';
+        const size = isFirst || isLast ? 12 : 8;
+        return (
+          <Marker key={i} latitude={c[0]} longitude={c[1]}>
+            <div
+              style={{
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                background: color,
+                border: '2px solid rgba(10,14,20,.8)',
+                transform: 'translate(-50%, -50%)',
+              }}
+            />
+          </Marker>
+        );
+      })}
+    </Map>
+  );
 }
 
 // ── Main screen ───────────────────────────────────────────────
@@ -198,28 +270,7 @@ export function NavScreen() {
         {/* Mini map */}
         {hasMap && (
           <div className="mx-4 mt-4 rounded-2xl overflow-hidden border border-white/8" style={{ height: 180 }}>
-            <MapContainer
-              center={coords[0]}
-              zoom={13}
-              zoomControl={false}
-              dragging={false}
-              scrollWheelZoom={false}
-              touchZoom={false}
-              doubleClickZoom={false}
-              keyboard={false}
-              attributionControl={false}
-              style={{ width: '100%', height: '100%' }}
-            >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-              <Polyline
-                positions={coords}
-                pathOptions={{ color: '#f97316', weight: 2.5, opacity: 0.7, dashArray: '6 5' }}
-              />
-              {coords.map((c, i) => (
-                <StopDot key={i} position={c} index={i} total={coords.length} />
-              ))}
-              <FitBounds coords={coords} />
-            </MapContainer>
+            <MiniMap coords={coords} />
           </div>
         )}
 
@@ -271,29 +322,6 @@ export function NavScreen() {
       </div>
     </div>
   );
-}
-
-// ── Mini map stop dot ─────────────────────────────────────────
-
-function StopDot({ position, index, total }: { position: [number, number]; index: number; total: number }) {
-  const map = useMap();
-  const isFirst = index === 0;
-  const isLast = index === total - 1;
-  const color = isFirst ? '#4ade80' : isLast ? '#f97316' : '#ffffff';
-  const radius = isFirst || isLast ? 6 : 4;
-
-  useEffect(() => {
-    const marker = L.circleMarker(position, {
-      radius,
-      fillColor: color,
-      fillOpacity: 1,
-      color: 'rgba(10,14,20,.8)',
-      weight: 2,
-    }).addTo(map);
-    return () => { marker.remove(); };
-  }, [map, position, color, radius]);
-
-  return null;
 }
 
 // ── Stop card ─────────────────────────────────────────────────

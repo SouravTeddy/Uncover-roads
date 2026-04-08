@@ -1,28 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, useMap as useLeafletMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter, Category } from '../../shared/types';
 import { TripSheet } from './TripSheet';
-import { makeIcon, makeRecommendedIcon, makeSelectedIcon } from './icons';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
+import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
 import type { BBox } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
-
-// Fix Leaflet default icon URLs broken by Vite bundler
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+import { MapLibreMap } from './MapLibreMap';
 
 // ── Nominatim place search ──────────────────────────────────────
 
@@ -84,209 +74,6 @@ function nominatimToCategory(cls: string, type: string): Category {
   return 'place';
 }
 
-// ── Clustering helpers ──────────────────────────────────────────
-
-function buildClusters(places: Place[], map: L.Map, gridSize = 38): Place[][] {
-  const clusters: Place[][] = [];
-  const assigned = new Set<number>();
-  places.forEach((place, i) => {
-    if (assigned.has(i)) return;
-    const pt = map.latLngToContainerPoint([place.lat, place.lon]);
-    const group: Place[] = [place];
-    assigned.add(i);
-    places.forEach((other, j) => {
-      if (i === j || assigned.has(j)) return;
-      const op = map.latLngToContainerPoint([other.lat, other.lon]);
-      const dx = pt.x - op.x; const dy = pt.y - op.y;
-      if (Math.sqrt(dx * dx + dy * dy) < gridSize) { group.push(other); assigned.add(j); }
-    });
-    clusters.push(group);
-  });
-  return clusters;
-}
-
-function panToPinAboveCard(map: L.Map, lat: number, lon: number) {
-  const pt = map.project([lat, lon], map.getZoom());
-  pt.y += 90;
-  map.panTo(map.unproject(pt, map.getZoom()), { animate: true, duration: 0.3 });
-}
-
-function makeClusterIcon(count: number, hasRecommended: boolean, hasSelected: boolean) {
-  // Our Picks clusters get an orange ring; selected-only clusters get a white ring; plain = no ring
-  const bg     = hasSelected ? '#ffffff' : '#1c2230';
-  const ring   = hasSelected ? 'rgba(255,255,255,.18)' : hasRecommended ? 'rgba(249,115,22,.22)' : 'rgba(255,255,255,.07)';
-  const color  = hasSelected ? '#0f141e' : '#fff';
-  const border = hasSelected ? '2px solid rgba(0,0,0,.10)' : '2px solid rgba(255,255,255,.18)';
-  const inner  = count >= 10 ? 44 : count >= 5 ? 38 : 32;
-  const outer  = inner + 10;
-  const fs     = count >= 10 ? 14 : 13;
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:${outer}px;height:${outer}px;border-radius:50%;background:${ring};display:flex;align-items:center;justify-content:center">
-      <div style="width:${inner}px;height:${inner}px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.55);border:${border}">
-        <span style="font-weight:700;color:${color};font-size:${fs}px;font-family:system-ui,sans-serif;letter-spacing:-0.5px;line-height:1">${count}</span>
-      </div>
-    </div>`,
-    iconSize: [outer, outer],
-    iconAnchor: [outer / 2, outer / 2],
-  });
-}
-
-// ── Map sub-components ──────────────────────────────────────────
-
-function MapPins({
-  places, selectedIds, recommendedIds, onPinClick, onClusterExpand,
-}: {
-  places: Place[]; selectedIds: Set<string>; recommendedIds: Set<string>;
-  onPinClick: (place: Place) => void;
-  onClusterExpand: (group: Place[], lat: number, lon: number) => void;
-}) {
-  const map = useLeafletMap();
-  const pinMarkersRef = useRef<Map<string, L.Marker>>(new Map());
-  const clusterMarkersRef = useRef<Array<{ marker: L.Marker; group: Place[] }>>([]);
-
-  const rebuild = useCallback(() => {
-    pinMarkersRef.current.forEach(m => m.remove());
-    pinMarkersRef.current = new Map();
-    clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
-    clusterMarkersRef.current = [];
-    const valid = places.filter(p => p.lat && p.lon);
-    if (valid.length === 0) return;
-    buildClusters(valid, map).forEach(group => {
-      if (group.length === 1) {
-        const place = group[0];
-        const icon = selectedIds.has(place.id) ? makeSelectedIcon(place.category)
-          : recommendedIds.has(place.id) ? makeRecommendedIcon(place.category) : makeIcon(place.category);
-        const marker = L.marker([place.lat, place.lon], { icon });
-        marker.on('click', () => { panToPinAboveCard(map, place.lat, place.lon); onPinClick(place); });
-        marker.addTo(map);
-        pinMarkersRef.current.set(place.id, marker);
-      } else {
-        const hasRec = group.some(p => recommendedIds.has(p.id));
-        const hasSel = group.some(p => selectedIds.has(p.id));
-        const clat = group.reduce((s, p) => s + p.lat, 0) / group.length;
-        const clon = group.reduce((s, p) => s + p.lon, 0) / group.length;
-        const marker = L.marker([clat, clon], { icon: makeClusterIcon(group.length, hasRec, hasSel) });
-        marker.on('click', () => {
-          const bounds = L.latLngBounds(group.map(p => [p.lat, p.lon] as [number, number]));
-          // Check if zooming in would actually help (i.e. map isn't already at max zoom)
-          const targetZoom = map.getBoundsZoom(bounds, false, L.point(72, 72));
-          const atMaxZoom  = map.getZoom() >= map.getMaxZoom();
-          const wouldHelp  = targetZoom > map.getZoom() && !atMaxZoom;
-          if (wouldHelp) {
-            map.flyToBounds(bounds, { padding: [72, 72], duration: 0.4 });
-          } else {
-            // Already at max zoom or places too close to separate — show picker
-            onClusterExpand(group, clat, clon);
-          }
-        });
-        marker.addTo(map);
-        clusterMarkersRef.current.push({ marker, group });
-      }
-    });
-  }, [places, selectedIds, recommendedIds, map, onPinClick, onClusterExpand]);
-
-  useEffect(() => {
-    rebuild();
-    map.on('zoomend moveend', rebuild);
-    return () => {
-      map.off('zoomend moveend', rebuild);
-      pinMarkersRef.current.forEach(m => m.remove());
-      pinMarkersRef.current = new Map();
-      clusterMarkersRef.current.forEach(({ marker }) => marker.remove());
-      clusterMarkersRef.current = [];
-    };
-  }, [rebuild, map]);
-
-  useEffect(() => {
-    pinMarkersRef.current.forEach((marker, id) => {
-      const place = places.find(p => p.id === id);
-      if (!place) return;
-      const icon = selectedIds.has(id) ? makeSelectedIcon(place.category)
-        : recommendedIds.has(id) ? makeRecommendedIcon(place.category) : makeIcon(place.category);
-      marker.setIcon(icon);
-    });
-    clusterMarkersRef.current.forEach(({ marker, group }) => {
-      const hasRec = group.some(p => recommendedIds.has(p.id));
-      const hasSel = group.some(p => selectedIds.has(p.id));
-      marker.setIcon(makeClusterIcon(group.length, hasRec, hasSel));
-    });
-  }, [selectedIds, places, recommendedIds]);
-
-  return null;
-}
-
-function FitBounds({ places, cityGeo }: { places: Place[]; cityGeo: { lat: number; lon: number } | null }) {
-  const map = useLeafletMap();
-  const initialFitDone = useRef(false);
-  useEffect(() => {
-    if (initialFitDone.current) return;   // only auto-fit once — user controls view after that
-    if (places.length > 0) {
-      const valid = places.filter(p => p.lat && p.lon);
-      if (valid.length > 0) {
-        map.fitBounds(L.latLngBounds(valid.map(p => [p.lat, p.lon])), { padding: [48, 48] });
-        initialFitDone.current = true;
-      }
-    } else if (cityGeo) {
-      map.setView([cityGeo.lat, cityGeo.lon], 13);
-    }
-  }, [places, cityGeo, map]);
-  return null;
-}
-
-function MapMoveListener({
-  cityCenter, onMove,
-}: {
-  cityCenter: { lat: number; lon: number } | null;
-  onMove: (show: boolean, bbox: [number, number, number, number] | null, reset: () => void) => void;
-}) {
-  const { showSearchHere, currentBbox, resetSearchHere } = useMapMove(cityCenter);
-  useEffect(() => { onMove(showSearchHere, currentBbox, resetSearchHere); }, [showSearchHere, currentBbox, resetSearchHere, onMove]);
-  return null;
-}
-
-function PinDropListener({ active, onDrop }: { active: boolean; onDrop: (latlng: { lat: number; lon: number }) => void }) {
-  const map = useLeafletMap();
-  useEffect(() => {
-    if (!active) return;
-    const handler = (e: L.LeafletMouseEvent) => onDrop({ lat: e.latlng.lat, lon: e.latlng.lng });
-    map.once('click', handler);
-    return () => { map.off('click', handler); };
-  }, [active, map, onDrop]);
-  return null;
-}
-
-/** Fires once after the map settles on its initial position (after FitBounds) */
-function MapReadyTrigger({ onReady }: { onReady: (bbox: BBox) => void }) {
-  const map = useLeafletMap();
-  const firedRef = useRef(false);
-  useEffect(() => {
-    function fire() {
-      if (firedRef.current) return;
-      firedRef.current = true;
-      const b = map.getBounds();
-      if (b.isValid()) onReady([b.getSouth(), b.getNorth(), b.getWest(), b.getEast()]);
-    }
-    // moveend fires if FitBounds animates the view (async)
-    map.once('moveend', fire);
-    // Timeout fallback: FitBounds sometimes fires moveend synchronously before
-    // this listener registers — the timeout catches that case
-    const t = setTimeout(fire, 600);
-    return () => { map.off('moveend', fire); clearTimeout(t); };
-  }, [map, onReady]);
-  return null;
-}
-
-/** Pans the map to a target when it changes */
-function MapPanner({ target }: { target: { lat: number; lon: number } | null }) {
-  const map = useLeafletMap();
-  useEffect(() => {
-    if (!target) return;
-    panToPinAboveCard(map, target.lat, target.lon);
-  }, [target, map]);
-  return null;
-}
-
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
@@ -304,13 +91,10 @@ export function MapScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
-  const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
-  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); }, [setActivePlace]);
+  const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const { details, loading: detailsLoading, fetchDetails, clearDetails } = usePlaceDetails();
+  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
-  const handleClusterExpand = useCallback((group: Place[], lat: number, lon: number) => {
-    setClusterGroup({ places: group, lat, lon });
-  }, []);
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
@@ -321,7 +105,6 @@ export function MapScreen() {
   const searchBboxRef                             = useRef<BBox | null>(null);
   const [searchHereLoading, setSearchHereLoading] = useState(false);
   const [searchHereEmpty, setSearchHereEmpty]     = useState(false);
-  const resetSearchHereRef = useRef<() => void>(() => {});
 
   // Events
   const [eventsLoaded, setEventsLoaded]         = useState(false);
@@ -332,9 +115,6 @@ export function MapScreen() {
   const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
   const [pinDropResult, setPinDropResult]         = useState<{ lat: number; lon: number } | null>(null);
 
-  // Pan target (set when user picks a search result)
-  const [panTarget, setPanTarget] = useState<{ lat: number; lon: number } | null>(null);
-
   // Place search
   const [searchQuery, setSearchQuery]       = useState('');
   const [searchResults, setSearchResults]   = useState<NominatimResult[]>([]);
@@ -343,16 +123,6 @@ export function MapScreen() {
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef     = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null;
-
-  const handleMapMove = useCallback(
-    (show: boolean, bbox: BBox | null, reset: () => void) => {
-      setShowSearchHere(show);
-      searchBboxRef.current = bbox;          // always up-to-date, no re-render needed
-      resetSearchHereRef.current = reset;
-    }, [],
-  );
 
   const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
     const bbox = overrideBbox ?? searchBboxRef.current;
@@ -407,14 +177,59 @@ export function MapScreen() {
       }
     } finally {
       setSearchHereLoading(false);
-      if (!overrideBbox) resetSearchHereRef.current();
-      else setInitialLoading(false);
+      if (!overrideBbox) {
+        setShowSearchHere(false);
+      } else {
+        setInitialLoading(false);
+      }
     }
   }, [city, cityGeo, dispatch]);
 
-  const handlePinDrop = useCallback((latlng: { lat: number; lon: number }) => {
-    setPinDropResult(latlng); setAwaitingPinDrop(false); setShowTripSheet(true);
-  }, []);
+  // Trigger initial load once cityGeo is available
+  const initialLoadFired = useRef(false);
+  useEffect(() => {
+    if (initialLoadFired.current) return;
+    if (!cityGeo) return;
+    initialLoadFired.current = true;
+    const bbox: BBox = cityGeo.bbox ?? [
+      cityGeo.lat - 0.1, cityGeo.lat + 0.1,
+      cityGeo.lon - 0.1, cityGeo.lon + 0.1,
+    ];
+    handleSearchHere(bbox);
+  }, [cityGeo, handleSearchHere]);
+
+  // Pin drop click handler
+  const handleMapClick = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      if (awaitingPinDrop) {
+        setPinDropResult({ lat, lon: lng });
+        setAwaitingPinDrop(false);
+      }
+    },
+    [awaitingPinDrop],
+  );
+
+  // useMapMove: show "Search Here" button when user pans
+  const { handleMoveEnd } = useMapMove({
+    onSearchHere: useCallback((_center: [number, number]) => {
+      setShowSearchHere(true);
+    }, []),
+  });
+
+  // Bridge: MapLibreMap calls onMoveEnd(center, zoom) — store bbox approximation and show button
+  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number) => {
+    // Approximate viewport bbox from center + zoom (rough estimate)
+    const latDelta = 180 / Math.pow(2, zoom) * 0.5;
+    const lonDelta = 360 / Math.pow(2, zoom) * 0.5;
+    const bbox: BBox = [
+      center[0] - latDelta,
+      center[0] + latDelta,
+      center[1] - lonDelta,
+      center[1] + lonDelta,
+    ];
+    searchBboxRef.current = bbox;
+    handleMoveEnd(center, zoom);
+  }, [handleMoveEnd]);
 
   async function loadEvents() {
     const date = state.tripContext.date;
@@ -488,7 +303,6 @@ export function MapScreen() {
     };
     dispatch({ type: 'MERGE_PLACES', places: [place] });
     setActivePlace(place);
-    setPanTarget({ lat, lon });
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
@@ -516,27 +330,28 @@ export function MapScreen() {
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
+  const routeGeojson = state.route?.geojson
+    ? ({
+        type: 'Feature',
+        properties: {},
+        geometry: state.route.geojson,
+      } as GeoJSON.Feature<GeoJSON.LineString>)
+    : null;
+
   return (
     <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
 
       {/* Map — full screen */}
-      <MapContainer
+      <MapLibreMap
         center={center}
         zoom={cityGeo ? 13 : 2}
-        style={{ width: '100%', height: '100%', zIndex: 0 }}
-        zoomControl={false}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-        />
-        <FitBounds places={filteredPlaces} cityGeo={cityGeo} />
-        <MapPins places={filteredPlaces} selectedIds={selectedIds} recommendedIds={recommendedIds} onPinClick={handlePinClick} onClusterExpand={handleClusterExpand} />
-        <MapMoveListener cityCenter={cityCenter} onMove={handleMapMove} />
-        <PinDropListener active={awaitingPinDrop} onDrop={handlePinDrop} />
-        <MapPanner target={panTarget} />
-        <MapReadyTrigger onReady={bbox => handleSearchHere(bbox)} />
-      </MapContainer>
+        places={filteredPlaces}
+        selectedPlace={activePlace}
+        onPlaceClick={handlePinClick}
+        onMoveEnd={handleMapMoveEnd}
+        onClick={handleMapClick}
+        routeGeojson={routeGeojson}
+      />
 
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
@@ -732,7 +547,9 @@ export function MapScreen() {
               city={city}
               isSelected={selectedIds.has(activePlace.id)}
               onAdd={() => togglePlace(activePlace)}
-              onClose={() => setActivePlace(null)}
+              onClose={() => { setActivePlace(null); clearDetails(); }}
+              details={details}
+              detailsLoading={detailsLoading}
             />
           )}
           {selectedPlaces.length >= 2 && (

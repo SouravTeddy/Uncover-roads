@@ -1,11 +1,16 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
 import os
 import json
+import uuid
 import anthropic
+from collections import defaultdict
+from time import time as _time
 from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone
+from supabase import create_client, Client as SupabaseClient
 from ip_engine import build_persona_response, get_city_profile, run_conflict_check, ARCHETYPES
 
 load_dotenv()
@@ -27,6 +32,43 @@ ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
+
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+# Place details cache TTL — place hours/ratings/contact info changes infrequently
+# Set via env var (days) or default to 30 days
+PLACE_CACHE_TTL_DAYS = int(os.getenv("PLACE_CACHE_TTL_DAYS", "30"))
+
+_supabase: SupabaseClient | None = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# Session token store: maps session_id -> google_session_token
+# Session tokens make autocomplete keystrokes FREE — only Place Details is billed
+_session_tokens: dict[str, str] = {}
+_SESSION_TOKEN_MAX = 10000  # max concurrent sessions to prevent unbounded growth
+
+# Simple rate limiting: max 100 Google calls per IP per hour
+_rate_limit: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_WINDOW = 3600
+RATE_LIMIT_MAX = 100
+
+def _check_rate_limit(ip: str) -> bool:
+    now = _time()
+    recent = [t for t in _rate_limit[ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(recent) >= RATE_LIMIT_MAX:
+        _rate_limit[ip] = recent
+        return False
+    recent.append(now)
+    if recent:
+        _rate_limit[ip] = recent
+    elif ip in _rate_limit:
+        del _rate_limit[ip]
+    return True
 
 # ── Overpass endpoints (ordered by current reliability) ──
 OVERPASS_ENDPOINTS = [
@@ -854,6 +896,248 @@ def events(
 @app.get("/")
 def root():
     return {"status": "ok", "service": "Uncover Roads API"}
+
+
+# =========================================
+# GOOGLE PLACES AUTOCOMPLETE
+# =========================================
+@app.get("/places-autocomplete")
+def places_autocomplete(
+    request: Request,
+    query: str,
+    session_id: str,
+    types: str = "(cities)",
+):
+    """
+    Google Places Autocomplete with session tokens.
+    All keystrokes in a session are FREE — billing only happens at Place Details.
+    types: "(cities)" for city search, "establishment" for POI search.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"predictions": []}
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    if session_id not in _session_tokens:
+        if len(_session_tokens) >= _SESSION_TOKEN_MAX:
+            # Evict oldest 10% of sessions when at capacity
+            evict_count = _SESSION_TOKEN_MAX // 10
+            for k in list(_session_tokens.keys())[:evict_count]:
+                del _session_tokens[k]
+        _session_tokens[session_id] = str(uuid.uuid4())
+    session_token = _session_tokens[session_id]
+
+    params = {
+        "input": query,
+        "types": types,
+        "sessiontoken": session_token,
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/autocomplete/json", params=params, timeout=5)
+        data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"predictions": [], "error": status or "UNKNOWN_ERROR"}
+        return {
+            "predictions": [
+                {
+                    "place_id": p["place_id"],
+                    "description": p["description"],
+                    "main_text": p.get("structured_formatting", {}).get("main_text", p["description"]),
+                    "secondary_text": p.get("structured_formatting", {}).get("secondary_text", ""),
+                }
+                for p in data.get("predictions", [])
+            ]
+        }
+    except Exception as e:
+        return {"predictions": [], "error": str(e)}
+
+
+# =========================================
+# GEOCODE PLACE
+# =========================================
+@app.get("/geocode-place")
+def geocode_place(request: Request, place_id: str, session_id: str):
+    """
+    Get lat/lon + name from a place_id after autocomplete selection.
+    This ENDS the session token (billing event: $0.017).
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"lat": None, "lon": None}
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    session_token = _session_tokens.pop(session_id, None)
+
+    params = {
+        "place_id": place_id,
+        "fields": "geometry,name,formatted_address",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    if session_token:
+        params["sessiontoken"] = session_token
+
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
+        data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"lat": None, "lon": None, "error": status or "UNKNOWN_ERROR"}
+        result = data.get("result", {})
+        loc = result.get("geometry", {}).get("location", {})
+        return {
+            "lat": loc.get("lat"),
+            "lon": loc.get("lng"),
+            "name": result.get("name"),
+            "address": result.get("formatted_address"),
+        }
+    except Exception as e:
+        return {"lat": None, "lon": None, "error": str(e)}
+
+
+# =========================================
+# FIND PLACE ID
+# =========================================
+@app.get("/find-place-id")
+def find_place_id(request: Request, name: str, lat: float, lon: float):
+    """
+    Resolve Google place_id from an OSM place name + coordinates.
+    Called once per unique pin tap — result cached client-side.
+    Cost: $0.017/call (Find Place Basic Data).
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"place_id": None}
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    params = {
+        "input": name,
+        "inputtype": "textquery",
+        "locationbias": f"point:{lat},{lon}",
+        "fields": "place_id,name",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/findplacefromtext/json", params=params, timeout=5)
+        data = resp.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            return {"place_id": None, "error": status or "UNKNOWN_ERROR"}
+        candidates = data.get("candidates", [])
+        if candidates:
+            return {"place_id": candidates[0]["place_id"], "name": candidates[0].get("name")}
+        return {"place_id": None}
+    except Exception as e:
+        return {"place_id": None, "error": str(e)}
+
+
+# =========================================
+# PLACE DETAILS
+# =========================================
+@app.get("/place-details")
+def place_details(request: Request, place_id: str):
+    """
+    Fetch Google Place Details. Cost: $0.017/call.
+    Checks Supabase cache first (24hr TTL) — cache hit = $0.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {
+            "place_id": place_id, "name": None, "address": None,
+            "lat": None, "lon": None, "rating": None, "rating_count": None,
+            "phone": None, "website": None, "price_level": None,
+            "open_now": None, "weekday_text": [], "photo_ref": None, "types": []
+        }
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    # 1. Check Supabase cache
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("place_details_cache")
+                .select("data, fetched_at")
+                .eq("place_id", place_id)
+                .maybe_single()
+                .execute()
+            )
+            if cached.data:
+                fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
+                if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
+                    return cached.data["data"]  # cache hit — no Google call
+        except Exception:
+            pass  # cache failure is non-fatal
+
+    # 2. Cache miss — call Google
+    params = {
+        "place_id": place_id,
+        "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
+        data = resp.json()
+
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            status = data.get("status", "UNKNOWN_ERROR")
+            return {
+                "place_id": place_id, "name": None, "address": None,
+                "lat": None, "lon": None, "rating": None, "rating_count": None,
+                "phone": None, "website": None, "price_level": None,
+                "open_now": None, "weekday_text": [], "photo_ref": None,
+                "types": [], "error": status
+            }
+
+        result = data.get("result", {})
+        photo_ref = None
+        if result.get("photos"):
+            photo_ref = result["photos"][0]["photo_reference"]
+
+        details = {
+            "place_id": place_id,
+            "name": result.get("name"),
+            "address": result.get("formatted_address"),
+            "lat": result.get("geometry", {}).get("location", {}).get("lat"),
+            "lon": result.get("geometry", {}).get("location", {}).get("lng"),
+            "rating": result.get("rating"),
+            "rating_count": result.get("user_ratings_total"),
+            "phone": result.get("formatted_phone_number"),
+            "website": result.get("website"),
+            "price_level": result.get("price_level"),
+            "open_now": result.get("opening_hours", {}).get("open_now"),
+            "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
+            "photo_ref": photo_ref,
+            "types": result.get("types", []),
+        }
+
+        # 3. Write to cache
+        if _supabase:
+            try:
+                _supabase.table("place_details_cache").upsert({
+                    "place_id": place_id,
+                    "data": details,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }).execute()
+            except Exception:
+                pass  # cache write failure is non-fatal
+
+        return details
+    except Exception as e:
+        return {
+            "place_id": place_id, "name": None, "address": None,
+            "lat": None, "lon": None, "rating": None, "rating_count": None,
+            "phone": None, "website": None, "price_level": None,
+            "open_now": None, "weekday_text": [], "photo_ref": None,
+            "types": [], "error": str(e)
+        }
 
 
 if __name__ == "__main__":
