@@ -12,6 +12,7 @@ import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
+import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
 import type { BBox } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
@@ -306,7 +307,8 @@ export function MapScreen() {
 
   const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
-  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); }, [setActivePlace]);
+  const { details, loading: detailsLoading, fetchDetails, clearDetails } = usePlaceDetails();
+  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const handleClusterExpand = useCallback((group: Place[], lat: number, lon: number) => {
     setClusterGroup({ places: group, lat, lon });
@@ -732,7 +734,9 @@ export function MapScreen() {
               city={city}
               isSelected={selectedIds.has(activePlace.id)}
               onAdd={() => togglePlace(activePlace)}
-              onClose={() => setActivePlace(null)}
+              onClose={() => { setActivePlace(null); clearDetails(); }}
+              details={details}
+              detailsLoading={detailsLoading}
             />
           )}
           {selectedPlaces.length >= 2 && (
