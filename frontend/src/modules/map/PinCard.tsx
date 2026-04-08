@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Place } from '../../shared/types';
+import type { Place, PlaceDetails } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { api } from '../../shared/api';
 
@@ -9,9 +9,11 @@ interface Props {
   isSelected: boolean;
   onAdd: () => void;
   onClose: () => void;
+  details?: PlaceDetails | null;
+  detailsLoading?: boolean;
 }
 
-export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
+export function PinCard({ place, city, isSelected, onAdd, onClose, details, detailsLoading }: Props) {
   const icon = CATEGORY_ICONS[place.category] ?? 'location_on';
   const label = CATEGORY_LABELS[place.category] ?? 'Place';
   const tags = place.tags ?? {};
@@ -175,6 +177,48 @@ export function PinCard({ place, city, isSelected, onAdd, onClose }: Props) {
           {isEvent ? 'Tickets' : 'More'}
           <span className="ms" style={{ fontSize: 13 }}>open_in_new</span>
         </button>
+      </div>
+
+      {/* Google Place Details */}
+      <div className="px-3 pb-3">
+        {detailsLoading && (
+          <p className="text-xs text-gray-400 mt-2 animate-pulse">Loading details...</p>
+        )}
+
+        {details && !detailsLoading && (
+          <div className="mt-3 space-y-1.5 text-sm border-t border-white/10 pt-3">
+            {details.rating && (
+              <div className="flex items-center gap-1">
+                <span>⭐</span>
+                <span className="font-medium">{details.rating}</span>
+                <span className="text-gray-400">({details.rating_count?.toLocaleString()})</span>
+              </div>
+            )}
+            {details.open_now !== undefined && (
+              <div className={details.open_now ? 'text-green-400' : 'text-red-400'}>
+                {details.open_now ? '● Open now' : '● Closed'}
+              </div>
+            )}
+            {details.price_level !== undefined && details.price_level > 0 && (
+              <div className="text-gray-300">{'$'.repeat(details.price_level)}</div>
+            )}
+            {details.phone && (
+              <a href={`tel:${details.phone}`} className="block text-blue-400 hover:underline">
+                📞 {details.phone}
+              </a>
+            )}
+            {details.website && (
+              <a
+                href={details.website}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-blue-400 hover:underline truncate"
+              >
+                🌐 {new URL(details.website).hostname}
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

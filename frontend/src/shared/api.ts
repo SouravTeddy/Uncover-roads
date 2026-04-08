@@ -8,11 +8,11 @@ import type {
   WeatherData,
   Persona,
   OnboardingAnswers,
+  AutocompleteResult,
+  PlaceDetails,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-
-const API = BASE;
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
@@ -79,7 +79,7 @@ export async function mapData(
     params.set('west', String(west));
     params.set('east', String(east));
   }
-  const res = await fetch(`${API}/map-data?${params}`);
+  const res = await fetch(`${BASE}/map-data?${params}`);
   if (!res.ok) throw new Error('map-data failed');
   return res.json();
 }
@@ -142,3 +142,50 @@ export const api = {
     return get<Place[]>(`/events?${params}`);
   },
 };
+
+// Note: backend param is 'query' (not 'input') — renamed to avoid Python builtin shadow
+export async function placesAutocomplete(
+  query: string,
+  sessionId: string,
+  types = '(cities)'
+): Promise<AutocompleteResult[]> {
+  const params = new URLSearchParams({ query, session_id: sessionId, types });
+  const res = await fetch(`${BASE}/places-autocomplete?${params}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  const predictions = data.predictions;
+  return Array.isArray(predictions) ? predictions : [];
+}
+
+export async function geocodePlace(
+  placeId: string,
+  sessionId: string
+): Promise<{ lat: number; lon: number; name: string; address: string } | null> {
+  const params = new URLSearchParams({ place_id: placeId, session_id: sessionId });
+  const res = await fetch(`${BASE}/geocode-place?${params}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.lat || !data.lon) return null;
+  return data;
+}
+
+export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
+  const params = new URLSearchParams({ place_id: placeId });
+  const res = await fetch(`${BASE}/place-details?${params}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.place_id) return null;
+  return data as PlaceDetails;
+}
+
+export async function findPlaceId(
+  name: string,
+  lat: number,
+  lon: number
+): Promise<string | null> {
+  const params = new URLSearchParams({ name, lat: String(lat), lon: String(lon) });
+  const res = await fetch(`${BASE}/find-place-id?${params}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.place_id ?? null;
+}

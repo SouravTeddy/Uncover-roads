@@ -1,3 +1,5 @@
+import type { LineString } from 'geojson';
+
 // ── Screen navigation ─────────────────────────────────────────
 export type Screen =
   | 'login'
@@ -151,7 +153,7 @@ export interface LatLon {
 }
 
 export interface RouteData {
-  geojson?: GeoJSON.LineString;
+  geojson?: LineString;
   distance?: number;
   duration?: number;
 }
@@ -171,4 +173,29 @@ export interface CityResult {
   country: string;
   lat: number;
   lon: number;
+}
+
+// ── Google Places ─────────────────────────────────────────────
+export interface AutocompleteResult {
+  place_id: string;
+  description: string;
+  main_text: string;
+  secondary_text: string;
+}
+
+export interface PlaceDetails {
+  place_id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  rating?: number;
+  rating_count?: number;
+  phone?: string;
+  website?: string;
+  price_level?: number; // 0 = free, 1–4 = $ to $$$$
+  open_now?: boolean;
+  weekday_text?: string[];
+  photo_ref?: string;
+  types?: string[];
 }
