@@ -7,6 +7,7 @@ interface Props {
   onClose: () => void;
   onRequestPinDrop: () => void;
   pinDropResult: { lat: number; lon: number } | null;
+  pinPlaceName?: string | null;
   onClearPin: () => void;
 }
 
@@ -16,7 +17,7 @@ const CHIPS: Array<{ value: StartChip; icon: string; label: string }> = [
   { value: 'pin',     icon: '📍', label: 'Pin'     },
 ];
 
-export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onClearPin }: Props) {
+export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pinPlaceName, onClearPin }: Props) {
   const { state } = useAppStore();
   const city = state.city;
   const placesCount = state.selectedPlaces.length;
@@ -66,7 +67,6 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
           border: '1px solid rgba(255,255,255,.07)',
           borderRadius: 24,
           boxShadow: '0 24px 80px rgba(0,0,0,.8)',
-          overflow: 'hidden',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -170,7 +170,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(20,184,166,.1)', border: '1px solid rgba(20,184,166,.3)', borderRadius: 11 }}>
                 <span style={{ fontSize: 10, color: '#2dd4bf' }}>📍</span>
                 <span style={{ fontSize: 10, color: '#5eead4', flex: 1 }}>
-                  {pinDropResult.lat.toFixed(4)}, {pinDropResult.lon.toFixed(4)}
+                  {pinPlaceName ?? `${pinDropResult.lat.toFixed(4)}, ${pinDropResult.lon.toFixed(4)}`}
                 </span>
                 <button
                   onClick={handleClearPin}
@@ -217,8 +217,9 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
                     style={{
                       position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
                       background: 'rgba(10,14,24,.97)',
+                      zIndex: 200,
                       border: '1px solid rgba(255,255,255,.1)',
-                      borderRadius: 11, overflow: 'hidden', zIndex: 10,
+                      borderRadius: 11, overflow: 'hidden',
                     }}
                   >
                     {locationResults.map((r, i) => (
