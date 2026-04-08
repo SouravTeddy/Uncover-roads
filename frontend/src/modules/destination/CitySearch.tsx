@@ -1,15 +1,36 @@
-import type { CityResult } from '../../shared/types';
-import { useCitySearch } from './useCitySearch';
+import { useState } from 'react';
+import { useGoogleCitySearch } from './useGoogleCitySearch';
+import type { AutocompleteResult } from '../../shared/types';
+
+interface GeoResult {
+  lat: number;
+  lon: number;
+  name: string;
+  address: string;
+}
 
 interface Props {
-  onSelect: (city: string) => void;
+  onSelect: (city: string, geo?: GeoResult | null) => void;
 }
 
 export function CitySearch({ onSelect }: Props) {
-  const { query, results, loading, onInput, clear } = useCitySearch();
+  const [query, setQuery] = useState('');
+  const { results, loading, search, selectResult, clear } = useGoogleCitySearch();
 
-  function handleSelect(result: CityResult) {
-    onSelect(result.name);
+  function handleInput(value: string) {
+    setQuery(value);
+    search(value);
+  }
+
+  async function handleSelect(result: AutocompleteResult) {
+    const geo = await selectResult(result);
+    const name = geo?.name ?? result.main_text;
+    setQuery('');
+    onSelect(name, geo);
+  }
+
+  function handleClear() {
+    setQuery('');
     clear();
   }
 
@@ -24,12 +45,12 @@ export function CitySearch({ onSelect }: Props) {
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="words"
-          onChange={e => onInput(e.target.value)}
+          onChange={e => handleInput(e.target.value)}
           className="flex-1 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
         />
         {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
         {query && !loading && (
-          <button onClick={clear} className="ms text-text-3 text-base">close</button>
+          <button onClick={handleClear} className="ms text-text-3 text-base">close</button>
         )}
       </div>
 
@@ -43,9 +64,9 @@ export function CitySearch({ onSelect }: Props) {
             >
               <span className="ms text-text-3 text-base">location_on</span>
               <div>
-                <div className="text-text-1 text-sm font-medium">{r.name}</div>
-                {r.country && (
-                  <div className="text-text-3 text-xs">{r.country}</div>
+                <div className="text-text-1 text-sm font-medium">{r.main_text}</div>
+                {r.secondary_text && (
+                  <div className="text-text-3 text-xs">{r.secondary_text}</div>
                 )}
               </div>
             </button>

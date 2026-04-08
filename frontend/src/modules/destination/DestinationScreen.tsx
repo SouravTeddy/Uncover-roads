@@ -34,13 +34,19 @@ export function DestinationScreen() {
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 
-  async function selectCity(name: string) {
+  async function selectCity(name: string, googleGeo?: { lat: number; lon: number; name?: string; address?: string } | null) {
     dispatch({ type: 'SET_CITY', city: name });
-    try {
-      const geo = await api.geocode(name);
-      dispatch({ type: 'SET_CITY_GEO', geo });
-    } catch {
-      // proceed anyway — map will handle missing geo
+    if (googleGeo) {
+      // Geo already resolved by Google Places — build a minimal GeoData with a default bbox
+      const { lat, lon } = googleGeo;
+      dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
+    } else {
+      try {
+        const geo = await api.geocode(name);
+        dispatch({ type: 'SET_CITY_GEO', geo });
+      } catch {
+        // proceed anyway — map will handle missing geo
+      }
     }
     setPendingCity(name);
     setDateValue('');
