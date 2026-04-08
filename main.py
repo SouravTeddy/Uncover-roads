@@ -39,6 +39,10 @@ GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
+# Place details cache TTL — place hours/ratings/contact info changes infrequently
+# Set via env var (days) or default to 30 days
+PLACE_CACHE_TTL_DAYS = int(os.getenv("PLACE_CACHE_TTL_DAYS", "30"))
+
 _supabase: SupabaseClient | None = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -1067,7 +1071,7 @@ def place_details(request: Request, place_id: str):
             )
             if cached.data:
                 fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
-                if datetime.now(timezone.utc) - fetched_at < timedelta(hours=24):
+                if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
                     return cached.data["data"]  # cache hit — no Google call
         except Exception:
             pass  # cache failure is non-fatal
