@@ -42,6 +42,36 @@ html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #0f17
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ── Pin drop marker ──────────────────────────────────── */
+.pin-drop-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+}
+.pin-drop-dot {
+  position: absolute;
+  inset: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  border-radius: 50%;
+  background: #14b8a6;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+.pin-drop-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(20,184,166,.35);
+  animation: pin-pulse 1.4s ease-out infinite;
+}
+@keyframes pin-pulse {
+  0%   { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+
 /* ── Weather animations ───────────────────────────────── */
 @keyframes weather-pulse {
   0%, 100% { opacity: .25; transform: scale(1); }
