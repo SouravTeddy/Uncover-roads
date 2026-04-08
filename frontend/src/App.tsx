@@ -69,6 +69,11 @@ function ScreenRouter() {
         loadSavedItineraries(session.user.id).then(items => {
           if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
         }).catch(console.warn);
+        // Always load role + generation count so admin bypass works without re-login
+        loadUserProfile(session.user.id).then(({ role, generationCount }) => {
+          dispatch({ type: 'SET_USER_ROLE', role });
+          dispatch({ type: 'SET_GENERATION_COUNT', count: generationCount });
+        }).catch(console.warn);
       }
     });
 
