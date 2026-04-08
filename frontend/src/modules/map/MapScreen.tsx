@@ -3,7 +3,7 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter, Category } from '../../shared/types';
-import { TripSheet } from './TripSheet';
+import { TripPlanningCard } from './TripPlanningCard';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { SearchHereButton } from './SearchHereButton';
@@ -603,12 +603,11 @@ export function MapScreen() {
       )}
 
       {showTripSheet && (
-        <TripSheet
+        <TripPlanningCard
           onClose={() => setShowTripSheet(false)}
           onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
           onClearPin={() => setPinDropResult(null)}
           pinDropResult={pinDropResult}
-          cityGeo={cityGeo}
         />
       )}
     </div>
