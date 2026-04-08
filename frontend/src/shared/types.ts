@@ -203,7 +203,7 @@ export interface PlaceDetails {
 export interface NearbyResult {
   name: string;
   address: string;
-  rating: number | null;
+  rating?: number;
   distance_m: number;
   lat: number;
   lon: number;
