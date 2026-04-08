@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { ItineraryStop, Place, TripContext, Persona, WeatherData, ItinerarySummary } from '../../shared/types';
 import { resolveScene } from './sceneMap';
 import {
@@ -68,47 +68,56 @@ export function ItineraryCards({
   const [activeCard, setActiveCard] = useState(0);
   const [expandedStop, setExpandedStop] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Store timeline + weather in refs so scroll handler never goes stale
+  const timelineRef = useRef(timeline);
+  const weatherRef  = useRef(weather);
+  useEffect(() => { timelineRef.current = timeline; }, [timeline]);
+  useEffect(() => { weatherRef.current = weather; }, [weather]);
 
-  // IntersectionObserver drives scene changes + active dot
+  // Scroll-based scene tracker — fires only when snap settles on a new card
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const idx = Number((entry.target as HTMLElement).dataset.cardIdx);
-          setActiveCard(idx);
-          setExpandedStop(null); // collapse on scroll
+    let raf = 0;
+    let lastIdx = -1;
 
-          // Resolve scene for this card
-          if (idx === 0) {
-            // Intro — time of day scene
-            onSceneChange('');
-          } else if (idx <= timeline.length) {
-            const { stop, startMins: sMins, matchedCategory } = timeline[idx - 1];
-            onSceneChange(resolveScene({
-              stopName: stop.place ?? '',
-              timeMins: sMins,
-              category: matchedCategory,
-              weather: weather ?? null,
-            }));
-          } else {
-            // Finale
-            onSceneChange('');
-          }
-        }
-      },
-      { root, threshold: 0.55 }
-    );
-    cardRefs.current.forEach(el => { if (el) obs.observe(el); });
-    return () => obs.disconnect();
+    const update = () => {
+      const cardH = root.clientHeight;
+      if (!cardH) return;
+      const idx = Math.round(root.scrollTop / cardH);
+      if (idx === lastIdx) return;
+      lastIdx = idx;
+      setActiveCard(idx);
+      setExpandedStop(null);
+
+      const tl = timelineRef.current;
+      const wx = weatherRef.current;
+      if (idx === 0 || idx > tl.length) {
+        onSceneChange('');
+      } else {
+        const { stop, startMins: sMins, matchedCategory } = tl[idx - 1];
+        onSceneChange(resolveScene({
+          stopName: stop.place ?? '',
+          timeMins: sMins,
+          category: matchedCategory,
+          weather: wx ?? null,
+        }));
+      }
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+
+    root.addEventListener('scroll', onScroll, { passive: true });
+    // Fire once on mount so the intro card sets the right scene
+    update();
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(raf);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeline.length, weather]);
-
-  const setCardRef = useCallback((el: HTMLDivElement | null, idx: number) => {
-    cardRefs.current[idx] = el;
   }, []);
 
   const cardStyle: React.CSSProperties = {
@@ -133,11 +142,11 @@ export function ItineraryCards({
           scrollSnapType: 'y mandatory',
           scrollbarWidth: 'none',
           WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'none',
         } as React.CSSProperties}
       >
         {/* Intro card */}
         <div
-          ref={el => setCardRef(el, 0)}
           data-card-idx="0"
           style={cardStyle}
         >
@@ -158,7 +167,6 @@ export function ItineraryCards({
           return (
             <div
               key={i}
-              ref={el => setCardRef(el, cardIdx)}
               data-card-idx={String(cardIdx)}
               style={cardStyle}
             >
@@ -167,12 +175,9 @@ export function ItineraryCards({
                 item={item}
                 total={timeline.length}
                 persona={persona}
-                isExpanded={expandedStop === i}
-                onTap={() => setExpandedStop(expandedStop === i ? null : i)}
-                onRemove={() => onRemove(item.index)}
-                onAddMeal={onAddMeal}
+                onExpand={() => setExpandedStop(i)}
               />
-              {/* Transit strip between cards */}
+              {/* Transit strip */}
               {i < timeline.length - 1 && item.stop.transit_to_next && (
                 <TransitStrip transit={item.stop.transit_to_next} />
               )}
@@ -182,7 +187,6 @@ export function ItineraryCards({
 
         {/* Finale card */}
         <div
-          ref={el => setCardRef(el, totalCards - 1)}
           data-card-idx={String(totalCards - 1)}
           style={cardStyle}
         >
@@ -197,6 +201,16 @@ export function ItineraryCards({
           />
         </div>
       </div>
+
+      {/* Expanded stop bottom sheet — outside scroll container so it never clips */}
+      {expandedStop !== null && timeline[expandedStop] && (
+        <ExpandedSheet
+          stop={timeline[expandedStop].stop}
+          onClose={() => setExpandedStop(null)}
+          onRemove={() => { onRemove(timeline[expandedStop!].index); setExpandedStop(null); }}
+          onAddMeal={onAddMeal}
+        />
+      )}
 
       {/* Floating header — always on top */}
       <FloatingHeader
@@ -296,18 +310,12 @@ function StopCard({
   item,
   total,
   persona,
-  isExpanded,
-  onTap,
-  onRemove,
-  onAddMeal,
+  onExpand,
 }: {
   item: StopWithTime;
   total: number;
   persona?: Persona | null;
-  isExpanded: boolean;
-  onTap: () => void;
-  onRemove: () => void;
-  onAddMeal: () => void;
+  onExpand: () => void;
 }) {
   const { stop, index, startMins, matchedCategory } = item;
   const timeLabel = parseTimeLabel(startMins);
@@ -320,7 +328,7 @@ function StopCard({
 
   return (
     <div
-      onClick={onTap}
+      onClick={onExpand}
       style={{
         position: 'absolute',
         bottom: 0,
@@ -328,183 +336,184 @@ function StopCard({
         right: 0,
         cursor: 'pointer',
         userSelect: 'none',
+        padding: '0 24px calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
       }}
     >
-      {/* Collapsed content */}
-      <div
-        style={{
-          padding: `0 24px calc(env(safe-area-inset-bottom, 0px) + ${isExpanded ? 20 : 72}px)`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          transition: 'padding-bottom 0.35s ease',
-        }}
-      >
-        {/* Stop counter */}
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          Stop {index + 1} of {total}
-        </span>
+      {/* Stop counter */}
+      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        Stop {index + 1} of {total}
+      </span>
 
-        {/* Time · duration */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 500 }}>{timeLabel}</span>
-          {durationLabel && (
-            <>
-              <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
-              <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{durationLabel}</span>
-            </>
-          )}
-        </div>
-
-        {/* Place name */}
-        <h2 style={{ color: '#fff', fontSize: 32, fontWeight: 900, lineHeight: 1.1, margin: 0, fontFamily: 'var(--font-heading, inherit)' }}>
-          {stop.place}
-        </h2>
-
-        {/* Quick bits row — category, transit, persona tag */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {categoryPill && (
-            <QuickPill icon={categoryPill.icon} label={categoryPill.label} />
-          )}
-          {stop.transit_to_next && !isExpanded && (
-            <QuickPill icon="directions_walk" label={stop.transit_to_next} />
-          )}
-          {firstTag && (
-            <QuickPill icon={firstTag.icon} label={firstTag.label} color={firstTag.color} />
-          )}
-          {matchNote && (
-            <QuickPill icon="auto_awesome" label={matchNote} color="#60a5fa" />
-          )}
-        </div>
-
-        {/* Tip — 2 lines collapsed, full expanded */}
-        {tip && (
-          <p style={{
-            color: 'rgba(255,255,255,0.6)',
-            fontSize: 13,
-            lineHeight: 1.55,
-            margin: 0,
-            fontStyle: 'italic',
-            display: '-webkit-box',
-            WebkitLineClamp: isExpanded ? undefined : 2,
-            WebkitBoxOrient: isExpanded ? undefined : 'vertical',
-            overflow: isExpanded ? 'visible' : 'hidden',
-            transition: 'all 0.35s ease',
-          }}>
-            {tip}
-          </p>
+      {/* Time · duration */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 500 }}>{timeLabel}</span>
+        {durationLabel && (
+          <>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>·</span>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13 }}>{durationLabel}</span>
+          </>
         )}
+      </div>
 
-        {/* Expanded details */}
-        {isExpanded && (
-          <ExpandedDetails
-            stop={stop}
-            onRemove={onRemove}
-            onAddMeal={onAddMeal}
-          />
-        )}
+      {/* Place name */}
+      <h2 style={{ color: '#fff', fontSize: 32, fontWeight: 900, lineHeight: 1.1, margin: 0, fontFamily: 'var(--font-heading, inherit)' }}>
+        {stop.place}
+      </h2>
 
-        {/* Tap hint when not expanded */}
-        {!isExpanded && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-            <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 11 }}>Tap for details</span>
-            <span className="ms" style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14 }}>keyboard_arrow_up</span>
-          </div>
-        )}
+      {/* Quick bits row */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {categoryPill && <QuickPill icon={categoryPill.icon} label={categoryPill.label} />}
+        {stop.transit_to_next && <QuickPill icon="directions_walk" label={stop.transit_to_next} />}
+        {firstTag && <QuickPill icon={firstTag.icon} label={firstTag.label} color={firstTag.color} />}
+        {matchNote && <QuickPill icon="auto_awesome" label={matchNote} color="#60a5fa" />}
+      </div>
+
+      {/* Tip — always 2 lines max on the card */}
+      {tip && (
+        <p style={{
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 13,
+          lineHeight: 1.55,
+          margin: 0,
+          fontStyle: 'italic',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {tip}
+        </p>
+      )}
+
+      {/* Tap hint */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+        <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 11 }}>Tap for details</span>
+        <span className="ms" style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14 }}>keyboard_arrow_up</span>
       </div>
     </div>
   );
 }
 
-// ── ExpandedDetails ──────────────────────────────────────────────
+// ── ExpandedSheet — fixed bottom sheet, outside scroll container ──
 
-function ExpandedDetails({
+function ExpandedSheet({
   stop,
+  onClose,
   onRemove,
   onAddMeal,
 }: {
   stop: ItineraryStop;
+  onClose: () => void;
   onRemove: () => void;
   onAddMeal: () => void;
 }) {
   return (
-    <div
-      style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}
-      onClick={e => e.stopPropagation()}
-    >
-      {/* Tags */}
-      {stop.tags && stop.tags.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {stop.tags.map(tag => (
-            <span
-              key={tag}
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                borderRadius: 99,
-                padding: '3px 10px',
-                color: 'rgba(255,255,255,0.55)',
-                fontSize: 11,
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+    <>
+      {/* Dim backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 34,
+          background: 'rgba(0,0,0,0.4)',
+        }}
+      />
+      {/* Sheet */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
+          zIndex: 35,
+          background: 'rgba(10,14,20,0.97)',
+          backdropFilter: 'blur(24px)',
+          borderRadius: '22px 22px 0 0',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: 'none',
+          padding: '16px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}
+      >
+        {/* Drag handle */}
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)', alignSelf: 'center' }} />
 
-      {/* Transit to next */}
-      {stop.transit_to_next && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="ms fill" style={{ color: 'rgba(56,189,248,0.7)', fontSize: 14 }}>directions</span>
-          <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>Then: {stop.transit_to_next}</span>
+        {/* Place name + close */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: 0, lineHeight: 1.2, flex: 1 }}>
+            {stop.place}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.08)',
+              border: 'none', color: 'rgba(255,255,255,0.5)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <span className="ms" style={{ fontSize: 16 }}>close</span>
+          </button>
         </div>
-      )}
 
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <button
-          onClick={onAddMeal}
-          style={{
-            flex: 1,
-            padding: '10px 0',
-            borderRadius: 14,
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: 'rgba(255,255,255,0.06)',
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-          }}
-        >
-          <span className="ms fill" style={{ fontSize: 14 }}>restaurant</span>
-          Add meal
-        </button>
-        <button
-          onClick={onRemove}
-          style={{
-            padding: '10px 14px',
-            borderRadius: 14,
-            border: '1px solid rgba(239,68,68,0.2)',
-            background: 'rgba(239,68,68,0.08)',
-            color: 'rgba(239,68,68,0.7)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          <span className="ms fill" style={{ fontSize: 14 }}>remove_circle</span>
-          Remove
-        </button>
+        {/* Full tip */}
+        {stop.tip && (
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            {stop.tip}
+          </p>
+        )}
+
+        {/* Transit to next */}
+        {stop.transit_to_next && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.12)' }}>
+            <span className="ms fill" style={{ color: '#38bdf8', fontSize: 16 }}>directions</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Then: {stop.transit_to_next}</span>
+          </div>
+        )}
+
+        {/* Tags */}
+        {stop.tags && stop.tags.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {stop.tags.map(tag => (
+              <QuickPill key={tag} icon="label" label={tag} />
+            ))}
+          </div>
+        )}
+
+        {/* CTAs */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button
+            onClick={onAddMeal}
+            style={{
+              flex: 1, padding: '13px 0', borderRadius: 16,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            <span className="ms fill" style={{ fontSize: 15 }}>restaurant</span>
+            Add meal nearby
+          </button>
+          <button
+            onClick={onRemove}
+            style={{
+              padding: '13px 18px', borderRadius: 16,
+              border: '1px solid rgba(239,68,68,0.22)',
+              background: 'rgba(239,68,68,0.08)',
+              color: 'rgba(239,68,68,0.8)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            <span className="ms fill" style={{ fontSize: 15 }}>remove_circle</span>
+            Remove
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
