@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, Request
+from fastapi import FastAPI, Query, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
@@ -1154,6 +1154,72 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
         f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}"
     )
     return RedirectResponse(url=url, status_code=302)
+
+
+@app.get("/nearby")
+def nearby(
+    request: Request,
+    response: Response,
+    lat: float = Query(...),
+    lon: float = Query(...),
+    type: str = Query(...),
+    radius: int = Query(500),
+    limit: int = Query(3),
+):
+    """
+    Google Places Nearby Search — called only on expand chip tap.
+    Cost: ~$0.032 per request. Rate-limited per IP.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    if not GOOGLE_PLACES_API_KEY:
+        return []
+
+    response.headers["Cache-Control"] = "max-age=300"
+
+    params = {
+        "location": f"{lat},{lon}",
+        "radius": radius,
+        "type": type,
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(
+            f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+            params=params,
+            timeout=5,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            return []
+
+        import math
+        results = []
+        for place in data.get("results", [])[:limit]:
+            loc = place.get("geometry", {}).get("location", {})
+            place_lat = loc.get("lat", 0)
+            place_lon = loc.get("lng", 0)
+            dlat = math.radians(place_lat - lat)
+            dlon = math.radians(place_lon - lon)
+            a = (math.sin(dlat / 2) ** 2
+                 + math.cos(math.radians(lat))
+                 * math.cos(math.radians(place_lat))
+                 * math.sin(dlon / 2) ** 2)
+            distance_m = int(6371000 * 2 * math.asin(math.sqrt(a)))
+            results.append({
+                "name": place.get("name", ""),
+                "address": place.get("vicinity", ""),
+                "rating": place.get("rating"),
+                "distance_m": distance_m,
+                "lat": place_lat,
+                "lon": place_lon,
+                "place_id": place.get("place_id", ""),
+            })
+        return results
+    except Exception:
+        return []
 
 
 if __name__ == "__main__":

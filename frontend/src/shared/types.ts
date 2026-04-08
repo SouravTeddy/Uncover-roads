@@ -199,3 +199,13 @@ export interface PlaceDetails {
   photo_ref?: string;
   types?: string[];
 }
+
+export interface NearbyResult {
+  name: string;
+  address: string;
+  rating: number | null;
+  distance_m: number;
+  lat: number;
+  lon: number;
+  place_id: string;
+}

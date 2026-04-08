@@ -10,6 +10,7 @@ import type {
   OnboardingAnswers,
   AutocompleteResult,
   PlaceDetails,
+  NearbyResult,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -193,4 +194,22 @@ export async function findPlaceId(
   if (!res.ok) return null;
   const data = await res.json();
   return data.place_id ?? null;
+}
+
+export async function fetchNearby(
+  lat: number,
+  lon: number,
+  type: string,
+): Promise<NearbyResult[]> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    type,
+    radius: '500',
+    limit: '3',
+  });
+  const res = await fetch(`${BASE}/nearby?${params}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
