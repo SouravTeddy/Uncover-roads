@@ -37,8 +37,8 @@ export function parseOpenClose(line: string, openNow: boolean): string {
 }
 
 /** Apple Maps on iOS/macOS, Google Maps otherwise. */
-export function getDirectionsUrl(lat: number, lon: number): string {
-  const isApple = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+export function getDirectionsUrl(lat: number, lon: number, userAgent = navigator.userAgent): string {
+  const isApple = /Mac|iPhone|iPad|iPod/.test(userAgent);
   return isApple
     ? `maps://maps.apple.com/?q=${lat},${lon}`
     : `https://maps.google.com/maps?q=${lat},${lon}`;
