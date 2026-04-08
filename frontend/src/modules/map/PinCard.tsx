@@ -53,7 +53,8 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
       <div style={{ height: 150, position: 'relative' }}>
         {detailsLoading ? (
           /* Shimmer skeleton */
-          <div className="shimmer" style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }}>
+          <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a', overflow: 'hidden' }}>
+            <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />
             <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
               <div style={{ height: 18, width: '60%', background: '#2a2a2a', borderRadius: 4, marginBottom: 6 }} />
               <div style={{ height: 11, width: '40%', background: '#222', borderRadius: 4 }} />
@@ -117,13 +118,12 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
           ✕
         </button>
 
-        {/* Name + meta — bottom left (skip when skeletonizing) */}
-        {!detailsLoading && (
-          <div style={{ position: 'absolute', bottom: 10, left: 12, right: 44 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
-              {place.title}
-            </div>
-            {(details?.rating || details?.open_now !== undefined || details?.price_level) && (
+        {/* Name always visible; meta row only after details load */}
+        <div style={{ position: 'absolute', bottom: 10, left: 12, right: 44 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
+            {place.title}
+          </div>
+          {!detailsLoading && (details?.rating || details?.open_now !== undefined || details?.price_level) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                 {details!.rating !== undefined && (
                   <>
@@ -155,8 +155,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
                 )}
               </div>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* ── Details body ───────────────────────────────── */}
@@ -195,7 +194,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
                 <span
                   style={{
                     fontSize: 10, fontWeight: 600,
-                    color: details?.open_now ? '#22c55e' : '#ef4444',
+                    color: (details?.open_now ?? false) ? '#22c55e' : '#ef4444',
                   }}
                 >
                   {hoursLabel}
