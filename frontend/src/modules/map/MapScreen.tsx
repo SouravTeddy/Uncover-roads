@@ -298,6 +298,12 @@ export function MapScreen() {
 
   const { state, dispatch } = useAppStore();
 
+  // Guard: if city was lost (fresh tab, cleared session), kick back to destination
+  useEffect(() => {
+    if (!city) dispatch({ type: 'GO_TO', screen: 'destination' });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const selectedIds    = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const recommendedIds = useMemo(() => new Set(recommendedPlaces.map(p => p.id)), [recommendedPlaces]);
   const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); }, [setActivePlace]);
