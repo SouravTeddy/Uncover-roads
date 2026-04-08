@@ -39,9 +39,11 @@ function ScreenRouter() {
     loadSavedItineraries(user.id).then(items => {
       if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
     }).catch(console.warn);
-    loadUserProfile(user.id).then(({ role, generationCount }) => {
-      dispatch({ type: 'SET_USER_ROLE', role });
-      dispatch({ type: 'SET_GENERATION_COUNT', count: generationCount });
+    loadUserProfile(user.id).then(profile => {
+      if (profile) {
+        dispatch({ type: 'SET_USER_ROLE', role: profile.role });
+        dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+      }
     }).catch(console.warn);
 
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));
@@ -70,9 +72,11 @@ function ScreenRouter() {
           if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
         }).catch(console.warn);
         // Always load role + generation count so admin bypass works without re-login
-        loadUserProfile(session.user.id).then(({ role, generationCount }) => {
-          dispatch({ type: 'SET_USER_ROLE', role });
-          dispatch({ type: 'SET_GENERATION_COUNT', count: generationCount });
+        loadUserProfile(session.user.id).then(profile => {
+          if (profile) {
+            dispatch({ type: 'SET_USER_ROLE', role: profile.role });
+            dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+          }
         }).catch(console.warn);
       }
     });
