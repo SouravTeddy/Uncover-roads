@@ -198,6 +198,17 @@ export function MapScreen() {
     handleSearchHere(bbox);
   }, [cityGeo, handleSearchHere]);
 
+  // Pin drop click handler
+  const handleMapClick = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      if (awaitingPinDrop) {
+        setPinDropResult({ lat, lon: lng });
+        setAwaitingPinDrop(false);
+      }
+    },
+    [awaitingPinDrop],
+  );
+
   // useMapMove: show "Search Here" button when user pans
   const { handleMoveEnd } = useMapMove({
     onSearchHere: useCallback((_center: [number, number]) => {
@@ -330,6 +341,7 @@ export function MapScreen() {
         selectedPlace={activePlace}
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
+        onClick={handleMapClick}
       />
 
       {/* Initial load overlay */}

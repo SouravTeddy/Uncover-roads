@@ -1,7 +1,7 @@
 // modules/map/MapLibreMap.tsx
 import { useRef, useCallback } from 'react';
 import Map from 'react-map-gl/maplibre';
-import type { MapRef, ViewStateChangeEvent } from 'react-map-gl/maplibre';
+import type { MapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
 
@@ -15,6 +15,7 @@ interface Props {
   selectedPlace: Place | null;
   onPlaceClick: (place: Place) => void;
   onMoveEnd: (center: [number, number], zoom: number) => void;
+  onClick?: (lngLat: { lat: number; lng: number }) => void;
   children?: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export function MapLibreMap({
   selectedPlace,
   onPlaceClick,
   onMoveEnd,
+  onClick,
   children,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -48,6 +50,7 @@ export function MapLibreMap({
       style={{ width: '100%', height: '100%' }}
       mapStyle={STYLE_URL}
       onMoveEnd={handleMoveEnd}
+      onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
     >
       <MapLibreMarkers
         places={places}
