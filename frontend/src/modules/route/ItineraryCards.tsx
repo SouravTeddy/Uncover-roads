@@ -16,12 +16,13 @@ import { getAllCachedDetails, getCachedPlaceIdKey } from '../map/usePlaceDetails
 const CARD_GRADIENT =
   'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.38) 60%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.95) 100%)';
 
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
 // ── Types ────────────────────────────────────────────────────────
 
 interface Props {
   stops: ItineraryStop[];
   selectedPlaces: Place[];
-  allPlaces: Place[];
   tripContext: TripContext;
   summary?: ItinerarySummary;
   persona?: Persona | null;
@@ -468,30 +469,36 @@ function RecoCard({
   const [openLabel, setOpenLabel] = useState<string | null>(null);
   const [results, setResults] = useState<NearbyResult[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+  const activeChipRef = useRef<string | null>(null);
 
   async function handleExpandTap(chip: ChipDef) {
     if (!chip.nearbyType) return;
     if (openLabel === chip.label) {
       setOpenLabel(null);
       setResults([]);
+      activeChipRef.current = null;
       return;
     }
+    activeChipRef.current = chip.label;
     setOpenLabel(chip.label);
     setResults([]);
     if (stop.lat == null || stop.lon == null) return;
     setLoading(true);
     try {
       const data = await fetchNearby(stop.lat!, stop.lon!, chip.nearbyType);
-      setResults(data);
+      if (activeChipRef.current === chip.label) {
+        setResults(data);
+      }
     } finally {
-      setLoading(false);
+      if (activeChipRef.current === chip.label) {
+        setLoading(false);
+      }
     }
   }
 
   function handleDirectTap(chip: ChipDef) {
-    const url = buildDirectUrl(chip.label, { place: stop.place, lat: stop.lat!, lon: stop.lon! }, isMac);
+    if (stop.lat == null || stop.lon == null) return;
+    const url = buildDirectUrl(chip.label, { place: stop.place, lat: stop.lat, lon: stop.lon }, IS_MAC);
     window.open(url, '_blank', 'noopener');
   }
 
@@ -572,7 +579,7 @@ function RecoCard({
             label={openLabel}
             results={results}
             loading={loading}
-            isMac={isMac}
+            isMac={IS_MAC}
           />
         )}
 
