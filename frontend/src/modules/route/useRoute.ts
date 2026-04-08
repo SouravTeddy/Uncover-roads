@@ -66,6 +66,9 @@ export function useRoute() {
         })),
       };
       const result = await api.aiItinerary(body);
+      if (!result || (result as any).error) {
+        throw new Error((result as any)?.error || 'Invalid response from server');
+      }
       dispatch({ type: 'SET_ITINERARY', itinerary: result });
       dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
       // Persist count to Supabase if signed in
