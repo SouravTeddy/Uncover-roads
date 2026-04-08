@@ -41,6 +41,8 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
     handleChipChange('hotel');
   }
 
+  if (typeof document === 'undefined') return null;
+
   return createPortal(
     <>
       {/* Backdrop */}
@@ -85,6 +87,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
           />
           {/* Close button */}
           <button
+            aria-label="Close"
             onClick={onClose}
             style={{
               position: 'absolute', top: 10, right: 10,
@@ -137,7 +140,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
             {/* Chips */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               {CHIPS.map(chip => {
-                const active = startChip === chip.value || (chip.value === 'pin' && !!pinDropResult);
+                const active = startChip === chip.value;
                 return (
                   <button
                     key={chip.value}
@@ -192,13 +195,14 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
                   </span>
                   <input
                     type="text"
+                    aria-label={startChip === 'hotel' ? 'Hotel or address search' : 'Airport search'}
                     value={locationQuery}
                     onChange={e => handleLocationInput(e.target.value)}
                     placeholder={startChip === 'hotel' ? 'Search hotel or address…' : 'Search airport…'}
                     style={{
                       flex: 1, background: 'none', border: 'none', outline: 'none',
                       fontSize: 11, color: 'rgba(255,255,255,.8)',
-                    } as React.CSSProperties}
+                    }}
                   />
                   {locationLoading && (
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', flexShrink: 0 }}>⋯</span>
@@ -264,6 +268,8 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
                   <button
                     key={d.isoDate}
                     onClick={() => setSelectedDate(d.isoDate)}
+                    aria-label={`Select ${d.dayAbbr} ${d.dayNum}`}
+                    aria-pressed={active}
                     style={{
                       flexShrink: 0, width: 44, padding: '7px 4px',
                       background: active ? 'rgba(99,102,241,.2)' : 'rgba(255,255,255,.04)',
