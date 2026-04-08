@@ -15,8 +15,9 @@ export function generateDateStrip(count = 7): DateEntry[] {
   for (let i = 0; i < count; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     result.push({
-      isoDate: d.toISOString().slice(0, 10),
+      isoDate: iso,
       dayAbbr: DAY_ABBRS[d.getDay()],
       dayNum: d.getDate(),
     });
