@@ -290,6 +290,8 @@ export function ItineraryCards({
         <ExpandedSheet
           stop={timeline[expandedStop].stop}
           matchedCategory={timeline[expandedStop].matchedCategory}
+          startMins={timeline[expandedStop].startMins}
+          city={city}
           onClose={() => setExpandedStop(null)}
           onAddMeal={onAddMeal}
         />
@@ -606,22 +608,35 @@ function RecoChip({ icon, label }: { icon: string; label: string }) {
 function ExpandedSheet({
   stop,
   matchedCategory,
+  startMins,
+  city,
   onClose,
   onAddMeal,
 }: {
   stop: ItineraryStop;
   matchedCategory: string | null;
+  startMins: number;
+  city?: string;
   onClose: () => void;
   onAddMeal: () => void;
 }) {
   const isFood = ['restaurant', 'cafe'].includes(matchedCategory ?? '');
+  const categoryInfo = matchedCategory ? CATEGORY_PILL[matchedCategory] : null;
+  const mapsQuery = encodeURIComponent(city ? `${stop.place} ${city}` : stop.place);
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
+
+  const h = Math.floor(startMins / 60);
+  const m = startMins % 60;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  const timeLabel = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 
   return (
     <>
       {/* Dim backdrop */}
       <div
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 34, background: 'rgba(0,0,0,0.4)' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 34, background: 'rgba(0,0,0,0.45)' }}
       />
       {/* Sheet */}
       <div
@@ -629,7 +644,7 @@ function ExpandedSheet({
           position: 'fixed',
           bottom: 0, left: 0, right: 0,
           zIndex: 35,
-          background: 'rgba(10,14,20,0.97)',
+          background: 'rgba(10,14,20,0.98)',
           backdropFilter: 'blur(24px)',
           borderRadius: '22px 22px 0 0',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -637,15 +652,15 @@ function ExpandedSheet({
           padding: '16px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
+          gap: 16,
         }}
       >
         {/* Drag handle */}
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)', alignSelf: 'center' }} />
 
-        {/* Place name + close */}
+        {/* Header: name + close */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <h3 style={{ color: '#fff', fontSize: 20, fontWeight: 800, margin: 0, lineHeight: 1.2, flex: 1 }}>
+          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: 0, lineHeight: 1.2, flex: 1, fontFamily: 'var(--font-heading, inherit)' }}>
             {stop.place}
           </h3>
           <button
@@ -662,9 +677,29 @@ function ExpandedSheet({
           </button>
         </div>
 
-        {/* Full tip */}
+        {/* Meta row: category · time · duration */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {categoryInfo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>{categoryInfo.icon}</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{categoryInfo.label}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>schedule</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{timeLabel}</span>
+          </div>
+          {stop.duration && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>timer</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{stop.duration}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Description / tip */}
         {stop.tip && (
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>
             {stop.tip}
           </p>
         )}
@@ -673,36 +708,49 @@ function ExpandedSheet({
         {stop.transit_to_next && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.12)' }}>
             <span className="ms fill" style={{ color: '#38bdf8', fontSize: 16 }}>directions</span>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Then: {stop.transit_to_next}</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Next: {stop.transit_to_next}</span>
           </div>
         )}
 
-        {/* Tags */}
-        {stop.tags && stop.tags.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {stop.tags.map(tag => (
-              <QuickPill key={tag} icon="label" label={tag} />
-            ))}
-          </div>
-        )}
-
-        {/* CTA — only show "Add meal" when not already a food stop */}
-        {!isFood && (
-          <button
-            onClick={onAddMeal}
+        {/* CTAs */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          {/* Open in Maps — primary */}
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              width: '100%',
+              flex: 1,
               padding: '13px 0', borderRadius: 16,
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'rgba(255,255,255,0.06)',
-              color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: 'rgba(99,102,241,0.15)',
+              border: '1px solid rgba(99,102,241,0.3)',
+              color: '#a5b4fc', fontSize: 13, fontWeight: 600,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              textDecoration: 'none',
             }}
           >
-            <span className="ms fill" style={{ fontSize: 15 }}>restaurant</span>
-            Add a meal nearby
-          </button>
-        )}
+            <span className="ms fill" style={{ fontSize: 15 }}>open_in_new</span>
+            Open in Maps
+          </a>
+
+          {/* Add meal — only if not already a food stop */}
+          {!isFood && (
+            <button
+              onClick={onAddMeal}
+              style={{
+                flex: 1,
+                padding: '13px 0', borderRadius: 16,
+                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'rgba(255,255,255,0.05)',
+                color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              <span className="ms fill" style={{ fontSize: 15 }}>restaurant</span>
+              Add meal
+            </button>
+          )}
+        </div>
       </div>
     </>
   );

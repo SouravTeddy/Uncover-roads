@@ -129,8 +129,8 @@ export const initialState: AppState = {
   selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
   activeFilter:   ssGet<MapFilter | 'all'>('ur_ss_filter') ?? 'all',
   tripContext: defaultTripCtx,
-  itinerary: null,
-  weather: null,
+  itinerary: ssGet<Itinerary>('ur_ss_itinerary') ?? null,
+  weather: ssGet<WeatherData>('ur_ss_weather') ?? null,
   route: null,
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
@@ -230,9 +230,11 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, tripContext: { ...state.tripContext, ...action.ctx } };
 
     case 'SET_ITINERARY':
+      ssSave('ur_ss_itinerary', action.itinerary);
       return { ...state, itinerary: action.itinerary };
 
     case 'SET_WEATHER':
+      ssSave('ur_ss_weather', action.weather);
       return { ...state, weather: action.weather };
 
     case 'SET_ROUTE':
@@ -273,6 +275,8 @@ function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_geo', null);
       ssSave('ur_ss_places', []);
       ssSave('ur_ss_sel', []);
+      ssSave('ur_ss_itinerary', null);
+      ssSave('ur_ss_weather', null);
       return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };
 
     default:
