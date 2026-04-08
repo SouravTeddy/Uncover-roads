@@ -53,6 +53,7 @@ export interface AppState {
   savedItineraries: SavedItinerary[];
   userRole: 'user' | 'admin';
   generationCount: number;
+  profileLoaded: boolean;
 }
 
 // ── Session persistence (survives tab switches, clears on tab close) ──────────
@@ -134,6 +135,7 @@ export const initialState: AppState = {
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
   generationCount: getStoredGenerationCount(),
+  profileLoaded: false,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -158,6 +160,7 @@ export type Action =
   | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
   | { type: 'SET_GENERATION_COUNT'; count: number }
   | { type: 'INCREMENT_GENERATION_COUNT' }
+  | { type: 'PROFILE_LOADED' }
   | { type: 'RESET_MAP' };
 
 // ── Reducer ───────────────────────────────────────────────────
@@ -261,6 +264,9 @@ function reducer(state: AppState, action: Action): AppState {
       try { localStorage.setItem('ur_gen_count', String(next)); } catch { /* ignore */ }
       return { ...state, generationCount: next };
     }
+
+    case 'PROFILE_LOADED':
+      return { ...state, profileLoaded: true };
 
     case 'RESET_MAP':
       ssSave('ur_ss_city', '');
