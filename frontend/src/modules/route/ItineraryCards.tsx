@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import type { ItineraryStop, Place, TripContext, Persona, WeatherData, ItinerarySummary } from '../../shared/types';
+import type { ItineraryStop, Place, TripContext, Persona, WeatherData, ItinerarySummary, NearbyResult } from '../../shared/types';
+import { fetchNearby } from '../../shared/api';
 import { resolveScene, resolveTransition } from './sceneMap';
 import {
   parseTimeLabel,
@@ -7,6 +8,8 @@ import {
   personaMatchNote,
   type StopWithTime,
 } from './ItineraryView';
+import { getContextualChips, buildDirectUrl, type ChipDef } from './chip-utils';
+import { getAllCachedDetails, getCachedPlaceIdKey } from '../map/usePlaceDetails';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -45,42 +48,6 @@ function startMinsFromContext(tc: TripContext): number {
   const t = tc.arrivalTime ?? '9:00';
   const [h, m] = t.split(':').map(Number);
   return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-}
-
-function getRecoChips(
-  category: string | null,
-  timeMins: number,
-): Array<{ icon: string; label: string }> {
-  const chips: Array<{ icon: string; label: string }> = [];
-  const isFood = ['restaurant', 'cafe'].includes(category ?? '');
-
-  if (!isFood) {
-    if (timeMins >= 11 * 60 && timeMins < 14 * 60) chips.push({ icon: 'restaurant', label: 'Lunch spot nearby' });
-    else if (timeMins >= 15 * 60 && timeMins < 17 * 60) chips.push({ icon: 'local_cafe', label: 'Afternoon coffee' });
-    else if (timeMins >= 18 * 60) chips.push({ icon: 'dinner_dining', label: 'Dinner nearby' });
-    else chips.push({ icon: 'local_cafe', label: 'Coffee break' });
-  }
-
-  if (category === 'museum' || category === 'historic') {
-    chips.push({ icon: 'photo_camera', label: 'Photo spot' });
-    chips.push({ icon: 'card_giftcard', label: 'Gift shop' });
-  } else if (category === 'park') {
-    chips.push({ icon: 'local_cafe', label: 'Café nearby' });
-    chips.push({ icon: 'directions_walk', label: 'Keep strolling' });
-  } else if (isFood) {
-    chips.push({ icon: 'directions_walk', label: 'Walk it off' });
-    chips.push({ icon: 'photo_camera', label: 'Photo spot' });
-  } else if (category === 'tourism') {
-    chips.push({ icon: 'photo_camera', label: 'Photo spot' });
-    chips.push({ icon: 'local_cafe', label: 'Café nearby' });
-  } else {
-    chips.push({ icon: 'explore', label: 'Explore nearby' });
-  }
-
-  chips.push({ icon: 'wc', label: 'Restrooms' });
-  chips.push({ icon: 'atm', label: 'ATM nearby' });
-
-  return chips.slice(0, 4);
 }
 
 // ── Main component ───────────────────────────────────────────────
@@ -484,12 +451,53 @@ function RecoCard({
   currentItem: StopWithTime;
   nextItem: StopWithTime | null;
 }) {
-  const chips = getRecoChips(currentItem.matchedCategory, currentItem.startMins);
-  const transit = currentItem.stop.transit_to_next;
+  const { stop, startMins } = currentItem;
+  const transit = stop.transit_to_next;
+
+  // Read Google types from cache
+  const placeId = stop.place && stop.lat != null && stop.lon != null
+    ? getCachedPlaceIdKey(stop.place, stop.lat!, stop.lon!)
+    : undefined;
+  const googleTypes: string[] = placeId
+    ? (getAllCachedDetails().get(placeId)?.types ?? [])
+    : [];
+
+  const chips = getContextualChips(googleTypes, startMins);
+
+  // Expand state — null means no chip open
+  const [openLabel, setOpenLabel] = useState<string | null>(null);
+  const [results, setResults] = useState<NearbyResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+  async function handleExpandTap(chip: ChipDef) {
+    if (!chip.nearbyType) return;
+    if (openLabel === chip.label) {
+      setOpenLabel(null);
+      setResults([]);
+      return;
+    }
+    setOpenLabel(chip.label);
+    setResults([]);
+    if (stop.lat == null || stop.lon == null) return;
+    setLoading(true);
+    try {
+      const data = await fetchNearby(stop.lat!, stop.lon!, chip.nearbyType);
+      setResults(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleDirectTap(chip: ChipDef) {
+    const url = buildDirectUrl(chip.label, { place: stop.place, lat: stop.lat!, lon: stop.lon! }, isMac);
+    window.open(url, '_blank', 'noopener');
+  }
 
   return (
     <>
-      {/* Dark gradient only at the bottom third */}
+      {/* Dark gradient */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -538,12 +546,35 @@ function RecoCard({
           )}
         </div>
 
-        {/* Recommendation chips */}
+        {/* Chip row */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {chips.map((chip, i) => (
-            <RecoChip key={i} icon={chip.icon} label={chip.label} />
-          ))}
+          {chips.map((chip, i) =>
+            chip.kind === 'expand' ? (
+              <ExpandChip
+                key={i}
+                chip={chip}
+                isOpen={openLabel === chip.label}
+                onTap={() => handleExpandTap(chip)}
+              />
+            ) : (
+              <DirectChip
+                key={i}
+                chip={chip}
+                onTap={() => handleDirectTap(chip)}
+              />
+            )
+          )}
         </div>
+
+        {/* Expand panel */}
+        {openLabel && (
+          <ExpandPanel
+            label={openLabel}
+            results={results}
+            loading={loading}
+            isMac={isMac}
+          />
+        )}
 
         {/* Swipe hint */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
@@ -555,23 +586,147 @@ function RecoCard({
   );
 }
 
-function RecoChip({ icon, label }: { icon: string; label: string }) {
+function ExpandChip({
+  chip,
+  isOpen,
+  onTap,
+}: {
+  chip: ChipDef;
+  isOpen: boolean;
+  onTap: () => void;
+}) {
   return (
-    <div
+    <button
+      onClick={onTap}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 6,
         padding: '8px 14px',
         borderRadius: 99,
-        border: '1px solid rgba(255,255,255,0.14)',
-        background: 'rgba(255,255,255,0.07)',
+        border: `1px solid ${isOpen ? 'rgba(99,102,241,.5)' : 'rgba(99,102,241,.3)'}`,
+        background: isOpen ? 'rgba(99,102,241,.25)' : 'rgba(99,102,241,.15)',
         backdropFilter: 'blur(10px)',
         flexShrink: 0,
+        cursor: 'pointer',
       }}
     >
-      <span className="ms fill" style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>{icon}</span>
-      <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 13 }}>{chip.emoji}</span>
+      <span style={{ color: '#a5b4fc', fontSize: 12, fontWeight: 500 }}>{chip.label}</span>
+    </button>
+  );
+}
+
+function DirectChip({
+  chip,
+  onTap,
+}: {
+  chip: ChipDef;
+  onTap: () => void;
+}) {
+  return (
+    <button
+      onClick={onTap}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '8px 14px',
+        borderRadius: 99,
+        border: '1px solid rgba(255,255,255,.12)',
+        background: 'rgba(255,255,255,.07)',
+        backdropFilter: 'blur(10px)',
+        flexShrink: 0,
+        cursor: 'pointer',
+      }}
+    >
+      <span style={{ fontSize: 13 }}>{chip.emoji}</span>
+      <span style={{ color: '#fff', fontSize: 12, fontWeight: 500 }}>{chip.label}</span>
+    </button>
+  );
+}
+
+function ExpandPanel({
+  label,
+  results,
+  loading,
+  isMac,
+}: {
+  label: string;
+  results: NearbyResult[];
+  loading: boolean;
+  isMac: boolean;
+}) {
+  function openDirections(r: NearbyResult) {
+    const appleBase = 'maps://maps.apple.com/';
+    const googleBase = 'https://maps.google.com/maps';
+    const url = isMac
+      ? `${appleBase}?daddr=${r.lat},${r.lon}&dirflg=w`
+      : `${googleBase}?daddr=${r.lat},${r.lon}&dirflg=w`;
+    window.open(url, '_blank', 'noopener');
+  }
+
+  return (
+    <div style={{
+      background: 'rgba(99,102,241,.08)',
+      border: '1px solid rgba(99,102,241,.2)',
+      borderRadius: 12,
+      padding: '10px 12px',
+    }}>
+      <div style={{ fontSize: 9, color: '#818cf8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+        {label.replace(' ›', '')}
+      </div>
+
+      {loading ? (
+        // Skeleton rows
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ width: 120, height: 10, borderRadius: 4, background: 'rgba(255,255,255,.1)', animation: 'shimmer 1.5s infinite' }} />
+                <div style={{ width: 80, height: 8, borderRadius: 4, background: 'rgba(255,255,255,.07)', animation: 'shimmer 1.5s infinite' }} />
+              </div>
+              <div style={{ width: 44, height: 26, borderRadius: 8, background: 'rgba(255,255,255,.07)', animation: 'shimmer 1.5s infinite' }} />
+            </div>
+          ))}
+        </div>
+      ) : results.length === 0 ? (
+        <p style={{ color: 'rgba(255,255,255,.4)', fontSize: 11, margin: 0 }}>Nothing found nearby</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {results.map((r, i) => {
+            const walkMins = Math.ceil(r.distance_m / 80);
+            return (
+              <div key={r.place_id}>
+                {i > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginBottom: 7 }} />}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: '#fff', fontWeight: 600 }}>{r.name}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)' }}>
+                      {walkMins} min walk{r.rating != null ? ` · ★ ${r.rating}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => openDirections(r)}
+                    style={{
+                      background: i === 0 ? '#4f46e5' : 'rgba(255,255,255,.07)',
+                      borderRadius: 8,
+                      padding: '4px 10px',
+                      fontSize: 9,
+                      color: '#fff',
+                      fontWeight: i === 0 ? 600 : 400,
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Go ↗
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
