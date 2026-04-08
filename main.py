@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
@@ -568,10 +568,10 @@ Return ONLY a valid JSON object, no markdown, no explanation:
 
     except json.JSONDecodeError as e:
         print("AI JSON PARSE ERROR:", e, "| Raw:", raw[:300])
-        return {"error": "AI returned invalid JSON", "raw": raw[:300]}
+        raise HTTPException(status_code=422, detail="AI returned invalid JSON")
     except Exception as e:
         print("AI ITINERARY ERROR:", e)
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =========================================
