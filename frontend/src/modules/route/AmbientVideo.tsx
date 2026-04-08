@@ -67,10 +67,10 @@ export function AmbientVideo({ src, timeMins = 9 * 60 }: Props) {
         />
       )}
 
-      {/* Light vignette only — card gradient handles content area darkening */}
+      {/* Minimal vignette — card gradient handles all content darkening */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.04) 65%, rgba(0,0,0,0.18) 100%)',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.0) 20%, rgba(0,0,0,0.0) 70%, rgba(0,0,0,0.10) 100%)',
       }} />
     </div>
   );
