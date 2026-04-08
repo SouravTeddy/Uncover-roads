@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+import math
 import time
 import os
 import json
@@ -1170,11 +1171,11 @@ def nearby(
     Google Places Nearby Search — called only on expand chip tap.
     Cost: ~$0.032 per request. Rate-limited per IP.
     """
+    if not GOOGLE_PLACES_API_KEY:
+        return []
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
-    if not GOOGLE_PLACES_API_KEY:
-        return []
 
     response.headers["Cache-Control"] = "max-age=300"
 
@@ -1195,7 +1196,6 @@ def nearby(
         if data.get("status") not in ("OK", "ZERO_RESULTS"):
             return []
 
-        import math
         results = []
         for place in data.get("results", [])[:limit]:
             loc = place.get("geometry", {}).get("location", {})
