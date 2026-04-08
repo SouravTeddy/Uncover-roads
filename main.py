@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
 import os
 import json
+import uuid
 import anthropic
+from collections import defaultdict
+from time import time as _time
 from dotenv import load_dotenv
 from ip_engine import build_persona_response, get_city_profile, run_conflict_check, ARCHETYPES
 
@@ -27,6 +30,26 @@ ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
+
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
+GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+
+# Session token store: maps session_id -> google_session_token
+# Session tokens make autocomplete keystrokes FREE — only Place Details is billed
+_session_tokens: dict[str, str] = {}
+
+# Simple rate limiting: max 100 Google calls per IP per hour
+_rate_limit: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_WINDOW = 3600
+RATE_LIMIT_MAX = 100
+
+def _check_rate_limit(ip: str) -> bool:
+    now = _time()
+    _rate_limit[ip] = [t for t in _rate_limit[ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_limit[ip]) >= RATE_LIMIT_MAX:
+        return False
+    _rate_limit[ip].append(now)
+    return True
 
 # ── Overpass endpoints (ordered by current reliability) ──
 OVERPASS_ENDPOINTS = [
@@ -854,6 +877,178 @@ def events(
 @app.get("/")
 def root():
     return {"status": "ok", "service": "Uncover Roads API"}
+
+
+# =========================================
+# GOOGLE PLACES AUTOCOMPLETE
+# =========================================
+@app.get("/places-autocomplete")
+async def places_autocomplete(
+    request: Request,
+    input: str,
+    session_id: str,
+    types: str = "(cities)",
+):
+    """
+    Google Places Autocomplete with session tokens.
+    All keystrokes in a session are FREE — billing only happens at Place Details.
+    types: "(cities)" for city search, "establishment" for POI search.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"predictions": []}
+
+    if not _check_rate_limit(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    if session_id not in _session_tokens:
+        _session_tokens[session_id] = str(uuid.uuid4())
+    session_token = _session_tokens[session_id]
+
+    params = {
+        "input": input,
+        "types": types,
+        "sessiontoken": session_token,
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/autocomplete/json", params=params, timeout=5)
+        data = resp.json()
+        return {
+            "predictions": [
+                {
+                    "place_id": p["place_id"],
+                    "description": p["description"],
+                    "main_text": p["structured_formatting"]["main_text"],
+                    "secondary_text": p["structured_formatting"].get("secondary_text", ""),
+                }
+                for p in data.get("predictions", [])
+            ]
+        }
+    except Exception as e:
+        return {"predictions": [], "error": str(e)}
+
+
+# =========================================
+# GEOCODE PLACE
+# =========================================
+@app.get("/geocode-place")
+async def geocode_place(request: Request, place_id: str, session_id: str):
+    """
+    Get lat/lon + name from a place_id after autocomplete selection.
+    This ENDS the session token (billing event: $0.017).
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"lat": None, "lon": None}
+
+    if not _check_rate_limit(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    session_token = _session_tokens.pop(session_id, None)
+
+    params = {
+        "place_id": place_id,
+        "fields": "geometry,name,formatted_address",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    if session_token:
+        params["sessiontoken"] = session_token
+
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
+        data = resp.json()
+        result = data.get("result", {})
+        loc = result.get("geometry", {}).get("location", {})
+        return {
+            "lat": loc.get("lat"),
+            "lon": loc.get("lng"),
+            "name": result.get("name"),
+            "address": result.get("formatted_address"),
+        }
+    except Exception as e:
+        return {"lat": None, "lon": None, "error": str(e)}
+
+
+# =========================================
+# FIND PLACE ID
+# =========================================
+@app.get("/find-place-id")
+async def find_place_id(request: Request, name: str, lat: float, lon: float):
+    """
+    Resolve Google place_id from an OSM place name + coordinates.
+    Called once per unique pin tap — result cached client-side.
+    Cost: $0.017/call (Find Place Basic Data).
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"place_id": None}
+
+    if not _check_rate_limit(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    params = {
+        "input": name,
+        "inputtype": "textquery",
+        "locationbias": f"point:{lat},{lon}",
+        "fields": "place_id,name",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/findplacefromtext/json", params=params, timeout=5)
+        data = resp.json()
+        candidates = data.get("candidates", [])
+        if candidates:
+            return {"place_id": candidates[0]["place_id"], "name": candidates[0].get("name")}
+        return {"place_id": None}
+    except Exception as e:
+        return {"place_id": None, "error": str(e)}
+
+
+# =========================================
+# PLACE DETAILS
+# =========================================
+@app.get("/place-details")
+async def place_details(request: Request, place_id: str):
+    """
+    Fetch Google Place Details. Cost: $0.017/call.
+    Task 2 will add Supabase cache on top of this.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"error": "Google Places API key not configured"}
+
+    if not _check_rate_limit(request.client.host):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    params = {
+        "place_id": place_id,
+        "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+        "key": GOOGLE_PLACES_API_KEY,
+    }
+    try:
+        resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
+        data = resp.json()
+        result = data.get("result", {})
+
+        photo_ref = None
+        if result.get("photos"):
+            photo_ref = result["photos"][0]["photo_reference"]
+
+        return {
+            "place_id": place_id,
+            "name": result.get("name"),
+            "address": result.get("formatted_address"),
+            "lat": result.get("geometry", {}).get("location", {}).get("lat"),
+            "lon": result.get("geometry", {}).get("location", {}).get("lng"),
+            "rating": result.get("rating"),
+            "rating_count": result.get("user_ratings_total"),
+            "phone": result.get("formatted_phone_number"),
+            "website": result.get("website"),
+            "price_level": result.get("price_level"),
+            "open_now": result.get("opening_hours", {}).get("open_now"),
+            "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
+            "photo_ref": photo_ref,
+            "types": result.get("types", []),
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
