@@ -10,7 +10,7 @@ export async function syncProfile(user: User) {
     email: user.email,
     full_name: meta.full_name ?? meta.name ?? null,
     avatar_url: meta.avatar_url ?? meta.picture ?? null,
-  });
+  }, { onConflict: 'id', ignoreDuplicates: false });
 }
 
 // Called when persona is set (onboarding complete) — upserts so it stays in sync
@@ -42,15 +42,16 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
   });
 }
 
-// Load role + generation count for the signed-in user
-export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number }> {
+// Load role + generation count for the signed-in user.
+// Returns null on failure so callers never downgrade a cached role.
+export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number } | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('role, generation_count')
     .eq('id', userId)
     .single();
 
-  if (error || !data) return { role: 'user', generationCount: 0 };
+  if (error || !data) return null;
   return {
     role: data.role === 'admin' ? 'admin' : 'user',
     generationCount: data.generation_count ?? 0,
