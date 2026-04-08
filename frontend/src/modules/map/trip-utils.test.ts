@@ -4,8 +4,7 @@ import {
   computeRecommendedStartTime,
   formatTimeDisplay,
 } from './trip-utils';
-import type { Place } from '../../shared/types';
-import type { PlaceDetails } from '../../shared/types';
+import type { Place, PlaceDetails } from '../../shared/types';
 
 const BASE_PLACE: Place = {
   id: 'p1', title: 'Test Place', category: 'restaurant', lat: 12.9, lon: 77.6,
@@ -42,7 +41,8 @@ describe('generateDateStrip', () => {
   });
 
   it('first entry is today in ISO format', () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     expect(generateDateStrip()[0].isoDate).toBe(today);
   });
 
@@ -59,15 +59,15 @@ describe('computeRecommendedStartTime', () => {
   function nextMonday(): string {
     const d = new Date();
     const day = d.getDay();
-    const diff = day === 1 ? 0 : (8 - day) % 7 || 7;
+    const diff = day === 1 ? 0 : (8 - day) % 7;
     d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   const monday = nextMonday();
 
   it('returns default 09:00 when no places have details', () => {
-    const result = computeRecommendedStartTime([BASE_PLACE], () => undefined, monday);
+    const result = computeRecommendedStartTime([BASE_PLACE], (_t, _la, _lo) => undefined, monday);
     expect(result).toBe('09:00');
   });
 
@@ -75,9 +75,9 @@ describe('computeRecommendedStartTime', () => {
     const place2 = { ...BASE_PLACE, id: 'p2', title: 'P2' };
     const result = computeRecommendedStartTime(
       [BASE_PLACE, place2],
-      p => {
-        if (p === BASE_PLACE.title) return DETAILS_11AM;
-        if (p === place2.title) return DETAILS_9AM;
+      (t) => {
+        if (t === BASE_PLACE.title) return DETAILS_11AM;
+        if (t === place2.title) return DETAILS_9AM;
         return undefined;
       },
       monday,
@@ -88,10 +88,57 @@ describe('computeRecommendedStartTime', () => {
   it('floors to 08:00 when earliest is before 8 AM', () => {
     const result = computeRecommendedStartTime(
       [BASE_PLACE],
-      () => DETAILS_7AM,
+      (_t, _la, _lo) => DETAILS_7AM,
       monday,
     );
     expect(result).toBe('08:00');
+  });
+
+  it('treats "Closed" day as no data and falls back to 9:00 AM for a single-place trip', () => {
+    const detailsClosedMonday: PlaceDetails = {
+      ...DETAILS_9AM,
+      place_id: 'g4',
+      weekday_text: DETAILS_9AM.weekday_text!.map((l, i) => i === 0 ? 'Monday: Closed' : l),
+    };
+    const result = computeRecommendedStartTime(
+      [BASE_PLACE],
+      (_t, _la, _lo) => detailsClosedMonday,
+      monday,
+    );
+    expect(result).toBe('09:00');
+  });
+
+  it('correctly parses 12:00 PM opening time as noon (12:00)', () => {
+    const detailsNoon: PlaceDetails = {
+      ...DETAILS_9AM,
+      place_id: 'g5',
+      weekday_text: DETAILS_9AM.weekday_text!.map(l => l.replace('9:00 AM', '12:00 PM').replace('11:00 AM', '12:00 PM')),
+    };
+    const result = computeRecommendedStartTime(
+      [BASE_PLACE],
+      (_t, _la, _lo) => detailsNoon,
+      monday,
+    );
+    expect(result).toBe('12:00');
+  });
+
+  it('maps Sunday (JS day 0) to Google weekday_text index 6', () => {
+    function nextSunday(): string {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? 0 : 7 - day;
+      d.setDate(d.getDate() + diff);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const sunday = nextSunday();
+    // DETAILS_9AM has Sunday at index 6: '11:00 AM – 10:00 PM'
+    const result = computeRecommendedStartTime(
+      [BASE_PLACE],
+      (_t, _la, _lo) => DETAILS_9AM,
+      sunday,
+    );
+    // Sunday opens at 11:00 AM — should round to 11:00 (already on 30-min boundary)
+    expect(result).toBe('11:00');
   });
 });
 

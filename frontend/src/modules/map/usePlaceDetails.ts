@@ -6,7 +6,10 @@ import type { Place, PlaceDetails } from '../../shared/types';
 const detailsCache = new Map<string, PlaceDetails>();
 const placeIdCache = new Map<string, string>(); // "name:lat:lon" → google place_id
 
-/** Returns the full details cache (read-only intent). Used by useTripPlanInput. */
+/** Returns the live details cache reference (read-only intent).
+ *  Callers receive the actual Map — do not store the reference across async boundaries expecting snapshot semantics.
+ *  Used by useTripPlanInput to compute recommended start times.
+ */
 export function getAllCachedDetails(): ReadonlyMap<string, PlaceDetails> {
   return detailsCache;
 }
