@@ -9,6 +9,8 @@ import anthropic
 from collections import defaultdict
 from time import time as _time
 from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone
+from supabase import create_client, Client as SupabaseClient
 from ip_engine import build_persona_response, get_city_profile, run_conflict_check, ARCHETYPES
 
 load_dotenv()
@@ -33,6 +35,13 @@ YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+_supabase: SupabaseClient | None = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # Session token store: maps session_id -> google_session_token
 # Session tokens make autocomplete keystrokes FREE — only Place Details is billed
@@ -1032,17 +1041,38 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
 def place_details(request: Request, place_id: str):
     """
     Fetch Google Place Details. Cost: $0.017/call.
-    Task 2 will add Supabase cache on top of this.
+    Checks Supabase cache first (24hr TTL) — cache hit = $0.
     """
     if not GOOGLE_PLACES_API_KEY:
-        return {"place_id": place_id, "name": None, "address": None, "lat": None, "lon": None,
-                "rating": None, "rating_count": None, "phone": None, "website": None,
-                "price_level": None, "open_now": None, "weekday_text": [], "photo_ref": None, "types": []}
+        return {
+            "place_id": place_id, "name": None, "address": None,
+            "lat": None, "lon": None, "rating": None, "rating_count": None,
+            "phone": None, "website": None, "price_level": None,
+            "open_now": None, "weekday_text": [], "photo_ref": None, "types": []
+        }
 
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
+    # 1. Check Supabase cache
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("place_details_cache")
+                .select("data, fetched_at")
+                .eq("place_id", place_id)
+                .maybe_single()
+                .execute()
+            )
+            if cached.data:
+                fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
+                if datetime.now(timezone.utc) - fetched_at < timedelta(hours=24):
+                    return cached.data["data"]  # cache hit — no Google call
+        except Exception:
+            pass  # cache failure is non-fatal
+
+    # 2. Cache miss — call Google
     params = {
         "place_id": place_id,
         "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
@@ -1051,19 +1081,23 @@ def place_details(request: Request, place_id: str):
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/details/json", params=params, timeout=5)
         data = resp.json()
-        status = data.get("status")
-        if status not in ("OK", "ZERO_RESULTS"):
-            return {"place_id": place_id, "name": None, "address": None, "lat": None, "lon": None,
-                    "rating": None, "rating_count": None, "phone": None, "website": None,
-                    "price_level": None, "open_now": None, "weekday_text": [], "photo_ref": None,
-                    "types": [], "error": status or "UNKNOWN_ERROR"}
-        result = data.get("result", {})
 
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            status = data.get("status", "UNKNOWN_ERROR")
+            return {
+                "place_id": place_id, "name": None, "address": None,
+                "lat": None, "lon": None, "rating": None, "rating_count": None,
+                "phone": None, "website": None, "price_level": None,
+                "open_now": None, "weekday_text": [], "photo_ref": None,
+                "types": [], "error": status
+            }
+
+        result = data.get("result", {})
         photo_ref = None
         if result.get("photos"):
             photo_ref = result["photos"][0]["photo_reference"]
 
-        return {
+        details = {
             "place_id": place_id,
             "name": result.get("name"),
             "address": result.get("formatted_address"),
@@ -1079,8 +1113,27 @@ def place_details(request: Request, place_id: str):
             "photo_ref": photo_ref,
             "types": result.get("types", []),
         }
+
+        # 3. Write to cache
+        if _supabase:
+            try:
+                _supabase.table("place_details_cache").upsert({
+                    "place_id": place_id,
+                    "data": details,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }).execute()
+            except Exception:
+                pass  # cache write failure is non-fatal
+
+        return details
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "place_id": place_id, "name": None, "address": None,
+            "lat": None, "lon": None, "rating": None, "rating_count": None,
+            "phone": None, "website": None, "price_level": None,
+            "open_now": None, "weekday_text": [], "photo_ref": None,
+            "types": [], "error": str(e)
+        }
 
 
 if __name__ == "__main__":
