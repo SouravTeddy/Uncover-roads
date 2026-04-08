@@ -28,10 +28,12 @@ OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
-# ── Overpass endpoints (ordered by reliability) ──
+# ── Overpass endpoints (ordered by current reliability) ──
 OVERPASS_ENDPOINTS = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",  # most reliable mirror
+    "https://overpass.osm.ch/api/interpreter",            # Swiss mirror — fast
+    "https://overpass-api.de/api/interpreter",            # main (occasionally slow)
+    "https://overpass.private.coffee/api/interpreter",    # community mirror
 ]
 
 # =========================================
@@ -88,13 +90,13 @@ def fetch_overpass(query: str) -> dict:
                 endpoint,
                 data={"data": query},
                 headers=headers,
-                timeout=25
+                timeout=15
             )
             print(f"  Status: {res.status_code}, Body[:80]: {res.text[:80]}")
 
             if res.status_code == 429:
-                print("  Rate limited — waiting 8s")
-                time.sleep(8)
+                print("  Rate limited — waiting 3s before next mirror")
+                time.sleep(3)
                 continue
 
             if res.status_code == 200:
