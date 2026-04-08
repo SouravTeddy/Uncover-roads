@@ -25,8 +25,6 @@ interface Props {
   weather?: WeatherData | null;
   city?: string;
   onRemove: (idx: number) => void;
-  onAddMeal: () => void;
-  onAddSuggestion: (place: Place) => void;
   onSceneChange: (src: string) => void;
   onSave: () => void;
   saved: boolean;
@@ -96,7 +94,6 @@ export function ItineraryCards({
   weather,
   city,
   onRemove,
-  onAddMeal,
   onSceneChange,
   onSave,
   saved,
@@ -123,7 +120,6 @@ export function ItineraryCards({
   }, [timeline.length]);
 
   const [activeCard, setActiveCard] = useState(0);
-  const [expandedStop, setExpandedStop] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Refs so scroll handler never goes stale
@@ -148,7 +144,6 @@ export function ItineraryCards({
       if (idx === lastIdx) return;
       lastIdx = idx;
       setActiveCard(idx);
-      setExpandedStop(null);
 
       const tl = timelineRef.current;
       const allCards = cardsRef.current;
@@ -248,7 +243,6 @@ export function ItineraryCards({
                   item={item}
                   total={timeline.length}
                   persona={persona}
-                  onExpand={() => setExpandedStop(card.stopIdx)}
                   onRemove={() => onRemove(item.index)}
                 />
               </div>
@@ -286,17 +280,6 @@ export function ItineraryCards({
       </div>
 
       {/* Expanded stop bottom sheet — outside scroll container */}
-      {expandedStop !== null && timeline[expandedStop] && (
-        <ExpandedSheet
-          stop={timeline[expandedStop].stop}
-          matchedCategory={timeline[expandedStop].matchedCategory}
-          startMins={timeline[expandedStop].startMins}
-          city={city}
-          onClose={() => setExpandedStop(null)}
-          onAddMeal={onAddMeal}
-        />
-      )}
-
       {/* Floating header */}
       <FloatingHeader weather={weather} onGoBack={onGoBack} />
 
@@ -387,13 +370,11 @@ function StopCard({
   item,
   total,
   persona,
-  onExpand,
   onRemove,
 }: {
   item: StopWithTime;
   total: number;
   persona?: Persona | null;
-  onExpand: () => void;
   onRemove: () => void;
 }) {
   const { stop, index, startMins, matchedCategory } = item;
@@ -430,16 +411,13 @@ function StopCard({
         <span className="ms fill" style={{ fontSize: 16 }}>delete</span>
       </button>
 
-      {/* Main card content — tap to expand */}
+      {/* Main card content */}
       <div
-        onClick={onExpand}
         style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          cursor: 'pointer',
-          userSelect: 'none',
           padding: '0 24px calc(env(safe-area-inset-bottom, 0px) + 72px)',
           display: 'flex',
           flexDirection: 'column',
@@ -492,11 +470,6 @@ function StopCard({
           </p>
         )}
 
-        {/* Tap hint */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-          <span style={{ color: 'rgba(255,255,255,0.28)', fontSize: 11 }}>Tap for details</span>
-          <span className="ms" style={{ color: 'rgba(255,255,255,0.28)', fontSize: 14 }}>keyboard_arrow_up</span>
-        </div>
       </div>
     </>
   );
@@ -603,158 +576,6 @@ function RecoChip({ icon, label }: { icon: string; label: string }) {
   );
 }
 
-// ── ExpandedSheet — fixed bottom sheet ──────────────────────────
-
-function ExpandedSheet({
-  stop,
-  matchedCategory,
-  startMins,
-  city,
-  onClose,
-  onAddMeal,
-}: {
-  stop: ItineraryStop;
-  matchedCategory: string | null;
-  startMins: number;
-  city?: string;
-  onClose: () => void;
-  onAddMeal: () => void;
-}) {
-  const isFood = ['restaurant', 'cafe'].includes(matchedCategory ?? '');
-  const categoryInfo = matchedCategory ? CATEGORY_PILL[matchedCategory] : null;
-  const mapsQuery = encodeURIComponent(city ? `${stop.place} ${city}` : stop.place);
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
-
-  const h = Math.floor(startMins / 60);
-  const m = startMins % 60;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  const timeLabel = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-
-  return (
-    <>
-      {/* Dim backdrop */}
-      <div
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, zIndex: 34, background: 'rgba(0,0,0,0.45)' }}
-      />
-      {/* Sheet */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0, left: 0, right: 0,
-          zIndex: 35,
-          background: 'rgba(10,14,20,0.98)',
-          backdropFilter: 'blur(24px)',
-          borderRadius: '22px 22px 0 0',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderBottom: 'none',
-          padding: '16px 24px calc(env(safe-area-inset-bottom, 0px) + 28px)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
-        {/* Drag handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)', alignSelf: 'center' }} />
-
-        {/* Header: name + close */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <h3 style={{ color: '#fff', fontSize: 22, fontWeight: 800, margin: 0, lineHeight: 1.2, flex: 1, fontFamily: 'var(--font-heading, inherit)' }}>
-            {stop.place}
-          </h3>
-          <button
-            onClick={onClose}
-            style={{
-              width: 32, height: 32, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.08)',
-              border: 'none', color: 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <span className="ms" style={{ fontSize: 16 }}>close</span>
-          </button>
-        </div>
-
-        {/* Meta row: category · time · duration */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {categoryInfo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>{categoryInfo.icon}</span>
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{categoryInfo.label}</span>
-            </div>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>schedule</span>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{timeLabel}</span>
-          </div>
-          {stop.duration && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span className="ms fill" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>timer</span>
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500 }}>{stop.duration}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Description / tip */}
-        {stop.tip && (
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, lineHeight: 1.65, margin: 0 }}>
-            {stop.tip}
-          </p>
-        )}
-
-        {/* Transit to next */}
-        {stop.transit_to_next && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.12)' }}>
-            <span className="ms fill" style={{ color: '#38bdf8', fontSize: 16 }}>directions</span>
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>Next: {stop.transit_to_next}</span>
-          </div>
-        )}
-
-        {/* CTAs */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          {/* Open in Maps — primary */}
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              flex: 1,
-              padding: '13px 0', borderRadius: 16,
-              background: 'rgba(99,102,241,0.15)',
-              border: '1px solid rgba(99,102,241,0.3)',
-              color: '#a5b4fc', fontSize: 13, fontWeight: 600,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              textDecoration: 'none',
-            }}
-          >
-            <span className="ms fill" style={{ fontSize: 15 }}>open_in_new</span>
-            Open in Maps
-          </a>
-
-          {/* Add meal — only if not already a food stop */}
-          {!isFood && (
-            <button
-              onClick={onAddMeal}
-              style={{
-                flex: 1,
-                padding: '13px 0', borderRadius: 16,
-                border: '1px solid rgba(255,255,255,0.10)',
-                background: 'rgba(255,255,255,0.05)',
-                color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <span className="ms fill" style={{ fontSize: 15 }}>restaurant</span>
-              Add meal
-            </button>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
 
 // ── FinaleCard ───────────────────────────────────────────────────
 

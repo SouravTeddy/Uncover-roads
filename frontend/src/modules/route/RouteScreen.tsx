@@ -6,7 +6,7 @@ import { WeatherCanvas } from './WeatherCanvas';
 import { AmbientVideo } from './AmbientVideo';
 import { SCENE_GENERATING } from './sceneMap';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary, Place } from '../../shared/types';
+import type { SavedItinerary } from '../../shared/types';
 
 
 export function RouteScreen() {
@@ -23,12 +23,11 @@ export function RouteScreen() {
     removeStop,
     saveItinerary,
     buildItinerary,
-    addSuggestion,
     goBack,
     goToNav,
   } = useRoute();
 
-  const { state, dispatch } = useAppStore();
+  const { state } = useAppStore();
   const { tripContext, places, persona } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -42,9 +41,6 @@ export function RouteScreen() {
     setTimeout(() => setSaved(false), 2000);
   }
 
-  function handleAddSuggestion(place: Place) {
-    addSuggestion(place);
-  }
 
   // Loading / error screens rendered over the ambient bg
   if (loading) {
@@ -144,11 +140,6 @@ export function RouteScreen() {
           weather={weather}
           city={city ?? itinerary.city}
           onRemove={removeStop}
-          onAddMeal={() => {
-            dispatch({ type: 'SET_FILTER', filter: 'restaurant' });
-            dispatch({ type: 'GO_TO', screen: 'map' });
-          }}
-          onAddSuggestion={handleAddSuggestion}
           onSceneChange={setCurrentScene}
           onSave={handleSave}
           saved={saved}
