@@ -44,7 +44,8 @@ function ScreenRouter() {
         dispatch({ type: 'SET_USER_ROLE', role: profile.role });
         dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
       }
-    }).catch(console.warn);
+      dispatch({ type: 'PROFILE_LOADED' });
+    }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
 
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));
     const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
@@ -77,7 +78,8 @@ function ScreenRouter() {
             dispatch({ type: 'SET_USER_ROLE', role: profile.role });
             dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
           }
-        }).catch(console.warn);
+          dispatch({ type: 'PROFILE_LOADED' });
+        }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
       }
     });
 

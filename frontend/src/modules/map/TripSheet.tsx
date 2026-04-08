@@ -176,8 +176,8 @@ export function TripSheet({ onClose, onRequestPinDrop, onClearPin, pinDropResult
 
 
   function handleGenerate() {
-    // Enforce generation limit for non-admin users
-    if (state.userRole !== 'admin' && state.generationCount >= GENERATION_LIMIT) {
+    // Enforce generation limit — only after profile is confirmed loaded from DB
+    if (state.profileLoaded && state.userRole !== 'admin' && state.generationCount >= GENERATION_LIMIT) {
       setShowLimitModal(true);
       return;
     }
