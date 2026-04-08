@@ -43,7 +43,7 @@ export function AmbientVideo({ src, timeMins = 9 * 60 }: Props) {
   };
 
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}>
+    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', zIndex: 14 }}>
       {/* Always-visible gradient — colour-matched to time of day */}
       <div style={{ position: 'absolute', inset: 0, background: timeGradient(timeMins) }} />
 

@@ -21,21 +21,21 @@ interface Props {
 
 // ── Time helpers ───────────────────────────────────────────────
 
-function parseTimeLabel(mins: number): string {
+export function parseTimeLabel(mins: number): string {
   const h = Math.floor(mins / 60) % 24;
   const m = Math.round(mins % 60);
   const ap = h >= 12 ? 'PM' : 'AM';
   return `${(h % 12) || 12}:${m < 10 ? '0' : ''}${m} ${ap}`;
 }
 
-function parseDurationMins(s?: string): number {
+export function parseDurationMins(s?: string): number {
   if (!s) return 60;
   const hm = s.match(/(\d+\.?\d*)\s*h/i);
   const mm = s.match(/(\d+)\s*min/i);
   return (hm ? parseFloat(hm[1]) * 60 : 0) + (mm ? parseInt(mm[1]) : 0) || 60;
 }
 
-function parseTransitMins(s?: string): number {
+export function parseTransitMins(s?: string): number {
   if (!s) return 10;
   const mm = s.match(/(\d+)\s*min/i);
   const hh = s.match(/(\d+)\s*h/i);
@@ -74,7 +74,7 @@ function tagStyle(tag: string): { bg: string; color: string; icon: string; label
 
 // ── Persona match note ─────────────────────────────────────────
 
-function personaMatchNote(archetype: string | undefined, category: string | null): string | null {
+export function personaMatchNote(archetype: string | undefined, category: string | null): string | null {
   const a = (archetype ?? '').toLowerCase();
   if (!category) return null;
   if (a === 'historian'     && (category === 'historic' || category === 'museum'))  return 'Matched to your love of history';
@@ -169,7 +169,7 @@ function detectReorderReason(
 
 const FOOD_KEYWORDS = ['restaurant','café','cafe','lunch','dinner','eat','food','bistro','pub','bar','brasserie','diner','kitchen'];
 
-interface StopWithTime {
+export interface StopWithTime {
   stop: ItineraryStop;
   index: number;
   startMins: number;
@@ -180,7 +180,7 @@ interface StopWithTime {
 
 interface MealGap { label: string; insertAfterIndex: number; timeRange: string }
 
-function parseStopTimeMins(t?: string): number | null {
+export function parseStopTimeMins(t?: string): number | null {
   if (!t) return null;
   const m12 = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (m12) {
@@ -194,7 +194,7 @@ function parseStopTimeMins(t?: string): number | null {
   return null;
 }
 
-function buildTimeline(stops: ItineraryStop[], startMins: number, selectedPlaces: Place[]): StopWithTime[] {
+export function buildTimeline(stops: ItineraryStop[], startMins: number, selectedPlaces: Place[]): StopWithTime[] {
   let running = startMins;
   return stops.map((stop, i) => {
     if (i === 0) {
