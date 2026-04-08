@@ -122,7 +122,6 @@ export function ItineraryCards({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeline.length]);
 
-  const totalCards = cards.length;
   const [activeCard, setActiveCard] = useState(0);
   const [expandedStop, setExpandedStop] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
