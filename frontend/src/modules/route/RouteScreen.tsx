@@ -28,7 +28,7 @@ export function RouteScreen() {
   } = useRoute();
 
   const { state } = useAppStore();
-  const { tripContext, places, persona } = state;
+  const { tripContext, persona } = state;
   const [showRecSheet, setShowRecSheet] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentScene, setCurrentScene] = useState(() =>
@@ -133,7 +133,6 @@ export function RouteScreen() {
         <ItineraryCards
           stops={itinerary.itinerary}
           selectedPlaces={selectedPlaces}
-          allPlaces={places}
           tripContext={tripContext}
           summary={itinerary.summary}
           persona={persona}
