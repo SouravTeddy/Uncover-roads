@@ -14,6 +14,11 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
+/** Returns the URL of a Google Place photo via the backend proxy. */
+export function getPlacePhotoUrl(photoRef: string, maxWidth = 800): string {
+  return `${BASE}/place-photo?photo_ref=${encodeURIComponent(photoRef)}&max_width=${maxWidth}`;
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
   if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);

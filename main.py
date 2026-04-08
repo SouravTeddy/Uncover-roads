@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import time
@@ -1138,6 +1139,21 @@ def place_details(request: Request, place_id: str):
             "open_now": None, "weekday_text": [], "photo_ref": None,
             "types": [], "error": str(e)
         }
+
+
+@app.get("/place-photo")
+def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = Query(800)):
+    """Proxy Google Place Photos — keeps API key off the client."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    if not GOOGLE_PLACES_API_KEY:
+        raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY not configured")
+    url = (
+        f"https://maps.googleapis.com/maps/api/place/photo"
+        f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}"
+    )
+    return RedirectResponse(url=url, status_code=302)
 
 
 if __name__ == "__main__":
