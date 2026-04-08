@@ -11,7 +11,7 @@ import {
 // ── Constants ────────────────────────────────────────────────────
 
 const CARD_GRADIENT =
-  'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 38%, rgba(0,0,0,0.45) 62%, rgba(0,0,0,0.88) 82%, rgba(0,0,0,0.97) 100%)';
+  'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.38) 60%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.95) 100%)';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -115,6 +115,7 @@ export function ItineraryCards({
     height: '100dvh',
     flexShrink: 0,
     scrollSnapAlign: 'start',
+    scrollSnapStop: 'always',
     position: 'relative',
     overflow: 'hidden',
   };
@@ -131,7 +132,8 @@ export function ItineraryCards({
           overflowY: 'scroll',
           scrollSnapType: 'y mandatory',
           scrollbarWidth: 'none',
-        }}
+          WebkitOverflowScrolling: 'touch',
+        } as React.CSSProperties}
       >
         {/* Intro card */}
         <div
@@ -273,6 +275,23 @@ function IntroCard({
 
 // ── StopCard ─────────────────────────────────────────────────────
 
+const CATEGORY_PILL: Record<string, { icon: string; label: string }> = {
+  museum:     { icon: 'museum',        label: 'Museum' },
+  historic:   { icon: 'account_balance', label: 'Historic' },
+  restaurant: { icon: 'restaurant',   label: 'Restaurant' },
+  cafe:       { icon: 'local_cafe',   label: 'Café' },
+  park:       { icon: 'park',         label: 'Park' },
+  tourism:    { icon: 'photo_camera', label: 'Sightseeing' },
+  place:      { icon: 'location_on',  label: 'Place' },
+};
+
+const TAG_PILL: Record<string, { icon: string; label: string; color: string }> = {
+  heat:     { icon: 'thermometer',  label: 'Beat the heat', color: '#fbbf24' },
+  jetlag:   { icon: 'flight',       label: 'Jet lag tip',   color: '#818cf8' },
+  ramadan:  { icon: 'nights_stay',  label: 'Ramadan',       color: '#c084fc' },
+  altitude: { icon: 'landscape',    label: 'Altitude',      color: '#2dd4bf' },
+};
+
 function StopCard({
   item,
   total,
@@ -295,6 +314,9 @@ function StopCard({
   const durationLabel = stop.duration ?? '';
   const matchNote = personaMatchNote(persona?.archetype, matchedCategory);
   const tip = stop.tip ?? '';
+  const categoryPill = matchedCategory ? CATEGORY_PILL[matchedCategory] : null;
+  const tags = stop.tags ?? [];
+  const firstTag = tags.length > 0 ? TAG_PILL[tags[0]] : null;
 
   return (
     <div
@@ -339,10 +361,21 @@ function StopCard({
           {stop.place}
         </h2>
 
-        {/* Persona match */}
-        {matchNote && (
-          <span style={{ color: '#60a5fa', fontSize: 12, fontWeight: 600 }}>{matchNote}</span>
-        )}
+        {/* Quick bits row — category, transit, persona tag */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {categoryPill && (
+            <QuickPill icon={categoryPill.icon} label={categoryPill.label} />
+          )}
+          {stop.transit_to_next && !isExpanded && (
+            <QuickPill icon="directions_walk" label={stop.transit_to_next} />
+          )}
+          {firstTag && (
+            <QuickPill icon={firstTag.icon} label={firstTag.label} color={firstTag.color} />
+          )}
+          {matchNote && (
+            <QuickPill icon="auto_awesome" label={matchNote} color="#60a5fa" />
+          )}
+        </div>
 
         {/* Tip — 2 lines collapsed, full expanded */}
         {tip && (
@@ -735,7 +768,30 @@ function ProgressDots({ total, active }: { total: number; active: number }) {
   );
 }
 
-// ── Pill ─────────────────────────────────────────────────────────
+// ── QuickPill (per-stop compact tag) ────────────────────────────
+
+function QuickPill({ icon, label, color }: { icon: string; label: string; color?: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '4px 9px',
+        borderRadius: 99,
+        border: '1px solid rgba(255,255,255,0.10)',
+        background: 'rgba(0,0,0,0.28)',
+        backdropFilter: 'blur(6px)',
+        flexShrink: 0,
+      }}
+    >
+      <span className="ms fill" style={{ color: color ?? 'rgba(255,255,255,0.5)', fontSize: 12 }}>{icon}</span>
+      <span style={{ color: color ?? 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 500 }}>{label}</span>
+    </div>
+  );
+}
+
+// ── Pill (intro card) ─────────────────────────────────────────────
 
 function Pill({ icon, label }: { icon: string; label: string }) {
   return (

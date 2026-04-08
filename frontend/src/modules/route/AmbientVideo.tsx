@@ -67,10 +67,10 @@ export function AmbientVideo({ src, timeMins = 9 * 60 }: Props) {
         />
       )}
 
-      {/* Dark cinematic overlay — keeps text readable */}
+      {/* Light vignette only — card gradient handles content area darkening */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.72) 100%)',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.04) 30%, rgba(0,0,0,0.04) 65%, rgba(0,0,0,0.18) 100%)',
       }} />
     </div>
   );
