@@ -6,6 +6,16 @@ import type { Place, PlaceDetails } from '../../shared/types';
 const detailsCache = new Map<string, PlaceDetails>();
 const placeIdCache = new Map<string, string>(); // "name:lat:lon" → google place_id
 
+/** Returns the full details cache (read-only intent). Used by useTripPlanInput. */
+export function getAllCachedDetails(): ReadonlyMap<string, PlaceDetails> {
+  return detailsCache;
+}
+
+/** Returns the cached Google place_id for a given place, if resolved. */
+export function getCachedPlaceIdKey(name: string, lat: number, lon: number): string | undefined {
+  return placeIdCache.get(`${name}:${lat}:${lon}`);
+}
+
 export function usePlaceDetails() {
   const [details, setDetails] = useState<PlaceDetails | null>(null);
   const [loading, setLoading] = useState(false);
