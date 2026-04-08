@@ -73,12 +73,19 @@ export function useTripPlanInput() {
   }, [startChip]);
 
   const handleSelectLocation = useCallback(async (result: AutocompleteResult) => {
-    const geo = await geocodePlace(result.place_id, sessionIdRef.current);
-    sessionIdRef.current = newSessionId(); // new session after selection (billing event)
-    setLocationResults([]);
-    if (geo) {
-      setLocationQuery(geo.name);
-      setSelectedLocation({ name: geo.name, lat: geo.lat, lon: geo.lon });
+    setLocationLoading(true);
+    try {
+      const geo = await geocodePlace(result.place_id, sessionIdRef.current);
+      sessionIdRef.current = newSessionId(); // new session after selection (billing event)
+      setLocationResults([]);
+      if (geo) {
+        setLocationQuery(geo.name);
+        setSelectedLocation({ name: geo.name, lat: geo.lat, lon: geo.lon });
+      }
+    } catch {
+      // Leave prior results intact; user can retry
+    } finally {
+      setLocationLoading(false);
     }
   }, []);
 
@@ -91,6 +98,7 @@ export function useTripPlanInput() {
     sessionIdRef.current = newSessionId();
   }, []);
 
+  // Always true in practice — starting-point is optional per spec; place-selection guard is upstream.
   const canBuild = !!selectedDate;
 
   const handleBuild = useCallback((pinDropResult?: { lat: number; lon: number } | null) => {
@@ -112,6 +120,8 @@ export function useTripPlanInput() {
         locationLat,
         locationLon,
         locationName,
+        flightTime:  null,
+        isLongHaul:  false,
       },
     });
     dispatch({ type: 'GO_TO', screen: 'route' });
