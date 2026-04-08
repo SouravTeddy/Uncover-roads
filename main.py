@@ -1012,7 +1012,9 @@ async def place_details(request: Request, place_id: str):
     Task 2 will add Supabase cache on top of this.
     """
     if not GOOGLE_PLACES_API_KEY:
-        return {"error": "Google Places API key not configured"}
+        return {"place_id": place_id, "name": None, "address": None, "lat": None, "lon": None,
+                "rating": None, "rating_count": None, "phone": None, "website": None,
+                "price_level": None, "open_now": None, "weekday_text": [], "photo_ref": None, "types": []}
 
     if not _check_rate_limit(request.client.host):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
