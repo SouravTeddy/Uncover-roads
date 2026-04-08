@@ -1,3 +1,5 @@
+import type { LineString } from 'geojson';
+
 // ── Screen navigation ─────────────────────────────────────────
 export type Screen =
   | 'login'
@@ -151,7 +153,7 @@ export interface LatLon {
 }
 
 export interface RouteData {
-  geojson?: GeoJSON.LineString;
+  geojson?: LineString;
   distance?: number;
   duration?: number;
 }
