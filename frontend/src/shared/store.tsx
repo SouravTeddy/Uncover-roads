@@ -110,6 +110,14 @@ function getStoredGenerationCount(): number {
   }
 }
 
+function getStoredUserRole(): 'user' | 'admin' {
+  try {
+    return localStorage.getItem('ur_user_role') === 'admin' ? 'admin' : 'user';
+  } catch {
+    return 'user';
+  }
+}
+
 export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
@@ -124,7 +132,7 @@ export const initialState: AppState = {
   weather: null,
   route: null,
   savedItineraries: getStoredItineraries(),
-  userRole: 'user',
+  userRole: getStoredUserRole(),
   generationCount: getStoredGenerationCount(),
 };
 
@@ -241,6 +249,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, savedItineraries: action.items };
 
     case 'SET_USER_ROLE':
+      try { localStorage.setItem('ur_user_role', action.role); } catch { /* ignore */ }
       return { ...state, userRole: action.role };
 
     case 'SET_GENERATION_COUNT':
