@@ -1009,9 +1009,20 @@ def geocode_place(request: Request, place_id: str, session_id: str):
 @app.get("/find-place-id")
 def find_place_id(request: Request, name: str, lat: float, lon: float):
     """
-    Resolve Google place_id from an OSM place name + coordinates.
-    Called once per unique pin tap — result cached client-side.
-    Cost: $0.017/call (Find Place Basic Data).
+    Resolve Google place_id from coordinates (primary) or name (fallback).
+
+    Strategy:
+      1. Check Supabase place_id_cache by coords_key — instant, free
+      2. Google findplacefromtext with name + location bias — good for named places
+      3. Google nearbysearch with 10m radius — coordinate-based, catches name mismatches
+      4. Write resolved place_id to Supabase cache for all future taps
+
+    Required Supabase table:
+      CREATE TABLE place_id_cache (
+        coords_key text PRIMARY KEY,
+        place_id   text NOT NULL,
+        fetched_at timestamptz NOT NULL DEFAULT now()
+      );
     """
     if not GOOGLE_PLACES_API_KEY:
         return {"place_id": None}
@@ -1020,25 +1031,74 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
-    params = {
-        "input": name,
-        "inputtype": "textquery",
-        "locationbias": f"point:{lat},{lon}",
-        "fields": "place_id,name",
-        "key": GOOGLE_PLACES_API_KEY,
-    }
+    coords_key = f"{lat:.5f},{lon:.5f}"
+
+    # 1. Supabase cache hit — no Google call needed
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("place_id_cache")
+                .select("place_id")
+                .eq("coords_key", coords_key)
+                .maybe_single()
+                .execute()
+            )
+            if cached.data and cached.data.get("place_id"):
+                return {"place_id": cached.data["place_id"]}
+        except Exception:
+            pass
+
+    place_id = None
+
+    # 2. findplacefromtext with name + location bias
     try:
-        resp = requests.get(f"{GOOGLE_PLACES_BASE}/findplacefromtext/json", params=params, timeout=5)
-        data = resp.json()
-        status = data.get("status")
-        if status not in ("OK", "ZERO_RESULTS"):
-            return {"place_id": None, "error": status or "UNKNOWN_ERROR"}
-        candidates = data.get("candidates", [])
+        resp = requests.get(
+            f"{GOOGLE_PLACES_BASE}/findplacefromtext/json",
+            params={
+                "input": name,
+                "inputtype": "textquery",
+                "locationbias": f"point:{lat},{lon}",
+                "fields": "place_id,name",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=5,
+        )
+        candidates = resp.json().get("candidates", [])
         if candidates:
-            return {"place_id": candidates[0]["place_id"], "name": candidates[0].get("name")}
-        return {"place_id": None}
-    except Exception as e:
-        return {"place_id": None, "error": str(e)}
+            place_id = candidates[0]["place_id"]
+    except Exception:
+        pass
+
+    # 3. Fallback: nearbysearch with 10m radius (coordinate-based, ignores name)
+    if not place_id:
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                params={
+                    "location": f"{lat},{lon}",
+                    "radius": 10,
+                    "key": GOOGLE_PLACES_API_KEY,
+                },
+                timeout=5,
+            )
+            results = resp.json().get("results", [])
+            if results:
+                place_id = results[0]["place_id"]
+        except Exception:
+            pass
+
+    # 4. Cache the resolved place_id
+    if place_id and _supabase:
+        try:
+            _supabase.table("place_id_cache").upsert({
+                "coords_key": coords_key,
+                "place_id": place_id,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception:
+            pass
+
+    return {"place_id": place_id}
 
 
 # =========================================
