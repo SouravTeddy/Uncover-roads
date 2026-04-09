@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useGoogleCitySearch } from './useGoogleCitySearch';
 import type { AutocompleteResult } from '../../shared/types';
 
@@ -16,6 +17,7 @@ interface Props {
 export function CitySearch({ onSelect }: Props) {
   const [query, setQuery] = useState('');
   const { results, loading, search, selectResult, clear } = useGoogleCitySearch();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   function handleInput(value: string) {
     setQuery(value);
@@ -29,38 +31,74 @@ export function CitySearch({ onSelect }: Props) {
     onSelect(name, geo);
   }
 
+  async function handleEnter() {
+    if (results.length > 0) {
+      await handleSelect(results[0]);
+    } else if (query.trim().length >= 2) {
+      const q = query.trim();
+      setQuery('');
+      clear();
+      onSelect(q, null);
+    }
+  }
+
   function handleClear() {
     setQuery('');
     clear();
   }
 
+  // Compute rect inline — avoids state timing issues
+  const rect = results.length > 0 ? containerRef.current?.getBoundingClientRect() : null;
+
   return (
-    <div className="relative">
-      <div className="flex items-center gap-3 bg-surface rounded-2xl px-4 h-14 border border-white/8">
-        <span className="ms text-text-3 text-xl">search</span>
-        <input
-          type="text"
-          value={query}
-          placeholder="Destinations, cities, vibes..."
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="words"
-          onChange={e => handleInput(e.target.value)}
-          className="flex-1 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
-        />
-        {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
-        {query && !loading && (
-          <button onClick={handleClear} className="ms text-text-3 text-base">close</button>
-        )}
+    <>
+      <div ref={containerRef}>
+        <div className="flex items-center gap-3 bg-surface rounded-2xl px-4 h-14 border border-white/8">
+          <span className="ms text-text-3 text-xl">search</span>
+          <input
+            type="text"
+            value={query}
+            placeholder="Destinations, cities, vibes..."
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="words"
+            onChange={e => handleInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleEnter(); }}
+            className="flex-1 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
+          />
+          {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
+          {query && !loading && (
+            <button onClick={handleClear} className="ms text-text-3 text-base">close</button>
+          )}
+        </div>
       </div>
 
-      {results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-surface rounded-2xl overflow-hidden shadow-xl z-30 border border-white/8">
+      {rect && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            zIndex: 9999,
+            background: 'var(--color-surface, #1e293b)',
+            borderRadius: 16,
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+            border: '1px solid rgba(255,255,255,.08)',
+          }}
+        >
           {results.map((r, i) => (
             <button
               key={i}
-              onClick={() => handleSelect(r)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-white/6 last:border-none hover:bg-surf-hst transition-colors"
+              onMouseDown={() => handleSelect(r)}
+              onTouchStart={() => handleSelect(r)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 16px', textAlign: 'left', background: 'none', border: 'none',
+                cursor: 'pointer', color: 'inherit',
+                borderBottom: i < results.length - 1 ? '1px solid rgba(255,255,255,.06)' : 'none',
+              }}
             >
               <span className="ms text-text-3 text-base">location_on</span>
               <div>
@@ -71,8 +109,9 @@ export function CitySearch({ onSelect }: Props) {
               </div>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

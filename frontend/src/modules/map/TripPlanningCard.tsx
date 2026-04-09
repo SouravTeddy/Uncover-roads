@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../shared/store';
 import { useTripPlanInput } from './useTripPlanInput';
@@ -7,6 +8,7 @@ interface Props {
   onClose: () => void;
   onRequestPinDrop: () => void;
   pinDropResult: { lat: number; lon: number } | null;
+  pinPlaceName?: string | null;
   onClearPin: () => void;
 }
 
@@ -16,10 +18,12 @@ const CHIPS: Array<{ value: StartChip; icon: string; label: string }> = [
   { value: 'pin',     icon: '📍', label: 'Pin'     },
 ];
 
-export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onClearPin }: Props) {
+export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pinPlaceName, onClearPin }: Props) {
   const { state } = useAppStore();
   const city = state.city;
   const placesCount = state.selectedPlaces.length;
+
+  const locationInputRef = useRef<HTMLDivElement>(null);
 
   const {
     dates, selectedDate, setSelectedDate,
@@ -66,7 +70,6 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
           border: '1px solid rgba(255,255,255,.07)',
           borderRadius: 24,
           boxShadow: '0 24px 80px rgba(0,0,0,.8)',
-          overflow: 'hidden',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -170,7 +173,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(20,184,166,.1)', border: '1px solid rgba(20,184,166,.3)', borderRadius: 11 }}>
                 <span style={{ fontSize: 10, color: '#2dd4bf' }}>📍</span>
                 <span style={{ fontSize: 10, color: '#5eead4', flex: 1 }}>
-                  {pinDropResult.lat.toFixed(4)}, {pinDropResult.lon.toFixed(4)}
+                  {pinPlaceName ?? `${pinDropResult.lat.toFixed(4)}, ${pinDropResult.lon.toFixed(4)}`}
                 </span>
                 <button
                   onClick={handleClearPin}
@@ -181,7 +184,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
               </div>
             ) : startChip !== 'pin' && (
               /* Hotel/Airport search input */
-              <div style={{ position: 'relative' }}>
+              <div ref={locationInputRef} style={{ position: 'relative' }}>
                 <div
                   style={{
                     background: 'rgba(255,255,255,.05)',
@@ -212,13 +215,20 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
                   )}
                 </div>
 
-                {locationResults.length > 0 && (
+                {locationResults.length > 0 && (() => {
+                  const r = locationInputRef.current?.getBoundingClientRect();
+                  if (!r) return null;
+                  return createPortal(
                   <div
                     style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                      position: 'fixed',
+                      top: r.bottom + 4,
+                      left: r.left,
+                      width: r.width,
+                      zIndex: 9999,
                       background: 'rgba(10,14,24,.97)',
                       border: '1px solid rgba(255,255,255,.1)',
-                      borderRadius: 11, overflow: 'hidden', zIndex: 10,
+                      borderRadius: 11, overflow: 'hidden',
                     }}
                   >
                     {locationResults.map((r, i) => (
@@ -239,8 +249,10 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, onC
                         </div>
                       </button>
                     ))}
-                  </div>
-                )}
+                  </div>,
+                  document.body,
+                  );
+                })()}
               </div>
             )}
           </div>

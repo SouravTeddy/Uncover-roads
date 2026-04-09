@@ -908,12 +908,12 @@ def places_autocomplete(
     request: Request,
     query: str,
     session_id: str,
-    types: str = "(cities)",
+    types: str = "",
 ):
     """
     Google Places Autocomplete with session tokens.
     All keystrokes in a session are FREE — billing only happens at Place Details.
-    types: "(cities)" for city search, "establishment" for POI search.
+    types: "" (no filter) returns cities + establishments; "(cities)" was too restrictive.
     """
     if not GOOGLE_PLACES_API_KEY:
         return {"predictions": []}
@@ -933,10 +933,11 @@ def places_autocomplete(
 
     params = {
         "input": query,
-        "types": types,
         "sessiontoken": session_token,
         "key": GOOGLE_PLACES_API_KEY,
     }
+    if types:
+        params["types"] = types
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/autocomplete/json", params=params, timeout=5)
         data = resp.json()
