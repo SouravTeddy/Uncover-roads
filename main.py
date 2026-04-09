@@ -285,6 +285,8 @@ out center 200;
                     "description":   tags.get("description", "") or tags.get("note", ""),
                     "phone":         tags.get("phone", "") or tags.get("contact:phone", ""),
                     "address":       osm_address,
+                    "wikipedia":     tags.get("wikipedia", ""),
+                    "wikidata":      tags.get("wikidata", ""),
                 }
             })
 
