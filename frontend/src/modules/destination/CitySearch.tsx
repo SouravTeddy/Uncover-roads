@@ -43,6 +43,17 @@ export function CitySearch({ onSelect }: Props) {
     onSelect(name, geo);
   }
 
+  async function handleEnter() {
+    if (results.length > 0) {
+      await handleSelect(results[0]);
+    } else if (query.trim().length >= 2) {
+      setQuery('');
+      setDropdownRect(null);
+      clear();
+      onSelect(query.trim(), null);
+    }
+  }
+
   function handleClear() {
     setQuery('');
     clear();
@@ -104,6 +115,7 @@ export function CitySearch({ onSelect }: Props) {
             autoCorrect="off"
             autoCapitalize="words"
             onChange={e => handleInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleEnter(); }}
             className="flex-1 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
           />
           {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
