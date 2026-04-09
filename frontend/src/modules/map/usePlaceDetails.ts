@@ -35,7 +35,7 @@ export function usePlaceDetails() {
     setDetails(null);
 
     try {
-      const result = await fetchPinDetails(place.lat, place.lon, place.title);
+      const result = await fetchPinDetails(place.lat, place.lon, place.title, place.category);
       if (result) {
         detailsCache.set(cacheKey, result);
         setDetails(result);

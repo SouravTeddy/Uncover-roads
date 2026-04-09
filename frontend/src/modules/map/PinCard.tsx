@@ -259,28 +259,32 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
           </div>
         ) : null}
 
-        {/* Address row — Google details only */}
-        {activeDetails?.address ? (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <span style={{ fontSize: 12, marginTop: 1 }}>📍</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.4 }}>{activeDetails.address}</div>
-              <a
-                href={directionsUrl}
-                style={{
-                  fontSize: 9, color: '#6366f1', marginTop: 3,
-                  display: 'block', textDecoration: 'none',
-                }}
-              >
-                Get directions ↗
-              </a>
+        {/* Address row — Google details, OSM address, or just directions link */}
+        {(() => {
+          const displayAddress = activeDetails?.address || place.tags?.address || null;
+          return (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ fontSize: 12, marginTop: 1 }}>📍</span>
+              <div style={{ flex: 1 }}>
+                {displayAddress && (
+                  <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.4, marginBottom: 2 }}>{displayAddress}</div>
+                )}
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 9, color: '#6366f1', textDecoration: 'none' }}
+                >
+                  Get directions ↗
+                </a>
+              </div>
             </div>
-          </div>
-        ) : null}
+          );
+        })()}
 
         {/* Phone + website tiles — Google details OR OSM website */}
         {(() => {
-          const phone = activeDetails?.phone;
+          const phone = activeDetails?.phone || place.tags?.phone || null;
           const website = activeDetails?.website || place.tags?.website || null;
           return (phone || website) ? (
             <div style={{ display: 'flex', gap: 8 }}>
