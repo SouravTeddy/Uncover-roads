@@ -98,7 +98,7 @@ export function MapScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
 
-  const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('loading');
+  const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
   // Events
   const [eventsLoaded, setEventsLoaded]         = useState(false);
@@ -152,6 +152,8 @@ export function MapScreen() {
     if (!cityGeo) return;
     initialLoadFired.current = true;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
+    // Reset filter to 'all' so stale category filters don't hide fresh pins
+    if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
     if (state.tripContext.date) {
       loadEvents();
