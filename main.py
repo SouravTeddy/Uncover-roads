@@ -1191,12 +1191,13 @@ _CATEGORY_TO_GOOGLE_TYPE = {
 }
 
 @app.get("/pin-details")
-def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query(""), category: str = Query("")):
+def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query(""), category: str = Query(""), place_id: str = Query("")):
     """
     Single-call endpoint: resolves place_id from coords + fetches full details.
     Replaces the two-step /find-place-id → /place-details round trip.
 
     Resolution order:
+      0. Caller-supplied place_id (instant, free — skips all lookups)
       1. Supabase place_id_cache by coords (instant, free)
       2. Google findplacefromtext with name + location bias
       3. Google nearbysearch at 10m radius (coordinate-based fallback)
@@ -1211,102 +1212,105 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
 
     coords_key = f"{lat:.5f},{lon:.5f}"
 
-    # ── 1. Coords cache → skip both lookups if place_id already known ──
-    place_id = None
-    if _supabase:
-        try:
-            cached = (
-                _supabase.table("place_id_cache")
-                .select("place_id")
-                .eq("coords_key", coords_key)
-                .maybe_single()
-                .execute()
-            )
-            if cached.data and cached.data.get("place_id"):
-                place_id = cached.data["place_id"]
-        except Exception:
-            pass
+    # ── 0. Caller already knows the place_id — skip all lookups ──
+    resolved_id = place_id or None
 
-    # ── 2. Name-based lookup ──
-    if not place_id and name:
-        try:
-            resp = requests.get(
-                f"{GOOGLE_PLACES_BASE}/findplacefromtext/json",
-                params={
-                    "input": name,
-                    "inputtype": "textquery",
-                    "locationbias": f"point:{lat},{lon}",
-                    "fields": "place_id,name",
-                    "key": GOOGLE_PLACES_API_KEY,
-                },
-                timeout=5,
-            )
-            candidates = resp.json().get("candidates", [])
-            if candidates:
-                place_id = candidates[0]["place_id"]
-        except Exception:
-            pass
+    if not resolved_id:
+        # ── 1. Coords cache → skip both lookups if place_id already known ──
+        if _supabase:
+            try:
+                cached = (
+                    _supabase.table("place_id_cache")
+                    .select("place_id")
+                    .eq("coords_key", coords_key)
+                    .maybe_single()
+                    .execute()
+                )
+                if cached.data and cached.data.get("place_id"):
+                    resolved_id = cached.data["place_id"]
+            except Exception:
+                pass
 
-    # ── 3. Type-ranked nearbysearch — finds nearest matching type, no radius limit ──
-    if not place_id:
-        google_type = _CATEGORY_TO_GOOGLE_TYPE.get(category, "")
-        if google_type:
+        # ── 2. Name-based lookup ──
+        if not resolved_id and name:
+            try:
+                resp = requests.get(
+                    f"{GOOGLE_PLACES_BASE}/findplacefromtext/json",
+                    params={
+                        "input": name,
+                        "inputtype": "textquery",
+                        "locationbias": f"point:{lat},{lon}",
+                        "fields": "place_id,name",
+                        "key": GOOGLE_PLACES_API_KEY,
+                    },
+                    timeout=5,
+                )
+                candidates = resp.json().get("candidates", [])
+                if candidates:
+                    resolved_id = candidates[0]["place_id"]
+            except Exception:
+                pass
+
+        # ── 3. Type-ranked nearbysearch — finds nearest matching type, no radius limit ──
+        if not resolved_id:
+            google_type = _CATEGORY_TO_GOOGLE_TYPE.get(category, "")
+            if google_type:
+                try:
+                    resp = requests.get(
+                        f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                        params={
+                            "location": f"{lat},{lon}",
+                            "rankby": "distance",
+                            "type": google_type,
+                            "key": GOOGLE_PLACES_API_KEY,
+                        },
+                        timeout=5,
+                    )
+                    results = resp.json().get("results", [])
+                    if results:
+                        resolved_id = results[0]["place_id"]
+                except Exception:
+                    pass
+
+        # ── 4. Fixed-radius fallback — 100m catch-all ──
+        if not resolved_id:
             try:
                 resp = requests.get(
                     f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
                     params={
                         "location": f"{lat},{lon}",
-                        "rankby": "distance",
-                        "type": google_type,
+                        "radius": 100,
                         "key": GOOGLE_PLACES_API_KEY,
                     },
                     timeout=5,
                 )
                 results = resp.json().get("results", [])
                 if results:
-                    place_id = results[0]["place_id"]
+                    resolved_id = results[0]["place_id"]
             except Exception:
                 pass
 
-    # ── 4. Fixed-radius fallback — 100m catch-all ──
-    if not place_id:
-        try:
-            resp = requests.get(
-                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                params={
-                    "location": f"{lat},{lon}",
-                    "radius": 100,
-                    "key": GOOGLE_PLACES_API_KEY,
-                },
-                timeout=5,
-            )
-            results = resp.json().get("results", [])
-            if results:
-                place_id = results[0]["place_id"]
-        except Exception:
-            pass
+        # ── Cache the resolved place_id ──
+        if resolved_id and _supabase:
+            try:
+                _supabase.table("place_id_cache").upsert({
+                    "coords_key": coords_key,
+                    "place_id": resolved_id,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }).execute()
+            except Exception:
+                pass
 
-    if not place_id:
+    if not resolved_id:
         return {"place_id": None}
 
-    # ── Cache the resolved place_id ──
-    if _supabase:
-        try:
-            _supabase.table("place_id_cache").upsert({
-                "coords_key": coords_key,
-                "place_id": place_id,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-            }).execute()
-        except Exception:
-            pass
-
-    # ── 4. Check place_details_cache ──
+    # ── Check place_details_cache ──
     if _supabase:
         try:
             cached_details = (
                 _supabase.table("place_details_cache")
                 .select("data, fetched_at")
-                .eq("place_id", place_id)
+                .eq("place_id", resolved_id)
                 .maybe_single()
                 .execute()
             )
@@ -1322,7 +1326,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
         resp = requests.get(
             f"{GOOGLE_PLACES_BASE}/details/json",
             params={
-                "place_id": place_id,
+                "place_id": resolved_id,
                 "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,editorial_summary,reviews",
                 "key": GOOGLE_PLACES_API_KEY,
             },
@@ -1338,7 +1342,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             photo_ref = result["photos"][0]["photo_reference"]
 
         details = {
-            "place_id": place_id,
+            "place_id": resolved_id,
             "name": result.get("name"),
             "address": result.get("formatted_address"),
             "lat": result.get("geometry", {}).get("location", {}).get("lat"),
@@ -1359,7 +1363,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
         if _supabase:
             try:
                 _supabase.table("place_details_cache").upsert({
-                    "place_id": place_id,
+                    "place_id": resolved_id,
                     "data": details,
                     "fetched_at": datetime.now(timezone.utc).isoformat(),
                 }).execute()
