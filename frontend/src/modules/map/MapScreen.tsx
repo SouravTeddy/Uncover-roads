@@ -92,7 +92,7 @@ export function MapScreen() {
   }, []);
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
-  const { details, loading: detailsLoading, fetchDetails, clearDetails } = usePlaceDetails();
+  const { details, fetchDetails, clearDetails } = usePlaceDetails();
   const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
 
@@ -570,7 +570,6 @@ export function MapScreen() {
               onAdd={() => togglePlace(activePlace)}
               onClose={() => { setActivePlace(null); clearDetails(); }}
               details={details}
-              detailsLoading={detailsLoading}
             />
           )}
           {selectedPlaces.length >= 2 && (
