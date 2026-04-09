@@ -32,7 +32,14 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   );
   const activeDetails = hasGoogleData ? details : null;
 
-  const photoUrl = activeDetails?.photo_ref ? getPlacePhotoUrl(activeDetails.photo_ref) : null;
+  // Use place fields as immediate values — available before details loads
+  const photoRef = activeDetails?.photo_ref ?? place.photo_ref ?? null;
+  const rating = activeDetails?.rating ?? place.rating ?? null;
+  const ratingCount = activeDetails?.rating_count ?? null;
+  const openNow = activeDetails?.open_now ?? place.open_now ?? null;
+  const priceLevel = activeDetails?.price_level ?? place.price_level ?? null;
+
+  const photoUrl = photoRef ? getPlacePhotoUrl(photoRef) : null;
   const typeTags = activeDetails?.types ? filterTypes(activeDetails.types) : [];
 
   const todayJsDay = new Date().getDay();
@@ -126,29 +133,29 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
           {place.title}
         </div>
 
-        {/* Meta row: rating · open/closed · price */}
-        {(activeDetails?.rating || activeDetails?.open_now !== undefined || activeDetails?.price_level) && (
+        {/* Meta row: rating · open/closed · price — shown immediately from place data */}
+        {(rating !== null || openNow !== null || priceLevel !== null) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
-            {activeDetails!.rating !== undefined && (
+            {rating !== null && (
               <>
                 <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
-                  ★ {activeDetails!.rating}
+                  ★ {rating}
                 </span>
-                {activeDetails!.rating_count !== undefined && (
+                {ratingCount !== null && (
                   <span style={{ fontSize: 10, color: '#777' }}>
-                    ({activeDetails!.rating_count.toLocaleString()})
+                    ({ratingCount.toLocaleString()})
                   </span>
                 )}
               </>
             )}
-            {activeDetails!.open_now !== undefined && (
-              <span style={{ fontSize: 10, color: activeDetails!.open_now ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-                ● {activeDetails!.open_now ? 'Open' : 'Closed'}
+            {openNow !== null && (
+              <span style={{ fontSize: 10, color: openNow ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                ● {openNow ? 'Open' : 'Closed'}
               </span>
             )}
-            {activeDetails!.price_level !== undefined && activeDetails!.price_level > 0 && (
+            {priceLevel !== null && priceLevel > 0 && (
               <span style={{ fontSize: 10, color: '#777' }}>
-                {PRICE[activeDetails!.price_level]}
+                {PRICE[priceLevel]}
               </span>
             )}
           </div>
@@ -196,7 +203,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
             <span style={{ fontSize: 11, marginTop: 1, flexShrink: 0 }}>🕐</span>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 600, color: (activeDetails?.open_now ?? false) ? '#22c55e' : '#ef4444' }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: (openNow ?? false) ? '#22c55e' : '#ef4444' }}>
                   {hoursLabel}
                 </span>
                 {activeDetails?.weekday_text && activeDetails.weekday_text.length > 0 && (
