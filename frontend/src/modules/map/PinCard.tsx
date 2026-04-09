@@ -233,7 +233,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
               </div>
               {hoursExpanded && activeDetails?.weekday_text && (
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {details.weekday_text.map((line, i) => {
+                  {activeDetails.weekday_text.map((line, i) => {
                     const isToday = i === (todayJsDay === 0 ? 6 : todayJsDay - 1);
                     const colonIdx = line.indexOf(':');
                     const day = colonIdx > -1 ? line.slice(0, colonIdx) : line;
