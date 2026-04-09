@@ -1266,23 +1266,25 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
         except Exception:
             pass
 
-    # ── 3. Coordinate-based fallback at 10m ──
+    # ── 3. Coordinate-based fallback — 10m then 50m ──
     if not place_id:
-        try:
-            resp = requests.get(
-                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                params={
-                    "location": f"{lat},{lon}",
-                    "radius": 10,
-                    "key": GOOGLE_PLACES_API_KEY,
-                },
-                timeout=5,
-            )
-            results = resp.json().get("results", [])
-            if results:
-                place_id = results[0]["place_id"]
-        except Exception:
-            pass
+        for radius in (10, 50):
+            try:
+                resp = requests.get(
+                    f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                    params={
+                        "location": f"{lat},{lon}",
+                        "radius": radius,
+                        "key": GOOGLE_PLACES_API_KEY,
+                    },
+                    timeout=5,
+                )
+                results = resp.json().get("results", [])
+                if results:
+                    place_id = results[0]["place_id"]
+                    break
+            except Exception:
+                pass
 
     if not place_id:
         return {"place_id": None}
@@ -1321,7 +1323,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             f"{GOOGLE_PLACES_BASE}/details/json",
             params={
                 "place_id": place_id,
-                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,editorial_summary,reviews",
                 "key": GOOGLE_PLACES_API_KEY,
             },
             timeout=5,
@@ -1350,6 +1352,8 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
             "photo_ref": photo_ref,
             "types": result.get("types", []),
+            "editorial_summary": result.get("editorial_summary", {}).get("overview"),
+            "top_review": result["reviews"][0]["text"] if result.get("reviews") else None,
         }
 
         if _supabase:

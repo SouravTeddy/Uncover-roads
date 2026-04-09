@@ -19,29 +19,29 @@ export function getCachedPlaceIdKey(_name: string, lat: number, lon: number): st
 
 export function usePlaceDetails() {
   const [details, setDetails] = useState<PlaceDetails | null>(null);
-  const [loading, setLoading] = useState(false);
 
+  // Fetches details silently in the background — no loading state.
+  // The card renders immediately with OSM data; Google data enriches it when ready.
   const fetchDetails = useCallback(async (place: Place) => {
-    setLoading(true);
-    setDetails(null);
-
     const cacheKey = `${place.lat.toFixed(5)}:${place.lon.toFixed(5)}`;
 
-    try {
-      // Check client-side cache first
-      if (detailsCache.has(cacheKey)) {
-        setDetails(detailsCache.get(cacheKey)!);
-        return;
-      }
+    // Check client-side cache first (synchronous — no flicker)
+    if (detailsCache.has(cacheKey)) {
+      setDetails(detailsCache.get(cacheKey)!);
+      return;
+    }
 
-      // Single round-trip: backend resolves place_id + fetches details
+    // Reset to null so previous card's details don't leak into the new card
+    setDetails(null);
+
+    try {
       const result = await fetchPinDetails(place.lat, place.lon, place.title);
       if (result) {
         detailsCache.set(cacheKey, result);
         setDetails(result);
       }
-    } finally {
-      setLoading(false);
+    } catch {
+      // Silently ignore — card will remain on OSM-only data
     }
   }, []);
 
@@ -49,5 +49,5 @@ export function usePlaceDetails() {
     setDetails(null);
   }, []);
 
-  return { details, loading, fetchDetails, clearDetails };
+  return { details, fetchDetails, clearDetails };
 }
