@@ -166,177 +166,122 @@ def fetch_overpass(query: str) -> dict:
 # =========================================
 @app.get("/map-data")
 def map_data(
-    city: str = Query("Bangalore"),
-    lat:   float = Query(None),
-    lon:   float = Query(None),
+    city:       str   = Query(""),
+    lat:        float = Query(None),
+    lon:        float = Query(None),
+    center_lat: float = Query(None),
+    center_lon: float = Query(None),
+    radius_m:   int   = Query(3000),
+    # legacy bbox params — ignored, kept for backward compat
     south: float = Query(None),
     west:  float = Query(None),
     north: float = Query(None),
     east:  float = Query(None),
 ):
-    try:
-        # Use bbox from frontend if provided (saves a geocode round-trip)
-        if south is not None and west is not None and north is not None and east is not None:
-            bbox_str = f"{south},{west},{north},{east}"
-        else:
-            geo = geocode(city)
-            if "error" in geo:
-                return {"error": geo["error"]}
-            b = geo["bbox"]  # [south, north, west, east]
-            bbox_str = f"{b[0]},{b[2]},{b[1]},{b[3]}"
+    """
+    Returns nearby places via Google Nearby Search.
+    Results cached in Supabase map_data_cache by ~5km tile key for MAP_DATA_CACHE_TTL_HOURS.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return []
 
-        query = f"""
-[out:json][timeout:25];
-(
-  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
-  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"]({bbox_str});
-  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name:en"]({bbox_str});
-  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name:en"]({bbox_str});
-  node["amenity"~"restaurant|cafe|bar|food_court"]["name"]({bbox_str});
-  node["amenity"~"restaurant|cafe|bar|food_court"]["name:en"]({bbox_str});
-  node["amenity"="museum"]["name"]({bbox_str});
-  way["amenity"="museum"]["name"]({bbox_str});
-  node["amenity"="museum"]["name:en"]({bbox_str});
-  way["amenity"="museum"]["name:en"]({bbox_str});
-  node["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
-  way["leisure"~"park|garden|nature_reserve"]["name"]({bbox_str});
-  node["leisure"~"park|garden|nature_reserve"]["name:en"]({bbox_str});
-  way["leisure"~"park|garden|nature_reserve"]["name:en"]({bbox_str});
-  node["historic"]["name"]({bbox_str});
-  way["historic"]["name"]({bbox_str});
-  node["historic"]["name:en"]({bbox_str});
-  way["historic"]["name:en"]({bbox_str});
-  node["amenity"="marketplace"]["name"]({bbox_str});
-  node["amenity"="cafe"]["name"]({bbox_str});
-);
-out center 200;
-"""
-        data = fetch_overpass(query)
+    # Resolve search center
+    clat = center_lat or lat
+    clon = center_lon or lon
 
-        places = []
-        seen_ids  = set()  # dedupe by OSM element id (handles duplicate results from name + name:en queries)
-        seen_names = set() # dedupe by resolved name
+    if clat is None or clon is None:
+        if not city:
+            return []
+        geo = geocode(city)
+        if "error" in geo:
+            return []
+        clat, clon = geo["lat"], geo["lon"]
 
-        for el in data.get("elements", []):
-            el_id = f"{el.get('type','')}-{el.get('id','')}"
-            if el_id in seen_ids:
-                continue
-            seen_ids.add(el_id)
+    radius_m = max(500, min(radius_m, 50000))
 
-            tags = el.get("tags", {})
-            # Prefer English / Latin-script names in priority order
-            name = (
-                tags.get("name:en") or
-                tags.get("int_name") or       # international name (often Latin)
-                tags.get("name:ja_rm") or     # Japanese romanized
-                tags.get("name:ko_rm") or     # Korean romanized
-                tags.get("name:zh_pinyin") or # Chinese pinyin
-                tags.get("name:ar_rm") or     # Arabic romanized
-                tags.get("name:th_rm") or     # Thai romanized
-                tags.get("name", "")
-            ).strip()
-            if not name or name in seen_names:
-                continue
-            seen_names.add(name)
+    # Tile key — snap to nearest 0.05° grid (~5km)
+    tile_lat = round(round(clat / 0.05) * 0.05, 2)
+    tile_lon = round(round(clon / 0.05) * 0.05, 2)
+    tile_key = f"{tile_lat},{tile_lon}"
 
-            # Category resolution
-            amenity = tags.get("amenity", "")
-            tourism = tags.get("tourism", "")
-            leisure = tags.get("leisure", "")
-            historic = tags.get("historic", "")
+    # Check Supabase tile cache
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("map_data_cache")
+                .select("places, fetched_at")
+                .eq("tile_key", tile_key)
+                .maybe_single()
+                .execute()
+            )
+            if cached.data:
+                fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
+                if datetime.now(timezone.utc) - fetched_at < timedelta(hours=MAP_DATA_CACHE_TTL_HOURS):
+                    print(f"MAP DATA: cache hit for tile {tile_key}")
+                    return cached.data["places"]
+        except Exception:
+            pass
 
-            if amenity in ("restaurant", "cafe", "bar", "food_court") or tags.get("cuisine"):
-                cat = "restaurant"
-            elif amenity == "museum" or tourism == "museum":
-                cat = "museum"
-            elif leisure in ("park", "garden", "nature_reserve"):
-                cat = "park"
-            elif historic:
-                cat = "historic"
-            elif tourism in ("attraction", "artwork", "viewpoint", "gallery"):
-                cat = "tourism"
-            elif amenity == "marketplace" or tags.get("shop") == "mall":
-                cat = "markets"
-            else:
-                cat = "place"
+    # Fetch from Google Nearby Search for each type
+    seen_place_ids: set = set()
+    places: list = []
 
-            el_lat = el.get("lat") or (el.get("center") or {}).get("lat")
-            el_lon = el.get("lon") or (el.get("center") or {}).get("lon")
-            if el_lat is None or el_lon is None:
-                continue
-            # Build address from OSM addr:* tags
-            addr_parts = [
-                tags.get("addr:housenumber", ""),
-                tags.get("addr:street", ""),
-                tags.get("addr:city", "") or tags.get("addr:suburb", ""),
-            ]
-            osm_address = ", ".join(p for p in addr_parts if p) or tags.get("addr:full", "")
+    for gtype, category in _NEARBY_TYPE_TO_CATEGORY.items():
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                params={
+                    "location": f"{clat},{clon}",
+                    "radius":   radius_m,
+                    "type":     gtype,
+                    "key":      GOOGLE_PLACES_API_KEY,
+                },
+                timeout=8,
+            )
+            results = resp.json().get("results", [])
+            for r in results:
+                pid = r.get("place_id")
+                if not pid or pid in seen_place_ids:
+                    continue
+                seen_place_ids.add(pid)
 
-            places.append({
-                "title":    name,
-                "lat":      el_lat,
-                "lon":      el_lon,
-                "type":     "place",
-                "category": cat,
-                "tags": {
-                    "opening_hours": tags.get("opening_hours", ""),
-                    "website":       tags.get("website", "") or tags.get("contact:website", ""),
-                    "cuisine":       tags.get("cuisine", ""),
-                    "description":   tags.get("description", "") or tags.get("note", ""),
-                    "phone":         tags.get("phone", "") or tags.get("contact:phone", ""),
-                    "address":       osm_address,
-                    "wikipedia":     tags.get("wikipedia", ""),
-                    "wikidata":      tags.get("wikidata", ""),
-                }
-            })
+                photo_ref = None
+                if r.get("photos"):
+                    photo_ref = r["photos"][0]["photo_reference"]
 
-        # ── Quality + distance filter ──
-        EXCLUDE = {
-            "hooters","mcdonalds","kfc","subway","starbucks","burger king",
-            "7-eleven","cheers","fairprice","cold storage","giant","ntuc",
-            "mixue","gong cha","koi","liho","tiger sugar","playmade",
-            "watson","guardian","popular bookstore","courts","harvey norman"
-        }
+                loc = r.get("geometry", {}).get("location", {})
+                places.append({
+                    "id":          pid,
+                    "title":       r.get("name", ""),
+                    "lat":         loc.get("lat"),
+                    "lon":         loc.get("lng"),
+                    "category":    category,
+                    "place_id":    pid,
+                    "rating":      r.get("rating"),
+                    "open_now":    r.get("opening_hours", {}).get("open_now"),
+                    "photo_ref":   photo_ref,
+                    "price_level": r.get("price_level"),
+                    "tags": {
+                        "types": ",".join(r.get("types", [])),
+                    },
+                })
+        except Exception as e:
+            print(f"MAP DATA: nearbysearch failed for type {gtype}: {e}")
+            continue
 
-        # Centre point for distance filter:
-        # When a bbox is provided (Search Here), use the bbox centre so the
-        # distance filter stays relative to what the user is actually viewing.
-        # Only fall back to city lat/lon for the initial city-wide load.
-        if south is not None and north is not None and west is not None and east is not None:
-            center_lat = (south + north) / 2
-            center_lon = (west  + east)  / 2
-        elif lat is not None and lon is not None:
-            center_lat, center_lon = lat, lon
-        elif 'geo' in dir() and 'lat' in geo:
-            center_lat, center_lon = geo["lat"], geo["lon"]
-        else:
-            center_lat, center_lon = 0, 0
+    # Store in Supabase tile cache
+    if _supabase:
+        try:
+            _supabase.table("map_data_cache").upsert({
+                "tile_key":   tile_key,
+                "places":     places,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception:
+            pass
 
-        def dist(p):
-            return ((p["lat"] - center_lat)**2 + (p["lon"] - center_lon)**2) ** 0.5
-
-        # Radius: half the bbox diagonal, capped at 0.22 deg (~25 km) for city loads
-        # and expanded to fit the viewport for Search Here
-        if south is not None and north is not None and west is not None and east is not None:
-            radius = max((north - south) / 2, (east - west) / 2) * 1.1
-        else:
-            radius = 0.22
-
-        places = [
-            p for p in places
-            if p["title"].lower() not in EXCLUDE
-            and len(p["title"]) > 3
-            and dist(p) < radius
-        ]
-
-        places = sorted(places, key=dist)[:80]
-
-        print(f"MAP DATA: {len(places)} filtered places for {city}")
-        return places
-
-    except Exception as e:
-        print("MAP DATA ERROR:", e)
-        return {"error": str(e)}
+    print(f"MAP DATA: {len(places)} places for tile {tile_key} ({city})")
+    return places
 
 
 # =========================================
@@ -1220,6 +1165,19 @@ def place_details(request: Request, place_id: str):
             "types": [], "error": str(e)
         }
 
+
+# Google Nearby Search types → app category (for map-data)
+_NEARBY_TYPE_TO_CATEGORY = {
+    "restaurant":        "restaurant",
+    "cafe":              "cafe",
+    "bar":               "restaurant",
+    "museum":            "museum",
+    "tourist_attraction": "tourism",
+    "park":              "park",
+    "night_club":        "restaurant",
+}
+
+MAP_DATA_CACHE_TTL_HOURS = int(os.getenv("MAP_DATA_CACHE_TTL_HOURS", "24"))
 
 _CATEGORY_TO_GOOGLE_TYPE = {
     "restaurant": "restaurant",
