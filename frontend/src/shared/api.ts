@@ -153,7 +153,7 @@ export const api = {
 export async function placesAutocomplete(
   query: string,
   sessionId: string,
-  types = '(cities)'
+  types = '',
 ): Promise<AutocompleteResult[]> {
   const params = new URLSearchParams({ query, session_id: sessionId, types });
   const res = await fetch(`${BASE}/places-autocomplete?${params}`);
