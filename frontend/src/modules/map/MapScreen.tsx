@@ -197,7 +197,11 @@ export function MapScreen() {
       cityGeo.lon - 0.1, cityGeo.lon + 0.1,
     ];
     handleSearchHere(bbox);
-  }, [cityGeo, handleSearchHere]);
+    // Auto-load events on map entry if a date is already set
+    if (state.tripContext.date) {
+      loadEvents();
+    }
+  }, [cityGeo, handleSearchHere]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pin drop click handler — sets pin then reverse geocodes for a street name
   const handleMapClick = useCallback(

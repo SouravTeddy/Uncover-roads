@@ -748,7 +748,6 @@ def events(
     try:
         params = {
             "apikey":        TICKETMASTER_KEY,
-            "city":          city,
             "startDateTime": f"{start_date}T00:00:00Z",
             "endDateTime":   f"{end_date}T23:59:59Z",
             "size":          20,
@@ -757,6 +756,13 @@ def events(
             "includeTBA":    "no",
             "includeTBD":    "no",
         }
+        # Prefer lat/lon over city name — more reliable for international cities
+        if lat is not None and lon is not None:
+            params["latlong"] = f"{lat},{lon}"
+            params["radius"]  = "50"
+            params["unit"]    = "km"
+        else:
+            params["city"] = city
         res  = requests.get(
             "https://app.ticketmaster.com/discovery/v2/events.json",
             params=params,
@@ -1201,6 +1207,164 @@ def place_details(request: Request, place_id: str):
             "open_now": None, "weekday_text": [], "photo_ref": None,
             "types": [], "error": str(e)
         }
+
+
+@app.get("/pin-details")
+def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query("")):
+    """
+    Single-call endpoint: resolves place_id from coords + fetches full details.
+    Replaces the two-step /find-place-id → /place-details round trip.
+
+    Resolution order:
+      1. Supabase place_id_cache by coords (instant, free)
+      2. Google findplacefromtext with name + location bias
+      3. Google nearbysearch at 10m radius (coordinate-based fallback)
+    Returns None place_id (and empty detail fields) if all lookups fail.
+    """
+    if not GOOGLE_PLACES_API_KEY:
+        return {"place_id": None}
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    coords_key = f"{lat:.5f},{lon:.5f}"
+
+    # ── 1. Coords cache → skip both lookups if place_id already known ──
+    place_id = None
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("place_id_cache")
+                .select("place_id")
+                .eq("coords_key", coords_key)
+                .maybe_single()
+                .execute()
+            )
+            if cached.data and cached.data.get("place_id"):
+                place_id = cached.data["place_id"]
+        except Exception:
+            pass
+
+    # ── 2. Name-based lookup ──
+    if not place_id and name:
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/findplacefromtext/json",
+                params={
+                    "input": name,
+                    "inputtype": "textquery",
+                    "locationbias": f"point:{lat},{lon}",
+                    "fields": "place_id,name",
+                    "key": GOOGLE_PLACES_API_KEY,
+                },
+                timeout=5,
+            )
+            candidates = resp.json().get("candidates", [])
+            if candidates:
+                place_id = candidates[0]["place_id"]
+        except Exception:
+            pass
+
+    # ── 3. Coordinate-based fallback at 10m ──
+    if not place_id:
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                params={
+                    "location": f"{lat},{lon}",
+                    "radius": 10,
+                    "key": GOOGLE_PLACES_API_KEY,
+                },
+                timeout=5,
+            )
+            results = resp.json().get("results", [])
+            if results:
+                place_id = results[0]["place_id"]
+        except Exception:
+            pass
+
+    if not place_id:
+        return {"place_id": None}
+
+    # ── Cache the resolved place_id ──
+    if _supabase:
+        try:
+            _supabase.table("place_id_cache").upsert({
+                "coords_key": coords_key,
+                "place_id": place_id,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception:
+            pass
+
+    # ── 4. Check place_details_cache ──
+    if _supabase:
+        try:
+            cached_details = (
+                _supabase.table("place_details_cache")
+                .select("data, fetched_at")
+                .eq("place_id", place_id)
+                .maybe_single()
+                .execute()
+            )
+            if cached_details.data:
+                fetched_at = datetime.fromisoformat(cached_details.data["fetched_at"])
+                if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
+                    return cached_details.data["data"]
+        except Exception:
+            pass
+
+    # ── 5. Fetch from Google Place Details ──
+    try:
+        resp = requests.get(
+            f"{GOOGLE_PLACES_BASE}/details/json",
+            params={
+                "place_id": place_id,
+                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+                "key": GOOGLE_PLACES_API_KEY,
+            },
+            timeout=5,
+        )
+        data = resp.json()
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            return {"place_id": None, "error": data.get("status", "UNKNOWN")}
+
+        result = data.get("result", {})
+        photo_ref = None
+        if result.get("photos"):
+            photo_ref = result["photos"][0]["photo_reference"]
+
+        details = {
+            "place_id": place_id,
+            "name": result.get("name"),
+            "address": result.get("formatted_address"),
+            "lat": result.get("geometry", {}).get("location", {}).get("lat"),
+            "lon": result.get("geometry", {}).get("location", {}).get("lng"),
+            "rating": result.get("rating"),
+            "rating_count": result.get("user_ratings_total"),
+            "phone": result.get("formatted_phone_number"),
+            "website": result.get("website"),
+            "price_level": result.get("price_level"),
+            "open_now": result.get("opening_hours", {}).get("open_now"),
+            "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
+            "photo_ref": photo_ref,
+            "types": result.get("types", []),
+        }
+
+        if _supabase:
+            try:
+                _supabase.table("place_details_cache").upsert({
+                    "place_id": place_id,
+                    "data": details,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
+                }).execute()
+            except Exception:
+                pass
+
+        return details
+    except Exception as e:
+        return {"place_id": None, "error": str(e)}
 
 
 @app.get("/place-photo")

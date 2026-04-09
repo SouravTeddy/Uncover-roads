@@ -196,6 +196,20 @@ export async function findPlaceId(
   return data.place_id ?? null;
 }
 
+/** Single round-trip: resolves place_id from coords then fetches full details. */
+export async function fetchPinDetails(
+  lat: number,
+  lon: number,
+  name: string,
+): Promise<PlaceDetails | null> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon), name });
+  const res = await fetch(`${BASE}/pin-details?${params}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.place_id) return null;
+  return data as PlaceDetails;
+}
+
 export async function fetchNearby(
   lat: number,
   lon: number,
