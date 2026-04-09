@@ -71,20 +71,16 @@ export interface PersonaResponse {
 
 export async function mapData(
   city: string,
-  lat: number,
-  lon: number,
-  filters: string[] = [],
-  bbox?: BBox,
+  centerLat: number,
+  centerLon: number,
+  radiusM = 3000,
 ): Promise<Place[]> {
-  const params = new URLSearchParams({ city, lat: String(lat), lon: String(lon) });
-  filters.forEach(f => params.append('filters', f));
-  if (bbox) {
-    const [south, north, west, east] = bbox;
-    params.set('south', String(south));
-    params.set('north', String(north));
-    params.set('west', String(west));
-    params.set('east', String(east));
-  }
+  const params = new URLSearchParams({
+    city,
+    center_lat: String(centerLat),
+    center_lon: String(centerLon),
+    radius_m:   String(radiusM),
+  });
   const res = await fetch(`${BASE}/map-data?${params}`);
   if (!res.ok) throw new Error('map-data failed');
   return res.json();
@@ -94,9 +90,9 @@ export const api = {
   geocode: (city: string) =>
     get<GeoData>(`/geocode?city=${encodeURIComponent(city)}`),
 
-  mapData: (city: string, lat?: number, lon?: number, filters?: string[], bbox?: BBox) => {
+  mapData: (city: string, lat?: number, lon?: number, radiusM = 3000) => {
     if (lat !== undefined && lon !== undefined) {
-      return mapData(city, lat, lon, filters, bbox);
+      return mapData(city, lat, lon, radiusM);
     }
     return get<Place[]>(`/map-data?city=${encodeURIComponent(city)}`);
   },
