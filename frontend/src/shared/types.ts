@@ -93,6 +93,12 @@ export interface Place {
   tags?: Record<string, string>;
   imageUrl?: string | null;
   reason?: string;
+  // Google fields — present when place came from Google Nearby Search
+  place_id?: string;
+  rating?: number;
+  open_now?: boolean;
+  photo_ref?: string;
+  price_level?: number;
 }
 
 // ── Trip context ──────────────────────────────────────────────
