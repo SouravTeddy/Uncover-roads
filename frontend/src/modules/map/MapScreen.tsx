@@ -6,11 +6,10 @@ import type { Place, MapFilter, Category } from '../../shared/types';
 import { TripPlanningCard } from './TripPlanningCard';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
-import { SearchHereButton } from './SearchHereButton';
+import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
-import type { BBox } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 
@@ -99,12 +98,7 @@ export function MapScreen() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
 
-  // Search Here — bbox stored in ref so handleSearchHere always reads the latest value
-  // without needing to be recreated (eliminates stale-closure silent-fail on click)
-  const [showSearchHere, setShowSearchHere]       = useState(false);
-  const searchBboxRef                             = useRef<BBox | null>(null);
-  const [searchHereLoading, setSearchHereLoading] = useState(false);
-  const [searchHereEmpty, setSearchHereEmpty]     = useState(false);
+  const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('loading');
 
   // Events
   const [eventsLoaded, setEventsLoaded]         = useState(false);
@@ -125,69 +119,31 @@ export function MapScreen() {
   const abortRef     = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSearchHere = useCallback(async (overrideBbox?: BBox) => {
-    const bbox = overrideBbox ?? searchBboxRef.current;
-    if (!bbox || !city) {
-      if (overrideBbox) setInitialLoading(false);
-      return;
-    }
-    setSearchHereLoading(true);
-    setSearchHereEmpty(false);
+  const handleAreaLoad = useCallback(async (
+    centerLat: number,
+    centerLon: number,
+    radiusM = 3000,
+    replace = false,
+  ) => {
+    if (!city) return;
+    setMapStatus('loading');
     try {
-      let raw: Place[];
-
-      if (overrideBbox) {
-        // Initial city load — use the full city-level bbox from geocode so cities
-        // with lower OSM density (Montreal, Toronto, etc.) still return results.
-        // The zoom-13 viewport bbox is too small for anything outside dense European cores.
-        if (cityGeo) {
-          raw = await mapData(city, cityGeo.lat, cityGeo.lon, 5000);
-        } else {
-          // cityGeo missing (geocode failed earlier) — let the backend geocode by name
-          raw = await api.mapData(city);
-        }
-      } else {
-        // User-triggered "Search Here" — use center of stored bbox
-        if (!cityGeo) { setSearchHereLoading(false); return; }
-        const [s, n, w, e] = bbox;
-        const cx = (s + n) / 2;
-        const cy = (w + e) / 2;
-        raw = await mapData(city, cx, cy, 3000);
-      }
-
-      const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
-      if (withIds.length === 0 && !overrideBbox) {
-        setSearchHereEmpty(true);
-        setTimeout(() => setSearchHereEmpty(false), 2500);
-      }
-      dispatch(overrideBbox
+      const raw = await mapData(city, centerLat, centerLon, radiusM);
+      const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({
+        ...p,
+        id: p.id ?? `${p.title}-${i}`,
+      }));
+      dispatch(replace
         ? { type: 'SET_PLACES', places: withIds }
         : { type: 'MERGE_PLACES', places: withIds },
       );
     } catch (e) {
-      console.error('[MapScreen] searchHere failed:', e);
-      if (overrideBbox) {
-        // Initial load failed — retry with city-name fallback (backend geocodes for us)
-        try {
-          const fallback = await api.mapData(city);
-          const withIds = (Array.isArray(fallback) ? fallback : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
-          dispatch({ type: 'SET_PLACES', places: withIds });
-        } catch {
-          // both paths failed — leave map empty, user can Search Here manually
-        }
-      } else {
-        setSearchHereEmpty(true);
-        setTimeout(() => setSearchHereEmpty(false), 2500);
-      }
+      console.error('[MapScreen] handleAreaLoad failed:', e);
     } finally {
-      setSearchHereLoading(false);
-      if (!overrideBbox) {
-        setShowSearchHere(false);
-      } else {
-        setInitialLoading(false);
-      }
+      setMapStatus('idle');
+      setInitialLoading(false);
     }
-  }, [city, cityGeo, dispatch]);
+  }, [city, dispatch]);
 
   // Trigger initial load once cityGeo is available
   const initialLoadFired = useRef(false);
@@ -195,16 +151,12 @@ export function MapScreen() {
     if (initialLoadFired.current) return;
     if (!cityGeo) return;
     initialLoadFired.current = true;
-    const bbox: BBox = cityGeo.bbox ?? [
-      cityGeo.lat - 0.1, cityGeo.lat + 0.1,
-      cityGeo.lon - 0.1, cityGeo.lon + 0.1,
-    ];
-    handleSearchHere(bbox);
-    // Auto-load events on map entry if a date is already set
+    setLastFetch([cityGeo.lat, cityGeo.lon]);
+    handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
     if (state.tripContext.date) {
       loadEvents();
     }
-  }, [cityGeo, handleSearchHere]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pin drop click handler — sets pin then reverse geocodes for a street name
   const handleMapClick = useCallback(
@@ -232,25 +184,16 @@ export function MapScreen() {
     [awaitingPinDrop],
   );
 
-  // useMapMove: show "Search Here" button when user pans
-  const { handleMoveEnd } = useMapMove({
-    onSearchHere: useCallback((_center: [number, number]) => {
-      setShowSearchHere(true);
+  const { handleMoveEnd, setLastFetch } = useMapMove({
+    onFetch: useCallback((center: [number, number]) => {
+      handleAreaLoad(center[0], center[1], 3000, true);
+    }, [handleAreaLoad]),
+    onZoomedOut: useCallback(() => {
+      setMapStatus('zoomed-out');
     }, []),
   });
 
-  // Bridge: MapLibreMap calls onMoveEnd(center, zoom) — store bbox approximation and show button
   const handleMapMoveEnd = useCallback((center: [number, number], zoom: number) => {
-    // Approximate viewport bbox from center + zoom (rough estimate)
-    const latDelta = 180 / Math.pow(2, zoom) * 0.5;
-    const lonDelta = 360 / Math.pow(2, zoom) * 0.5;
-    const bbox: BBox = [
-      center[0] - latDelta,
-      center[0] + latDelta,
-      center[1] - lonDelta,
-      center[1] + lonDelta,
-    ];
-    searchBboxRef.current = bbox;
     handleMoveEnd(center, zoom);
   }, [handleMoveEnd]);
 
@@ -380,8 +323,8 @@ export function MapScreen() {
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
 
-      {/* Search Here */}
-      {showSearchHere && <SearchHereButton onSearch={handleSearchHere} loading={searchHereLoading} empty={searchHereEmpty} />}
+      {/* Map status — loading / zoomed-out indicator */}
+      <MapStatusIndicator status={mapStatus} />
 
       {/* Drop pin strip */}
       {awaitingPinDrop && (
@@ -621,7 +564,7 @@ export function MapScreen() {
             <p className="text-text-1 font-semibold text-sm mb-1">{places.length === 0 ? 'No places found' : 'Could not load places'}</p>
             <p className="text-text-3 text-xs">{city ? `Nothing came back for "${city}"` : 'Please select a city first'}</p>
           </div>
-          {city && <button onClick={() => handleSearchHere()} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
+          {city && <button onClick={() => handleAreaLoad(cityGeo?.lat ?? 0, cityGeo?.lon ?? 0, 5000, true)} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
       )}
 
