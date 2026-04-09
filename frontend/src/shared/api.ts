@@ -69,6 +69,95 @@ export interface PersonaResponse {
   city_profile: Record<string, unknown>;
 }
 
+// ── Client-side Overpass fallback ────────────────────────────────────────────
+// Used when backend /map-data returns empty (e.g. no Google API key on server)
+
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+  'https://overpass.osm.ch/api/interpreter',
+];
+
+function _overpassCategory(tags: Record<string, string>): string {
+  const amenity = tags.amenity ?? '';
+  const tourism = tags.tourism ?? '';
+  const leisure = tags.leisure ?? '';
+  const historic = tags.historic ?? '';
+  if (amenity === 'restaurant' || amenity === 'bar' || amenity === 'food_court' || tags.cuisine) return 'restaurant';
+  if (amenity === 'cafe') return 'cafe';
+  if (amenity === 'museum' || tourism === 'museum') return 'museum';
+  if (leisure === 'park' || leisure === 'garden' || leisure === 'nature_reserve') return 'park';
+  if (historic) return 'historic';
+  if (tourism === 'attraction' || tourism === 'artwork' || tourism === 'viewpoint' || tourism === 'gallery') return 'tourism';
+  return 'place';
+}
+
+async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number): Promise<Place[]> {
+  const query = `
+[out:json][timeout:25];
+(
+  node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:${radiusM},${lat},${lon});
+  node["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});
+  way["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});
+  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});
+  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});
+  node["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});
+  way["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});
+  node["historic"]["name"](around:${radiusM},${lat},${lon});
+  way["historic"]["name"](around:${radiusM},${lat},${lon});
+);
+out center 200;
+`.trim();
+
+  for (const endpoint of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const elements: unknown[] = Array.isArray(data.elements) ? data.elements : [];
+
+      const seen = new Set<string>();
+      const places: Place[] = [];
+      for (const el of elements) {
+        const e = el as Record<string, unknown>;
+        const tags = (e.tags ?? {}) as Record<string, string>;
+        const name = (
+          tags['name:en'] || tags['int_name'] || tags['name:ja_rm'] || tags['name:ko_rm'] || tags['name'] || ''
+        ).trim();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+
+        const elLat = (e.lat ?? (e.center as Record<string, number> | undefined)?.lat) as number | undefined;
+        const elLon = (e.lon ?? (e.center as Record<string, number> | undefined)?.lon) as number | undefined;
+        if (elLat == null || elLon == null) continue;
+
+        places.push({
+          id: `osm-${e.type ?? 'n'}-${e.id ?? name}`,
+          title: name,
+          lat: elLat,
+          lon: elLon,
+          category: _overpassCategory(tags) as Place['category'],
+          tags: {
+            opening_hours: tags.opening_hours ?? '',
+            website: tags.website ?? '',
+            cuisine: tags.cuisine ?? '',
+            description: tags.description ?? '',
+          },
+        });
+      }
+      return places;
+    } catch {
+      // try next mirror
+    }
+  }
+  return [];
+}
+
 export async function mapData(
   city: string,
   centerLat: number,
@@ -81,9 +170,17 @@ export async function mapData(
     center_lon: String(centerLon),
     radius_m:   String(radiusM),
   });
-  const res = await fetch(`${BASE}/map-data?${params}`);
-  if (!res.ok) throw new Error('map-data failed');
-  return res.json();
+  try {
+    const res = await fetch(`${BASE}/map-data?${params}`);
+    if (res.ok) {
+      const data: Place[] = await res.json();
+      if (data.length > 0) return data;
+    }
+  } catch {
+    // fall through to client-side Overpass
+  }
+  // Backend returned empty or failed — call Overpass directly from browser
+  return _fetchOverpassMapData(centerLat, centerLon, radiusM);
 }
 
 export const api = {
