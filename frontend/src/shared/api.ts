@@ -98,7 +98,6 @@ async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number):
   for (const endpoint of OVERPASS_MIRRORS) {
     try {
       console.log(`[Overpass] trying ${endpoint}`);
-      // Use GET to avoid any CORS preflight issues
       const url = `${endpoint}?data=${encodeURIComponent(query)}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(18_000) });
       console.log(`[Overpass] ${endpoint} → ${res.status}`);
@@ -143,7 +142,6 @@ async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number):
       }
       console.log(`[Overpass] parsed ${places.length} places`);
       if (places.length > 0) return places;
-      // 0 results from this mirror — try next (could be a temporary issue)
     } catch (err) {
       console.error(`[Overpass] ${endpoint} failed:`, err);
     }
