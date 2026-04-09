@@ -20,21 +20,33 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place';
   const [hoursExpanded, setHoursExpanded] = useState(false);
 
-  const photoUrl = details?.photo_ref ? getPlacePhotoUrl(details.photo_ref) : null;
-  const typeTags = details?.types ? filterTypes(details.types) : [];
+  // Treat details as absent if Google returned a response but all meaningful fields are null
+  const hasGoogleData = !!(
+    details?.rating !== undefined ||
+    details?.address ||
+    details?.phone ||
+    details?.website ||
+    details?.open_now !== undefined ||
+    (details?.weekday_text?.length ?? 0) > 0 ||
+    details?.photo_ref
+  );
+  const activeDetails = hasGoogleData ? details : null;
+
+  const photoUrl = activeDetails?.photo_ref ? getPlacePhotoUrl(activeDetails.photo_ref) : null;
+  const typeTags = activeDetails?.types ? filterTypes(activeDetails.types) : [];
 
   const todayJsDay = new Date().getDay();
-  const rawHoursLine = details?.weekday_text?.length
-    ? getHoursLabel(details.weekday_text, todayJsDay)
+  const rawHoursLine = activeDetails?.weekday_text?.length
+    ? getHoursLabel(activeDetails.weekday_text, todayJsDay)
     : null;
   const hoursLabel =
-    rawHoursLine !== null && details?.open_now !== undefined
-      ? parseOpenClose(rawHoursLine, details.open_now)
+    rawHoursLine !== null && activeDetails?.open_now !== undefined
+      ? parseOpenClose(rawHoursLine, activeDetails.open_now)
       : rawHoursLine;
 
   const directionsUrl = getDirectionsUrl(
-    details?.lat ?? place.lat,
-    details?.lon ?? place.lon,
+    activeDetails?.lat ?? place.lat,
+    activeDetails?.lon ?? place.lon,
   );
 
   return (
@@ -123,34 +135,34 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
           <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
             {place.title}
           </div>
-          {!detailsLoading && (details?.rating || details?.open_now !== undefined || details?.price_level) && (
+          {!detailsLoading && (activeDetails?.rating || activeDetails?.open_now !== undefined || activeDetails?.price_level) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                {details!.rating !== undefined && (
+                {activeDetails!.rating !== undefined && (
                   <>
                     <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
-                      ★ {details!.rating}
+                      ★ {activeDetails!.rating}
                     </span>
-                    {details!.rating_count !== undefined && (
+                    {activeDetails!.rating_count !== undefined && (
                       <span style={{ fontSize: 10, color: '#999' }}>
-                        {details!.rating_count.toLocaleString()} reviews
+                        {activeDetails!.rating_count.toLocaleString()} reviews
                       </span>
                     )}
                   </>
                 )}
-                {details!.open_now !== undefined && (
+                {activeDetails!.open_now !== undefined && (
                   <span
                     style={{
                       fontSize: 10,
-                      color: details!.open_now ? '#22c55e' : '#ef4444',
+                      color: activeDetails!.open_now ? '#22c55e' : '#ef4444',
                       fontWeight: 600,
                     }}
                   >
-                    ● {details!.open_now ? 'Open' : 'Closed'}
+                    ● {activeDetails!.open_now ? 'Open' : 'Closed'}
                   </span>
                 )}
-                {details!.price_level !== undefined && details!.price_level > 0 && (
+                {activeDetails!.price_level !== undefined && activeDetails!.price_level > 0 && (
                   <span style={{ fontSize: 10, color: '#999' }}>
-                    {PRICE[details!.price_level]}
+                    {PRICE[activeDetails!.price_level]}
                   </span>
                 )}
               </div>
@@ -202,12 +214,12 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
                 <span
                   style={{
                     fontSize: 10, fontWeight: 600,
-                    color: (details?.open_now ?? false) ? '#22c55e' : '#ef4444',
+                    color: (activeDetails?.open_now ?? false) ? '#22c55e' : '#ef4444',
                   }}
                 >
                   {hoursLabel}
                 </span>
-                {details?.weekday_text && details.weekday_text.length > 0 && (
+                {activeDetails?.weekday_text && activeDetails.weekday_text.length > 0 && (
                   <button
                     onClick={() => setHoursExpanded(e => !e)}
                     style={{
@@ -219,7 +231,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
                   </button>
                 )}
               </div>
-              {hoursExpanded && details?.weekday_text && (
+              {hoursExpanded && activeDetails?.weekday_text && (
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {details.weekday_text.map((line, i) => {
                     const isToday = i === (todayJsDay === 0 ? 6 : todayJsDay - 1);
@@ -254,11 +266,11 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
         {/* Address row — Google details only */}
         {detailsLoading ? (
           <div className="shimmer" style={{ height: 12, width: '65%', background: '#1a1a1a', borderRadius: 4 }} />
-        ) : details?.address ? (
+        ) : activeDetails?.address ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <span style={{ fontSize: 12, marginTop: 1 }}>📍</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.4 }}>{details.address}</div>
+              <div style={{ fontSize: 10, color: '#aaa', lineHeight: 1.4 }}>{activeDetails.address}</div>
               <a
                 href={directionsUrl}
                 style={{
@@ -279,8 +291,8 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
             <div className="shimmer" style={{ flex: 1, height: 36, background: '#1f1f1f', borderRadius: 10 }} />
           </div>
         ) : (() => {
-          const phone = details?.phone;
-          const website = details?.website || place.tags?.website || null;
+          const phone = activeDetails?.phone;
+          const website = activeDetails?.website || place.tags?.website || null;
           return (phone || website) ? (
             <div style={{ display: 'flex', gap: 8 }}>
               {phone && (
