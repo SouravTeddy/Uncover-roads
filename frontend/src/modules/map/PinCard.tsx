@@ -161,29 +161,37 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
       {/* ── Details body ───────────────────────────────── */}
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9 }}>
 
-        {/* Type tags */}
+        {/* Type tags — Google details OR OSM cuisine tag */}
         {detailsLoading ? (
           <div style={{ display: 'flex', gap: 6 }}>
             <div className="shimmer" style={{ height: 22, width: 110, background: '#1f1f1f', borderRadius: 20 }} />
             <div className="shimmer" style={{ height: 22, width: 60, background: '#1f1f1f', borderRadius: 20 }} />
           </div>
-        ) : typeTags.length > 0 ? (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {typeTags.map(tag => (
-              <span
-                key={tag}
-                style={{
-                  background: '#1f1f1f', border: '1px solid #333',
-                  borderRadius: 20, padding: '3px 9px', fontSize: 9, color: '#aaa',
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
+        ) : (() => {
+          const tags = typeTags.length > 0
+            ? typeTags
+            : place.tags?.cuisine
+              ? place.tags.cuisine.split(';').map(s => s.trim().replace(/_/g, ' ')).filter(Boolean)
+              : [];
+          return tags.length > 0 ? (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {tags.map(tag => (
+                <span
+                  key={tag}
+                  style={{
+                    background: '#1f1f1f', border: '1px solid #333',
+                    borderRadius: 20, padding: '3px 9px', fontSize: 9, color: '#aaa',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null;
+        })()}
 
-        {/* Hours row */}
+        {/* Hours row — Google details OR OSM opening_hours */}
         {detailsLoading ? (
           <div className="shimmer" style={{ height: 12, width: '80%', background: '#1a1a1a', borderRadius: 4 }} />
         ) : hoursLabel ? (
@@ -236,9 +244,14 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
               )}
             </div>
           </div>
+        ) : place.tags?.opening_hours ? (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <span style={{ fontSize: 12, marginTop: 1 }}>🕐</span>
+            <span style={{ fontSize: 10, color: '#aaa', lineHeight: 1.4 }}>{place.tags.opening_hours}</span>
+          </div>
         ) : null}
 
-        {/* Address row */}
+        {/* Address row — Google details only */}
         {detailsLoading ? (
           <div className="shimmer" style={{ height: 12, width: '65%', background: '#1a1a1a', borderRadius: 4 }} />
         ) : details?.address ? (
@@ -259,48 +272,52 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
           </div>
         ) : null}
 
-        {/* Phone + website tiles */}
+        {/* Phone + website tiles — Google details OR OSM website */}
         {detailsLoading ? (
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <div className="shimmer" style={{ flex: 1, height: 36, background: '#1f1f1f', borderRadius: 10 }} />
             <div className="shimmer" style={{ flex: 1, height: 36, background: '#1f1f1f', borderRadius: 10 }} />
           </div>
-        ) : (details?.phone || details?.website) ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {details!.phone && (
-              <a
-                href={`tel:${details!.phone}`}
-                style={{
-                  flex: 1, background: '#1a1a1a', borderRadius: 10, padding: 8,
-                  display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none',
-                  overflow: 'hidden',
-                }}
-              >
-                <span style={{ fontSize: 12, flexShrink: 0 }}>📞</span>
-                <span style={{ fontSize: 9, color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {details!.phone}
-                </span>
-              </a>
-            )}
-            {details!.website && (
-              <a
-                href={details!.website}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  flex: 1, background: '#1a1a1a', borderRadius: 10, padding: 8,
-                  display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none',
-                  overflow: 'hidden',
-                }}
-              >
-                <span style={{ fontSize: 12, flexShrink: 0 }}>🌐</span>
-                <span style={{ fontSize: 9, color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {(() => { try { return new URL(details!.website!).hostname; } catch { return details!.website; } })()}
-                </span>
-              </a>
-            )}
-          </div>
-        ) : null}
+        ) : (() => {
+          const phone = details?.phone;
+          const website = details?.website || place.tags?.website || null;
+          return (phone || website) ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {phone && (
+                <a
+                  href={`tel:${phone}`}
+                  style={{
+                    flex: 1, background: '#1a1a1a', borderRadius: 10, padding: 8,
+                    display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <span style={{ fontSize: 12, flexShrink: 0 }}>📞</span>
+                  <span style={{ fontSize: 9, color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {phone}
+                  </span>
+                </a>
+              )}
+              {website && (
+                <a
+                  href={website}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    flex: 1, background: '#1a1a1a', borderRadius: 10, padding: 8,
+                    display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <span style={{ fontSize: 12, flexShrink: 0 }}>🌐</span>
+                  <span style={{ fontSize: 9, color: '#60a5fa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {(() => { try { return new URL(website).hostname; } catch { return website; } })()}
+                  </span>
+                </a>
+              )}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* ── Action bar ─────────────────────────────────── */}
