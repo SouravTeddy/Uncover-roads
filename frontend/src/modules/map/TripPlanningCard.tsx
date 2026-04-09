@@ -1,4 +1,4 @@
-import { createPortal } from 'react-dom';
+import { useRef, createPortal } from 'react';
 import { useAppStore } from '../../shared/store';
 import { useTripPlanInput } from './useTripPlanInput';
 import type { StartChip } from './useTripPlanInput';
@@ -21,6 +21,8 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
   const { state } = useAppStore();
   const city = state.city;
   const placesCount = state.selectedPlaces.length;
+
+  const locationInputRef = useRef<HTMLDivElement>(null);
 
   const {
     dates, selectedDate, setSelectedDate,
@@ -181,7 +183,7 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
               </div>
             ) : startChip !== 'pin' && (
               /* Hotel/Airport search input */
-              <div style={{ position: 'relative' }}>
+              <div ref={locationInputRef} style={{ position: 'relative' }}>
                 <div
                   style={{
                     background: 'rgba(255,255,255,.05)',
@@ -212,12 +214,18 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
                   )}
                 </div>
 
-                {locationResults.length > 0 && (
+                {locationResults.length > 0 && (() => {
+                  const r = locationInputRef.current?.getBoundingClientRect();
+                  if (!r) return null;
+                  return createPortal(
                   <div
                     style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                      position: 'fixed',
+                      top: r.bottom + 4,
+                      left: r.left,
+                      width: r.width,
+                      zIndex: 9999,
                       background: 'rgba(10,14,24,.97)',
-                      zIndex: 200,
                       border: '1px solid rgba(255,255,255,.1)',
                       borderRadius: 11, overflow: 'hidden',
                     }}
@@ -240,8 +248,10 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
                         </div>
                       </button>
                     ))}
-                  </div>
-                )}
+                  </div>,
+                  document.body,
+                  );
+                })()}
               </div>
             )}
           </div>
