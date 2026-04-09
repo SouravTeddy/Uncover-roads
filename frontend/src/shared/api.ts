@@ -93,33 +93,23 @@ function _overpassCategory(tags: Record<string, string>): string {
 }
 
 async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number): Promise<Place[]> {
-  const query = `
-[out:json][timeout:25];
-(
-  node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:${radiusM},${lat},${lon});
-  node["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});
-  way["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});
-  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});
-  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});
-  node["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});
-  way["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});
-  node["historic"]["name"](around:${radiusM},${lat},${lon});
-  way["historic"]["name"](around:${radiusM},${lat},${lon});
-);
-out center 200;
-`.trim();
+  const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:${radiusM},${lat},${lon});node["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});way["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});node["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});node["historic"]["name"](around:${radiusM},${lat},${lon}););out center 200;`;
 
   for (const endpoint of OVERPASS_MIRRORS) {
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(20_000),
-      });
+      console.log(`[Overpass] trying ${endpoint}`);
+      const url = `${endpoint}?data=${encodeURIComponent(query)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(18_000) });
+      console.log(`[Overpass] ${endpoint} → ${res.status}`);
       if (!res.ok) continue;
-      const data = await res.json();
+      const text = await res.text();
+      if (!text.startsWith('{')) {
+        console.warn(`[Overpass] ${endpoint} returned non-JSON`);
+        continue;
+      }
+      const data = JSON.parse(text);
       const elements: unknown[] = Array.isArray(data.elements) ? data.elements : [];
+      console.log(`[Overpass] ${endpoint} → ${elements.length} elements`);
 
       const seen = new Set<string>();
       const places: Place[] = [];
@@ -150,11 +140,13 @@ out center 200;
           },
         });
       }
-      return places;
-    } catch {
-      // try next mirror
+      console.log(`[Overpass] parsed ${places.length} places`);
+      if (places.length > 0) return places;
+    } catch (err) {
+      console.error(`[Overpass] ${endpoint} failed:`, err);
     }
   }
+  console.error('[Overpass] all mirrors failed or returned 0 results');
   return [];
 }
 
@@ -172,14 +164,17 @@ export async function mapData(
   });
   try {
     const res = await fetch(`${BASE}/map-data?${params}`);
+    console.log(`[mapData] backend → ${res.status}`);
     if (res.ok) {
       const data: Place[] = await res.json();
+      console.log(`[mapData] backend returned ${data.length} places`);
       if (data.length > 0) return data;
     }
-  } catch {
-    // fall through to client-side Overpass
+  } catch (err) {
+    console.error('[mapData] backend fetch failed:', err);
   }
   // Backend returned empty or failed — call Overpass directly from browser
+  console.log('[mapData] falling back to client-side Overpass');
   return _fetchOverpassMapData(centerLat, centerLon, radiusM);
 }
 
