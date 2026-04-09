@@ -140,16 +140,19 @@ export function MapScreen() {
         // Initial city load — use the full city-level bbox from geocode so cities
         // with lower OSM density (Montreal, Toronto, etc.) still return results.
         // The zoom-13 viewport bbox is too small for anything outside dense European cores.
-        if (cityGeo?.bbox) {
-          raw = await mapData(city, cityGeo.lat, cityGeo.lon, [], cityGeo.bbox);
+        if (cityGeo) {
+          raw = await mapData(city, cityGeo.lat, cityGeo.lon, 5000);
         } else {
           // cityGeo missing (geocode failed earlier) — let the backend geocode by name
           raw = await api.mapData(city);
         }
       } else {
-        // User-triggered "Search Here" — use the viewport bbox as-is
+        // User-triggered "Search Here" — use center of stored bbox
         if (!cityGeo) { setSearchHereLoading(false); return; }
-        raw = await mapData(city, cityGeo.lat, cityGeo.lon, [], bbox);
+        const [s, n, w, e] = bbox;
+        const cx = (s + n) / 2;
+        const cy = (w + e) / 2;
+        raw = await mapData(city, cx, cy, 3000);
       }
 
       const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
