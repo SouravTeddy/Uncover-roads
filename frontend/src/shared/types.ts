@@ -198,6 +198,8 @@ export interface PlaceDetails {
   weekday_text?: string[];
   photo_ref?: string;
   types?: string[];
+  editorial_summary?: string;
+  top_review?: string;
 }
 
 export interface NearbyResult {

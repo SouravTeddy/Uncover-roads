@@ -11,12 +11,11 @@ interface Props {
   onAdd: () => void;
   onClose: () => void;
   details?: PlaceDetails | null;
-  detailsLoading?: boolean;
 }
 
 const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
-export function PinCard({ place, city, isSelected, onAdd, onClose, details, detailsLoading }: Props) {
+export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Props) {
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place';
   const [hoursExpanded, setHoursExpanded] = useState(false);
 
@@ -49,6 +48,16 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
     activeDetails?.lon ?? place.lon,
   );
 
+  // Description: Google editorial summary → top review snippet → OSM note
+  const description =
+    activeDetails?.editorial_summary ||
+    (activeDetails?.top_review
+      ? activeDetails.top_review.slice(0, 160) + (activeDetails.top_review.length > 160 ? '…' : '')
+      : null) ||
+    place.tags?.description ||
+    place.tags?.note ||
+    null;
+
   return (
     <div
       style={{
@@ -63,43 +72,30 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
     >
       {/* ── Hero image ─────────────────────────────────── */}
       <div style={{ height: 150, position: 'relative' }}>
-        {detailsLoading ? (
-          /* Shimmer skeleton */
-          <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a', overflow: 'hidden' }}>
-            <div className="shimmer" style={{ position: 'absolute', inset: 0 }} />
-            <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12 }}>
-              <div style={{ height: 18, width: '60%', background: '#2a2a2a', borderRadius: 4, marginBottom: 6 }} />
-              <div style={{ height: 11, width: '40%', background: '#222', borderRadius: 4 }} />
-            </div>
-          </div>
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={place.title}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%', objectFit: 'cover',
+            }}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         ) : (
-          <>
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt={place.title}
-                style={{
-                  position: 'absolute', inset: 0,
-                  width: '100%', height: '100%', objectFit: 'cover',
-                }}
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            ) : (
-              <div
-                style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(140deg, rgba(59,130,246,.2), rgba(99,102,241,.1))',
-                }}
-              />
-            )}
-            <div
-              style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.05) 55%)',
-              }}
-            />
-          </>
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(140deg, rgba(59,130,246,.2), rgba(99,102,241,.1))',
+            }}
+          />
         )}
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.05) 55%)',
+          }}
+        />
 
         {/* Category badge — top left */}
         <div
@@ -130,43 +126,43 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
           ✕
         </button>
 
-        {/* Name always visible; meta row only after details load */}
+        {/* Name + meta */}
         <div style={{ position: 'absolute', bottom: 10, left: 12, right: 44 }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
             {place.title}
           </div>
-          {!detailsLoading && (activeDetails?.rating || activeDetails?.open_now !== undefined || activeDetails?.price_level) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                {activeDetails!.rating !== undefined && (
-                  <>
-                    <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
-                      ★ {activeDetails!.rating}
+          {(activeDetails?.rating || activeDetails?.open_now !== undefined || activeDetails?.price_level) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              {activeDetails!.rating !== undefined && (
+                <>
+                  <span style={{ fontSize: 11, color: '#fbbf24', fontWeight: 600 }}>
+                    ★ {activeDetails!.rating}
+                  </span>
+                  {activeDetails!.rating_count !== undefined && (
+                    <span style={{ fontSize: 10, color: '#999' }}>
+                      {activeDetails!.rating_count.toLocaleString()} reviews
                     </span>
-                    {activeDetails!.rating_count !== undefined && (
-                      <span style={{ fontSize: 10, color: '#999' }}>
-                        {activeDetails!.rating_count.toLocaleString()} reviews
-                      </span>
-                    )}
-                  </>
-                )}
-                {activeDetails!.open_now !== undefined && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: activeDetails!.open_now ? '#22c55e' : '#ef4444',
-                      fontWeight: 600,
-                    }}
-                  >
-                    ● {activeDetails!.open_now ? 'Open' : 'Closed'}
-                  </span>
-                )}
-                {activeDetails!.price_level !== undefined && activeDetails!.price_level > 0 && (
-                  <span style={{ fontSize: 10, color: '#999' }}>
-                    {PRICE[activeDetails!.price_level]}
-                  </span>
-                )}
-              </div>
-            )}
+                  )}
+                </>
+              )}
+              {activeDetails!.open_now !== undefined && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: activeDetails!.open_now ? '#22c55e' : '#ef4444',
+                    fontWeight: 600,
+                  }}
+                >
+                  ● {activeDetails!.open_now ? 'Open' : 'Closed'}
+                </span>
+              )}
+              {activeDetails!.price_level !== undefined && activeDetails!.price_level > 0 && (
+                <span style={{ fontSize: 10, color: '#999' }}>
+                  {PRICE[activeDetails!.price_level]}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -174,12 +170,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9 }}>
 
         {/* Type tags — Google details OR OSM cuisine tag */}
-        {detailsLoading ? (
-          <div style={{ display: 'flex', gap: 6 }}>
-            <div className="shimmer" style={{ height: 22, width: 110, background: '#1f1f1f', borderRadius: 20 }} />
-            <div className="shimmer" style={{ height: 22, width: 60, background: '#1f1f1f', borderRadius: 20 }} />
-          </div>
-        ) : (() => {
+        {(() => {
           const tags = typeTags.length > 0
             ? typeTags
             : place.tags?.cuisine
@@ -203,10 +194,15 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
           ) : null;
         })()}
 
+        {/* Description — editorial summary, top review, or OSM note */}
+        {description && (
+          <div style={{ fontSize: 10, color: '#bbb', lineHeight: 1.5 }}>
+            {description}
+          </div>
+        )}
+
         {/* Hours row — Google details OR OSM opening_hours */}
-        {detailsLoading ? (
-          <div className="shimmer" style={{ height: 12, width: '80%', background: '#1a1a1a', borderRadius: 4 }} />
-        ) : hoursLabel ? (
+        {hoursLabel ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <span style={{ fontSize: 12, marginTop: 1 }}>🕐</span>
             <div style={{ flex: 1 }}>
@@ -264,9 +260,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
         ) : null}
 
         {/* Address row — Google details only */}
-        {detailsLoading ? (
-          <div className="shimmer" style={{ height: 12, width: '65%', background: '#1a1a1a', borderRadius: 4 }} />
-        ) : activeDetails?.address ? (
+        {activeDetails?.address ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <span style={{ fontSize: 12, marginTop: 1 }}>📍</span>
             <div style={{ flex: 1 }}>
@@ -285,12 +279,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details, deta
         ) : null}
 
         {/* Phone + website tiles — Google details OR OSM website */}
-        {detailsLoading ? (
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <div className="shimmer" style={{ flex: 1, height: 36, background: '#1f1f1f', borderRadius: 10 }} />
-            <div className="shimmer" style={{ flex: 1, height: 36, background: '#1f1f1f', borderRadius: 10 }} />
-          </div>
-        ) : (() => {
+        {(() => {
           const phone = activeDetails?.phone;
           const website = activeDetails?.website || place.tags?.website || null;
           return (phone || website) ? (
