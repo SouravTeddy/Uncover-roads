@@ -1,6 +1,6 @@
 // modules/map/MapLibreMap.tsx
 import { useRef, useCallback } from 'react';
-import Map from 'react-map-gl/maplibre';
+import Map, { Marker } from 'react-map-gl/maplibre';
 import type { MapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
@@ -18,6 +18,7 @@ interface Props {
   onMoveEnd: (center: [number, number], zoom: number) => void;
   onClick?: (lngLat: { lat: number; lng: number }) => void;
   routeGeojson?: GeoJSON.Feature<GeoJSON.LineString> | null;
+  pinDropResult?: { lat: number; lon: number } | null;
   children?: React.ReactNode;
 }
 
@@ -30,6 +31,7 @@ export function MapLibreMap({
   onMoveEnd,
   onClick,
   routeGeojson,
+  pinDropResult,
   children,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -61,6 +63,14 @@ export function MapLibreMap({
         selectedPlace={selectedPlace}
         onPlaceClick={onPlaceClick}
       />
+      {pinDropResult && (
+        <Marker latitude={pinDropResult.lat} longitude={pinDropResult.lon}>
+          <div className="pin-drop-marker">
+            <div className="pin-drop-pulse" />
+            <div className="pin-drop-dot" />
+          </div>
+        </Marker>
+      )}
       {children}
     </Map>
   );

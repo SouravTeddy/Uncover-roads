@@ -114,6 +114,7 @@ export function MapScreen() {
   // Pin drop
   const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
   const [pinDropResult, setPinDropResult]         = useState<{ lat: number; lon: number } | null>(null);
+  const [pinPlaceName, setPinPlaceName]           = useState<string | null>(null);
 
   // Place search
   const [searchQuery, setSearchQuery]       = useState('');
@@ -198,13 +199,28 @@ export function MapScreen() {
     handleSearchHere(bbox);
   }, [cityGeo, handleSearchHere]);
 
-  // Pin drop click handler
+  // Pin drop click handler — sets pin then reverse geocodes for a street name
   const handleMapClick = useCallback(
     ({ lat, lng }: { lat: number; lng: number }) => {
-      if (awaitingPinDrop) {
-        setPinDropResult({ lat, lon: lng });
-        setAwaitingPinDrop(false);
-      }
+      if (!awaitingPinDrop) return;
+      setPinDropResult({ lat, lon: lng });
+      setPinPlaceName(null);
+      setAwaitingPinDrop(false);
+      fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+        { headers: { 'Accept-Language': 'en' } },
+      )
+        .then(r => r.json())
+        .then(d => {
+          const name =
+            d.address?.road ??
+            d.address?.neighbourhood ??
+            d.address?.suburb ??
+            d.display_name?.split(',')[0] ??
+            null;
+          setPinPlaceName(name);
+        })
+        .catch(() => { /* leave null — coordinates shown as fallback */ });
     },
     [awaitingPinDrop],
   );
@@ -351,6 +367,7 @@ export function MapScreen() {
         onMoveEnd={handleMapMoveEnd}
         onClick={handleMapClick}
         routeGeojson={routeGeojson}
+        pinDropResult={pinDropResult}
       />
 
       {/* Initial load overlay */}
@@ -606,8 +623,9 @@ export function MapScreen() {
         <TripPlanningCard
           onClose={() => setShowTripSheet(false)}
           onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
-          onClearPin={() => setPinDropResult(null)}
+          onClearPin={() => { setPinDropResult(null); setPinPlaceName(null); }}
           pinDropResult={pinDropResult}
+          pinPlaceName={pinPlaceName}
         />
       )}
     </div>

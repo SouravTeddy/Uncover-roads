@@ -112,27 +112,28 @@ export function DestinationScreen() {
         </div>
       </header>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
-
+      {/* Search — outside overflow container so dropdown isn't clipped */}
+      <div className="px-5 pt-5 flex-shrink-0">
         <h2 className="font-heading font-extrabold text-text-1 text-2xl mb-5 tracking-tight">
           Where to next?
         </h2>
 
-        {/* Search */}
-        <div className="mb-3">
+        <div className="mb-3 relative">
           <CitySearch onSelect={selectCity} />
         </div>
 
-        {/* Use location */}
         <button
           onClick={useLocation}
-          className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl font-medium text-sm border border-primary/20 mb-8"
+          className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl font-medium text-sm border border-primary/20 mb-4"
           style={{ background: 'rgba(59,130,246,.08)', color: '#60a5fa' }}
         >
           <span className="ms text-base">near_me</span>
           Use my current location
         </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-5 pb-28">
 
         {/* ── Persona city suggestions ── */}
         <div className="mb-7">
