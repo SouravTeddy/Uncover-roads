@@ -198,8 +198,10 @@ export async function fetchPinDetails(
   lon: number,
   name: string,
   category = '',
+  placeId = '',
 ): Promise<PlaceDetails | null> {
   const params = new URLSearchParams({ lat: String(lat), lon: String(lon), name, category });
+  if (placeId) params.set('place_id', placeId);
   const res = await fetch(`${BASE}/pin-details?${params}`);
   if (!res.ok) return null;
   const data = await res.json();

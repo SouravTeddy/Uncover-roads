@@ -54,7 +54,7 @@ export function usePlaceDetails() {
 
     // Fire Google and Wikipedia requests in parallel
     const [googleResult, wikiSummary] = await Promise.allSettled([
-      fetchPinDetails(place.lat, place.lon, place.title, place.category),
+      fetchPinDetails(place.lat, place.lon, place.title, place.category, place.place_id ?? ''),
       place.tags?.wikipedia ? fetchWikipediaSummary(place.tags.wikipedia) : Promise.resolve(null),
     ]);
 
