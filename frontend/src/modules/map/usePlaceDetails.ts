@@ -12,7 +12,7 @@ export function getAllCachedDetails(): ReadonlyMap<string, PlaceDetails> {
 }
 
 /** Returns cached details for a place, if resolved. */
-export function getCachedPlaceIdKey(name: string, lat: number, lon: number): string | undefined {
+export function getCachedPlaceIdKey(_name: string, lat: number, lon: number): string | undefined {
   const key = `${lat.toFixed(5)}:${lon.toFixed(5)}`;
   return detailsCache.has(key) ? key : undefined;
 }
