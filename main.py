@@ -264,6 +264,14 @@ out center 200;
             el_lon = el.get("lon") or (el.get("center") or {}).get("lon")
             if el_lat is None or el_lon is None:
                 continue
+            # Build address from OSM addr:* tags
+            addr_parts = [
+                tags.get("addr:housenumber", ""),
+                tags.get("addr:street", ""),
+                tags.get("addr:city", "") or tags.get("addr:suburb", ""),
+            ]
+            osm_address = ", ".join(p for p in addr_parts if p) or tags.get("addr:full", "")
+
             places.append({
                 "title":    name,
                 "lat":      el_lat,
@@ -272,9 +280,13 @@ out center 200;
                 "category": cat,
                 "tags": {
                     "opening_hours": tags.get("opening_hours", ""),
-                    "website":       tags.get("website", ""),
+                    "website":       tags.get("website", "") or tags.get("contact:website", ""),
                     "cuisine":       tags.get("cuisine", ""),
-                    "description":   tags.get("description", ""),
+                    "description":   tags.get("description", "") or tags.get("note", ""),
+                    "phone":         tags.get("phone", "") or tags.get("contact:phone", ""),
+                    "address":       osm_address,
+                    "wikipedia":     tags.get("wikipedia", ""),
+                    "wikidata":      tags.get("wikidata", ""),
                 }
             })
 
@@ -1209,8 +1221,19 @@ def place_details(request: Request, place_id: str):
         }
 
 
+_CATEGORY_TO_GOOGLE_TYPE = {
+    "restaurant": "restaurant",
+    "cafe": "cafe",
+    "park": "park",
+    "museum": "museum",
+    "historic": "tourist_attraction",
+    "tourism": "tourist_attraction",
+    "place": "point_of_interest",
+    "event": "point_of_interest",
+}
+
 @app.get("/pin-details")
-def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query("")):
+def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query(""), category: str = Query("")):
     """
     Single-call endpoint: resolves place_id from coords + fetches full details.
     Replaces the two-step /find-place-id → /place-details round trip.
@@ -1266,14 +1289,35 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
         except Exception:
             pass
 
-    # ── 3. Coordinate-based fallback at 10m ──
+    # ── 3. Type-ranked nearbysearch — finds nearest matching type, no radius limit ──
+    if not place_id:
+        google_type = _CATEGORY_TO_GOOGLE_TYPE.get(category, "")
+        if google_type:
+            try:
+                resp = requests.get(
+                    f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                    params={
+                        "location": f"{lat},{lon}",
+                        "rankby": "distance",
+                        "type": google_type,
+                        "key": GOOGLE_PLACES_API_KEY,
+                    },
+                    timeout=5,
+                )
+                results = resp.json().get("results", [])
+                if results:
+                    place_id = results[0]["place_id"]
+            except Exception:
+                pass
+
+    # ── 4. Fixed-radius fallback — 100m catch-all ──
     if not place_id:
         try:
             resp = requests.get(
                 f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
                 params={
                     "location": f"{lat},{lon}",
-                    "radius": 10,
+                    "radius": 100,
                     "key": GOOGLE_PLACES_API_KEY,
                 },
                 timeout=5,
@@ -1321,7 +1365,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             f"{GOOGLE_PLACES_BASE}/details/json",
             params={
                 "place_id": place_id,
-                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,editorial_summary,reviews",
                 "key": GOOGLE_PLACES_API_KEY,
             },
             timeout=5,
@@ -1350,6 +1394,8 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
             "photo_ref": photo_ref,
             "types": result.get("types", []),
+            "editorial_summary": result.get("editorial_summary", {}).get("overview"),
+            "top_review": result["reviews"][0]["text"] if result.get("reviews") else None,
         }
 
         if _supabase:
