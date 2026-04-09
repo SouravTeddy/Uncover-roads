@@ -1,16 +1,17 @@
 // modules/map/MapLibreMarkers.tsx
 import { Marker } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
+import { CATEGORY_ICONS } from './types';
 
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444',
-  cafe: '#f97316',
-  park: '#22c55e',
-  museum: '#8b5cf6',
-  historic: '#a16207',
-  tourism: '#0ea5e9',
-  event: '#ec4899',
-  place: '#6b7280',
+  cafe:       '#f97316',
+  park:       '#22c55e',
+  museum:     '#8b5cf6',
+  historic:   '#a16207',
+  tourism:    '#0ea5e9',
+  event:      '#ec4899',
+  place:      '#6b7280',
 };
 
 interface Props {
@@ -28,6 +29,8 @@ export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) 
           selectedPlace?.lat === place.lat &&
           selectedPlace?.lon === place.lon;
         const color = CATEGORY_COLORS[place.category] ?? '#6b7280';
+        const icon  = CATEGORY_ICONS[place.category] ?? 'location_on';
+        const size  = isSelected ? 34 : 28;
 
         return (
           <Marker
@@ -42,18 +45,32 @@ export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) 
           >
             <div
               style={{
-                width: isSelected ? 20 : 14,
-                height: isSelected ? 20 : 14,
+                width: size,
+                height: size,
                 borderRadius: '50%',
                 backgroundColor: color,
-                border: isSelected ? '3px solid white' : '2px solid white',
+                border: isSelected ? '2.5px solid #fff' : '2px solid rgba(255,255,255,0.85)',
                 boxShadow: isSelected
-                  ? `0 0 0 2px ${color}`
-                  : '0 1px 4px rgba(0,0,0,0.3)',
+                  ? `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,.45)`
+                  : '0 2px 6px rgba(0,0,0,0.35)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
+            >
+              <span
+                className="ms fill"
+                style={{
+                  fontSize: isSelected ? 17 : 14,
+                  color: '#fff',
+                  lineHeight: 1,
+                }}
+              >
+                {icon}
+              </span>
+            </div>
           </Marker>
         );
       })}
