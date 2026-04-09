@@ -16,6 +16,8 @@ export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
       debounceRef.current = setTimeout(() => {
         // Zoom gate — don't load pins when zoomed too far out
         if (zoom < 12) {
+          // Clear lastFetch so zooming back in always triggers a fresh fetch
+          lastFetchRef.current = null;
           onZoomedOut();
           return;
         }

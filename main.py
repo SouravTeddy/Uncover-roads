@@ -164,6 +164,79 @@ def fetch_overpass(query: str) -> dict:
 # =========================================
 # MAP DATA
 # =========================================
+def _overpass_map_data(clat: float, clon: float, radius_m: int) -> list:
+    """OSM fallback via Overpass API — used when Google Nearby Search is unavailable."""
+    query = f"""
+[out:json][timeout:25];
+(
+  node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"="museum"]["name"](around:{radius_m},{clat},{clon});
+  way["amenity"="museum"]["name"](around:{radius_m},{clat},{clon});
+  node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:{radius_m},{clat},{clon});
+  way["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:{radius_m},{clat},{clon});
+  node["leisure"~"park|garden|nature_reserve"]["name"](around:{radius_m},{clat},{clon});
+  way["leisure"~"park|garden|nature_reserve"]["name"](around:{radius_m},{clat},{clon});
+  node["historic"]["name"](around:{radius_m},{clat},{clon});
+  way["historic"]["name"](around:{radius_m},{clat},{clon});
+);
+out center 200;
+"""
+    data = fetch_overpass(query)
+    places = []
+    seen_names: set = set()
+    for el in data.get("elements", []):
+        tags = el.get("tags", {})
+        name = (
+            tags.get("name:en") or tags.get("int_name") or
+            tags.get("name:ja_rm") or tags.get("name:ko_rm") or
+            tags.get("name", "")
+        ).strip()
+        if not name or name in seen_names:
+            continue
+        seen_names.add(name)
+
+        amenity = tags.get("amenity", "")
+        tourism = tags.get("tourism", "")
+        leisure = tags.get("leisure", "")
+        historic = tags.get("historic", "")
+
+        if amenity in ("restaurant", "bar", "food_court") or tags.get("cuisine"):
+            cat = "restaurant"
+        elif amenity == "cafe":
+            cat = "cafe"
+        elif amenity == "museum" or tourism == "museum":
+            cat = "museum"
+        elif leisure in ("park", "garden", "nature_reserve"):
+            cat = "park"
+        elif historic:
+            cat = "historic"
+        elif tourism in ("attraction", "artwork", "viewpoint", "gallery"):
+            cat = "tourism"
+        else:
+            cat = "place"
+
+        el_lat = el.get("lat") or (el.get("center") or {}).get("lat")
+        el_lon = el.get("lon") or (el.get("center") or {}).get("lon")
+        if el_lat is None or el_lon is None:
+            continue
+
+        uid = f"osm-{el.get('type','n')}-{el.get('id', name)}"
+        places.append({
+            "id":       uid,
+            "title":    name,
+            "lat":      el_lat,
+            "lon":      el_lon,
+            "category": cat,
+            "tags": {
+                "opening_hours": tags.get("opening_hours", ""),
+                "website":       tags.get("website", ""),
+                "cuisine":       tags.get("cuisine", ""),
+                "description":   tags.get("description", ""),
+            },
+        })
+    return places
+
+
 @app.get("/map-data")
 def map_data(
     city:       str   = Query(""),
@@ -179,12 +252,10 @@ def map_data(
     east:  float = Query(None),
 ):
     """
-    Returns nearby places via Google Nearby Search.
+    Returns nearby places. Primary: Google Nearby Search (rich data).
+    Fallback: Overpass OSM (when Google API key not configured or returns empty).
     Results cached in Supabase map_data_cache by ~5km tile key for MAP_DATA_CACHE_TTL_HOURS.
     """
-    if not GOOGLE_PLACES_API_KEY:
-        return []
-
     # Resolve search center
     clat = center_lat or lat
     clon = center_lon or lon
@@ -222,55 +293,67 @@ def map_data(
         except Exception:
             pass
 
-    # Fetch from Google Nearby Search for each type
-    seen_place_ids: set = set()
     places: list = []
 
-    for gtype, category in _NEARBY_TYPE_TO_CATEGORY.items():
-        try:
-            resp = requests.get(
-                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                params={
-                    "location": f"{clat},{clon}",
-                    "radius":   radius_m,
-                    "type":     gtype,
-                    "key":      GOOGLE_PLACES_API_KEY,
-                },
-                timeout=8,
-            )
-            results = resp.json().get("results", [])
-            for r in results:
-                pid = r.get("place_id")
-                if not pid or pid in seen_place_ids:
-                    continue
-                seen_place_ids.add(pid)
-
-                photo_ref = None
-                if r.get("photos"):
-                    photo_ref = r["photos"][0]["photo_reference"]
-
-                loc = r.get("geometry", {}).get("location", {})
-                places.append({
-                    "id":          pid,
-                    "title":       r.get("name", ""),
-                    "lat":         loc.get("lat"),
-                    "lon":         loc.get("lng"),
-                    "category":    category,
-                    "place_id":    pid,
-                    "rating":      r.get("rating"),
-                    "open_now":    r.get("opening_hours", {}).get("open_now"),
-                    "photo_ref":   photo_ref,
-                    "price_level": r.get("price_level"),
-                    "tags": {
-                        "types": ",".join(r.get("types", [])),
+    # ── Primary: Google Nearby Search ──
+    if GOOGLE_PLACES_API_KEY:
+        seen_place_ids: set = set()
+        for gtype, category in _NEARBY_TYPE_TO_CATEGORY.items():
+            try:
+                resp = requests.get(
+                    f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                    params={
+                        "location": f"{clat},{clon}",
+                        "radius":   radius_m,
+                        "type":     gtype,
+                        "key":      GOOGLE_PLACES_API_KEY,
                     },
-                })
+                    timeout=8,
+                )
+                data = resp.json()
+                status = data.get("status", "OK")
+                if status not in ("OK", "ZERO_RESULTS"):
+                    print(f"MAP DATA: nearbysearch {gtype} status={status}")
+                    continue
+                for r in data.get("results", []):
+                    pid = r.get("place_id")
+                    if not pid or pid in seen_place_ids:
+                        continue
+                    seen_place_ids.add(pid)
+                    photo_ref = None
+                    if r.get("photos"):
+                        photo_ref = r["photos"][0]["photo_reference"]
+                    loc = r.get("geometry", {}).get("location", {})
+                    places.append({
+                        "id":          pid,
+                        "title":       r.get("name", ""),
+                        "lat":         loc.get("lat"),
+                        "lon":         loc.get("lng"),
+                        "category":    category,
+                        "place_id":    pid,
+                        "rating":      r.get("rating"),
+                        "open_now":    r.get("opening_hours", {}).get("open_now"),
+                        "photo_ref":   photo_ref,
+                        "price_level": r.get("price_level"),
+                        "tags":        {"types": ",".join(r.get("types", []))},
+                    })
+            except Exception as e:
+                print(f"MAP DATA: nearbysearch failed for type {gtype}: {e}")
+                continue
+    else:
+        print("MAP DATA: GOOGLE_PLACES_API_KEY not set — using Overpass fallback")
+
+    # ── Fallback: Overpass OSM ──
+    if not places:
+        print(f"MAP DATA: Google returned 0 places, trying Overpass fallback for {tile_key}")
+        try:
+            places = _overpass_map_data(clat, clon, radius_m)
+            print(f"MAP DATA: Overpass returned {len(places)} places")
         except Exception as e:
-            print(f"MAP DATA: nearbysearch failed for type {gtype}: {e}")
-            continue
+            print(f"MAP DATA: Overpass fallback failed: {e}")
 
     # Store in Supabase tile cache
-    if _supabase:
+    if _supabase and places:
         try:
             _supabase.table("map_data_cache").upsert({
                 "tile_key":   tile_key,
@@ -280,7 +363,7 @@ def map_data(
         except Exception:
             pass
 
-    print(f"MAP DATA: {len(places)} places for tile {tile_key} ({city})")
+    print(f"MAP DATA: returning {len(places)} places for tile {tile_key} ({city})")
     return places
 
 
