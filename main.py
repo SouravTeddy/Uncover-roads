@@ -87,7 +87,7 @@ OVERPASS_ENDPOINTS = [
 def geocode(city: str = Query(...)):
     try:
         url    = "https://nominatim.openstreetmap.org/search"
-        params = {"q": city, "format": "json", "limit": 1, "accept-language": "en"}
+        params = {"q": city, "format": "json", "limit": 1, "addressdetails": 1, "accept-language": "en"}
         headers = {"User-Agent": "UncoverRoads/1.0"}
         res  = requests.get(url, params=params, headers=headers, timeout=10)
         data = res.json()
@@ -109,10 +109,12 @@ def geocode(city: str = Query(...)):
             offset = 0.12
             south, north = lat - offset, lat + offset
             west,  east  = lon - offset, lon + offset
+        addr = result.get("address", {})
         return {
             "city": result["display_name"],
             "lat": lat, "lon": lon,
-            "bbox": [south, north, west, east]
+            "bbox": [south, north, west, east],
+            "country": addr.get("country", "")
         }
     except Exception as e:
         print("GEOCODE ERROR:", e)
