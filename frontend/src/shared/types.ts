@@ -78,6 +78,7 @@ export interface GeoData {
   lat: number;
   lon: number;
   bbox: [number, number, number, number]; // south, north, west, east
+  country?: string;   // ISO country name from Nominatim
 }
 
 // ── Places / Map ──────────────────────────────────────────────
