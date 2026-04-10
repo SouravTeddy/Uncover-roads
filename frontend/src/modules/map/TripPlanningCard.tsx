@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAppStore } from '../../shared/store';
 import { useTripPlanInput } from './useTripPlanInput';
 import type { StartChip } from './useTripPlanInput';
+import { computeTotalDays } from './trip-capacity-utils';
 
 interface Props {
   onClose: () => void;
@@ -38,7 +39,15 @@ export function TripPlanningCard({
   const { state } = useAppStore();
   const city        = state.city;
   const placesCount = state.selectedPlaces.length;
+  const { travelStartDate, travelEndDate } = state;
+  const totalDays = computeTotalDays(travelStartDate, travelEndDate);
   const locationInputRef = useRef<HTMLDivElement>(null);
+
+  function formatDateShort(iso: string): string {
+    return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric',
+    });
+  }
 
   // Entrance animation
   const [mounted, setMounted] = useState(false);
@@ -48,7 +57,6 @@ export function TripPlanningCard({
   }, []);
 
   const {
-    dates, selectedDate, setSelectedDate,
     startChip, handleChipChange,
     locationQuery, locationResults, locationLoading, selectedLocation,
     handleLocationInput, handleSelectLocation,
@@ -140,19 +148,45 @@ export function TripPlanningCard({
           }}>
             {city || 'Your City'}
           </div>
-          <div style={{
-            marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6,
-            height: 24, padding: '0 10px',
-            background: PRIMARY_BG, border: `1px solid ${PRIMARY_BORDER}`,
-            borderRadius: 999,
-          }}>
-            <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>place</span>
-            <span style={{
-              fontSize: 11, fontWeight: 700, color: '#93c5fd',
-              fontFamily: 'Inter, sans-serif',
+          <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {/* Date range badge */}
+            {travelStartDate && travelEndDate ? (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                height: 24, padding: '0 10px',
+                background: PRIMARY_BG, border: `1px solid ${PRIMARY_BORDER}`,
+                borderRadius: 999,
+              }}>
+                <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>calendar_month</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                  {formatDateShort(travelStartDate)} – {formatDateShort(travelEndDate)} · {totalDays} day{totalDays !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ) : (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                height: 24, padding: '0 10px',
+                background: 'rgba(255,255,255,.04)', border: `1px solid ${BORDER}`,
+                borderRadius: 999,
+              }}>
+                <span className="ms" style={{ fontSize: 12, color: TEXT3 }}>calendar_month</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT3, fontFamily: 'Inter, sans-serif' }}>
+                  Set dates in explore
+                </span>
+              </div>
+            )}
+            {/* Places badge */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 24, padding: '0 10px',
+              background: PRIMARY_BG, border: `1px solid ${PRIMARY_BORDER}`,
+              borderRadius: 999,
             }}>
-              {placesCount} place{placesCount !== 1 ? 's' : ''} selected
-            </span>
+              <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>place</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                {placesCount} place{placesCount !== 1 ? 's' : ''} selected
+              </span>
+            </div>
           </div>
         </div>
 
@@ -327,60 +361,6 @@ export function TripPlanningCard({
             )}
           </div>
 
-          {/* Travel date */}
-          <div>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
-              textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
-              fontFamily: 'Inter, sans-serif',
-            }}>
-              Travel date
-            </div>
-            <div style={{
-              display: 'flex', gap: 6,
-              overflowX: 'auto', paddingBottom: 4,
-              scrollbarWidth: 'none',
-              WebkitOverflowScrolling: 'touch',
-            } as React.CSSProperties}>
-              {dates.map((d, idx) => {
-                const active = d.isoDate === selectedDate;
-                const isToday = idx === 0;
-                return (
-                  <button
-                    key={d.isoDate}
-                    onClick={() => setSelectedDate(d.isoDate)}
-                    aria-label={`Select ${d.dayAbbr} ${d.dayNum}`}
-                    aria-pressed={active}
-                    style={{
-                      flexShrink: 0, width: 52,
-                      padding: '10px 4px 8px',
-                      background: active ? PRIMARY_BG : 'rgba(255,255,255,.04)',
-                      border: `1.5px solid ${active ? PRIMARY_BORDER : BORDER}`,
-                      borderRadius: 14, textAlign: 'center', cursor: 'pointer',
-                      transition: 'all .15s ease',
-                    }}
-                  >
-                    <div style={{
-                      fontSize: 10, fontWeight: 700,
-                      color: active ? '#93c5fd' : TEXT3,
-                      fontFamily: 'Inter, sans-serif',
-                      marginBottom: 4,
-                    }}>
-                      {isToday ? 'TODAY' : d.dayAbbr.toUpperCase()}
-                    </div>
-                    <div style={{
-                      fontSize: 18, fontWeight: 800, lineHeight: 1,
-                      fontFamily: '"Plus Jakarta Sans", sans-serif',
-                      color: active ? TEXT1 : 'rgba(255,255,255,.45)',
-                    }}>
-                      {d.dayNum}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Recommended start time */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14,
@@ -443,7 +423,7 @@ export function TripPlanningCard({
             }}
           >
             <span className="ms" style={{ fontSize: 20 }}>auto_fix</span>
-            Build my itinerary
+            {totalDays > 1 ? `Build my ${totalDays}-day itinerary` : 'Build my itinerary'}
           </button>
         </div>
       </div>
