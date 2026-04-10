@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../shared/store';
 import { useTripPlanInput } from './useTripPlanInput';
@@ -12,18 +12,41 @@ interface Props {
   onClearPin: () => void;
 }
 
+// ── Design tokens (match app theme) ─────────────────────────────
+const SURFACE  = '#141921';
+const SURFACE2 = '#1A1F2B';
+const PRIMARY  = '#3b82f6';
+const PRIMARY_BG = 'rgba(59,130,246,.12)';
+const PRIMARY_BORDER = 'rgba(59,130,246,.25)';
+const TEXT1 = '#f1f5f9';
+const TEXT2 = '#cbd5e1';
+const TEXT3 = '#8e9099';
+const BORDER = 'rgba(255,255,255,.08)';
+
 const CHIPS: Array<{ value: StartChip; icon: string; label: string }> = [
-  { value: 'hotel',   icon: '🏨', label: 'Hotel'   },
-  { value: 'airport', icon: '✈',  label: 'Airport' },
-  { value: 'pin',     icon: '📍', label: 'Pin'     },
+  { value: 'hotel',   icon: 'hotel',   label: 'Hotel'   },
+  { value: 'airport', icon: 'flight',  label: 'Airport' },
+  { value: 'pin',     icon: 'location_on', label: 'Drop pin' },
 ];
 
-export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pinPlaceName, onClearPin }: Props) {
+export function TripPlanningCard({
+  onClose,
+  onRequestPinDrop,
+  pinDropResult,
+  pinPlaceName,
+  onClearPin,
+}: Props) {
   const { state } = useAppStore();
-  const city = state.city;
+  const city        = state.city;
   const placesCount = state.selectedPlaces.length;
-
   const locationInputRef = useRef<HTMLDivElement>(null);
+
+  // Entrance animation
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const {
     dates, selectedDate, setSelectedDate,
@@ -47,101 +70,111 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
 
   if (typeof document === 'undefined') return null;
 
+  // TEXT2 is used for secondary text in location results
+  void TEXT2;
+
   return createPortal(
     <>
       {/* Backdrop */}
       <div
+        onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 50,
-          background: 'rgba(0,0,0,.65)', backdropFilter: 'blur(3px)',
+          background: 'rgba(0,0,0,.7)',
+          backdropFilter: 'blur(4px)',
+          opacity: mounted ? 1 : 0,
+          transition: 'opacity .3s ease',
         }}
-        onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal sheet */}
       <div
+        onClick={e => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: '8%',
-          left: '16px',
-          right: '16px',
+          left: 16, right: 16,
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px)`,
           zIndex: 51,
-          background: 'linear-gradient(160deg, rgba(30,20,60,.95), rgba(10,18,30,.98))',
-          border: '1px solid rgba(255,255,255,.07)',
+          background: SURFACE,
+          border: `1px solid ${BORDER}`,
           borderRadius: 24,
-          boxShadow: '0 24px 80px rgba(0,0,0,.8)',
+          boxShadow: '0 -8px 60px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.04)',
+          transform: mounted ? 'translateY(0)' : 'translateY(32px)',
+          opacity: mounted ? 1 : 0,
+          transition: 'transform .38s cubic-bezier(.32,.72,0,1), opacity .3s ease',
+          overflow: 'hidden',
         }}
-        onClick={e => e.stopPropagation()}
       >
-        {/* ── Cinematic header ─────────────────────────── */}
-        <div style={{ height: 90, position: 'relative', overflow: 'hidden' }}>
-          {/* Gradient backdrop (no city image in state — dark gradient fallback) */}
-          <div
-            style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(135deg, #0d1f35, #1a0d35, #0d1f1a)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to bottom, transparent, rgba(20,14,50,.95))',
-            }}
-          />
-          {/* Close button */}
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div
+          style={{
+            position: 'relative',
+            padding: '22px 20px 18px',
+            background: `linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(15,23,42,0) 60%)`,
+            borderBottom: `1px solid ${BORDER}`,
+          }}
+        >
+          {/* Close */}
           <button
             aria-label="Close"
             onClick={onClose}
             style={{
-              position: 'absolute', top: 10, right: 10,
-              background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,.1)',
-              borderRadius: '50%', width: 28, height: 28,
+              position: 'absolute', top: 16, right: 16,
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'rgba(255,255,255,.07)',
+              border: `1px solid ${BORDER}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#999', fontSize: 14, cursor: 'pointer',
+              cursor: 'pointer',
             }}
           >
-            ✕
+            <span className="ms" style={{ fontSize: 16, color: TEXT3 }}>close</span>
           </button>
-          {/* Place count */}
-          <div
-            style={{
-              position: 'absolute', top: 13, right: 48,
-              fontSize: 10, color: 'rgba(255,255,255,.3)',
-            }}
-          >
-            {placesCount} place{placesCount !== 1 ? 's' : ''}
+
+          {/* Label + city */}
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: 2,
+            textTransform: 'uppercase', color: PRIMARY, marginBottom: 6,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            Plan your day
           </div>
-          {/* City name */}
-          <div style={{ position: 'absolute', bottom: 12, left: 14 }}>
-            <div
-              style={{
-                fontSize: 10, color: 'rgba(255,255,255,.5)',
-                textTransform: 'uppercase', letterSpacing: 2,
-              }}
-            >
-              Your day in
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{city}</div>
+          <div style={{
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontSize: 22, fontWeight: 800, color: TEXT1, lineHeight: 1.1,
+          }}>
+            {city || 'Your City'}
+          </div>
+          <div style={{
+            marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6,
+            height: 24, padding: '0 10px',
+            background: PRIMARY_BG, border: `1px solid ${PRIMARY_BORDER}`,
+            borderRadius: 999,
+          }}>
+            <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>place</span>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: '#93c5fd',
+              fontFamily: 'Inter, sans-serif',
+            }}>
+              {placesCount} place{placesCount !== 1 ? 's' : ''} selected
+            </span>
           </div>
         </div>
 
-        {/* ── Body ─────────────────────────────────────── */}
-        <div style={{ padding: '14px 14px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ── Body ─────────────────────────────────────────────── */}
+        <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Starting point */}
           <div>
-            <div
-              style={{
-                fontSize: 8, color: 'rgba(255,255,255,.35)',
-                textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8,
-              }}
-            >
+            <div style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
+              textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
+              fontFamily: 'Inter, sans-serif',
+            }}>
               Starting point
             </div>
 
             {/* Chips */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               {CHIPS.map(chip => {
                 const active = startChip === chip.value;
                 return (
@@ -152,17 +185,29 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
                       handleChipChange(chip.value);
                     }}
                     style={{
-                      flex: 1, padding: '6px 0',
-                      background: active ? 'rgba(99,102,241,.2)' : 'rgba(255,255,255,.05)',
-                      border: active
-                        ? '1px solid rgba(99,102,241,.4)'
-                        : '1px solid rgba(255,255,255,.08)',
-                      borderRadius: 20, fontSize: 9,
-                      color: active ? '#a5b4fc' : 'rgba(255,255,255,.4)',
-                      fontWeight: 600, cursor: 'pointer',
+                      flex: 1,
+                      height: 44,
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: 2,
+                      background: active ? PRIMARY_BG : 'rgba(255,255,255,.04)',
+                      border: `1.5px solid ${active ? PRIMARY_BORDER : BORDER}`,
+                      borderRadius: 14, cursor: 'pointer',
+                      transition: 'all .15s ease',
                     }}
                   >
-                    {chip.icon} {chip.label}
+                    <span className="ms" style={{
+                      fontSize: 17,
+                      color: active ? PRIMARY : TEXT3,
+                    }}>
+                      {chip.icon}
+                    </span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: active ? '#93c5fd' : TEXT3,
+                      fontFamily: 'Inter, sans-serif',
+                    }}>
+                      {chip.label}
+                    </span>
                   </button>
                 );
               })}
@@ -170,14 +215,24 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
 
             {/* Pin drop confirmation */}
             {pinDropResult ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(20,184,166,.1)', border: '1px solid rgba(20,184,166,.3)', borderRadius: 11 }}>
-                <span style={{ fontSize: 10, color: '#2dd4bf' }}>📍</span>
-                <span style={{ fontSize: 10, color: '#5eead4', flex: 1 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 14px',
+                background: 'rgba(20,184,166,.08)',
+                border: '1px solid rgba(20,184,166,.25)',
+                borderRadius: 14,
+              }}>
+                <span className="ms" style={{ fontSize: 18, color: '#2dd4bf', flexShrink: 0 }}>location_on</span>
+                <span style={{ fontSize: 13, color: '#5eead4', flex: 1, fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
                   {pinPlaceName ?? `${pinDropResult.lat.toFixed(4)}, ${pinDropResult.lon.toFixed(4)}`}
                 </span>
                 <button
                   onClick={handleClearPin}
-                  style={{ fontSize: 9, color: 'rgba(255,255,255,.3)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  style={{
+                    fontSize: 11, fontWeight: 700, color: TEXT3,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
                 >
                   Clear
                 </button>
@@ -187,14 +242,16 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
               <div ref={locationInputRef} style={{ position: 'relative' }}>
                 <div
                   style={{
-                    background: 'rgba(255,255,255,.05)',
-                    border: '1px solid rgba(255,255,255,.1)',
-                    borderRadius: 11, padding: '9px 12px',
-                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: SURFACE2,
+                    border: `1.5px solid ${BORDER}`,
+                    borderRadius: 14, height: 52,
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '0 14px',
+                    transition: 'border-color .15s',
                   }}
                 >
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>
-                    {startChip === 'hotel' ? '🏨' : '✈'}
+                  <span className="ms" style={{ fontSize: 20, color: TEXT3, flexShrink: 0 }}>
+                    {startChip === 'hotel' ? 'hotel' : 'flight'}
                   </span>
                   <input
                     type="text"
@@ -204,78 +261,94 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
                     placeholder={startChip === 'hotel' ? 'Search hotel or address…' : 'Search airport…'}
                     style={{
                       flex: 1, background: 'none', border: 'none', outline: 'none',
-                      fontSize: 11, color: 'rgba(255,255,255,.8)',
+                      fontSize: 14, fontWeight: 600, color: TEXT1,
+                      fontFamily: '"Plus Jakarta Sans", sans-serif',
+                      caretColor: PRIMARY,
                     }}
                   />
                   {locationLoading && (
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', flexShrink: 0 }}>⋯</span>
+                    <span className="ms animate-spin" style={{ fontSize: 16, color: TEXT3, flexShrink: 0 }}>autorenew</span>
                   )}
                   {selectedLocation && !locationLoading && (
-                    <span style={{ fontSize: 10, color: '#22c55e', flexShrink: 0 }}>✓</span>
+                    <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
                   )}
                 </div>
 
                 {locationResults.length > 0 && (() => {
-                  const r = locationInputRef.current?.getBoundingClientRect();
-                  if (!r) return null;
+                  const rect = locationInputRef.current?.getBoundingClientRect();
+                  if (!rect) return null;
                   return createPortal(
-                  <div
-                    style={{
-                      position: 'fixed',
-                      top: r.bottom + 4,
-                      left: r.left,
-                      width: r.width,
-                      zIndex: 9999,
-                      background: 'rgba(10,14,24,.97)',
-                      border: '1px solid rgba(255,255,255,.1)',
-                      borderRadius: 11, overflow: 'hidden',
-                    }}
-                  >
-                    {locationResults.map((r, i) => (
-                      <button
-                        key={r.place_id}
-                        onMouseDown={() => handleSelectLocation(r)}
-                        style={{
-                          width: '100%', textAlign: 'left', padding: '8px 12px',
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          borderTop: i > 0 ? '1px solid rgba(255,255,255,.06)' : 'none',
-                        }}
-                      >
-                        <div style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>
-                          {r.main_text}
-                        </div>
-                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>
-                          {r.secondary_text}
-                        </div>
-                      </button>
-                    ))}
-                  </div>,
-                  document.body,
+                    <div
+                      style={{
+                        position: 'fixed',
+                        top: rect.bottom + 4,
+                        left: rect.left,
+                        width: rect.width,
+                        zIndex: 9999,
+                        background: '#1E2535',
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 16,
+                        overflow: 'hidden',
+                        boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+                      }}
+                    >
+                      {locationResults.map((r, i) => (
+                        <button
+                          key={r.place_id}
+                          onMouseDown={() => handleSelectLocation(r)}
+                          style={{
+                            width: '100%', textAlign: 'left',
+                            padding: '12px 16px',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            borderTop: i > 0 ? `1px solid ${BORDER}` : 'none',
+                            display: 'flex', alignItems: 'center', gap: 12,
+                          }}
+                        >
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                            background: PRIMARY_BG,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <span className="ms" style={{ fontSize: 16, color: PRIMARY }}>
+                              {startChip === 'hotel' ? 'hotel' : 'flight'}
+                            </span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+                              {r.main_text}
+                            </div>
+                            <div style={{ fontSize: 11, color: TEXT3, marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
+                              {r.secondary_text}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>,
+                    document.body,
                   );
                 })()}
               </div>
             )}
           </div>
 
-          {/* Travel date strip */}
+          {/* Travel date */}
           <div>
-            <div
-              style={{
-                fontSize: 8, color: 'rgba(255,255,255,.35)',
-                textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8,
-              }}
-            >
+            <div style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
+              textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
+              fontFamily: 'Inter, sans-serif',
+            }}>
               Travel date
             </div>
-            <div
-              style={{
-                display: 'flex', gap: 5,
-                overflowX: 'auto', paddingBottom: 4,
-                scrollbarWidth: 'none',
-              }}
-            >
-              {dates.map(d => {
+            <div style={{
+              display: 'flex', gap: 6,
+              overflowX: 'auto', paddingBottom: 4,
+              scrollbarWidth: 'none',
+              WebkitOverflowScrolling: 'touch',
+            } as React.CSSProperties}>
+              {dates.map((d, idx) => {
                 const active = d.isoDate === selectedDate;
+                const isToday = idx === 0;
                 return (
                   <button
                     key={d.isoDate}
@@ -283,24 +356,27 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
                     aria-label={`Select ${d.dayAbbr} ${d.dayNum}`}
                     aria-pressed={active}
                     style={{
-                      flexShrink: 0, width: 44, padding: '7px 4px',
-                      background: active ? 'rgba(99,102,241,.2)' : 'rgba(255,255,255,.04)',
-                      border: active
-                        ? '1px solid rgba(99,102,241,.5)'
-                        : '1px solid rgba(255,255,255,.07)',
-                      borderRadius: 10, textAlign: 'center', cursor: 'pointer',
+                      flexShrink: 0, width: 52,
+                      padding: '10px 4px 8px',
+                      background: active ? PRIMARY_BG : 'rgba(255,255,255,.04)',
+                      border: `1.5px solid ${active ? PRIMARY_BORDER : BORDER}`,
+                      borderRadius: 14, textAlign: 'center', cursor: 'pointer',
+                      transition: 'all .15s ease',
                     }}
                   >
-                    <div style={{ fontSize: 8, color: active ? '#a5b4fc' : 'rgba(255,255,255,.3)' }}>
-                      {d.dayAbbr}
+                    <div style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: active ? '#93c5fd' : TEXT3,
+                      fontFamily: 'Inter, sans-serif',
+                      marginBottom: 4,
+                    }}>
+                      {isToday ? 'TODAY' : d.dayAbbr.toUpperCase()}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 13, marginTop: 2,
-                        fontWeight: active ? 800 : 700,
-                        color: active ? '#fff' : 'rgba(255,255,255,.4)',
-                      }}
-                    >
+                    <div style={{
+                      fontSize: 18, fontWeight: 800, lineHeight: 1,
+                      fontFamily: '"Plus Jakarta Sans", sans-serif',
+                      color: active ? TEXT1 : 'rgba(255,255,255,.45)',
+                    }}>
                       {d.dayNum}
                     </div>
                   </button>
@@ -310,56 +386,68 @@ export function TripPlanningCard({ onClose, onRequestPinDrop, pinDropResult, pin
           </div>
 
           {/* Recommended start time */}
-          <div
-            style={{
-              background: 'rgba(99,102,241,.1)',
-              border: '1px solid rgba(99,102,241,.25)',
-              borderRadius: 11, padding: '9px 12px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 8, color: '#818cf8',
-                  textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
-                }}
-              >
-                ⚡ Recommended start
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '14px 16px',
+            background: 'rgba(59,130,246,.06)',
+            border: `1px solid ${PRIMARY_BORDER}`,
+            borderRadius: 16,
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: PRIMARY_BG,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span className="ms" style={{ fontSize: 20, color: PRIMARY }}>schedule</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+                textTransform: 'uppercase', color: '#60a5fa',
+                fontFamily: 'Inter, sans-serif', marginBottom: 3,
+              }}>
+                Recommended start
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#c7d2fe' }}>
+              <div style={{
+                fontSize: 18, fontWeight: 800, color: TEXT1, lineHeight: 1,
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+              }}>
                 {startTimeDisplay}
               </div>
             </div>
-            <div
-              style={{
-                fontSize: 9, color: 'rgba(255,255,255,.3)',
-                textAlign: 'right', lineHeight: 1.5,
-              }}
-            >
+            <div style={{
+              fontSize: 11, color: TEXT3, textAlign: 'right', lineHeight: 1.6,
+              fontFamily: 'Inter, sans-serif',
+            }}>
               Based on {placesCount} place{placesCount !== 1 ? 's' : ''}<br />
               + opening hours
             </div>
           </div>
         </div>
 
-        {/* ── CTA ──────────────────────────────────────── */}
-        <div style={{ padding: 14 }}>
+        {/* ── CTA ──────────────────────────────────────────────── */}
+        <div style={{ padding: 20 }}>
           <button
             onClick={() => handleBuild(pinDropResult)}
             disabled={!canBuild}
             style={{
-              width: '100%',
+              width: '100%', height: 54,
               background: canBuild
-                ? 'linear-gradient(135deg, #4f46e5, #7c3aed)'
-                : 'rgba(255,255,255,.08)',
-              borderRadius: 14, padding: 12,
-              fontSize: 12, fontWeight: 800,
-              color: canBuild ? '#fff' : 'rgba(255,255,255,.3)',
-              letterSpacing: 0.3, border: 'none', cursor: canBuild ? 'pointer' : 'default',
+                ? `linear-gradient(135deg, ${PRIMARY}, #2563eb)`
+                : 'rgba(255,255,255,.06)',
+              border: 'none',
+              borderRadius: 16, cursor: canBuild ? 'pointer' : 'default',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontSize: 15, fontWeight: 800,
+              color: canBuild ? '#fff' : 'rgba(255,255,255,.25)',
+              letterSpacing: 0.2,
+              boxShadow: canBuild ? `0 4px 24px rgba(59,130,246,.35)` : 'none',
+              transition: 'all .2s ease',
             }}
           >
-            Build my itinerary ✦
+            <span className="ms" style={{ fontSize: 20 }}>auto_fix</span>
+            Build my itinerary
           </button>
         </div>
       </div>
