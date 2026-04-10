@@ -241,11 +241,11 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
           </button>
         </div>
 
-        {/* Scrollable body */}
+        {/* Scrollable body — minHeight:0 is required for flex child to actually scroll */}
         <div style={{
           overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          padding: `16px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)`,
-          flex: 1,
+          padding: `16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)`,
+          flex: 1, minHeight: 0,
         }}>
 
           {/* Title + category */}
