@@ -12,6 +12,8 @@ import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
+import { JourneyBreadcrumb } from './JourneyBreadcrumb';
+import { getJourneyCities } from './journey-utils';
 
 // ── Nominatim place search ──────────────────────────────────────
 
@@ -268,6 +270,7 @@ export function MapScreen() {
       category,
       lat,
       lon,
+      _city: city,
     };
     dispatch({ type: 'MERGE_PLACES', places: [place] });
     setActivePlace(place);
@@ -415,6 +418,11 @@ export function MapScreen() {
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={handleFilterSelect} />
+        </div>
+
+        {/* Journey breadcrumb */}
+        <div style={{ pointerEvents: 'auto' }}>
+          <JourneyBreadcrumb cities={getJourneyCities(selectedPlaces)} />
         </div>
       </div>
 
