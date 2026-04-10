@@ -5,6 +5,7 @@ import type { ItineraryRequest } from '../../shared/api';
 import type { SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
 import { syncSavedItinerary, incrementGenerationCount } from '../../shared/userSync';
+import { computeTotalDays, addDaysToIso } from '../map/trip-capacity-utils';
 
 export function useRoute() {
   const { state, dispatch } = useAppStore();
@@ -29,49 +30,60 @@ export function useRoute() {
     setLoading(true);
     setError(null);
     const placesToUse = overridePlaces ?? state.selectedPlaces;
+
+    // Compute trip length from travel dates (falls back to tripContext.days for single-day compat)
+    const totalDays = computeTotalDays(state.travelStartDate, state.travelEndDate);
+    const days      = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
+    const startDate = state.travelStartDate ?? state.tripContext.date;
+
     try {
-      // For multi-day trips, each day's travel_date = base date + (dayNumber - 1)
-      const baseDate = state.tripContext.date;
-      const dayOffset = (state.tripContext.dayNumber ?? 1) - 1;
-      let travelDate = baseDate;
-      if (dayOffset > 0 && baseDate) {
-        const d = new Date(baseDate + 'T12:00:00');
-        d.setDate(d.getDate() + dayOffset);
-        travelDate = d.toISOString().slice(0, 10);
+      const buildDay = async (dayNumber: number) => {
+        const travelDate = addDaysToIso(startDate, dayNumber - 1);
+        const body: ItineraryRequest = {
+          city:               state.city,
+          lat:                state.cityGeo!.lat,
+          lon:                state.cityGeo!.lon,
+          days,
+          day_number:         dayNumber,
+          pace:               state.persona!.pace ?? 'any',
+          persona:            state.persona!.archetype,
+          persona_archetype:  state.persona!.archetype_name,
+          persona_context:    state.persona!.insight ?? '',
+          trip_context: {
+            start_type:    state.tripContext.startType,
+            arrival_time:  state.tripContext.arrivalTime,
+            travel_date:   travelDate,
+            total_days:    days,
+            flight_time:   state.tripContext.flightTime,
+            is_long_haul:  state.tripContext.isLongHaul,
+            location_lat:  state.tripContext.locationLat,
+            location_lon:  state.tripContext.locationLon,
+            location_name: state.tripContext.locationName,
+          },
+          selected_places: placesToUse.map(p => ({
+            id: p.id, title: p.title, lat: p.lat, lon: p.lon,
+          })),
+        };
+        const result = await api.aiItinerary(body);
+        if (!result || (result as any).error) {
+          throw new Error((result as any)?.error || 'Invalid response from server');
+        }
+        return result;
+      };
+
+      if (days > 1) {
+        const allResults = await Promise.all(
+          Array.from({ length: days }, (_, i) => buildDay(i + 1))
+        );
+        dispatch({ type: 'SET_ITINERARY_DAYS', days: allResults });
+        dispatch({ type: 'SET_ITINERARY', itinerary: allResults[0] }); // backward compat
+      } else {
+        const result = await buildDay(1);
+        dispatch({ type: 'SET_ITINERARY',      itinerary: result });
+        dispatch({ type: 'SET_ITINERARY_DAYS', days: [result] });
       }
 
-      const body: ItineraryRequest = {
-        city: state.city,
-        lat: state.cityGeo.lat,
-        lon: state.cityGeo.lon,
-        days: state.tripContext.days,
-        day_number: state.tripContext.dayNumber,
-        pace: state.persona!.pace ?? 'any',
-        persona: state.persona!.archetype,
-        persona_archetype: state.persona!.archetype_name,
-        persona_context: state.persona!.insight ?? '',
-        trip_context: {
-          start_type: state.tripContext.startType,
-          arrival_time: state.tripContext.arrivalTime,
-          travel_date: travelDate,
-          total_days: state.tripContext.days,
-          flight_time: state.tripContext.flightTime,
-          is_long_haul: state.tripContext.isLongHaul,
-          location_lat: state.tripContext.locationLat,
-          location_lon: state.tripContext.locationLon,
-          location_name: state.tripContext.locationName,
-        },
-        selected_places: placesToUse.map(p => ({
-          id: p.id, title: p.title, lat: p.lat, lon: p.lon,
-        })),
-      };
-      const result = await api.aiItinerary(body);
-      if (!result || (result as any).error) {
-        throw new Error((result as any)?.error || 'Invalid response from server');
-      }
-      dispatch({ type: 'SET_ITINERARY', itinerary: result });
       dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
-      // Persist count to Supabase if signed in
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) incrementGenerationCount(user.id).catch(console.warn);
       });
@@ -153,6 +165,7 @@ export function useRoute() {
     tab,
     setTab,
     itinerary,
+    itineraryDays: state.itineraryDays,
     weather,
     city,
     selectedPlaces,
