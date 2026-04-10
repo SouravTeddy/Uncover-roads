@@ -78,6 +78,7 @@ export interface GeoData {
   lat: number;
   lon: number;
   bbox: [number, number, number, number]; // south, north, west, east
+  country?: string;   // ISO country name from Nominatim
 }
 
 // ── Places / Map ──────────────────────────────────────────────
@@ -99,6 +100,8 @@ export interface Place {
   open_now?: boolean;
   photo_ref?: string;
   price_level?: number;
+  // Journey mode — city context stamped on fetch
+  _city?: string;
 }
 
 // ── Trip context ──────────────────────────────────────────────
