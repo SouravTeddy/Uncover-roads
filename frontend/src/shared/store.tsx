@@ -48,6 +48,9 @@ export interface AppState {
   activeFilter: MapFilter | 'all';
   tripContext: TripContext;
   itinerary: Itinerary | null;
+  itineraryDays: Itinerary[];
+  travelStartDate: string | null;
+  travelEndDate: string | null;
   weather: WeatherData | null;
   route: RouteData | null;
   savedItineraries: SavedItinerary[];
@@ -129,7 +132,10 @@ export const initialState: AppState = {
   selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
   activeFilter:   ssGet<MapFilter | 'all'>('ur_ss_filter') ?? 'all',
   tripContext: defaultTripCtx,
-  itinerary: ssGet<Itinerary>('ur_ss_itinerary') ?? null,
+  itinerary:       ssGet<Itinerary>('ur_ss_itinerary')         ?? null,
+  itineraryDays:   ssGet<Itinerary[]>('ur_ss_itin_days')       ?? [],
+  travelStartDate: ssGet<string>('ur_ss_start_date')           ?? null,
+  travelEndDate:   ssGet<string>('ur_ss_end_date')             ?? null,
   weather: ssGet<WeatherData>('ur_ss_weather') ?? null,
   route: null,
   savedItineraries: getStoredItineraries(),
@@ -153,6 +159,8 @@ export type Action =
   | { type: 'SET_FILTER'; filter: MapFilter | 'all' }
   | { type: 'SET_TRIP_CONTEXT'; ctx: Partial<TripContext> }
   | { type: 'SET_ITINERARY'; itinerary: Itinerary | null }
+  | { type: 'SET_ITINERARY_DAYS'; days: Itinerary[] }
+  | { type: 'SET_TRAVEL_DATES'; startDate: string; endDate: string }
   | { type: 'SET_WEATHER'; weather: WeatherData }
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
@@ -233,6 +241,15 @@ function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_itinerary', action.itinerary);
       return { ...state, itinerary: action.itinerary };
 
+    case 'SET_ITINERARY_DAYS':
+      ssSave('ur_ss_itin_days', action.days);
+      return { ...state, itineraryDays: action.days };
+
+    case 'SET_TRAVEL_DATES':
+      ssSave('ur_ss_start_date', action.startDate);
+      ssSave('ur_ss_end_date', action.endDate);
+      return { ...state, travelStartDate: action.startDate, travelEndDate: action.endDate };
+
     case 'SET_WEATHER':
       ssSave('ur_ss_weather', action.weather);
       return { ...state, weather: action.weather };
@@ -276,8 +293,16 @@ function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_places', []);
       ssSave('ur_ss_sel', []);
       ssSave('ur_ss_itinerary', null);
+      ssSave('ur_ss_itin_days', []);
+      ssSave('ur_ss_start_date', null);
+      ssSave('ur_ss_end_date', null);
       ssSave('ur_ss_weather', null);
-      return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };
+      return {
+        ...state,
+        city: '', cityGeo: null, places: [], selectedPlaces: [],
+        itinerary: null, itineraryDays: [], travelStartDate: null,
+        travelEndDate: null, route: null, weather: null,
+      };
 
     default:
       return state;
