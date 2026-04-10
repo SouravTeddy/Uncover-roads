@@ -7,6 +7,7 @@ import { AmbientVideo } from './AmbientVideo';
 import { SCENE_GENERATING } from './sceneMap';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
+import { addDaysToIso } from '../map/trip-capacity-utils';
 
 
 export function RouteScreen() {
@@ -16,6 +17,7 @@ export function RouteScreen() {
     tab,
     setTab,
     itinerary,
+    itineraryDays,
     weather,
     city,
     selectedPlaces,
@@ -111,6 +113,145 @@ export function RouteScreen() {
           <div className="flex-1 overflow-y-auto px-4 pb-10 pt-2">
             <SavedList items={savedItineraries} onOpen={() => {}} />
           </div>
+        </div>
+      </>
+    );
+  }
+
+  // Multi-day view — itineraryDays has >1 day
+  if (itineraryDays.length > 1) {
+    const startIso = state.travelStartDate ?? state.tripContext.date;
+    return (
+      <>
+        <AmbientVideo src={currentScene} timeMins={(() => {
+          const t = tripContext.arrivalTime ?? '9:00';
+          const [h, m] = t.split(':').map(Number);
+          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
+        })()} />
+        <div
+          className="fixed inset-0 overflow-y-auto"
+          style={{ zIndex: 25, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: '0 20px 16px',
+              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+              background: 'rgba(10,14,20,0.82)',
+              backdropFilter: 'blur(16px)',
+              position: 'sticky', top: 0, zIndex: 10,
+              borderBottom: '1px solid rgba(255,255,255,.06)',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}
+          >
+            <button
+              onClick={goBack}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,.07)',
+                border: '1px solid rgba(255,255,255,.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              <span className="ms" style={{ fontSize: 18, color: '#94a3b8' }}>arrow_back</span>
+            </button>
+            <div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: 2,
+                textTransform: 'uppercase', color: '#3b82f6',
+                fontFamily: 'Inter, sans-serif', marginBottom: 2,
+              }}>
+                Your trip
+              </div>
+              <div style={{
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                fontSize: 18, fontWeight: 800, color: '#f1f5f9',
+              }}>
+                {city} · {itineraryDays.length} days
+              </div>
+            </div>
+          </div>
+
+          {/* Day sections */}
+          {itineraryDays.map((dayItinerary, dayIdx) => {
+            const dayDate = addDaysToIso(startIso, dayIdx);
+            const dayLabel = new Date(dayDate + 'T12:00:00').toLocaleDateString('en-US', {
+              weekday: 'short', month: 'short', day: 'numeric',
+            });
+            return (
+              <div key={dayIdx} style={{ padding: '0 16px' }}>
+                {/* Day divider */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  margin: '24px 0 16px',
+                }}>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
+                  <div style={{
+                    fontFamily: '"Plus Jakarta Sans", sans-serif',
+                    fontSize: 13, fontWeight: 700, color: '#cbd5e1',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    Day {dayIdx + 1} · {dayLabel}
+                  </div>
+                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
+                </div>
+
+                {/* Stop cards */}
+                {dayItinerary.itinerary.map((stop, stopIdx) => (
+                  <div
+                    key={stopIdx}
+                    style={{
+                      background: '#141921',
+                      border: '1px solid rgba(255,255,255,.08)',
+                      borderRadius: 16,
+                      padding: '14px 16px',
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                        background: 'rgba(59,130,246,.12)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <span className="ms" style={{ fontSize: 17, color: '#3b82f6' }}>place</span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2,
+                        }}>
+                          {stop.time && (
+                            <span style={{
+                              fontSize: 11, fontWeight: 700, color: '#93c5fd',
+                              fontFamily: 'Inter, sans-serif',
+                            }}>
+                              {stop.time}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{
+                          fontFamily: '"Plus Jakarta Sans", sans-serif',
+                          fontSize: 15, fontWeight: 700, color: '#f1f5f9',
+                          marginBottom: stop.tip ? 4 : 0,
+                        }}>
+                          {stop.place}
+                        </div>
+                        {stop.tip && (
+                          <div style={{
+                            fontSize: 12, color: '#8e9099',
+                            fontFamily: 'Inter, sans-serif', lineHeight: 1.5,
+                          }}>
+                            {stop.tip}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </>
     );
