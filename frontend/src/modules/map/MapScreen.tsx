@@ -307,7 +307,7 @@ export function MapScreen() {
     : null;
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: awaitingPinDrop ? 35 : 10 }}>
+    <div className="fixed inset-0" style={{ zIndex: (awaitingPinDrop || !!activePlace) ? 35 : 10 }}>
 
       {/* Map — full screen */}
       <MapLibreMap
