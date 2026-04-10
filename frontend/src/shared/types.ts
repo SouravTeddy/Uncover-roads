@@ -99,6 +99,8 @@ export interface Place {
   open_now?: boolean;
   photo_ref?: string;
   price_level?: number;
+  // Journey mode — city context stamped on fetch
+  _city?: string;
 }
 
 // ── Trip context ──────────────────────────────────────────────
