@@ -504,50 +504,50 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Pin card + itinerary bar */}
-      {(activePlace || selectedPlaces.length >= 2) && (
+      {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
+      {activePlace && (
+        <PinCard
+          place={activePlace}
+          city={city}
+          isSelected={selectedIds.has(activePlace.id)}
+          onAdd={() => togglePlace(activePlace)}
+          onClose={() => { setActivePlace(null); clearDetails(); }}
+          details={details}
+        />
+      )}
+
+      {/* Itinerary bar — shown only when no pin sheet is open */}
+      {!activePlace && selectedPlaces.length >= 2 && (
         <div
-          className="absolute inset-x-4 flex flex-col gap-2"
+          className="absolute inset-x-4"
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
         >
-          {activePlace && (
-            <PinCard
-              place={activePlace}
-              city={city}
-              isSelected={selectedIds.has(activePlace.id)}
-              onAdd={() => togglePlace(activePlace)}
-              onClose={() => { setActivePlace(null); clearDetails(); }}
-              details={details}
-            />
-          )}
-          {selectedPlaces.length >= 2 && (
-            <div
-              className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
-              style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex -space-x-1.5">
-                  {selectedPlaces.slice(0, 5).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-4 h-4 rounded-full border-2"
-                      style={{ background: '#ffffff', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
-                    />
-                  ))}
-                </div>
-                <span className="text-text-1 text-sm font-semibold">{selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}</span>
-                <span className="text-text-3 text-xs">added</span>
+          <div
+            className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
+            style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
+          >
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex -space-x-1.5">
+                {selectedPlaces.slice(0, 5).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-4 h-4 rounded-full border-2"
+                    style={{ background: '#ffffff', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
+                  />
+                ))}
               </div>
-              <button
-                onClick={() => setShowTripSheet(true)}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
-                style={{ fontSize: 12 }}
-              >
-                <span className="ms fill" style={{ fontSize: 14 }}>auto_fix</span>
-                Build Itinerary
-              </button>
+              <span className="text-text-1 text-sm font-semibold">{selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}</span>
+              <span className="text-text-3 text-xs">added</span>
             </div>
-          )}
+            <button
+              onClick={() => setShowTripSheet(true)}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
+              style={{ fontSize: 12 }}
+            >
+              <span className="ms fill" style={{ fontSize: 14 }}>auto_fix</span>
+              Build Itinerary
+            </button>
+          </div>
         </div>
       )}
 
