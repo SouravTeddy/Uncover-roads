@@ -72,10 +72,13 @@ export interface PersonaResponse {
 // ── Client-side Overpass fallback ────────────────────────────────────────────
 // Used when backend /map-data returns empty (e.g. no Google API key on server)
 
+// openstreetmap.fr excluded — no CORS header on responses
+// osm.ch returns 0 elements with GET (URL-decoding issue with regex ~)
+// POST with application/x-www-form-urlencoded is a CORS simple request — no preflight needed
 const OVERPASS_MIRRORS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.openstreetmap.fr/api/interpreter',
-  'https://overpass.osm.ch/api/interpreter',
+  'https://overpass-api.de/api/interpreter',       // main; CORS OK; slow from Asia but reliable
+  'https://overpass.private.coffee/api/interpreter', // community mirror; CORS OK
+  'https://overpass.osm.ch/api/interpreter',        // Swiss mirror; works with POST
 ];
 
 function _overpassCategory(tags: Record<string, string>): string {
@@ -98,8 +101,14 @@ async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number):
   for (const endpoint of OVERPASS_MIRRORS) {
     try {
       console.log(`[Overpass] trying ${endpoint}`);
-      const url = `${endpoint}?data=${encodeURIComponent(query)}`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(18_000) });
+      // POST with application/x-www-form-urlencoded = CORS simple request (no preflight)
+      // Also avoids GET URL-length/decoding issues with regex ~ operator
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: AbortSignal.timeout(25_000),
+      });
       console.log(`[Overpass] ${endpoint} → ${res.status}`);
       if (!res.ok) continue;
       const text = await res.text();
@@ -108,6 +117,7 @@ async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number):
         continue;
       }
       const data = JSON.parse(text);
+      if (data.remark) console.warn(`[Overpass] remark: ${data.remark}`);
       const elements: unknown[] = Array.isArray(data.elements) ? data.elements : [];
       console.log(`[Overpass] ${endpoint} → ${elements.length} elements`);
 
