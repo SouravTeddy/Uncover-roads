@@ -19,7 +19,6 @@ const PRIMARY  = '#3b82f6';
 const PRIMARY_BG = 'rgba(59,130,246,.12)';
 const PRIMARY_BORDER = 'rgba(59,130,246,.25)';
 const TEXT1 = '#f1f5f9';
-const TEXT2 = '#cbd5e1';
 const TEXT3 = '#8e9099';
 const BORDER = 'rgba(255,255,255,.08)';
 
@@ -69,9 +68,6 @@ export function TripPlanningCard({
   }
 
   if (typeof document === 'undefined') return null;
-
-  // TEXT2 is used for secondary text in location results
-  void TEXT2;
 
   return createPortal(
     <>
