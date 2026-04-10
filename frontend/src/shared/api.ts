@@ -95,7 +95,12 @@ function _overpassCategory(tags: Record<string, string>): string {
   return 'place';
 }
 
-async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number): Promise<Place[]> {
+async function _fetchOverpassMapData(
+  lat: number,
+  lon: number,
+  radiusM: number,
+  city = '',
+): Promise<Place[]> {
   const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:${radiusM},${lat},${lon});node["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});way["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});node["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});node["historic"]["name"](around:${radiusM},${lat},${lon}););out center 200;`;
 
   for (const endpoint of OVERPASS_MIRRORS) {
@@ -142,6 +147,7 @@ async function _fetchOverpassMapData(lat: number, lon: number, radiusM: number):
           lat: elLat,
           lon: elLon,
           category: _overpassCategory(tags) as Place['category'],
+          _city: city,
           tags: {
             opening_hours: tags.opening_hours ?? '',
             website: tags.website ?? '',
@@ -178,14 +184,17 @@ export async function mapData(
     if (res.ok) {
       const data: Place[] = await res.json();
       console.log(`[mapData] backend returned ${data.length} places`);
-      if (data.length > 0) return data;
+      if (data.length > 0) {
+        // Stamp _city on backend results (backend doesn't set it)
+        return data.map(p => ({ ...p, _city: p._city ?? city }));
+      }
     }
   } catch (err) {
     console.error('[mapData] backend fetch failed:', err);
   }
   // Backend returned empty or failed — call Overpass directly from browser
   console.log('[mapData] falling back to client-side Overpass');
-  return _fetchOverpassMapData(centerLat, centerLon, radiusM);
+  return _fetchOverpassMapData(centerLat, centerLon, radiusM, city);
 }
 
 export const api = {
