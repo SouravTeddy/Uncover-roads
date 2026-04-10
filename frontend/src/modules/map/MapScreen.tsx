@@ -14,6 +14,7 @@ import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities } from './journey-utils';
+import { TravelDateBar } from './TravelDateBar';
 
 // ── Nominatim place search ──────────────────────────────────────
 
@@ -414,6 +415,11 @@ export function MapScreen() {
             ))}
           </div>
         )}
+
+        {/* Travel date bar */}
+        <div style={{ pointerEvents: 'auto' }}>
+          <TravelDateBar />
+        </div>
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
