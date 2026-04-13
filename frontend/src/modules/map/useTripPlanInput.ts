@@ -6,8 +6,8 @@ import { getAllCachedDetails, getCachedPlaceIdKey } from './usePlaceDetails';
 import {
   computeRecommendedStartTime,
   formatTimeDisplay,
-  generateDateStrip,
 } from './trip-utils';
+import { computeTotalDays } from './trip-capacity-utils';
 
 export type StartChip = 'hotel' | 'airport' | 'pin';
 
@@ -25,10 +25,8 @@ function newSessionId() {
 export function useTripPlanInput() {
   const { state, dispatch } = useAppStore();
   const selectedPlaces = state.selectedPlaces;
-
-  // ── Date strip ─────────────────────────────────────────────────
-  const dates = useMemo(() => generateDateStrip(7), []);
-  const [selectedDate, setSelectedDate] = useState(dates[0].isoDate);
+  const travelStartDate = state.travelStartDate;
+  const travelEndDate   = state.travelEndDate;
 
   // ── Starting point ─────────────────────────────────────────────
   const [startChip, setStartChip] = useState<StartChip>('hotel');
@@ -48,8 +46,9 @@ export function useTripPlanInput() {
       if (!placeId) return undefined;
       return getAllCachedDetails().get(placeId);
     };
-    return computeRecommendedStartTime(selectedPlaces, getDetails, selectedDate);
-  }, [selectedPlaces, selectedDate]);
+    const dateForCalc = travelStartDate ?? new Date().toISOString().split('T')[0];
+    return computeRecommendedStartTime(selectedPlaces, getDetails, dateForCalc);
+  }, [selectedPlaces, travelStartDate]);
 
   const startTimeDisplay = formatTimeDisplay(startTime);
 
@@ -98,8 +97,7 @@ export function useTripPlanInput() {
     sessionIdRef.current = newSessionId();
   }, []);
 
-  // Always true in practice — starting-point is optional per spec; place-selection guard is upstream.
-  const canBuild = !!selectedDate;
+  const canBuild = selectedPlaces.length >= 1;
 
   const handleBuild = useCallback((pinDropResult?: { lat: number; lon: number } | null) => {
     const locationLat = pinDropResult?.lat ?? selectedLocation?.lat ?? null;
@@ -108,14 +106,19 @@ export function useTripPlanInput() {
       ? 'Custom pin'
       : selectedLocation?.name ?? (locationQuery.trim() || null);
 
-    dispatch({ type: 'SET_ITINERARY', itinerary: null });
+    const totalDays = computeTotalDays(travelStartDate, travelEndDate);
+    const days      = totalDays > 0 ? totalDays : 1;
+    const startDate = travelStartDate ?? new Date().toISOString().split('T')[0];
+
+    dispatch({ type: 'SET_ITINERARY',      itinerary: null });
+    dispatch({ type: 'SET_ITINERARY_DAYS', days: [] });
     dispatch({
       type: 'SET_TRIP_CONTEXT',
       ctx: {
-        date:        selectedDate,
+        date:        startDate,
         startType:   startChip === 'pin' ? 'pin' : startChip,
-        arrivalTime: startTime, // app-recommended start time
-        days:        1,
+        arrivalTime: startTime,
+        days,
         dayNumber:   1,
         locationLat,
         locationLon,
@@ -125,13 +128,9 @@ export function useTripPlanInput() {
       },
     });
     dispatch({ type: 'GO_TO', screen: 'route' });
-  }, [dispatch, selectedDate, startChip, startTime, selectedLocation, locationQuery]);
+  }, [dispatch, travelStartDate, travelEndDate, startChip, startTime, selectedLocation, locationQuery]);
 
   return {
-    // date strip
-    dates,
-    selectedDate,
-    setSelectedDate,
     // starting point
     startChip,
     handleChipChange,
