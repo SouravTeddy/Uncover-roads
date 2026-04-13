@@ -4,11 +4,11 @@ import type { AppState } from './store';
 import type { Itinerary } from './types';
 
 const mockDay1: Itinerary = {
-  itinerary: [{ day: 1, time: '9:00 AM', place: 'Museum', duration: '2h', category: 'museum', tip: 'Go early', transit_to_next: '10 min walk', tags: [] }],
+  itinerary: [{ day: 1, time: '9:00 AM', place: 'Museum', duration: '2h', tip: 'Go early', transit_to_next: '10 min walk', tags: [] }],
   summary: { total_places: 1, best_transport: 'walk', pro_tip: 'tip', conflict_notes: '', suggested_start_time: '9:00 AM', day_narrative: 'Calm day' },
 };
 const mockDay2: Itinerary = {
-  itinerary: [{ day: 2, time: '10:00 AM', place: 'Park', duration: '1h', category: 'park', tip: 'Bring water', transit_to_next: '5 min walk', tags: [] }],
+  itinerary: [{ day: 2, time: '10:00 AM', place: 'Park', duration: '1h', tip: 'Bring water', transit_to_next: '5 min walk', tags: [] }],
   summary: { total_places: 1, best_transport: 'walk', pro_tip: 'tip2', conflict_notes: '', suggested_start_time: '10:00 AM', day_narrative: 'Outdoor day' },
 };
 
