@@ -201,6 +201,7 @@ export interface ItineraryStop {
   duration?: string;
   transit_to_next?: string;
   tags?: string[];
+  category?: string;
 }
 
 export interface ItinerarySummary {
