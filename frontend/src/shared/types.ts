@@ -5,7 +5,8 @@ export type Screen =
   | 'login'
   | 'welcome'
   | 'walkthrough'
-  | 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5'
+  | 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5' | 'ob6' | 'ob7'
+  | 'ob8' | 'ob9' | 'ob10'
   | 'persona'
   | 'destination'
   | 'map'
@@ -13,6 +14,75 @@ export type Screen =
   | 'trips'
   | 'nav'
   | 'profile';
+
+// ── New OB answer types ───────────────────────────────────────
+export type OBGroup    = 'solo' | 'couple' | 'family' | 'friends';
+export type OBMood     = 'explore' | 'relax' | 'eat_drink' | 'culture';
+export type OBPace     = 'slow' | 'balanced' | 'pack' | 'spontaneous';
+export type OBDayOpen  = 'coffee' | 'breakfast' | 'straight' | 'grab_go';
+export type OBDietary  = 'none' | 'plant_based' | 'halal' | 'kosher' | 'allergy';
+export type OBBudget   = 'budget' | 'mid_range' | 'comfortable' | 'luxury';
+export type OBEvening  = 'bars' | 'dinner_wind' | 'markets' | 'early';
+export type OBKidFocus = 'outdoor' | 'edu' | 'food' | 'slow';
+export type OBBudgetProtect = 'free_only' | 'one_splurge' | 'street_food' | 'local_transport';
+export type OBFoodScene = 'street' | 'restaurant' | 'cafe' | 'bars';
+export type SocialFlag  = 'solo' | 'couple' | 'family' | 'group' | 'kids';
+export type DietaryFlag = 'vegan_boost' | 'meat_flag' | 'halal_certified_only'
+                        | 'kosher_certified_only' | 'allergy_warning';
+
+export interface RawOBAnswers {
+  group:          OBGroup | null;
+  mood:           OBMood[];           // multi-choice, up to 3
+  pace:           OBPace[];           // multi-choice, up to 2
+  day_open:       OBDayOpen | null;
+  dietary:        OBDietary[];        // multi-choice, all selectable
+  budget:         OBBudget | null;
+  evening:        OBEvening | null;
+  // conditional
+  kid_focus?:     OBKidFocus | null;
+  budget_protect?: OBBudgetProtect | null;
+  food_scene?:    OBFoodScene | null;
+}
+
+export interface ResolvedConflict {
+  conflict_id: 'C1' | 'C2' | 'C3' | 'C4';
+  method:      'user_pick' | 'suggestion' | 'auto_blend';
+  winner?:     string;
+  score?:      number;
+}
+
+export type VenueType =
+  | 'neighbourhood' | 'landmark' | 'viewpoint'
+  | 'park' | 'spa' | 'cafe' | 'restaurant'
+  | 'market' | 'street_food' | 'museum'
+  | 'heritage' | 'gallery' | 'romantic'
+  | 'table_for_2' | 'family' | 'communal'
+  | 'social' | 'group_booking';
+
+export interface PersonaProfile {
+  // Resolved itinerary params
+  stops_per_day:    number;
+  time_per_stop:    number;
+  venue_weights:    Partial<Record<VenueType, number>>;
+  price_min:        1 | 2 | 3 | 4;
+  price_max:        1 | 2 | 3 | 4;
+  flexibility:      number;
+  day_open:         OBDayOpen;
+  day_buffer_min:   number;
+  evening_type:     OBEvening;
+  evening_end_time: string;
+  social_flags:     SocialFlag[];
+  dietary:          DietaryFlag[];
+  // Conditional
+  kid_focus?:       OBKidFocus;
+  budget_protect?:  OBBudgetProtect;
+  food_scene?:      OBFoodScene;
+  // Archetype
+  archetype:        string;
+  // Resolution metadata
+  resolved_conflicts: ResolvedConflict[];
+  auto_blend:       boolean;
+}
 
 // ── Onboarding answers ────────────────────────────────────────
 export type Ritual = 'coffee' | 'tea' | 'alcohol' | 'neither';

@@ -6,7 +6,10 @@ import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
-import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
+import {
+  OB1Group, OB2Mood, OB3Pace, OB4DayOpen, OB5Dietary,
+  OB6Budget, OB7Evening, OB8KidFocus, OB9BudgetProtect, OB10FoodScene,
+} from './modules/onboarding';
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
 import { MapScreen } from './modules/map';
@@ -103,11 +106,16 @@ function ScreenRouter() {
       {currentScreen === 'login'        && <LoginScreen />}
       {currentScreen === 'welcome'      && <WelcomeBackScreen />}
       {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
-      {currentScreen === 'ob1'          && <OB1Ritual />}
-      {currentScreen === 'ob2'         && <OB2Motivation />}
-      {currentScreen === 'ob3'         && <OB3Style />}
-      {currentScreen === 'ob4'         && <OB4LocationType />}
-      {currentScreen === 'ob5'         && <OB5Pace />}
+      {currentScreen === 'ob1'          && <OB1Group />}
+      {currentScreen === 'ob2'          && <OB2Mood />}
+      {currentScreen === 'ob3'          && <OB3Pace />}
+      {currentScreen === 'ob4'          && <OB4DayOpen />}
+      {currentScreen === 'ob5'          && <OB5Dietary />}
+      {currentScreen === 'ob6'          && <OB6Budget />}
+      {currentScreen === 'ob7'          && <OB7Evening />}
+      {currentScreen === 'ob8'          && <OB8KidFocus />}
+      {currentScreen === 'ob9'          && <OB9BudgetProtect />}
+      {currentScreen === 'ob10'         && <OB10FoodScene />}
       {currentScreen === 'persona'     && <PersonaScreen />}
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}
