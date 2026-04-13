@@ -48,7 +48,7 @@ export interface AppState {
   activeFilter: MapFilter | 'all';
   tripContext: TripContext;
   itinerary: Itinerary | null;
-  itineraryDays: Itinerary[];
+  itineraryDays: (Itinerary | null)[];
   travelStartDate: string | null;
   travelEndDate: string | null;
   weather: WeatherData | null;
@@ -133,7 +133,7 @@ export const initialState: AppState = {
   activeFilter:   ssGet<MapFilter | 'all'>('ur_ss_filter') ?? 'all',
   tripContext: defaultTripCtx,
   itinerary:       ssGet<Itinerary>('ur_ss_itinerary')         ?? null,
-  itineraryDays:   ssGet<Itinerary[]>('ur_ss_itin_days')       ?? [],
+  itineraryDays:   ssGet<(Itinerary | null)[]>('ur_ss_itin_days') ?? [],
   travelStartDate: ssGet<string>('ur_ss_start_date')           ?? null,
   travelEndDate:   ssGet<string>('ur_ss_end_date')             ?? null,
   weather: ssGet<WeatherData>('ur_ss_weather') ?? null,
@@ -159,7 +159,8 @@ export type Action =
   | { type: 'SET_FILTER'; filter: MapFilter | 'all' }
   | { type: 'SET_TRIP_CONTEXT'; ctx: Partial<TripContext> }
   | { type: 'SET_ITINERARY'; itinerary: Itinerary | null }
-  | { type: 'SET_ITINERARY_DAYS'; days: Itinerary[] }
+  | { type: 'SET_ITINERARY_DAYS'; days: (Itinerary | null)[] }
+  | { type: 'APPEND_ITINERARY_DAY'; day: Itinerary | null }
   | { type: 'SET_TRAVEL_DATES'; startDate: string; endDate: string }
   | { type: 'SET_WEATHER'; weather: WeatherData }
   | { type: 'SET_ROUTE'; route: RouteData }
@@ -173,7 +174,7 @@ export type Action =
 
 // ── Reducer ───────────────────────────────────────────────────
 
-function reducer(state: AppState, action: Action): AppState {
+export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'GO_TO':
       ssSave('ur_ss_screen', action.screen);
@@ -244,6 +245,12 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_ITINERARY_DAYS':
       ssSave('ur_ss_itin_days', action.days);
       return { ...state, itineraryDays: action.days };
+
+    case 'APPEND_ITINERARY_DAY': {
+      const updated = [...state.itineraryDays, action.day];
+      ssSave('ur_ss_itin_days', updated);
+      return { ...state, itineraryDays: updated };
+    }
 
     case 'SET_TRAVEL_DATES':
       ssSave('ur_ss_start_date', action.startDate);
