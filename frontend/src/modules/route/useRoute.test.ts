@@ -4,7 +4,7 @@ import type { ItineraryRequest } from '../../shared/api';
 import type { Itinerary } from '../../shared/types';
 
 const mockItinerary: Itinerary = {
-  itinerary: [{ day: 2, time: '9:00 AM', place: 'Park', duration: '1h', category: 'park', tip: 'Go early', transit_to_next: '5 min walk', tags: [] }],
+  itinerary: [{ day: 2, time: '9:00 AM', place: 'Park', duration: '1h', tip: 'Go early', transit_to_next: '5 min walk', tags: [] }],
   summary: { total_places: 1, best_transport: 'walk', pro_tip: 'tip', conflict_notes: '', suggested_start_time: '9:00 AM', day_narrative: 'Outdoor day' },
 };
 
