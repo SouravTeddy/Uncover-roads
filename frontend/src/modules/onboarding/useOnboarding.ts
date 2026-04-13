@@ -9,9 +9,8 @@ export function useOnboarding(step: ObStep) {
   // Build active step list: base steps + triggered conditional steps
   const rawAnswers = state.rawOBAnswers;
   const activeSteps: ObStep[] = [...BASE_OB_STEPS];
-  if (rawAnswers?.group === 'family')          activeSteps.push('ob8');
-  if (rawAnswers?.budget === 'budget')         activeSteps.push('ob9');
-  if (rawAnswers?.mood?.includes('eat_drink')) activeSteps.push('ob10');
+  if (rawAnswers?.group === 'family') activeSteps.push('ob8');
+  if (rawAnswers?.budget === 'budget') activeSteps.push('ob9');
 
   const currentIndex = activeSteps.indexOf(step);
   const totalSteps   = activeSteps.length;

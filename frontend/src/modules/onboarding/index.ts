@@ -7,6 +7,5 @@ export { OB6Budget }        from './OB6Budget';
 export { OB7Evening }       from './OB7Evening';
 export { OB8KidFocus }      from './OB8KidFocus';
 export { OB9BudgetProtect } from './OB9BudgetProtect';
-export { OB10FoodScene }    from './OB10FoodScene';
 export { OnboardingShell }  from './OnboardingShell';
 export { useOnboarding }    from './useOnboarding';
