@@ -4,7 +4,7 @@ import { ImageRowCard, ConflictPanel } from '../../shared/questionnaire';
 import { useAppStore } from '../../shared/store';
 import { resolveQ3Pace } from './ob-context-resolvers';
 import { detectHardConflict, scoreOptions, PACE_ALIGNMENT } from './ob-conflict-map';
-import type { OBPace, ResolvedConflict } from '../../shared/types';
+import type { OBPace, ResolvedConflict, RawOBAnswers } from '../../shared/types';
 
 const OPTIONS: { value: OBPace; label: string; description: string; imageUrl: string }[] = [
   { value: 'slow',        label: 'Slow & deep',    description: '2–3 stops/day · 90 min each · rest built in',
@@ -42,7 +42,7 @@ export function OB3Pace() {
   const suggestion = (() => {
     if (!conflict) return null;
     const accum: Record<string, number> = {};
-    const answers = state.rawOBAnswers ?? {};
+    const answers: Partial<RawOBAnswers> = state.rawOBAnswers ?? {};
     if (answers.mood?.includes('relax'))   accum['slow'] = 1.5;
     if (answers.mood?.includes('explore')) accum['spontaneous'] = 0.2;
     if (answers.group === 'solo')          accum['balanced'] = (accum['balanced'] ?? 0) + 0.1;
