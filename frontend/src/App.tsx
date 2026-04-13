@@ -8,7 +8,7 @@ import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/use
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import {
   OB1Group, OB2Mood, OB3Pace, OB4DayOpen, OB5Dietary,
-  OB6Budget, OB7Evening, OB8KidFocus, OB9BudgetProtect, OB10FoodScene,
+  OB6Budget, OB7Evening, OB8KidFocus, OB9BudgetProtect,
 } from './modules/onboarding';
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
@@ -123,7 +123,6 @@ function ScreenRouter() {
       {currentScreen === 'ob7'          && <OB7Evening />}
       {currentScreen === 'ob8'          && <OB8KidFocus />}
       {currentScreen === 'ob9'          && <OB9BudgetProtect />}
-      {currentScreen === 'ob10'         && <OB10FoodScene />}
       {currentScreen === 'persona'     && <PersonaScreen />}
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}

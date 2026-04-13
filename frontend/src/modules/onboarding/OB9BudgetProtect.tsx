@@ -20,7 +20,7 @@ export function OB9BudgetProtect() {
 
   return (
     <OnboardingShell step="ob9" canAdvance={value !== null}
-      title="What do you protect?"
+      title="Where do you draw the line?"
       subtitle="Sets your hard budget constraints.">
       <div className="flex flex-col gap-2">
         {OPTIONS.map(opt => (

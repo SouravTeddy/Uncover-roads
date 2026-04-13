@@ -6,7 +6,7 @@ export type Screen =
   | 'welcome'
   | 'walkthrough'
   | 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5' | 'ob6' | 'ob7'
-  | 'ob8' | 'ob9' | 'ob10'
+  | 'ob8' | 'ob9'
   | 'persona'
   | 'destination'
   | 'map'
