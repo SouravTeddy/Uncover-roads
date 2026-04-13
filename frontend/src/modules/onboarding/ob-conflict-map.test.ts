@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   HARD_CONFLICTS,
-  SOFT_CONFLICTS,
   PACE_ALIGNMENT,
-  PRICE_ALIGNMENT,
   ANSWER_WEIGHTS,
   detectHardConflict,
   scoreOptions,
