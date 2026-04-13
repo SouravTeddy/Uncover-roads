@@ -337,3 +337,33 @@ export async function fetchNearby(
   const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
+
+export async function* aiItineraryStream(
+  body: ItineraryRequest,
+): AsyncGenerator<Itinerary> {
+  const res = await fetch(`${BASE}/ai-itinerary-stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
+  });
+  if (!res.ok) throw new Error(`Stream ${res.status}`);
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed) yield JSON.parse(trimmed) as Itinerary;
+    }
+  }
+  // flush remaining buffer (last line without trailing newline)
+  if (buffer.trim()) yield JSON.parse(buffer.trim()) as Itinerary;
+}
