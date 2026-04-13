@@ -49,6 +49,7 @@ export function TripPlanningCard({
     });
   }
 
+
   // Entrance animation
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
