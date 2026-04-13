@@ -1,16 +1,21 @@
 import type { ReactNode } from 'react';
 import type { ObStep } from './types';
-import { OB_STEPS, STEP_TITLES, STEP_SUBTITLES } from './types';
+import { BASE_OB_STEPS, STEP_TITLES } from './types';
 import { useOnboarding } from './useOnboarding';
 
 interface Props {
-  step: ObStep;
+  step:       ObStep;
   canAdvance: boolean;
-  children: ReactNode;
+  children:   ReactNode;
+  title?:     string;
+  subtitle?:  string;
 }
 
-export function OnboardingShell({ step, canAdvance, children }: Props) {
+export function OnboardingShell({ step, canAdvance, children, title, subtitle }: Props) {
   const { progress, currentIndex, totalSteps, goBack, goNext, finish, isLast } = useOnboarding(step);
+
+  const displayTitle    = title    ?? STEP_TITLES[step] ?? '';
+  const displaySubtitle = subtitle ?? '';
 
   return (
     <div className="fixed inset-0 flex flex-col bg-bg" style={{ zIndex: 20 }}>
@@ -38,34 +43,21 @@ export function OnboardingShell({ step, canAdvance, children }: Props) {
 
       {/* Progress bar */}
       <div className="flex-shrink-0 h-1 bg-surface">
-        <div
-          className="h-full bg-primary transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
+        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
       </div>
 
       {/* Body */}
-      <div
-        className="flex-1 min-h-0 overflow-y-auto"
-        style={{ paddingBottom: '9rem' }}
-      >
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ paddingBottom: '9rem' }}>
         <div className="px-5 pt-6">
           <span className="text-text-3 text-xs font-medium tracking-wide uppercase">
             Step {String(currentIndex + 1).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
           </span>
           <h1 className="font-heading font-extrabold text-text-1 text-2xl mt-2 mb-1 tracking-tight">
-            {STEP_TITLES[step]}
+            {displayTitle}
           </h1>
-          <p className="text-text-2 text-sm mb-5">
-            {step === 'ob4' ? (
-              <>
-                What do you look forward to the most?{' '}
-                <span className="text-primary font-bold">Pick all that apply.</span>
-              </>
-            ) : (
-              STEP_SUBTITLES[step]
-            )}
-          </p>
+          {displaySubtitle && (
+            <p className="text-text-2 text-sm mb-5">{displaySubtitle}</p>
+          )}
           {children}
         </div>
       </div>
@@ -75,9 +67,9 @@ export function OnboardingShell({ step, canAdvance, children }: Props) {
         className="flex-shrink-0 bg-bg border-t border-white/6 px-5 py-4 flex items-center justify-between"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
       >
-        {/* Dots */}
+        {/* Step dots — base steps only */}
         <div className="flex gap-2">
-          {OB_STEPS.map((s, i) => (
+          {BASE_OB_STEPS.map((s, i) => (
             <div
               key={s}
               className={`rounded-full transition-all ${
@@ -102,9 +94,9 @@ export function OnboardingShell({ step, canAdvance, children }: Props) {
           }`}
         >
           {isLast ? (
-            <>Finish <span className="ms">auto_fix</span></>
+            <><span>Finish</span><span className="ms">auto_fix</span></>
           ) : (
-            <>Next <span className="ms">chevron_right</span></>
+            <><span>Next</span><span className="ms">chevron_right</span></>
           )}
         </button>
       </div>
