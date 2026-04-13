@@ -11,6 +11,9 @@ import type {
   WeatherData,
   RouteData,
   SavedItinerary,
+  RawOBAnswers,
+  PersonaProfile,
+  ResolvedConflict,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -40,6 +43,9 @@ const defaultObAnswers: OnboardingAnswers = {
 export interface AppState {
   currentScreen: Screen;
   obAnswers: OnboardingAnswers;
+  rawOBAnswers: RawOBAnswers | null;
+  personaProfile: PersonaProfile | null;
+  obPreResolved: ResolvedConflict[];
   persona: Persona | null;
   city: string;
   cityGeo: GeoData | null;
@@ -122,6 +128,9 @@ function getStoredUserRole(): 'user' | 'admin' {
 export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
+  rawOBAnswers: null,
+  personaProfile: null,
+  obPreResolved: [],
   persona: getStoredPersona(),
   city:           ssGet<string>('ur_ss_city')    ?? '',
   cityGeo:        ssGet<GeoData>('ur_ss_geo')    ?? null,
@@ -161,7 +170,10 @@ export type Action =
   | { type: 'SET_GENERATION_COUNT'; count: number }
   | { type: 'INCREMENT_GENERATION_COUNT' }
   | { type: 'PROFILE_LOADED' }
-  | { type: 'RESET_MAP' };
+  | { type: 'RESET_MAP' }
+  | { type: 'SET_RAW_OB_ANSWER'; key: keyof RawOBAnswers; value: unknown }
+  | { type: 'SET_OB_PRE_RESOLVED'; value: ResolvedConflict[] }
+  | { type: 'SET_PERSONA_PROFILE'; profile: PersonaProfile };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -278,6 +290,24 @@ function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_itinerary', null);
       ssSave('ur_ss_weather', null);
       return { ...state, city: '', cityGeo: null, places: [], selectedPlaces: [], itinerary: null, route: null, weather: null };
+
+    case 'SET_RAW_OB_ANSWER':
+      return {
+        ...state,
+        rawOBAnswers: {
+          ...(state.rawOBAnswers ?? {
+            group: null, mood: [], pace: [], day_open: null,
+            dietary: [], budget: null, evening: null,
+          }),
+          [action.key]: action.value,
+        } as RawOBAnswers,
+      };
+
+    case 'SET_OB_PRE_RESOLVED':
+      return { ...state, obPreResolved: action.value };
+
+    case 'SET_PERSONA_PROFILE':
+      return { ...state, personaProfile: action.profile };
 
     default:
       return state;
