@@ -4,3 +4,5 @@ export { MotivationQuestion } from './MotivationQuestion';
 export { StyleQuestion } from './StyleQuestion';
 export { AttractionQuestion } from './AttractionQuestion';
 export { PaceQuestion } from './PaceQuestion';
+export { ImageRowCard } from './ImageRowCard';
+export { ConflictPanel } from './ConflictPanel';
