@@ -18,6 +18,8 @@ import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen } from './modules/trips';
 
+const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
+
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
@@ -31,6 +33,12 @@ function ScreenRouter() {
   if (isDesktop && state.currentScreen !== 'trips') return <DesktopGate />;
 
   async function handleSignedIn(user: User) {
+    if (!BETA_ALLOWLIST.includes(user.email ?? '')) {
+      await supabase.auth.signOut();
+      window.history.replaceState({}, '', '?beta_closed=1');
+      dispatch({ type: 'GO_TO', screen: 'login' });
+      return;
+    }
     // Persist user info for the welcome back screen
     localStorage.setItem('ur_user', JSON.stringify({
       name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',

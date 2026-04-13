@@ -10,8 +10,13 @@ export function LoginScreen() {
   const [error, setError]           = useState<string | null>(null);
 
   useEffect(() => {
-    // Show any OAuth error returned in the URL (e.g. provider not configured)
     const params = new URLSearchParams(window.location.search);
+    if (params.get('beta_closed') === '1') {
+      setError('Beta is currently closed. Stay tuned for the public launch.');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    // Show any OAuth error returned in the URL (e.g. provider not configured)
     const urlError = params.get('error_description') ?? params.get('error');
     if (urlError) {
       setError(decodeURIComponent(urlError));
