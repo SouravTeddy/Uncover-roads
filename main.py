@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Query, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+import re
 import requests
 import math
 import time
@@ -658,6 +659,198 @@ Return ONLY a valid JSON object, no markdown, no explanation:
     except Exception as e:
         print("AI ITINERARY ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =========================================
+# AI ITINERARY STREAM
+# =========================================
+@app.post("/ai-itinerary-stream")
+def ai_itinerary_stream(body: dict):
+    places    = body.get("selected_places", [])
+    city      = body.get("city", "the city")
+    days      = int(body.get("days", 1))
+    pace      = body.get("pace", "moderate")
+    persona   = body.get("persona", "")
+    archetype = body.get("persona_archetype", "")
+    trip_ctx  = body.get("trip_context", {})
+
+    if not places:
+        return {"itinerary": [], "summary": {}}
+    if not ANTHROPIC_API_KEY:
+        return {"error": "No Anthropic API key configured"}
+
+    # Nearest-neighbour sort (same as /ai-itinerary)
+    def _dist2(a, b):
+        return (a.get('lat', 0) - b.get('lat', 0))**2 + (a.get('lon', 0) - b.get('lon', 0))**2
+
+    def _nn_sort(pts, start_lat=None, start_lon=None):
+        if len(pts) <= 1:
+            return pts
+        remaining = list(pts)
+        sorted_pts = []
+        if start_lat is not None:
+            cur = {'lat': start_lat, 'lon': start_lon}
+        else:
+            clat = sum(p.get('lat', 0) for p in pts) / len(pts)
+            clon = sum(p.get('lon', 0) for p in pts) / len(pts)
+            cur = {'lat': clat, 'lon': clon}
+        while remaining:
+            nearest = min(remaining, key=lambda p: _dist2(cur, p))
+            sorted_pts.append(nearest)
+            remaining.remove(nearest)
+            cur = nearest
+        return sorted_pts
+
+    start_lat = trip_ctx.get('location_lat')
+    start_lon = trip_ctx.get('location_lon')
+    places = _nn_sort(places, start_lat, start_lon)
+
+    place_list = "\n".join([
+        f"- {p['title']} (category: {p.get('category', 'place')}, "
+        f"lat: {p.get('lat')}, lon: {p.get('lon')})"
+        for p in places
+    ])
+
+    # Conflict check (same as /ai-itinerary)
+    conflict = body.get("conflict_resolution", {})
+    if not conflict:
+        try:
+            persona_dict = {
+                'archetype': body.get('persona_archetype', ''),
+                'ritual': trip_ctx.get('ritual', '') or body.get('ritual', ''),
+                'pace': body.get('pace', ''),
+                'sensory': body.get('sensory', ''),
+                'social': body.get('social', ''),
+                'attractions': body.get('attractions', []),
+            }
+            travel_date = trip_ctx.get('travel_date') or body.get('date', '')
+            conflict = run_conflict_check(
+                city=body.get('city', ''),
+                persona=persona_dict,
+                travel_date=travel_date,
+            )
+        except Exception as e:
+            print(f"CONFLICT CHECK ERROR: {e}")
+            conflict = {"has_conflicts": False, "conflicts": []}
+
+    conflict_str = ""
+    if conflict.get("has_conflicts"):
+        top_conflicts = [c for c in conflict.get("conflicts", [])
+                         if c.get("severity") in ("high", "medium")][:3]
+        if top_conflicts:
+            instructions = " | ".join(
+                c.get("instruction", "") for c in top_conflicts if c.get("instruction")
+            )
+            conflict_str = f"CONFLICT OVERRIDES (apply strictly):\n{instructions}\n"
+
+    start_date = trip_ctx.get("travel_date", "")
+    arrival_time = trip_ctx.get("arrival_time", "") or "not specified"
+    location_note = ""
+    if trip_ctx.get("location_name"):
+        location_note = (
+            f"- Starting location: {trip_ctx.get('location_name')} "
+            f"(lat: {trip_ctx.get('location_lat', '?')}, lon: {trip_ctx.get('location_lon', '?')})"
+        )
+
+    # Build per-day date strings for the OUTPUT FORMAT block
+    def _iso_plus(base: str, delta: int) -> str:
+        try:
+            from datetime import datetime, timedelta
+            d = datetime.strptime(base, "%Y-%m-%d")
+            return (d + timedelta(days=delta)).strftime("%Y-%m-%d")
+        except Exception:
+            return base
+
+    day_dates = [_iso_plus(start_date, i) for i in range(days)]
+    day_dates_str = ", ".join(f"day {i+1}: {d}" for i, d in enumerate(day_dates))
+
+    output_format = f"""
+OUTPUT FORMAT — FOLLOW EXACTLY:
+- Output {days} lines total — one line per day, no other text
+- Each line is a single compact JSON object with NO internal newlines
+- Line format: {{"day_number":N,"date":"YYYY-MM-DD","itinerary":[...],"summary":{{...}}}}
+- Dates: {day_dates_str}
+- Do NOT wrap in an array. Do not add markdown, labels, or blank lines.
+- Each "itinerary" array element: {{"day":N,"time":"H:MM AM","place":"Name","duration":"X hours","category":"type","tip":"One sentence","transit_to_next":"X min walk","tags":[]}}
+- Each "summary" object: {{"total_places":N,"best_transport":"...","pro_tip":"...","conflict_notes":"...","suggested_start_time":"H:MM AM","day_narrative":"..."}}
+"""
+
+    prompt = f"""You are an expert travel planner creating a hyper-personalised multi-day itinerary.
+
+CITY: {city}
+TOTAL DAYS: {days}
+PACE: {pace}
+
+TRAVELLER PERSONA: {archetype or 'general traveller'}
+{persona}
+
+SELECTED PLACES (shared across all days — distribute sensibly):
+{place_list}
+
+{conflict_str}
+TRIP CONTEXT:
+- Travel dates start: {start_date}
+- Starting from: {trip_ctx.get('start_type', 'hotel')}
+- Arrival time day 1: {arrival_time}
+- Flight time (if departure day): {trip_ctx.get('flight_time', '') or 'N/A'}
+- Long-haul jet lag adjustment: {trip_ctx.get('is_long_haul', False)}
+{location_note}
+
+CRITICAL RULES — FOLLOW STRICTLY:
+- Return ONLY the exact places listed in SELECTED PLACES above. Do NOT add, invent, or substitute any other venues.
+- Distribute places across days logically (proximity, energy, venue type)
+- Stops within each day are already ordered optimally — preserve order per day
+- Assign realistic durations based on venue type (museum: 1.5-2h, café: 30-45min, park: 45-60min)
+- ALL place names in the output MUST be in English. Never use local-script names.
+- Start time logic for day 1 (subsequent days default to 09:00 AM):
+    * If arrival_time 00:00-05:59: set day 1 start 09:00 AM, note rest in conflict_notes
+    * If arrival_time 06:00-08:59: start 1 hour after arrival
+    * If arrival_time 09:00-16:59: use arrival_time + 30 min for hotel/airport
+    * If arrival_time 17:00-19:59: set day 1 start 09:00 AM; note evening is for settling in
+    * If arrival_time 20:00+: set day 1 start 09:00 AM; note late-night arrival
+    * If no arrival_time: default start 09:00 AM
+- If jet lag is true, reduce day 1 intensity by 50% and add rest window 14:00-16:00
+- transit_to_next must be a realistic walking/transit time string
+- tip: ONE sentence, max 12 words, one specific insider detail
+- day_narrative in summary: ONE sentence (max 8 words) capturing the day's rhythm
+
+{output_format}"""
+
+    def generate():
+        buffer = ""
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        try:
+            with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=8000,
+                timeout=120,
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                for text in stream.text_stream:
+                    buffer += text
+                    while '\n' in buffer:
+                        line, buffer = buffer.split('\n', 1)
+                        line = re.sub(r'\s+', ' ', line).strip()
+                        if not line:
+                            continue
+                        try:
+                            parsed = json.loads(line)
+                            yield json.dumps(parsed) + '\n'
+                        except json.JSONDecodeError:
+                            pass  # malformed line — frontend detects missing day, auto-retries
+            # flush remaining buffer
+            if buffer.strip():
+                try:
+                    parsed = json.loads(re.sub(r'\s+', ' ', buffer).strip())
+                    yield json.dumps(parsed) + '\n'
+                except json.JSONDecodeError:
+                    pass
+        except Exception as e:
+            print(f"STREAM ERROR: {e}")
+            # StreamingResponse has already started — cannot raise HTTPException here
+            # Frontend detects incomplete stream by day count
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 # =========================================
