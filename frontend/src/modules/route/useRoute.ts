@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
-import { api } from '../../shared/api';
+import { api, aiItineraryStream } from '../../shared/api';
 import type { ItineraryRequest } from '../../shared/api';
-import type { SavedItinerary } from '../../shared/types';
+import type { Itinerary, SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
 import { syncSavedItinerary, incrementGenerationCount } from '../../shared/userSync';
 import { computeTotalDays, addDaysToIso } from '../map/trip-capacity-utils';
@@ -14,6 +14,10 @@ export function useRoute() {
   const [tab, setTab] = useState<'active' | 'saved'>('active');
 
   const { city, selectedPlaces, persona, itinerary, weather, savedItineraries } = state;
+
+  const totalDays = computeTotalDays(state.travelStartDate, state.travelEndDate) ||
+    (state.tripContext.days ?? 1);
+  const streamingDays = state.itineraryDays.length < totalDays && !error;
 
   useEffect(() => {
     if (!itinerary && selectedPlaces.length >= 2 && persona) {
@@ -27,72 +31,82 @@ export function useRoute() {
 
   async function buildItinerary(overridePlaces?: typeof state.selectedPlaces) {
     if (!persona || !state.cityGeo) return;
-    setLoading(true);
-    setError(null);
+
+    const days = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
+    const startDate = state.travelStartDate ?? state.tripContext.date;
     const placesToUse = overridePlaces ?? state.selectedPlaces;
 
-    // Compute trip length from travel dates (falls back to tripContext.days for single-day compat)
-    const totalDays = computeTotalDays(state.travelStartDate, state.travelEndDate);
-    const days      = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
-    const startDate = state.travelStartDate ?? state.tripContext.date;
+    dispatch({ type: 'SET_ITINERARY_DAYS', days: [] });
+    dispatch({ type: 'SET_ITINERARY', itinerary: null });
+    setError(null);
+    setLoading(true);
 
-    try {
-      const buildDay = async (dayNumber: number) => {
-        const travelDate = addDaysToIso(startDate, dayNumber - 1);
-        const body: ItineraryRequest = {
-          city:               state.city,
-          lat:                state.cityGeo!.lat,
-          lon:                state.cityGeo!.lon,
-          days,
-          day_number:         dayNumber,
-          pace:               state.persona!.pace ?? 'any',
-          persona:            state.persona!.archetype,
-          persona_archetype:  state.persona!.archetype_name,
-          persona_context:    state.persona!.insight ?? '',
-          trip_context: {
-            start_type:    state.tripContext.startType,
-            arrival_time:  state.tripContext.arrivalTime,
-            travel_date:   travelDate,
-            total_days:    days,
-            flight_time:   state.tripContext.flightTime,
-            is_long_haul:  state.tripContext.isLongHaul,
-            location_lat:  state.tripContext.locationLat,
-            location_lon:  state.tripContext.locationLon,
-            location_name: state.tripContext.locationName,
-          },
-          selected_places: placesToUse.map(p => ({
-            id: p.id, title: p.title, lat: p.lat, lon: p.lon,
-          })),
-        };
-        const result = await api.aiItinerary(body);
-        if (!result || (result as any).error) {
-          throw new Error((result as any)?.error || 'Invalid response from server');
+    const streamRequest: ItineraryRequest = {
+      city:              state.city,
+      lat:               state.cityGeo.lat,
+      lon:               state.cityGeo.lon,
+      days,
+      day_number:        1,
+      pace:              persona.pace ?? 'any',
+      persona:           persona.archetype,
+      persona_archetype: persona.archetype_name,
+      persona_context:   persona.insight ?? '',
+      trip_context: {
+        start_type:    state.tripContext.startType,
+        arrival_time:  state.tripContext.arrivalTime,
+        travel_date:   startDate,
+        total_days:    days,
+        flight_time:   state.tripContext.flightTime,
+        is_long_haul:  state.tripContext.isLongHaul,
+        location_lat:  state.tripContext.locationLat,
+        location_lon:  state.tripContext.locationLon,
+        location_name: state.tripContext.locationName,
+      },
+      selected_places: placesToUse.map(p => ({ id: p.id, title: p.title, lat: p.lat, lon: p.lon })),
+    };
+
+    let dispatched = 0;
+    let streamAttempt = 0;
+
+    while (streamAttempt <= 2) {
+      try {
+        for await (const day of aiItineraryStream(streamRequest)) {
+          dispatch({ type: 'APPEND_ITINERARY_DAY', day });
+          if (dispatched === 0) {
+            dispatch({ type: 'SET_ITINERARY', itinerary: day }); // backward compat
+            setLoading(false);
+          }
+          dispatched++;
         }
-        return result;
-      };
-
-      if (days > 1) {
-        const allResults = await Promise.all(
-          Array.from({ length: days }, (_, i) => buildDay(i + 1))
-        );
-        dispatch({ type: 'SET_ITINERARY_DAYS', days: allResults });
-        dispatch({ type: 'SET_ITINERARY', itinerary: allResults[0] }); // backward compat
-      } else {
-        const result = await buildDay(1);
-        dispatch({ type: 'SET_ITINERARY',      itinerary: result });
-        dispatch({ type: 'SET_ITINERARY_DAYS', days: [result] });
+        break; // stream completed cleanly
+      } catch {
+        if (dispatched === 0 && streamAttempt < 2) {
+          streamAttempt++;
+          await new Promise(r => setTimeout(r, 500 * streamAttempt));
+          continue;
+        }
+        break;
       }
-
-      dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) incrementGenerationCount(user.id).catch(console.warn);
-      });
-    } catch (err) {
-      setError('Could not generate your itinerary. Please try again.');
-      console.warn('Itinerary error:', err);
-    } finally {
-      setLoading(false);
     }
+
+    if (dispatched === 0) {
+      setLoading(false);
+      setError('Could not generate your itinerary. Please try again.');
+      return;
+    }
+
+    // Auto-retry any missing days via single-day endpoint
+    if (dispatched < days) {
+      for (let d = dispatched + 1; d <= days; d++) {
+        const result = await retryDay(d, days, startDate, streamRequest);
+        dispatch({ type: 'APPEND_ITINERARY_DAY', day: result });
+      }
+    }
+
+    dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) incrementGenerationCount(user.id).catch(console.warn);
+    });
   }
 
   async function loadWeather() {
@@ -133,15 +147,12 @@ export function useRoute() {
       persona,
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
-    // Sync to Supabase if signed in
     const { data: { user } } = await supabase.auth.getUser();
     if (user) syncSavedItinerary(user.id, saved).catch(console.warn);
   }
 
   function addSuggestion(place: import('../../shared/types').Place) {
-    // Skip if already selected
     if (state.selectedPlaces.some(p => p.id === place.id)) return;
-    // Ensure the place exists in the places pool so map can show it
     if (!state.places.some(p => p.id === place.id)) {
       dispatch({ type: 'MERGE_PLACES', places: [place] });
     }
@@ -166,6 +177,8 @@ export function useRoute() {
     setTab,
     itinerary,
     itineraryDays: state.itineraryDays,
+    totalDays,
+    streamingDays,
     weather,
     city,
     selectedPlaces,
@@ -177,4 +190,27 @@ export function useRoute() {
     goBack,
     goToNav,
   };
+}
+
+export async function retryDay(
+  dayNumber: number,
+  totalDays: number,
+  startDate: string,
+  base: ItineraryRequest,
+  delayMs = 500,
+): Promise<Itinerary | null> {
+  const travelDate = addDaysToIso(startDate, dayNumber - 1);
+  const body: ItineraryRequest = {
+    ...base,
+    day_number: dayNumber,
+    trip_context: { ...base.trip_context, travel_date: travelDate, total_days: totalDays },
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await new Promise(r => setTimeout(r, delayMs * (attempt + 1)));
+    try {
+      const result = await api.aiItinerary(body);
+      if (result && !(result as unknown as { error?: string }).error) return result;
+    } catch { /* continue */ }
+  }
+  return null;
 }
