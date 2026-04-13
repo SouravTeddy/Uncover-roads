@@ -4,6 +4,8 @@ import { ItineraryCards } from './ItineraryCards';
 import { RecSheet } from './RecSheet';
 import { WeatherCanvas } from './WeatherCanvas';
 import { AmbientVideo } from './AmbientVideo';
+import { DayShimmer } from './DayShimmer';
+import { DayStops } from './DayStops';
 import { SCENE_GENERATING } from './sceneMap';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
@@ -18,6 +20,8 @@ export function RouteScreen() {
     setTab,
     itinerary,
     itineraryDays,
+    totalDays,
+    streamingDays,
     weather,
     city,
     selectedPlaces,
@@ -118,9 +122,10 @@ export function RouteScreen() {
     );
   }
 
-  // Multi-day view — itineraryDays has >1 day
-  if (itineraryDays.length > 1) {
+  // Multi-day view — totalDays > 1 OR itineraryDays already has content
+  if (totalDays > 1 || itineraryDays.length > 1) {
     const startIso = state.travelStartDate ?? state.tripContext.date;
+    const displayDays = Math.max(totalDays, itineraryDays.length);
     return (
       <>
         <AmbientVideo src={currentScene} timeMins={(() => {
@@ -168,19 +173,25 @@ export function RouteScreen() {
                 fontFamily: '"Plus Jakarta Sans", sans-serif',
                 fontSize: 18, fontWeight: 800, color: '#f1f5f9',
               }}>
-                {city} · {itineraryDays.length} days
+                {city} · {displayDays} days
+                {streamingDays && (
+                  <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginLeft: 8 }}>
+                    building…
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Day sections */}
-          {itineraryDays.map((dayItinerary, dayIdx) => {
-            const dayDate = addDaysToIso(startIso, dayIdx);
+          {/* Day slots */}
+          {Array.from({ length: displayDays }, (_, i) => {
+            const day = itineraryDays[i];
+            const dayDate = addDaysToIso(startIso, i);
             const dayLabel = new Date(dayDate + 'T12:00:00').toLocaleDateString('en-US', {
               weekday: 'short', month: 'short', day: 'numeric',
             });
             return (
-              <div key={dayIdx} style={{ padding: '0 16px' }}>
+              <div key={i} style={{ padding: '0 16px' }}>
                 {/* Day divider */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -192,63 +203,24 @@ export function RouteScreen() {
                     fontSize: 13, fontWeight: 700, color: '#cbd5e1',
                     whiteSpace: 'nowrap',
                   }}>
-                    Day {dayIdx + 1} · {dayLabel}
+                    Day {i + 1} · {dayLabel}
                   </div>
                   <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
                 </div>
 
-                {/* Stop cards */}
-                {dayItinerary.itinerary.map((stop, stopIdx) => (
-                  <div
-                    key={stopIdx}
-                    style={{
-                      background: '#141921',
-                      border: '1px solid rgba(255,255,255,.08)',
-                      borderRadius: 16,
-                      padding: '14px 16px',
-                      marginBottom: 10,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                        background: 'rgba(59,130,246,.12)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <span className="ms" style={{ fontSize: 17, color: '#3b82f6' }}>place</span>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2,
-                        }}>
-                          {stop.time && (
-                            <span style={{
-                              fontSize: 11, fontWeight: 700, color: '#93c5fd',
-                              fontFamily: 'Inter, sans-serif',
-                            }}>
-                              {stop.time}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{
-                          fontFamily: '"Plus Jakarta Sans", sans-serif',
-                          fontSize: 15, fontWeight: 700, color: '#f1f5f9',
-                          marginBottom: stop.tip ? 4 : 0,
-                        }}>
-                          {stop.place}
-                        </div>
-                        {stop.tip && (
-                          <div style={{
-                            fontSize: 12, color: '#8e9099',
-                            fontFamily: 'Inter, sans-serif', lineHeight: 1.5,
-                          }}>
-                            {stop.tip}
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                {/* Slot content */}
+                {day === undefined ? (
+                  <DayShimmer />
+                ) : day === null ? (
+                  <div style={{
+                    textAlign: 'center', padding: '20px 0', color: '#8e9099',
+                    fontFamily: 'Inter, sans-serif', fontSize: 12,
+                  }}>
+                    Could not load this day
                   </div>
-                ))}
+                ) : (
+                  <DayStops stops={day.itinerary} />
+                )}
               </div>
             );
           })}
