@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
-import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
+import { syncProfile, loadSavedItineraries, loadUserProfile, checkPersonaExists } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import {
@@ -58,7 +58,18 @@ function ScreenRouter() {
       dispatch({ type: 'PROFILE_LOADED' });
     }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
 
-    const hasPersona = Boolean(localStorage.getItem('ur_persona'));
+    let hasPersona = Boolean(localStorage.getItem('ur_persona'));
+    // Supabase fallback: if localStorage was cleared (e.g. after sign-out),
+    // check the personas table so returning users skip onboarding.
+    if (!hasPersona) {
+      try {
+        const exists = await checkPersonaExists(user.id);
+        if (exists) {
+          localStorage.setItem('ur_persona', JSON.stringify({ archetype: 'restored' }));
+          hasPersona = true;
+        }
+      } catch { /* ignore — will show OB if Supabase is unavailable */ }
+    }
     const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
     if (hasPersona) {
       dispatch({ type: 'GO_TO', screen: 'destination' });

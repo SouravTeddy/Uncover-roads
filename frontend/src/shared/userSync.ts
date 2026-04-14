@@ -42,6 +42,32 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
   });
 }
 
+// Check whether a user has completed onboarding (has a row in personas table).
+// Used as a Supabase fallback when localStorage is cleared (e.g. after sign-out).
+export async function checkPersonaExists(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('personas')
+    .select('user_id')
+    .eq('user_id', userId)
+    .single();
+  return !!data;
+}
+
+// Sync the new-style persona profile to Supabase personas table.
+export async function syncPersonaProfile(
+  userId: string,
+  archetype: string,
+  archetypeName: string,
+  rawAnswers: unknown,
+) {
+  await supabase.from('personas').upsert({
+    user_id: userId,
+    archetype,
+    archetype_name: archetypeName,
+    answers: rawAnswers,
+  }, { onConflict: 'user_id' });
+}
+
 // Load role + generation count for the signed-in user.
 // Returns null on failure so callers never downgrade a cached role.
 export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number } | null> {
