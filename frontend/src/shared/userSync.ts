@@ -42,15 +42,18 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
   });
 }
 
-// Check whether a user has completed onboarding (has a row in personas table).
-// Used as a Supabase fallback when localStorage is cleared (e.g. after sign-out).
-export async function checkPersonaExists(userId: string): Promise<boolean> {
+// Fetch persona data for a user from Supabase.
+// Returns the persona object if found, null if the user has not completed onboarding.
+// Used as a fallback when localStorage is cleared (e.g. after sign-out).
+export async function fetchPersonaForRestore(
+  userId: string,
+): Promise<{ archetype: string; archetype_name: string } | null> {
   const { data } = await supabase
     .from('personas')
-    .select('user_id')
+    .select('archetype, archetype_name')
     .eq('user_id', userId)
     .single();
-  return !!data;
+  return data ?? null;
 }
 
 // Sync the new-style persona profile to Supabase personas table.
