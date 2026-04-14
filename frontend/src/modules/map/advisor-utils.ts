@@ -23,14 +23,14 @@ export interface AdvisorContext {
   flightDuration?: string;
 }
 
-/** Returns time minus 30 minutes as a display string, e.g. "11:00" → "10:30 AM" */
+/** Returns HH:MM (24h) minus 30 minutes as a display string, e.g. "11:00" → "10:30 AM" */
 function thirtyMinBefore(time: string): string {
   const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m - 30;
-  const rh = Math.floor(total / 60);
-  const rm = total % 60;
+  const totalMin = ((h * 60 + m - 30) + 1440) % 1440; // keep positive, wrap around midnight
+  const rh = Math.floor(totalMin / 60);
+  const rm = totalMin % 60;
   const ampm = rh < 12 ? 'AM' : 'PM';
-  const displayH = rh > 12 ? rh - 12 : rh === 0 ? 12 : rh;
+  const displayH = rh % 12 === 0 ? 12 : rh % 12;
   return `${displayH}:${String(rm).padStart(2, '0')} ${ampm}`;
 }
 

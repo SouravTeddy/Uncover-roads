@@ -15,6 +15,18 @@ describe('generateAdvisorMessage', () => {
     expect(msg).toContain('11:00');
   });
 
+  it('thirtyMinBefore handles normal time', () => {
+    const msg = generateAdvisorMessage('hotel_checkout_squeeze', { checkoutTime: '11:00' });
+    expect(msg).toContain('10:30 AM');
+    expect(msg).toContain('11:00');
+  });
+
+  it('thirtyMinBefore handles midnight edge case', () => {
+    const msg = generateAdvisorMessage('hotel_checkout_squeeze', { checkoutTime: '00:00' });
+    expect(msg).toContain('11:30 PM');
+    expect(msg).toContain('00:00');
+  });
+
   it('home_departure mentions departure time', () => {
     const msg = generateAdvisorMessage('home_departure', { departureTime: '8:30' });
     expect(msg).toContain('8:30');
