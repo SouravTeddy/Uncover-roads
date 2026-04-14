@@ -1,4 +1,6 @@
 import { useAppStore } from '../../shared/store';
+import { supabase } from '../../shared/supabase';
+import { syncPersonaProfile } from '../../shared/userSync';
 import { ARCHETYPE_COLORS } from './types';
 
 // ── Archetype derivation from primary mood ─────────────────────
@@ -121,10 +123,12 @@ export function PersonaScreen() {
     .map(([k]) => k);
 
   function startPlanning() {
-    // Persist so App knows onboarding is done on next load
-    try {
-      localStorage.setItem('ur_persona', JSON.stringify({ archetype: archetypeKey }));
-    } catch { /* ignore */ }
+    // Sync to Supabase so the persona survives sign-out + sign-back-in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        syncPersonaProfile(session.user.id, archetypeKey, meta.name, rawAnswers).catch(console.warn);
+      }
+    });
     dispatch({ type: 'GO_TO', screen: 'destination' });
   }
 
