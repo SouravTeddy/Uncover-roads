@@ -206,6 +206,104 @@ Single-city mode is unaffected — itinerary reads from `places` as before.
 
 ---
 
+## Section 5: Trip Tenure & Duration Intelligence
+
+### Journey Strip
+
+A persistent strip sits above the card deck on the Explore tab at all times:
+
+```
+Apr 20 – Apr 27  ·  8 days  ·  2 travel  ·  3 cities
+```
+
+If no start date is set: `~8 days · 2 travel · 3 cities`. Updates live as places are added or removed. This is the single source of truth for trip duration — always visible, never buried.
+
+### Duration-First Flow
+
+User declares total trip length upfront (e.g. "4 days") when setting up a journey. This becomes the **budget**.
+
+As places are added, the app calculates required days and compares against the budget:
+- **Over budget**: notify with a recommendation to either add days or trim places
+- **Under budget**: soft prompt that there's room left
+- **Exact fit**: no message
+
+The budget is always editable — tapping the journey strip opens a duration picker.
+
+### Travel Days vs City Days
+
+When origin is home or airport, the app identifies **travel days** — days where the user is in transit rather than exploring. These are surfaced explicitly:
+
+```
+4 days total  ·  2 travel  ·  2 in Tokyo
+```
+
+Travel day logic:
+- Home → long flight (>4h): Day 1 is a travel day (arrives evening local time)
+- Return flight on last day: last day is a travel day (departs morning)
+- Short flight (<2h): no travel day deducted — can still do afternoon/evening spots
+- Drive >6h: counts as a half travel day
+
+These are shown on the origin card and factored into the per-city day allocation.
+
+### Smart Day Recalculation
+
+`estimatedDays` per city is calculated as:
+
+```
+base = ceil(places.length / persona.stops_per_day)
++ overtime if total OSRM time between places > base × 6h
++ 1 if long-haul arrival (first city only)
+- last day squeeze if hotel check-out before 13:00
+```
+
+Whenever this changes, an inline reasoning message appears on the affected card (see Section 6).
+
+---
+
+## Section 6: Conversational Reasoning System
+
+### Principles
+
+Every automated change or recommendation surfaces a short plain-English message. The voice always:
+- Acknowledges the **human reality** behind the constraint, not just the rule
+- Uses contractions and informal language ("you've got", "we kept it light")
+- Follows the pattern: **what changed → why it matters to you → what you can do**
+- Never uses system language ("detected", "computed", "allocated", "constraint")
+- Stays to one or two sentences
+
+### Message Catalogue
+
+| Trigger | Message |
+|---|---|
+| Long-haul arrival | "After 12 hours in a plane, we've kept your first day in Tokyo light. You can always add more once you're there." |
+| Hotel check-out squeeze | "Ending your last morning by 10:30 — gives you half an hour to pack before check-out at 11." |
+| Home departure | "Leaving at 9 — we'll make sure you're not rushing to your first spot before it even opens." |
+| Place count tips city over budget | "That's now 6 spots in Barcelona — one more than a relaxed 2-day city. Added a day so you're not rushing." |
+| Duration budget exceeded | "You've picked 9 spots across 3 cities — that needs about 6 days, you've got 4. Want to add time, or should we help you choose the best ones?" |
+| Duration budget under-used | "Plenty of room left in your 4 days — you could add another city or slow down and go deeper." |
+| Travel days eating into total | "Flights take a day each way, so you've really got 2 days in Tokyo. Tight but doable — want to add time, or make the most of it?" |
+| Transit mode auto-set to flight | "There's no road between these two — looks like you're flying." |
+| Place removed, day freed | "Dropped a spot in Kyoto — you've got a bit of breathing room now. Good for wandering." |
+| Short flight, no day deducted | "It's only an hour to Osaka — you'll still have the afternoon when you land." |
+
+New triggers can be added; all follow the same tone pattern.
+
+### Delivery: Two-Layer System
+
+**Layer 1 — Inline card message**: Appears directly on the card that changed, below the "N places · ~X days" pill. One sentence. Stays until dismissed or the card changes again. Catches the user in the moment.
+
+**Layer 2 — Advisor thread**: A collapsible panel anchored to the bottom of the journey screen, accessible via a small "Why is my trip shaped this way?" handle. Contains a chronological log of every reasoning message in conversational form:
+
+```
+We kept your first Tokyo day light — long flight.
+Added a day in Kyoto — 6 spots is a lot at your pace.
+Ending your last morning early — time to pack for check-out.
+```
+
+The thread is read-only. It helps users review the full shape of their trip and understand every decision at a glance. No actions live in the thread — actions are on the cards.
+
+---
+
 ## Out of Scope
 
 - Flight search / booking — deep link only, no in-app flight data
