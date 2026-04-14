@@ -339,6 +339,11 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, obPreResolved: action.value };
 
     case 'SET_PERSONA_PROFILE':
+      // Persist immediately so the app knows OB is done even if the user
+      // closes before hitting "Start Planning" on the PersonaScreen.
+      try {
+        localStorage.setItem('ur_persona', JSON.stringify({ archetype: action.profile.archetype }));
+      } catch { /* ignore */ }
       return { ...state, personaProfile: action.profile };
 
     default:
