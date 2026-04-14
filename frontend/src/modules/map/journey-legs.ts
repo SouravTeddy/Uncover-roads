@@ -5,16 +5,17 @@ import type { JourneyLeg, OriginType, OriginPlace, Place, TransitMode } from '..
 /**
  * Determines transit mode between two geographic points via OSRM.
  * Falls back to 'flight' when no road route exists (ocean/island crossing).
+ * Also returns the OSRM duration in minutes (undefined when no road route).
  */
 export async function detectTransitMode(
   fromLat: number, fromLon: number,
   toLat: number, toLon: number,
-): Promise<TransitMode> {
+): Promise<{ mode: TransitMode; durationMinutes: number | undefined }> {
   const result = await routeInterCity(fromLat, fromLon, toLat, toLon);
-  if (!result) return 'flight';
-  if (result.duration_min > 480) return 'flight';
-  if (result.duration_min > 120) return 'train';
-  return 'drive';
+  if (!result) return { mode: 'flight', durationMinutes: undefined };
+  if (result.duration_min > 480) return { mode: 'flight', durationMinutes: result.duration_min };
+  if (result.duration_min > 120) return { mode: 'train', durationMinutes: result.duration_min };
+  return { mode: 'drive', durationMinutes: result.duration_min };
 }
 
 /**
@@ -104,7 +105,7 @@ export async function buildJourneyLegs(
       const prevPlaces = cityMap.get(prevCity)!;
       const fromPlace = prevPlaces[Math.floor(prevPlaces.length / 2)];
       const toPlace = cityPlaces[0];
-      const mode = await detectTransitMode(fromPlace.lat, fromPlace.lon, toPlace.lat, toPlace.lon);
+      const { mode, durationMinutes } = await detectTransitMode(fromPlace.lat, fromPlace.lon, toPlace.lat, toPlace.lon);
 
       legs.push({
         type: 'transit',
@@ -113,6 +114,7 @@ export async function buildJourneyLegs(
         to: city,
         fromCoords: [fromPlace.lat, fromPlace.lon],
         toCoords: [toPlace.lat, toPlace.lon],
+        durationMinutes,
       });
     }
 

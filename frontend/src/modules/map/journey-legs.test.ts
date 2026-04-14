@@ -4,7 +4,15 @@ import {
   calculateEstimatedDays,
   calculateTravelDays,
   calculateArrivalDates,
+  detectTransitMode,
+  buildJourneyLegs,
 } from './journey-legs';
+
+vi.mock('../../shared/api', () => ({
+  routeInterCity: vi.fn(),
+}));
+
+import { routeInterCity } from '../../shared/api';
 
 // ── calculateEstimatedDays ─────────────────────────────────────
 
@@ -79,5 +87,76 @@ describe('calculateArrivalDates', () => {
     const result = calculateArrivalDates([origin, city], '2026-05-01');
     const cityResult = result.find(l => l.type === 'city') as any;
     expect(cityResult.arrivalDate).toBe('2026-05-01');
+  });
+});
+
+// ── detectTransitMode ──────────────────────────────────────────
+
+describe('detectTransitMode', () => {
+  const mockedRouteInterCity = vi.mocked(routeInterCity);
+
+  beforeEach(() => {
+    mockedRouteInterCity.mockReset();
+  });
+
+  it('returns flight when routeInterCity returns null (no road)', async () => {
+    mockedRouteInterCity.mockResolvedValue(null);
+    const result = await detectTransitMode(35.71, 139.79, 34.97, 135.77);
+    expect(result.mode).toBe('flight');
+    expect(result.durationMinutes).toBeUndefined();
+  });
+
+  it('returns flight when duration > 480 min', async () => {
+    mockedRouteInterCity.mockResolvedValue({ duration_min: 600, distance_km: 1000 });
+    const result = await detectTransitMode(35.71, 139.79, 34.97, 135.77);
+    expect(result.mode).toBe('flight');
+    expect(result.durationMinutes).toBe(600);
+  });
+
+  it('returns train when duration is 300 min (between 120 and 480)', async () => {
+    mockedRouteInterCity.mockResolvedValue({ duration_min: 300, distance_km: 400 });
+    const result = await detectTransitMode(35.71, 139.79, 34.97, 135.77);
+    expect(result.mode).toBe('train');
+    expect(result.durationMinutes).toBe(300);
+  });
+
+  it('returns drive when duration is 90 min (< 120)', async () => {
+    mockedRouteInterCity.mockResolvedValue({ duration_min: 90, distance_km: 80 });
+    const result = await detectTransitMode(35.71, 139.79, 34.97, 135.77);
+    expect(result.mode).toBe('drive');
+    expect(result.durationMinutes).toBe(90);
+  });
+});
+
+// ── buildJourneyLegs ───────────────────────────────────────────
+
+describe('buildJourneyLegs', () => {
+  const mockedRouteInterCity = vi.mocked(routeInterCity);
+
+  beforeEach(() => {
+    mockedRouteInterCity.mockReset();
+  });
+
+  const tokyoPlace: Place = { id: 't1', title: 'Senso-ji', category: 'tourism', lat: 35.71, lon: 139.79, _city: 'Tokyo' };
+  const kyotoPlace: Place = { id: 'k1', title: 'Fushimi Inari', category: 'tourism', lat: 34.97, lon: 135.77, _city: 'Kyoto' };
+
+  it('creates origin leg + 2 city legs + 1 transit leg for 2 cities', async () => {
+    mockedRouteInterCity.mockResolvedValue({ duration_min: 150, distance_km: 400 });
+    const origin = { placeId: 'home', name: 'Home', address: '', lat: 51.5, lon: -0.12, originType: 'home' as const };
+    const legs = await buildJourneyLegs([tokyoPlace, kyotoPlace], origin, 3);
+    expect(legs).toHaveLength(4); // origin + city(Tokyo) + transit + city(Kyoto)
+    expect(legs[0].type).toBe('origin');
+    expect(legs[1].type).toBe('city');
+    expect(legs[2].type).toBe('transit');
+    expect(legs[3].type).toBe('city');
+  });
+
+  it('transit leg has correct durationMinutes from OSRM result', async () => {
+    mockedRouteInterCity.mockResolvedValue({ duration_min: 150, distance_km: 400 });
+    const legs = await buildJourneyLegs([tokyoPlace, kyotoPlace], null, 3);
+    const transitLeg = legs.find(l => l.type === 'transit') as any;
+    expect(transitLeg).toBeDefined();
+    expect(transitLeg.durationMinutes).toBe(150);
+    expect(transitLeg.mode).toBe('train');
   });
 });
