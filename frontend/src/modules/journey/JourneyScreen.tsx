@@ -25,13 +25,13 @@ export function JourneyScreen() {
   const [legs, setLegs] = useState<JourneyLeg[]>(journey ?? []);
 
   const stopsPerDay = personaProfile?.stops_per_day ?? 3;
-  const isLongHaul  = tripContext.isLongHaul;
+  const originLeg = journey?.find(l => l.type === 'origin') as Extract<JourneyLeg, { type: 'origin' }> | undefined;
+  const isLongHaul = originLeg?.place.isLongHaul ?? tripContext.isLongHaul;
 
   // Rebuild legs when selectedPlaces change
   useEffect(() => {
     if (!isJourneyMode(selectedPlaces)) return;
 
-    const originLeg = journey?.find(l => l.type === 'origin') as Extract<JourneyLeg, { type: 'origin' }> | undefined;
     const origin = originLeg?.place ?? null;
 
     buildJourneyLegs(selectedPlaces, origin, stopsPerDay, isLongHaul).then(newLegs => {
@@ -39,6 +39,36 @@ export function JourneyScreen() {
       const datedLegs = calculateArrivalDates(newLegs, startDate);
       setLegs(datedLegs);
       dispatch({ type: 'UPDATE_JOURNEY_LEGS', legs: datedLegs });
+
+      // Dispatch transit_auto_flight for any flight transit legs
+      datedLegs
+        .filter(l => l.type === 'transit' && (l as Extract<JourneyLeg, { type: 'transit' }>).mode === 'flight')
+        .forEach(l => {
+          const tl = l as Extract<JourneyLeg, { type: 'transit' }>;
+          dispatch({
+            type: 'ADD_ADVISOR_MESSAGE',
+            message: {
+              id: `flight-${tl.to}-${Date.now()}`,
+              trigger: 'transit_auto_flight',
+              message: generateAdvisorMessage('transit_auto_flight', { cityName: tl.to }),
+              timestamp: Date.now(),
+            },
+          });
+        });
+
+      // Dispatch long_haul_arrival for first city if long haul
+      const firstCityLeg = datedLegs.find(l => l.type === 'city') as Extract<JourneyLeg, { type: 'city' }> | undefined;
+      if (isLongHaul && firstCityLeg) {
+        dispatch({
+          type: 'ADD_ADVISOR_MESSAGE',
+          message: {
+            id: `long-haul-${Date.now()}`,
+            trigger: 'long_haul_arrival',
+            message: generateAdvisorMessage('long_haul_arrival', { cityName: firstCityLeg.city }),
+            timestamp: Date.now(),
+          },
+        });
+      }
 
       // Budget vs actual check
       const totalDays = travelStartDate && travelEndDate
@@ -64,11 +94,22 @@ export function JourneyScreen() {
               timestamp: Date.now(),
             },
           });
+        } else if (cityDaysTotal < totalDays - 1) {
+          // More than 1 day under budget — prompt user
+          dispatch({
+            type: 'ADD_ADVISOR_MESSAGE',
+            message: {
+              id: `under-${Date.now()}`,
+              trigger: 'duration_under_used',
+              message: generateAdvisorMessage('duration_under_used', { budgetDays: totalDays }),
+              timestamp: Date.now(),
+            },
+          });
         }
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPlaces.length, stopsPerDay, isLongHaul]);
+  }, [selectedPlaces.length, stopsPerDay, isLongHaul, travelStartDate]);
 
   // Track active card index on scroll
   const handleScroll = useCallback(() => {

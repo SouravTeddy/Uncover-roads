@@ -172,7 +172,7 @@ export function OriginInputSheet({ onDone, onClose }: Props) {
       placeId: resolved.placeId, name: resolved.name, address: resolved.address,
       lat: resolved.lat, lon: resolved.lon, originType: 'airport',
       departureTime: time,
-      isLongHaul: true, // user will know if long haul
+      isLongHaul: false, // default to domestic; user can adjust
     };
     finishWithMessage(origin, undefined);
   }

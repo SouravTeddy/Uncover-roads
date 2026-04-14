@@ -127,5 +127,23 @@ export async function buildJourneyLegs(
     });
   }
 
+  // Apply hotel check-out squeeze to last city leg
+  if (origin?.originType === 'hotel' && origin.checkOutTime) {
+    const [h, m] = origin.checkOutTime.split(':').map(Number);
+    const checkoutTotalMin = h * 60 + m;
+    // If checkout before 13:00 (780 min), reduce last city by 1 day (minimum 1)
+    if (checkoutTotalMin < 780) {
+      const lastCityIdx = legs.reduce((acc, l, i) => l.type === 'city' ? i : acc, -1);
+      if (lastCityIdx >= 0) {
+        const lastCity = legs[lastCityIdx] as Extract<JourneyLeg, { type: 'city' }>;
+        legs[lastCityIdx] = {
+          ...lastCity,
+          estimatedDays: Math.max(1, lastCity.estimatedDays - 1),
+          advisorMessage: `Ending your last morning early — time to pack for check-out at ${origin.checkOutTime}.`,
+        };
+      }
+    }
+  }
+
   return legs;
 }
