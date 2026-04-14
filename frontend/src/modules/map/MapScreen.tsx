@@ -13,8 +13,9 @@ import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
-import { getJourneyCities } from './journey-utils';
+import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { TravelDateBar } from './TravelDateBar';
+import { JourneyStrip } from '../journey';
 
 // ── Nominatim place search ──────────────────────────────────────
 
@@ -92,6 +93,13 @@ export function MapScreen() {
     if (!city) dispatch({ type: 'GO_TO', screen: 'destination' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-navigate to journey screen when multi-city places are detected
+  useEffect(() => {
+    if (isJourneyMode(selectedPlaces)) {
+      dispatch({ type: 'GO_TO', screen: 'journey' });
+    }
+  }, [selectedPlaces, dispatch]);
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
@@ -419,6 +427,11 @@ export function MapScreen() {
         {/* Travel date bar */}
         <div style={{ pointerEvents: 'auto' }}>
           <TravelDateBar />
+        </div>
+
+        {/* Journey strip — only visible in multi-city mode */}
+        <div style={{ pointerEvents: 'auto' }}>
+          <JourneyStrip />
         </div>
 
         {/* Filter bar */}
