@@ -1,7 +1,6 @@
 import type { TransitMode } from '../../shared/types';
 
 const TEXT1 = '#f1f5f9';
-const TEXT3 = '#8e9099';
 
 interface Props {
   mode: TransitMode;

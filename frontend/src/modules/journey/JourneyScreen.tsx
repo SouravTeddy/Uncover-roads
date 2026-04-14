@@ -7,7 +7,7 @@ import { JourneyTransitCard } from './JourneyTransitCard';
 import { JourneyAdvisorThread } from './JourneyAdvisorThread';
 import { JourneyStrip } from './JourneyStrip';
 import { buildJourneyLegs, calculateArrivalDates } from '../map/journey-legs';
-import { isJourneyMode, getJourneyCities } from '../map/journey-utils';
+import { isJourneyMode } from '../map/journey-utils';
 import { generateAdvisorMessage } from '../map/advisor-utils';
 import type { JourneyLeg, Place } from '../../shared/types';
 import { computeTotalDays } from '../map/trip-capacity-utils';
@@ -125,9 +125,7 @@ export function JourneyScreen() {
     deckRef.current.scrollTo({ left: index * deckRef.current.offsetWidth, behavior: 'smooth' });
   }
 
-  const cities = getJourneyCities(selectedPlaces);
   const activeLeg = legs[activeIndex];
-  const activeCity = activeLeg?.type === 'city' ? activeLeg.city : null;
   const activePlaces: Place[] = activeLeg?.type === 'city' ? activeLeg.places : [];
 
   // Center map on active city
