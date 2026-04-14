@@ -80,13 +80,17 @@ function ssSave(key: string, value: unknown) {
 
 function getInitialScreen(): Screen {
   try {
-    // Restore map session if user was mid-session
-    const sessionScreen = ssGet<Screen>('ur_ss_screen');
-    if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
-      return sessionScreen;
-    }
     const stored = localStorage.getItem('ur_persona');
-    if (stored) return 'welcome';
+    if (stored) {
+      // Only restore mid-session screen if the user has already completed OB.
+      // Without this guard, session storage from a previous visit (e.g. 'destination')
+      // would bypass the login/OB flow entirely after a sign-out + sign-in.
+      const sessionScreen = ssGet<Screen>('ur_ss_screen');
+      if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
+        return sessionScreen;
+      }
+      return 'welcome';
+    }
   } catch {
     // ignore
   }
