@@ -86,9 +86,14 @@ function ssSave(key: string, value: unknown) {
 
 function getInitialScreen(): Screen {
   try {
-    // Detect OAuth redirect synchronously before any async auth events fire.
-    // Supabase puts ?code= in the URL on redirect and clears it only after the
-    // async token exchange, so it's reliably present during this first render.
+    // Primary signal: a flag set by signInWithGoogle() before the OAuth
+    // redirect. Session storage survives same-tab redirects, so this is
+    // 100% reliable regardless of URL param stripping or auth-event timing.
+    if (sessionStorage.getItem('ur_auth_pending') === '1') {
+      sessionStorage.removeItem('ur_auth_pending');
+      return 'login';
+    }
+    // Fallback: detect OAuth redirect via ?code= / #access_token= in URL.
     const params = new URLSearchParams(window.location.search);
     if (params.has('code') || window.location.hash.includes('access_token=')) {
       return 'login';
