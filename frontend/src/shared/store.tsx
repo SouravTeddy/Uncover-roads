@@ -86,13 +86,23 @@ function ssSave(key: string, value: unknown) {
 
 function getInitialScreen(): Screen {
   try {
-    // Restore map session if user was mid-session
-    const sessionScreen = ssGet<Screen>('ur_ss_screen');
-    if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
-      return sessionScreen;
+    // If this is an OAuth callback, always start at login so handleSignedIn runs.
+    // The ?code= param is in the URL synchronously (Supabase's async code exchange
+    // hasn't cleared it yet), making this a reliable way to detect a fresh sign-in
+    // before any auth events fire.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code') || window.location.hash.includes('access_token=')) {
+      return 'login';
     }
     const stored = localStorage.getItem('ur_persona');
-    if (stored) return 'welcome';
+    if (stored) {
+      // Only restore mid-session screen when the user has already completed OB.
+      const sessionScreen = ssGet<Screen>('ur_ss_screen');
+      if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
+        return sessionScreen;
+      }
+      return 'welcome';
+    }
   } catch {
     // ignore
   }
