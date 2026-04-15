@@ -55,3 +55,56 @@ describe('APPEND_ITINERARY_DAY reducer', () => {
     expect(next.itineraryDays).toEqual([]);
   });
 });
+
+describe('journey reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  };
+  beforeEach(() => {
+    vi.stubGlobal('sessionStorage', stubStorage);
+    vi.stubGlobal('localStorage', stubStorage);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const mockOrigin: import('./types').OriginPlace = {
+    placeId: 'p1', name: 'Home', address: '123 Main St',
+    lat: 51.5, lon: -0.12, originType: 'home', departureTime: '09:00',
+  };
+
+  it('SET_JOURNEY_ORIGIN creates an origin leg', () => {
+    const next = reducer(initialState, { type: 'SET_JOURNEY_ORIGIN', place: mockOrigin });
+    expect(next.journey).toEqual([{ type: 'origin', place: mockOrigin }]);
+  });
+
+  it('SET_JOURNEY_BUDGET sets journeyBudgetDays', () => {
+    const next = reducer(initialState, { type: 'SET_JOURNEY_BUDGET', days: 7 });
+    expect(next.journeyBudgetDays).toBe(7);
+  });
+
+  it('ADD_ADVISOR_MESSAGE appends to advisorMessages', () => {
+    const msg: import('./types').AdvisorMessage = {
+      id: 'a1', message: 'Test message', trigger: 'long_haul_arrival', timestamp: 1000,
+    };
+    const next = reducer(initialState, { type: 'ADD_ADVISOR_MESSAGE', message: msg });
+    expect(next.advisorMessages).toEqual([msg]);
+  });
+
+  it('CLEAR_ADVISOR_MESSAGES empties the list', () => {
+    const msg: import('./types').AdvisorMessage = {
+      id: 'a1', message: 'Test', trigger: 'test', timestamp: 1000,
+    };
+    const s1 = reducer(initialState, { type: 'ADD_ADVISOR_MESSAGE', message: msg });
+    const s2 = reducer(s1, { type: 'CLEAR_ADVISOR_MESSAGES' });
+    expect(s2.advisorMessages).toEqual([]);
+  });
+
+  it('UPDATE_JOURNEY_LEGS replaces legs array', () => {
+    const legs: import('./types').JourneyLeg[] = [
+      { type: 'origin', place: mockOrigin },
+    ];
+    const next = reducer(initialState, { type: 'UPDATE_JOURNEY_LEGS', legs });
+    expect(next.journey).toEqual(legs);
+  });
+});

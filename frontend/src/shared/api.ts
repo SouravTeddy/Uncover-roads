@@ -338,6 +338,31 @@ export async function fetchNearby(
   return Array.isArray(data) ? data : [];
 }
 
+export interface InterCityRouteResult {
+  duration_min: number;
+  distance_km: number;
+}
+
+/**
+ * Calls the backend /route endpoint (OSRM) between two lat/lon points.
+ * Returns null if OSRM has no road route (e.g. ocean crossing).
+ */
+export async function routeInterCity(
+  fromLat: number, fromLon: number,
+  toLat: number, toLon: number,
+): Promise<InterCityRouteResult | null> {
+  try {
+    const result = await post<{ summary?: { duration_min: number; distance_km: number }; error?: string }>(
+      '/route',
+      { points: [{ lat: fromLat, lon: fromLon }, { lat: toLat, lon: toLon }] },
+    );
+    if (result.error || !result.summary) return null;
+    return { duration_min: result.summary.duration_min, distance_km: result.summary.distance_km };
+  } catch {
+    return null;
+  }
+}
+
 export async function* aiItineraryStream(
   body: ItineraryRequest,
 ): AsyncGenerator<Itinerary> {

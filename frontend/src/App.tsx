@@ -13,6 +13,7 @@ import {
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
 import { MapScreen } from './modules/map';
+import { JourneyScreen } from './modules/journey';
 import { RouteScreen } from './modules/route';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
@@ -142,6 +143,7 @@ function ScreenRouter() {
       {currentScreen === 'persona'     && <PersonaScreen />}
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}
+      {currentScreen === 'journey'     && <JourneyScreen />}
       {currentScreen === 'route'       && <RouteScreen />}
       {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
