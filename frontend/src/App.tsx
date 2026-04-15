@@ -111,8 +111,15 @@ function ScreenRouter() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Handle fresh sign-ins AND initial session from OAuth code exchange
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && initialScreen === 'login') {
+      if (!session?.user) return;
+      if (event === 'SIGNED_IN') {
+        // Always handle fresh OAuth sign-ins, regardless of the initial screen.
+        // SIGNED_IN only fires on actual sign-in (not page refresh), so it's
+        // safe to run handleSignedIn even when the app restored to a mid-session screen.
+        handleSignedIn(session.user);
+      } else if (event === 'INITIAL_SESSION' && initialScreen === 'login') {
+        // Page loaded with existing session and we were at the login screen
+        // (e.g. session storage had no mid-session screen to restore).
         handleSignedIn(session.user);
       }
     });
