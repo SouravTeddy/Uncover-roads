@@ -9,7 +9,7 @@ import { JourneyStrip } from './JourneyStrip';
 import { buildJourneyLegs, calculateArrivalDates } from '../map/journey-legs';
 import { isJourneyMode } from '../map/journey-utils';
 import { generateAdvisorMessage } from '../map/advisor-utils';
-import type { JourneyLeg, Place } from '../../shared/types';
+import type { JourneyLeg, Place, StartType } from '../../shared/types';
 import { computeTotalDays } from '../map/trip-capacity-utils';
 
 export function JourneyScreen() {
@@ -158,6 +158,42 @@ export function JourneyScreen() {
     return null;
   }
 
+  function handleBuildItinerary() {
+    const cityLegsTotal = legs
+      .filter(l => l.type === 'city')
+      .reduce((s, l) => s + (l as Extract<JourneyLeg, { type: 'city' }>).estimatedDays, 0);
+
+    const days = (travelStartDate && travelEndDate
+      ? computeTotalDays(travelStartDate, travelEndDate)
+      : journeyBudgetDays) ?? Math.max(cityLegsTotal, 1);
+
+    const startDate = travelStartDate ?? new Date().toISOString().slice(0, 10);
+
+    const originTypeMap: Record<string, StartType> = {
+      hotel: 'hotel', airport: 'airport', home: 'pin', custom: 'pin',
+    };
+    const startType: StartType = originLeg
+      ? (originTypeMap[originLeg.place.originType] ?? 'hotel')
+      : 'hotel';
+
+    dispatch({
+      type: 'SET_TRIP_CONTEXT',
+      ctx: {
+        date:        startDate,
+        days:        Math.max(days, 1),
+        dayNumber:   1,
+        startType,
+        arrivalTime: originLeg?.place.departureTime ?? null,
+        isLongHaul,
+        locationLat:  originLeg?.place.lat ?? null,
+        locationLon:  originLeg?.place.lon ?? null,
+        locationName: originLeg?.place.name ?? null,
+        flightTime:   null,
+      },
+    });
+    dispatch({ type: 'GO_TO', screen: 'route' });
+  }
+
   return (
     <div className="fixed inset-0" style={{ display: 'flex', flexDirection: 'column', zIndex: 10 }}>
       {/* Top 60% — map or transit background */}
@@ -265,10 +301,26 @@ export function JourneyScreen() {
           ))}
         </div>
 
-        {/* Journey strip + advisor thread */}
+        {/* Journey strip + advisor thread + build CTA */}
         <div style={{ padding: '8px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
           <JourneyStrip />
           <JourneyAdvisorThread />
+          <button
+            onClick={handleBuildItinerary}
+            style={{
+              width: '100%', height: 50,
+              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+              border: 'none', borderRadius: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontSize: 15, fontWeight: 800, color: '#fff',
+              boxShadow: '0 4px 24px rgba(59,130,246,.35)',
+              flexShrink: 0,
+            }}
+          >
+            <span className="ms fill" style={{ fontSize: 20 }}>auto_fix</span>
+            Build my itinerary
+          </button>
         </div>
       </div>
     </div>
