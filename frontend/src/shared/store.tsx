@@ -86,11 +86,16 @@ function ssSave(key: string, value: unknown) {
 
 function getInitialScreen(): Screen {
   try {
+    // Detect OAuth redirect synchronously before any async auth events fire.
+    // Supabase puts ?code= in the URL on redirect and clears it only after the
+    // async token exchange, so it's reliably present during this first render.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code') || window.location.hash.includes('access_token=')) {
+      return 'login';
+    }
     const stored = localStorage.getItem('ur_persona');
     if (stored) {
-      // Only restore mid-session screen if the user has already completed OB.
-      // Without this guard, session storage from a previous visit (e.g. 'destination')
-      // would bypass the login/OB flow entirely after a sign-out + sign-in.
+      // Only restore mid-session screen when the user has already completed OB.
       const sessionScreen = ssGet<Screen>('ur_ss_screen');
       if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
         return sessionScreen;
