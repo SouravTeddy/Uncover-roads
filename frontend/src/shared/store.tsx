@@ -14,6 +14,9 @@ import type {
   RawOBAnswers,
   PersonaProfile,
   ResolvedConflict,
+  JourneyLeg,
+  AdvisorMessage,
+  OriginPlace,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -63,6 +66,9 @@ export interface AppState {
   userRole: 'user' | 'admin';
   generationCount: number;
   profileLoaded: boolean;
+  journey: JourneyLeg[] | null;
+  journeyBudgetDays: number | null;
+  advisorMessages: AdvisorMessage[];
 }
 
 // ── Session persistence (survives tab switches, clears on tab close) ──────────
@@ -155,6 +161,9 @@ export const initialState: AppState = {
   userRole: getStoredUserRole(),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
+  journey: null,
+  journeyBudgetDays: null,
+  advisorMessages: [],
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -186,7 +195,13 @@ export type Action =
   | { type: 'RESET_MAP' }
   | { type: 'SET_RAW_OB_ANSWER'; key: keyof RawOBAnswers; value: unknown }
   | { type: 'SET_OB_PRE_RESOLVED'; value: ResolvedConflict[] }
-  | { type: 'SET_PERSONA_PROFILE'; profile: PersonaProfile };
+  | { type: 'SET_PERSONA_PROFILE'; profile: PersonaProfile }
+  | { type: 'SET_JOURNEY_ORIGIN'; place: OriginPlace }
+  | { type: 'UPDATE_JOURNEY_LEGS'; legs: JourneyLeg[] }
+  | { type: 'SET_JOURNEY_BUDGET'; days: number }
+  | { type: 'ADD_ADVISOR_MESSAGE'; message: AdvisorMessage }
+  | { type: 'CLEAR_ADVISOR_MESSAGES' }
+  | { type: 'RESET_JOURNEY' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -349,6 +364,27 @@ export function reducer(state: AppState, action: Action): AppState {
         localStorage.setItem('ur_persona', JSON.stringify({ archetype: action.profile.archetype }));
       } catch { /* ignore */ }
       return { ...state, personaProfile: action.profile };
+
+    case 'SET_JOURNEY_ORIGIN': {
+      const originLeg: JourneyLeg = { type: 'origin', place: action.place };
+      const existingNonOrigin = (state.journey ?? []).filter(l => l.type !== 'origin');
+      return { ...state, journey: [originLeg, ...existingNonOrigin] };
+    }
+
+    case 'UPDATE_JOURNEY_LEGS':
+      return { ...state, journey: action.legs };
+
+    case 'SET_JOURNEY_BUDGET':
+      return { ...state, journeyBudgetDays: action.days };
+
+    case 'ADD_ADVISOR_MESSAGE':
+      return { ...state, advisorMessages: [...state.advisorMessages, action.message] };
+
+    case 'CLEAR_ADVISOR_MESSAGES':
+      return { ...state, advisorMessages: [] };
+
+    case 'RESET_JOURNEY':
+      return { ...state, journey: null, journeyBudgetDays: null, advisorMessages: [] };
 
     default:
       return state;

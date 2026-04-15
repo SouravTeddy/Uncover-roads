@@ -10,6 +10,7 @@ export type Screen =
   | 'persona'
   | 'destination'
   | 'map'
+  | 'journey'
   | 'route'
   | 'trips'
   | 'nav'
@@ -290,4 +291,51 @@ export interface NearbyResult {
   lat: number;
   lon: number;
   place_id: string;
+}
+
+// ── Journey / Multi-city ──────────────────────────────────────
+export type OriginType = 'home' | 'hotel' | 'airport' | 'custom';
+export type TransitMode = 'flight' | 'drive' | 'train' | 'bus';
+
+export interface OriginPlace {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  originType: OriginType;
+  departureTime?: string;   // "HH:MM" — home: user-set, airport: landing time
+  checkInTime?: string;     // "HH:MM" — hotel: from Google Places
+  checkOutTime?: string;    // "HH:MM" — hotel: from Google Places
+  isLongHaul?: boolean;     // airport only
+}
+
+export type JourneyLeg =
+  | { type: 'origin'; place: OriginPlace }
+  | {
+      type: 'city';
+      city: string;
+      countryCode: string;
+      places: Place[];
+      arrivalDate?: string;   // ISO date, set after calculateArrivalDates()
+      estimatedDays: number;
+      advisorMessage?: string;
+    }
+  | {
+      type: 'transit';
+      mode: TransitMode;
+      from: string;
+      to: string;
+      fromCoords: [number, number]; // [lat, lon]
+      toCoords: [number, number];
+      durationMinutes?: number;
+      distanceKm?: number;
+      advisorMessage?: string;
+    };
+
+export interface AdvisorMessage {
+  id: string;
+  message: string;
+  trigger: string;
+  timestamp: number;
 }

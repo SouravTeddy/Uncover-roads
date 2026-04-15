@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ItineraryStop, ItinerarySummary, Place, TripContext, Persona, WeatherData } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from '../map/types';
 import { resolveScene } from './sceneMap';
+import { useAppStore } from '../../shared/store';
 
 interface Props {
   stops: ItineraryStop[];
@@ -879,6 +880,11 @@ export function ItineraryView({
   stops, selectedPlaces, allPlaces, tripContext, summary, persona, weather, city, startTime,
   onRemove, onAddMeal, onAddSuggestion, onSceneChange,
 }: Props) {
+  const { state } = useAppStore();
+  const journey = state.journey;
+  const isMultiCity = journey !== null && journey.some(l => l.type === 'city');
+
+  // All hooks must be called unconditionally before any conditional returns
   const containerRef  = useRef<HTMLDivElement>(null);
   const timelineRef   = useRef<ReturnType<typeof buildTimeline>>([]);
   const weatherRef    = useRef(weather);
@@ -1019,6 +1025,69 @@ export function ItineraryView({
     return () => observer.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSceneChange, stops.length]);
+
+  // ── Multi-city render path ─────────────────────────────────────
+  if (isMultiCity && journey) {
+    const cityLegs = journey.filter(l => l.type === 'city') as Extract<NonNullable<typeof journey>[0], { type: 'city' }>[];
+    const transitLegs = journey.filter(l => l.type === 'transit') as Extract<NonNullable<typeof journey>[0], { type: 'transit' }>[];
+
+    // Pre-compute day offsets to avoid mutating let inside JSX
+    const dayOffsets: Array<{ dayStart: number; dayEnd: number }> = [];
+    let offset = 0;
+    for (const cityLeg of cityLegs) {
+      dayOffsets.push({ dayStart: offset + 1, dayEnd: offset + cityLeg.estimatedDays });
+      offset += cityLeg.estimatedDays;
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {cityLegs.map((cityLeg, cityIdx) => {
+          const transitBefore = transitLegs[cityIdx - 1];
+          const { dayStart, dayEnd } = dayOffsets[cityIdx];
+
+          return (
+            <div key={cityLeg.city}>
+              {transitBefore && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '16px 20px', margin: '8px 0',
+                  background: 'rgba(59,130,246,.06)', border: '1px solid rgba(59,130,246,.15)',
+                  borderRadius: 16, marginLeft: 16, marginRight: 16,
+                }}>
+                  <span className="ms fill" style={{ fontSize: 20, color: '#3b82f6' }}>
+                    {transitBefore.mode === 'flight' ? 'flight' : transitBefore.mode === 'train' ? 'train' : 'directions_car'}
+                  </span>
+                  <div>
+                    <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                      {transitBefore.mode === 'flight' ? 'Fly' : transitBefore.mode === 'train' ? 'Train' : 'Drive'} to {transitBefore.to}
+                    </div>
+                    {transitBefore.durationMinutes && (
+                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
+                        {Math.round(transitBefore.durationMinutes / 60)}h {Math.round(transitBefore.durationMinutes % 60)}m
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* City heading */}
+              <div style={{ padding: '16px 20px 8px' }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#3b82f6', marginBottom: 4 }}>
+                  {cityLeg.arrivalDate ? new Date(cityLeg.arrivalDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `City ${cityIdx + 1}`}
+                </div>
+                <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 20, fontWeight: 800, color: '#f1f5f9' }}>{cityLeg.city}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
+                  Day {dayStart}–{dayEnd} · {cityLeg.estimatedDays} day{cityLeg.estimatedDays !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              {/* Existing itinerary content for this city — rendered via existing DayStops if available */}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div
