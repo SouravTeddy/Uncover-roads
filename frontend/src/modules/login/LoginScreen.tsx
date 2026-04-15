@@ -46,11 +46,16 @@ export function LoginScreen() {
   async function signInWithGoogle() {
     setAuthLoading(true);
     setError(null);
+    // Set a flag before the redirect. Session storage survives OAuth redirects
+    // in the same tab, so getInitialScreen() can detect a fresh sign-in
+    // reliably — regardless of URL param stripping or auth event timing.
+    sessionStorage.setItem('ur_auth_pending', '1');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     });
     if (error) {
+      sessionStorage.removeItem('ur_auth_pending');
       setError(error.message);
       setAuthLoading(false);
     }
