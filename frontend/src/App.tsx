@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
-import { syncProfile, loadSavedItineraries, loadUserProfile, fetchPersonaForRestore } from './shared/userSync';
+import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import {
@@ -59,21 +59,7 @@ function ScreenRouter() {
       dispatch({ type: 'PROFILE_LOADED' });
     }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
 
-    let hasPersona = Boolean(localStorage.getItem('ur_persona'));
-    // Supabase fallback: if localStorage was cleared (e.g. after sign-out),
-    // restore the persona so returning users skip re-doing onboarding.
-    if (!hasPersona) {
-      try {
-        const personaData = await fetchPersonaForRestore(user.id);
-        if (personaData) {
-          localStorage.setItem('ur_persona', JSON.stringify({
-            archetype: personaData.archetype,
-            archetype_name: personaData.archetype_name,
-          }));
-          hasPersona = true;
-        }
-      } catch { /* ignore — will show OB if Supabase is unavailable */ }
-    }
+    const hasPersona = Boolean(localStorage.getItem('ur_persona'));
     const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
     if (hasPersona) {
       // Route to welcome screen so the user sees their persona card before continuing.
