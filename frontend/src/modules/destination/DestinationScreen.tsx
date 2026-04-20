@@ -28,10 +28,6 @@ export function DestinationScreen() {
   // Date sheet state — shown after city is selected
   const [showDateSheet, setShowDateSheet] = useState(false);
 
-  function goToMap() {
-    dispatch({ type: 'GO_TO', screen: 'map' });
-  }
-
   function handleDatesDone(start: string, end: string) {
     dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
     dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { date: start } });
@@ -208,7 +204,7 @@ export function DestinationScreen() {
           initialStart={travelStartDate}
           initialEnd={travelEndDate}
           onDone={handleDatesDone}
-          onClose={goToMap}
+          onClose={() => setShowDateSheet(false)}
         />
       )}
     </div>
