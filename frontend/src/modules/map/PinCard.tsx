@@ -46,10 +46,16 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   const dragY       = useRef(0);
   const closing     = useRef(false);
 
-  // Slide-in on mount
+  // Slide-in on mount + block Chrome pull-to-refresh while card is open
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(id);
+    // overscroll-behavior-y:none prevents Chrome's pull-to-refresh gesture
+    // from firing while the user is swiping the card down to close it.
+    document.body.style.overscrollBehaviorY = 'none';
+    return () => {
+      cancelAnimationFrame(id);
+      document.body.style.overscrollBehaviorY = '';
+    };
   }, []);
 
   // Image: Google photo → Wikipedia fallback
@@ -148,10 +154,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   const hoursLabel  = rawHoursLine !== null && d?.open_now !== undefined
     ? parseOpenClose(rawHoursLine, d.open_now) : rawHoursLine;
 
-  const description = d?.editorial_summary
-    || (d?.top_review ? d.top_review.slice(0, 200) + (d.top_review.length > 200 ? '…' : '') : null)
-    || place.tags?.description
-    || null;
+  const description = d?.editorial_summary || place.tags?.description || null;
 
   const cuisineTags = place.tags?.cuisine
     ? place.tags.cuisine.split(';').map(s => s.trim().replace(/_/g, ' ')).filter(Boolean)
