@@ -41,6 +41,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   const [imgSrc, setImgSrc]           = useState<string | null>(null);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const sheetRef    = useRef<HTMLDivElement>(null);
+  const handleRef   = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const dragY       = useRef(0);
   const closing     = useRef(false);
@@ -81,29 +82,46 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
     setTimeout(onClose, 380);
   }, [onClose]);
 
-  // Swipe-to-close — touch handlers on drag handle only
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    dragY.current = 0;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0 && sheetRef.current) {
-      sheetRef.current.style.transition = 'none';
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-      dragY.current = dy;
-    }
-  };
-  const onTouchEnd = () => {
-    if (!sheetRef.current) return;
-    sheetRef.current.style.transition = '';
-    if (dragY.current > 80) {
-      handleClose();
-    } else {
-      sheetRef.current.style.transform = 'translateY(0)';
-    }
-    dragY.current = 0;
-  };
+  // Swipe-to-close — non-passive imperative listeners on the drag handle so
+  // we can call preventDefault() and block browser pull-to-refresh / OS
+  // gesture navigation (Android edge swipe / bottom-bar gesture).
+  useEffect(() => {
+    const el = handleRef.current;
+    if (!el) return;
+
+    const onStart = (e: TouchEvent) => {
+      touchStartY.current = e.touches[0].clientY;
+      dragY.current = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0 && sheetRef.current) {
+        if (e.cancelable) e.preventDefault(); // block pull-to-refresh / OS gesture
+        sheetRef.current.style.transition = 'none';
+        sheetRef.current.style.transform = `translateY(${dy}px)`;
+        dragY.current = dy;
+      }
+    };
+    const onEnd = () => {
+      if (!sheetRef.current) return;
+      sheetRef.current.style.transition = '';
+      if (dragY.current > 80) {
+        handleClose();
+      } else {
+        sheetRef.current.style.transform = 'translateY(0)';
+      }
+      dragY.current = 0;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove',  onMove,  { passive: false }); // must be non-passive for preventDefault
+    el.addEventListener('touchend',   onEnd,   { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove',  onMove);
+      el.removeEventListener('touchend',   onEnd);
+    };
+  }, [handleClose]);
 
   // ── Derived data ─────────────────────────────────────────────
   const icon  = CATEGORY_ICONS[place.category] ?? 'location_on';
@@ -184,10 +202,8 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
       >
         {/* Drag handle */}
         <div
+          ref={handleRef}
           style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0, touchAction: 'none' }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
         >
           <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,.15)', borderRadius: 2 }} />
         </div>
