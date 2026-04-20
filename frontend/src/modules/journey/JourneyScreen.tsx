@@ -176,6 +176,8 @@ export function JourneyScreen() {
       ? (originTypeMap[originLeg.place.originType] ?? 'hotel')
       : 'hotel';
 
+    dispatch({ type: 'SET_ITINERARY', itinerary: null });
+    dispatch({ type: 'SET_ITINERARY_DAYS', days: [] });
     dispatch({
       type: 'SET_TRIP_CONTEXT',
       ctx: {

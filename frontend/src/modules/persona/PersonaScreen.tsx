@@ -123,6 +123,26 @@ export function PersonaScreen() {
     .map(([k]) => k);
 
   function startPlanning() {
+    // The new OB flow dispatches SET_PERSONA_PROFILE but never SET_PERSONA,
+    // so state.persona stays null for the current session. buildItinerary()
+    // guards on persona being truthy, so we must set it here.
+    dispatch({
+      type: 'SET_PERSONA',
+      persona: {
+        archetype:      archetypeKey,
+        archetype_name: meta.name,
+        archetype_desc: meta.tagline,
+        ritual:         null,
+        sensory:        null,
+        style:          null,
+        attractions:    [],
+        pace:           null,
+        social:         null,
+        insight:        meta.tagline,
+        archetypeData:  { name: meta.name, desc: meta.tagline, venue_filters: [], itinerary_bias: [] },
+      },
+    });
+
     // Sync to Supabase so the persona survives sign-out + sign-back-in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {

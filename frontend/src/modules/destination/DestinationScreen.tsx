@@ -5,10 +5,11 @@ import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 import { ARCHETYPE_COLORS } from '../persona/types';
 import { api } from '../../shared/api';
 import type { SavedItinerary } from '../../shared/types';
+import { DateRangeSheet } from '../map/TravelDateBar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
-  const { persona, savedItineraries } = state;
+  const { persona, savedItineraries, travelStartDate, travelEndDate } = state;
 
   // Real user info from localStorage
   const rawUser = localStorage.getItem('ur_user');
@@ -26,11 +27,14 @@ export function DestinationScreen() {
 
   // Date sheet state — shown after city is selected
   const [showDateSheet, setShowDateSheet] = useState(false);
-  const [pendingCity, setPendingCity]     = useState('');
-  const [dateValue, setDateValue]         = useState('');
 
-  function goToMap(date?: string) {
-    if (date) dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { date } });
+  function goToMap() {
+    dispatch({ type: 'GO_TO', screen: 'map' });
+  }
+
+  function handleDatesDone(start: string, end: string) {
+    dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
+    dispatch({ type: 'SET_TRIP_CONTEXT', ctx: { date: start } });
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 
@@ -48,8 +52,6 @@ export function DestinationScreen() {
         // proceed anyway — map will handle missing geo
       }
     }
-    setPendingCity(name);
-    setDateValue('');
     setShowDateSheet(true);
   }
 
@@ -83,8 +85,6 @@ export function DestinationScreen() {
         dispatch({ type: 'SET_CITY', city: resolvedCity });
         dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
       }
-      setPendingCity(resolvedCity);
-      setDateValue('');
       setShowDateSheet(true);
     });
   }
@@ -202,68 +202,14 @@ export function DestinationScreen() {
         )}
       </div>
 
-      {/* ── Date picker sheet ── */}
+      {/* ── Date range picker — shown after city is selected ── */}
       {showDateSheet && (
-        <>
-          <div
-            className="fixed inset-0"
-            style={{ zIndex: 30, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(2px)' }}
-            onClick={() => goToMap()}
-          />
-          <div
-            className="fixed inset-x-0 bottom-0 rounded-t-3xl px-6 pt-5 flex flex-col"
-            style={{
-              zIndex: 31,
-              background: 'rgb(18,22,30)',
-              borderTop: '1px solid rgba(255,255,255,.08)',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 2rem)',
-            }}
-          >
-            <div className="flex justify-center mb-5">
-              <div className="w-9 h-1 rounded-full bg-white/20" />
-            </div>
-
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="ms fill text-primary" style={{ fontSize: 20 }}>calendar_today</span>
-              <h2 className="font-heading font-bold text-white text-lg">When are you visiting?</h2>
-            </div>
-            <p className="text-white/40 text-sm mb-5 ml-8">
-              We'll surface events happening in {pendingCity} for your dates.
-            </p>
-
-            <input
-              type="date"
-              value={dateValue}
-              onChange={e => setDateValue(e.target.value)}
-              className="w-full h-12 rounded-2xl text-white text-sm px-4 mb-4"
-              style={{
-                colorScheme: 'dark',
-                background: 'rgba(255,255,255,.05)',
-                border: '1px solid rgba(255,255,255,.09)',
-              }}
-            />
-
-            <button
-              onClick={() => goToMap(dateValue || undefined)}
-              className="w-full h-13 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mb-3"
-              style={{
-                background: dateValue
-                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
-                  : 'rgba(59,130,246,.5)',
-              }}
-            >
-              <span className="ms fill" style={{ fontSize: 18 }}>explore</span>
-              Explore {pendingCity}
-            </button>
-
-            <button
-              onClick={() => goToMap()}
-              className="text-white/30 text-sm text-center py-1 hover:text-white/50 transition-colors"
-            >
-              Skip for now
-            </button>
-          </div>
-        </>
+        <DateRangeSheet
+          initialStart={travelStartDate}
+          initialEnd={travelEndDate}
+          onDone={handleDatesDone}
+          onClose={goToMap}
+        />
       )}
     </div>
   );

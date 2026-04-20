@@ -122,14 +122,14 @@ export function TravelDateBar() {
 
 // ── DateRangeSheet ────────────────────────────────────────────
 
-interface SheetProps {
+export interface SheetProps {
   initialStart: string | null;
   initialEnd:   string | null;
   onDone:  (start: string, end: string) => void;
   onClose: () => void;
 }
 
-function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: SheetProps) {
+export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: SheetProps) {
   const dates = useMemo(() => generateDateStrip(21), []); // 3 weeks
   const [localStart, setLocalStart] = useState(initialStart ?? dates[0].isoDate);
   const [localEnd,   setLocalEnd]   = useState(initialEnd   ?? dates[0].isoDate);
@@ -333,7 +333,7 @@ function DateStrip({ dates, selected, disabledBefore, onSelect }: DateStripProps
               color: active ? '#93c5fd' : TEXT3,
               fontFamily: 'Inter, sans-serif', marginBottom: 4,
             }}>
-              {idx === 0 ? 'TODAY' : d.dayAbbr.toUpperCase()}
+              {d.dayAbbr.toUpperCase()}
             </div>
             <div style={{
               fontSize: 18, fontWeight: 800, lineHeight: 1,
