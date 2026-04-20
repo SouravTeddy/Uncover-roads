@@ -158,8 +158,11 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
     : [];
   const chips = typeTags.length > 0 ? typeTags : cuisineTags;
 
-  const directionsUrl = getDirectionsUrl(d?.lat ?? place.lat, d?.lon ?? place.lon);
-  const website       = d?.website || place.tags?.website || null;
+  const directionsUrl  = getDirectionsUrl(d?.lat ?? place.lat, d?.lon ?? place.lon);
+  const website        = d?.website || place.tags?.website || null;
+  const googleMapsUrl  = details?.place_id
+    ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.title + ' ' + city)}`;
 
   let catLabel = CATEGORY_LABELS[place.category] ?? 'Place';
   if (place.tags?.cuisine) {
@@ -367,8 +370,12 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
 
           {/* Link pills */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
+            <a href={googleMapsUrl} target="_blank" rel="noreferrer" style={{ ...linkBtn, color: '#93c5fd', borderColor: 'rgba(59,130,246,.3)', background: 'rgba(59,130,246,.1)' }}>
+              <span className="ms fill" style={{ fontSize: 14 }}>map</span>
+              Google Maps
+            </a>
             <a href={directionsUrl} target="_blank" rel="noreferrer" style={linkBtn}>
-              <span className="ms" style={{ fontSize: 14 }}>map</span>
+              <span className="ms" style={{ fontSize: 14 }}>directions</span>
               Directions
             </a>
             {website && (
