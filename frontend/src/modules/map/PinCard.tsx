@@ -41,6 +41,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   const [imgSrc, setImgSrc]           = useState<string | null>(null);
   const [hoursExpanded, setHoursExpanded] = useState(false);
   const sheetRef    = useRef<HTMLDivElement>(null);
+  const scrollRef   = useRef<HTMLDivElement>(null);
   const handleRef   = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const dragY       = useRef(0);
@@ -49,11 +50,12 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   // Slide-in on mount + block Chrome pull-to-refresh while card is open
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true));
-    // overscroll-behavior-y:none prevents Chrome's pull-to-refresh gesture
-    // from firing while the user is swiping the card down to close it.
+    // Set on both html and body to cover all Chrome/Android scroll roots
+    document.documentElement.style.overscrollBehaviorY = 'none';
     document.body.style.overscrollBehaviorY = 'none';
     return () => {
       cancelAnimationFrame(id);
+      document.documentElement.style.overscrollBehaviorY = '';
       document.body.style.overscrollBehaviorY = '';
     };
   }, []);
@@ -88,11 +90,11 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
     setTimeout(onClose, 380);
   }, [onClose]);
 
-  // Swipe-to-close — non-passive imperative listeners on the drag handle so
-  // we can call preventDefault() and block browser pull-to-refresh / OS
-  // gesture navigation (Android edge swipe / bottom-bar gesture).
+  // Swipe-to-close — non-passive imperative listeners on the whole sheet.
+  // When the scrollable body is at scroll position 0 and the user swipes down,
+  // we drag the sheet and close it. When content is scrolled, normal scroll works.
   useEffect(() => {
-    const el = handleRef.current;
+    const el = sheetRef.current;
     if (!el) return;
 
     const onStart = (e: TouchEvent) => {
@@ -101,7 +103,9 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
     };
     const onMove = (e: TouchEvent) => {
       const dy = e.touches[0].clientY - touchStartY.current;
-      if (dy > 0 && sheetRef.current) {
+      const scrollTop = scrollRef.current?.scrollTop ?? 0;
+      // Only intercept downward swipes when content is scrolled to the top
+      if (dy > 0 && scrollTop === 0 && sheetRef.current) {
         if (e.cancelable) e.preventDefault(); // block pull-to-refresh / OS gesture
         sheetRef.current.style.transition = 'none';
         sheetRef.current.style.transform = `translateY(${dy}px)`;
@@ -154,7 +158,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
   const hoursLabel  = rawHoursLine !== null && d?.open_now !== undefined
     ? parseOpenClose(rawHoursLine, d.open_now) : rawHoursLine;
 
-  const description = d?.editorial_summary || place.tags?.description || null;
+  const description = d?.editorial_summary ?? null;
 
   const cuisineTags = place.tags?.cuisine
     ? place.tags.cuisine.split(';').map(s => s.trim().replace(/_/g, ' ')).filter(Boolean)
@@ -264,7 +268,7 @@ export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Pr
         </div>
 
         {/* Scrollable body — minHeight:0 is required for flex child to actually scroll */}
-        <div style={{
+        <div ref={scrollRef} style={{
           overflowY: 'auto', WebkitOverflowScrolling: 'touch',
           padding: `16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)`,
           flex: 1, minHeight: 0,
