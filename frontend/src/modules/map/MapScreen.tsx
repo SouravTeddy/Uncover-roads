@@ -14,7 +14,6 @@ import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
-import { TravelDateBar } from './TravelDateBar';
 import { JourneyStrip } from '../journey';
 
 // ── Nominatim place search ──────────────────────────────────────
@@ -423,11 +422,6 @@ export function MapScreen() {
             ))}
           </div>
         )}
-
-        {/* Travel date bar */}
-        <div style={{ pointerEvents: 'auto' }}>
-          <TravelDateBar />
-        </div>
 
         {/* Journey strip — only visible in multi-city mode */}
         <div style={{ pointerEvents: 'auto' }}>
