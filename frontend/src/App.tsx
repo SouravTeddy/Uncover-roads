@@ -97,13 +97,29 @@ function ScreenRouter() {
       }
     });
 
+    // Screens that represent an active in-progress session — if the user is
+    // already on one of these, a spurious SIGNED_IN event (e.g. token refresh
+    // on Android app resume) must NOT kick them back to the welcome screen.
+    const activeMidSessionScreens = new Set([
+      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'profile',
+    ]);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!session?.user) return;
       if (event === 'SIGNED_IN') {
-        // SIGNED_IN fires only on actual sign-ins, not page refreshes.
-        // Always call handleSignedIn so returning users who land on a restored
-        // mid-session screen (e.g. 'destination') still get routed correctly.
-        handleSignedIn(session.user);
+        if (activeMidSessionScreens.has(initialScreen)) {
+          // Already on an active screen (e.g. restored from localStorage after
+          // Android app-resume or opening Google Maps). Just sync data silently.
+          loadUserProfile(session.user.id).then(profile => {
+            if (profile) {
+              dispatch({ type: 'SET_USER_ROLE', role: profile.role });
+              dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+            }
+            dispatch({ type: 'PROFILE_LOADED' });
+          }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
+        } else {
+          handleSignedIn(session.user);
+        }
       } else if (event === 'INITIAL_SESSION' && initialScreen === 'login') {
         handleSignedIn(session.user);
       }

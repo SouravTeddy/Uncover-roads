@@ -61,7 +61,7 @@ export function useGoogleCitySearch() {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const predictions = await placesAutocomplete(input, sessionIdRef.current);
+        const predictions = await placesAutocomplete(input, sessionIdRef.current, '(cities)');
         if (predictions.length > 0) {
           setResults(predictions);
         } else {
