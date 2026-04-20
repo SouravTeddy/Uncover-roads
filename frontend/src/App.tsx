@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
@@ -62,8 +63,18 @@ function ScreenRouter() {
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));
     const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
     if (hasPersona) {
-      // Route to welcome screen so the user sees their persona card before continuing.
-      // WelcomeBackScreen handles the "Continue your journey" → destination navigation.
+      // If the user had an active session in progress, restore them directly to
+      // that screen instead of the welcome screen. This handles iOS PWA restarts,
+      // session refreshes, and returning from external apps like Google Maps.
+      try {
+        const raw = localStorage.getItem('ur_ss_screen');
+        const savedScreen = raw ? (JSON.parse(raw) as string) : null;
+        const midSessionScreens = ['map', 'route', 'destination', 'journey'];
+        if (savedScreen && midSessionScreens.includes(savedScreen)) {
+          dispatch({ type: 'GO_TO', screen: savedScreen as Screen });
+          return;
+        }
+      } catch { /* ignore */ }
       dispatch({ type: 'GO_TO', screen: 'welcome' });
     } else if (hasSeenWalkthrough) {
       dispatch({ type: 'GO_TO', screen: 'ob1' });
