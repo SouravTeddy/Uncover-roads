@@ -139,6 +139,8 @@ export function PersonaScreen() {
         pace:           null,
         social:         null,
         insight:        meta.tagline,
+        venue_filters:  [],
+        itinerary_bias: [],
         archetypeData:  { name: meta.name, desc: meta.tagline, venue_filters: [], itinerary_bias: [] },
       },
     });
