@@ -308,7 +308,7 @@ function DateStrip({ dates, selected, disabledBefore, onSelect }: DateStripProps
       scrollbarWidth: 'none',
       WebkitOverflowScrolling: 'touch',
     } as React.CSSProperties}>
-      {dates.map((d, idx) => {
+      {dates.map((d) => {
         const active   = d.isoDate === selected;
         const disabled = disabledBefore !== null && d.isoDate < disabledBefore;
         return (
