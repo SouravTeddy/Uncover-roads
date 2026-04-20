@@ -71,17 +71,17 @@ export interface AppState {
   advisorMessages: AdvisorMessage[];
 }
 
-// ── Session persistence (survives tab switches, clears on tab close) ──────────
+// ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
 
 function ssGet<T>(key: string): T | null {
   try {
-    const v = sessionStorage.getItem(key);
+    const v = localStorage.getItem(key);
     return v ? (JSON.parse(v) as T) : null;
   } catch { return null; }
 }
 
 function ssSave(key: string, value: unknown) {
-  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
 function getInitialScreen(): Screen {
@@ -102,7 +102,7 @@ function getInitialScreen(): Screen {
     if (stored) {
       // Only restore mid-session screen when the user has already completed OB.
       const sessionScreen = ssGet<Screen>('ur_ss_screen');
-      if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
+      if (sessionScreen && ['map', 'route', 'destination', 'journey'].includes(sessionScreen)) {
         return sessionScreen;
       }
       return 'welcome';
