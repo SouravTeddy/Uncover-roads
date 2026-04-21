@@ -14,6 +14,11 @@ const mockDay2: Itinerary = {
 
 describe('APPEND_ITINERARY_DAY reducer', () => {
   beforeEach(() => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
     vi.stubGlobal('sessionStorage', {
       getItem: vi.fn(() => null),
       setItem: vi.fn(),
@@ -40,10 +45,10 @@ describe('APPEND_ITINERARY_DAY reducer', () => {
     expect(next.itineraryDays).toEqual([mockDay1, null]);
   });
 
-  it('calls sessionStorage.setItem with updated array', () => {
+  it('calls localStorage.setItem with updated array', () => {
     const state: AppState = { ...initialState, itineraryDays: [] };
     reducer(state, { type: 'APPEND_ITINERARY_DAY', day: mockDay1 });
-    expect(sessionStorage.setItem).toHaveBeenCalledWith(
+    expect(localStorage.setItem).toHaveBeenCalledWith(
       'ur_ss_itin_days',
       JSON.stringify([mockDay1]),
     );

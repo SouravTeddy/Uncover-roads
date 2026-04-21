@@ -3,6 +3,20 @@ import { addDaysToIso } from './trip-capacity-utils';
 import type { JourneyLeg, OriginType, OriginPlace, Place, TransitMode } from '../../shared/types';
 
 /**
+ * Hour (24h) after which a hotel check-in is considered "late".
+ * Used to decide whether the itinerary starts on day 1 or day 2.
+ * Note: future scheduling logic will use full trip context (night-place placement,
+ * day density) — this threshold is the baseline for the simple case.
+ */
+export const LATE_CHECKIN_THRESHOLD_HOUR = 18;
+
+/**
+ * Minutes of rest to allow after hotel check-in before the itinerary begins.
+ * Accounts for settling in and freshening up.
+ */
+export const POST_CHECKIN_REST_MINUTES = 45;
+
+/**
  * Determines transit mode between two geographic points via OSRM.
  * Falls back to 'flight' when no road route exists (ocean/island crossing).
  * Also returns the OSRM duration in minutes (undefined when no road route).
@@ -131,8 +145,8 @@ export async function buildJourneyLegs(
   if (origin?.originType === 'hotel' && origin.checkOutTime) {
     const [h, m] = origin.checkOutTime.split(':').map(Number);
     const checkoutTotalMin = h * 60 + m;
-    // If checkout before 13:00 (780 min), reduce last city by 1 day (minimum 1)
-    if (checkoutTotalMin < 780) {
+    const CHECKOUT_MORNING_CUTOFF_MIN = 13 * 60; // 1:00 PM — if checkout is before 1 PM, squeeze last city
+    if (checkoutTotalMin < CHECKOUT_MORNING_CUTOFF_MIN) {
       const lastCityIdx = legs.reduce((acc, l, i) => l.type === 'city' ? i : acc, -1);
       if (lastCityIdx >= 0) {
         const lastCity = legs[lastCityIdx] as Extract<JourneyLeg, { type: 'city' }>;

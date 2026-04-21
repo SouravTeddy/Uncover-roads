@@ -115,11 +115,6 @@ export function MapScreen() {
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
 
-  // Pin drop
-  const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
-  const [pinDropResult, setPinDropResult]         = useState<{ lat: number; lon: number } | null>(null);
-  const [pinPlaceName, setPinPlaceName]           = useState<string | null>(null);
-
   // Place search
   const [searchQuery, setSearchQuery]       = useState('');
   const [searchResults, setSearchResults]   = useState<NominatimResult[]>([]);
@@ -169,32 +164,6 @@ export function MapScreen() {
       loadEvents();
     }
   }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Pin drop click handler — sets pin then reverse geocodes for a street name
-  const handleMapClick = useCallback(
-    ({ lat, lng }: { lat: number; lng: number }) => {
-      if (!awaitingPinDrop) return;
-      setPinDropResult({ lat, lon: lng });
-      setPinPlaceName(null);
-      setAwaitingPinDrop(false);
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-        { headers: { 'Accept-Language': 'en' } },
-      )
-        .then(r => r.json())
-        .then(d => {
-          const name =
-            d.address?.road ??
-            d.address?.neighbourhood ??
-            d.address?.suburb ??
-            d.display_name?.split(',')[0] ??
-            null;
-          setPinPlaceName(name);
-        })
-        .catch(() => { /* leave null — coordinates shown as fallback */ });
-    },
-    [awaitingPinDrop],
-  );
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
     onFetch: useCallback((center: [number, number]) => {
@@ -318,7 +287,7 @@ export function MapScreen() {
     : null;
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: (awaitingPinDrop || !!activePlace) ? 35 : 10 }}>
+    <div className="fixed inset-0" style={{ zIndex: !!activePlace ? 35 : 10 }}>
 
       {/* Map — full screen */}
       <MapLibreMap
@@ -328,9 +297,7 @@ export function MapScreen() {
         selectedPlace={activePlace}
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
-        onClick={handleMapClick}
         routeGeojson={routeGeojson}
-        pinDropResult={pinDropResult}
       />
 
       {/* Initial load overlay */}
@@ -338,23 +305,6 @@ export function MapScreen() {
 
       {/* Map status — loading / zoomed-out indicator */}
       <MapStatusIndicator status={mapStatus} />
-
-      {/* Drop pin strip */}
-      {awaitingPinDrop && (
-        <div
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-5 py-4"
-          style={{
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
-            zIndex: 20,
-            background: 'linear-gradient(to top, rgba(20,184,166,.9), rgba(20,184,166,.7))',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          <span className="text-xl">📍</span>
-          <p className="text-white font-semibold text-sm">Tap the map to drop your starting pin</p>
-          <button onClick={() => setAwaitingPinDrop(false)} className="ml-auto text-white/70 text-xs underline underline-offset-2">Cancel</button>
-        </div>
-      )}
 
       {/* ── Top overlay ── */}
       <div
@@ -594,10 +544,6 @@ export function MapScreen() {
       {showTripSheet && (
         <TripPlanningCard
           onClose={() => setShowTripSheet(false)}
-          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
-          onClearPin={() => { setPinDropResult(null); setPinPlaceName(null); }}
-          pinDropResult={pinDropResult}
-          pinPlaceName={pinPlaceName}
         />
       )}
     </div>
