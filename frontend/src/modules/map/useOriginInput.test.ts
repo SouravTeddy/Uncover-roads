@@ -45,7 +45,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p1', main_text: 'Marriott', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p1', main_text: 'Marriott', secondary_text: 'Bangalore' } as any);
     });
 
     expect(result.current.step).toBe('selected');
@@ -59,7 +59,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p2', main_text: 'Kempegowda Airport', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p2', main_text: 'Kempegowda Airport', secondary_text: 'Bangalore' } as any);
     });
 
     expect(result.current.step).toBe('selected');
@@ -73,7 +73,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p3', main_text: '42 MG Road', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p3', main_text: '42 MG Road', secondary_text: 'Bangalore' } as any);
     });
 
     expect(result.current.step).toBe('selected');
@@ -93,7 +93,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p3', main_text: '42 MG Road', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p3', main_text: '42 MG Road', secondary_text: 'Bangalore' } as any);
     });
 
     const origin = result.current.buildOrigin();
@@ -107,7 +107,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p1', main_text: 'Marriott', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p1', main_text: 'Marriott', secondary_text: 'Bangalore' } as any);
     });
     act(() => result.current.handleTimeChange('15:00'));
 
@@ -121,7 +121,7 @@ describe('useOriginInput', () => {
 
     const { result } = renderHook(() => useOriginInput());
     await act(async () => {
-      await result.current.handleSelectResult({ place_id: 'p2', main_text: 'Airport', secondary_text: 'Bangalore' });
+      await result.current.handleSelectResult({ place_id: 'p2', main_text: 'Airport', secondary_text: 'Bangalore' } as any);
     });
     act(() => result.current.handleTimeChange('18:30'));
 

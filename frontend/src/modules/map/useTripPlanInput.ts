@@ -1,7 +1,13 @@
 import { useCallback } from 'react';
 import { useAppStore } from '../../shared/store';
-import type { OriginPlace } from '../../shared/types';
+import type { OriginPlace, StartType } from '../../shared/types';
 import { computeTotalDays } from './trip-capacity-utils';
+
+function toStartType(origin: OriginPlace): StartType {
+  if (origin.originType === 'hotel')   return 'hotel';
+  if (origin.originType === 'airport') return 'airport';
+  return 'pin';
+}
 
 export function useTripPlanInput() {
   const { state, dispatch } = useAppStore();
@@ -20,7 +26,7 @@ export function useTripPlanInput() {
       type: 'SET_TRIP_CONTEXT',
       ctx: {
         date:        startDate,
-        startType:   origin ? origin.originType : 'custom',
+        startType:   origin ? toStartType(origin) : undefined,
         arrivalTime: null,
         days,
         dayNumber:   1,
