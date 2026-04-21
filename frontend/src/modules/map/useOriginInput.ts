@@ -4,6 +4,19 @@ import { classifyOriginType } from '../../shared/origin-utils';
 import { ORIGIN_STRINGS } from '../../shared/strings';
 import type { AutocompleteResult, OriginPlace } from '../../shared/types';
 
+// Place types that indicate a city/region rather than a specific place
+const CITY_LEVEL_TYPES = new Set([
+  'locality', 'sublocality', 'sublocality_level_1',
+  'administrative_area_level_1', 'administrative_area_level_2',
+  'administrative_area_level_3', 'administrative_area_level_4',
+  'country', 'continent', 'colloquial_area', 'neighborhood',
+  'postal_code', 'political',
+]);
+
+function isCityLevelPlace(types: string[]): boolean {
+  return types.length > 0 && types.every(t => CITY_LEVEL_TYPES.has(t));
+}
+
 export type OriginStep = 'opening' | 'searching' | 'selected' | 'not_decided';
 
 function newSessionId() { return Math.random().toString(36).slice(2); }
@@ -13,6 +26,7 @@ export interface OriginInputState {
   searchQuery: string;
   searchResults: AutocompleteResult[];
   searchLoading: boolean;
+  searchError: string | null;
   selectedOrigin: OriginPlace | null;
   /** Label for the optional time field, or null if not applicable for this place type */
   timeFieldLabel: string | null;
@@ -32,6 +46,7 @@ export function useOriginInput(): OriginInputState {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AutocompleteResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<OriginPlace | null>(null);
   const [timeValue, setTimeValue] = useState('');
   const sessionRef = useRef(newSessionId());
@@ -40,6 +55,7 @@ export function useOriginInput(): OriginInputState {
   const handleSearchInput = useCallback((query: string) => {
     setSearchQuery(query);
     setSearchResults([]);
+    setSearchError(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (query.trim().length < 2) return;
     setStep('searching');
@@ -58,6 +74,7 @@ export function useOriginInput(): OriginInputState {
   const handleSelectResult = useCallback(async (result: AutocompleteResult) => {
     setSearchLoading(true);
     setSearchResults([]);
+    setSearchError(null);
     try {
       const geo = await geocodePlace(result.place_id, sessionRef.current);
       sessionRef.current = newSessionId();
@@ -65,6 +82,13 @@ export function useOriginInput(): OriginInputState {
 
       const details = await fetchPlaceDetails(result.place_id);
       const types = details?.types ?? [];
+
+      if (isCityLevelPlace(types)) {
+        setSearchError('Please select a specific place (hotel, station, street…), not a city or region.');
+        setSearchQuery('');
+        return;
+      }
+
       const originType = classifyOriginType(types);
 
       const origin: OriginPlace = {
@@ -96,6 +120,7 @@ export function useOriginInput(): OriginInputState {
     setStep('opening');
     setSearchQuery('');
     setSearchResults([]);
+    setSearchError(null);
     setSelectedOrigin(null);
     setTimeValue('');
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -128,6 +153,7 @@ export function useOriginInput(): OriginInputState {
     searchQuery,
     searchResults,
     searchLoading,
+    searchError,
     selectedOrigin,
     timeFieldLabel,
     timeValue,
