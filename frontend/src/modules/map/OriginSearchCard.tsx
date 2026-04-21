@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOriginInput } from './useOriginInput';
+import { useAppStore } from '../../shared/store';
 import { ORIGIN_STRINGS, PLACE_TYPE_LABELS } from '../../shared/strings';
 import type { OriginPlace } from '../../shared/types';
 
@@ -39,6 +40,9 @@ export function OriginSearchCard({ onDone }: Props) {
     chooseNotDecided,
     buildOrigin,
   } = useOriginInput();
+
+  const { state } = useAppStore();
+  const firstPlace = state.selectedPlaces[0] ?? null;
 
   const inputRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +130,19 @@ export function OriginSearchCard({ onDone }: Props) {
                           {r.secondary_text}
                         </div>
                       </div>
+                      {(() => {
+                        const type = classifyOriginType(r.types ?? []);
+                        const badge = TYPE_BADGE_STYLES[type] ?? TYPE_BADGE_STYLES.custom;
+                        return (
+                          <span style={{
+                            fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 600,
+                            fontFamily: 'Inter, sans-serif', flexShrink: 0,
+                            background: badge.bg, color: badge.color,
+                          }}>
+                            {PLACE_TYPE_LABELS[type] ?? 'Place'}
+                          </span>
+                        );
+                      })()}
                     </button>
                   ))}
                 </div>,
@@ -217,6 +234,25 @@ export function OriginSearchCard({ onDone }: Props) {
           <div style={{ fontSize: 12, color: TEXT3, fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
             {ORIGIN_STRINGS.notDecidedSub}
           </div>
+          {firstPlace && (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 12px',
+              background: 'rgba(255,255,255,.04)',
+              borderRadius: 10,
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+            }}>
+              <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0, marginTop: 1 }}>location_on</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+                  {firstPlace.title}
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'Inter, sans-serif', marginTop: 2 }}>
+                  Get here early for the best experience
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
