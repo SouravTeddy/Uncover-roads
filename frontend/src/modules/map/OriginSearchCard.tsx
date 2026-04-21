@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useOriginInput } from './useOriginInput';
 import { useAppStore } from '../../shared/store';
 import { ORIGIN_STRINGS, PLACE_TYPE_LABELS } from '../../shared/strings';
+import { classifyOriginType } from '../../shared/origin-utils';
 import type { OriginPlace } from '../../shared/types';
 
 const SURFACE2 = '#1A1F2B';
