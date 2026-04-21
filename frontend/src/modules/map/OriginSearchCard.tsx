@@ -32,6 +32,7 @@ export function OriginSearchCard({ onDone }: Props) {
     searchQuery,
     searchResults,
     searchLoading,
+    searchError,
     selectedOrigin,
     timeFieldLabel,
     timeValue,
@@ -87,6 +88,22 @@ export function OriginSearchCard({ onDone }: Props) {
                 <span className="ms animate-spin" style={{ fontSize: 16, color: TEXT3, flexShrink: 0 }}>autorenew</span>
               )}
             </div>
+
+            {searchError && (
+              <div style={{
+                marginTop: 8,
+                padding: '8px 12px',
+                background: 'rgba(239,68,68,.1)',
+                border: '1px solid rgba(239,68,68,.25)',
+                borderRadius: 10,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span className="ms" style={{ fontSize: 15, color: '#f87171', flexShrink: 0 }}>info</span>
+                <span style={{ fontSize: 12, color: '#fca5a5', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+                  {searchError}
+                </span>
+              </div>
+            )}
 
             {searchResults.length > 0 && (() => {
               const rect = inputRef.current?.getBoundingClientRect();

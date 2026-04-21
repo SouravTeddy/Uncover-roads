@@ -72,6 +72,9 @@ export function TripPlanningCard({ onClose }: Props) {
           opacity: mounted ? 1 : 0,
           transition: 'transform .38s cubic-bezier(.32,.72,0,1), opacity .3s ease',
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: 'calc(100dvh - 48px)',
         }}
       >
         {/* Header */}
@@ -80,6 +83,7 @@ export function TripPlanningCard({ onClose }: Props) {
           padding: '22px 20px 18px',
           background: `linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(15,23,42,0) 60%)`,
           borderBottom: `1px solid ${BORDER}`,
+          flexShrink: 0,
         }}>
           <button
             aria-label="Close"
@@ -149,7 +153,7 @@ export function TripPlanningCard({ onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px 20px 0' }}>
+        <div style={{ padding: '20px 20px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <div style={{
             fontFamily: '"Plus Jakarta Sans", sans-serif',
             fontSize: 17, fontWeight: 700, color: '#f1f5f9',
@@ -159,8 +163,6 @@ export function TripPlanningCard({ onClose }: Props) {
           </div>
           <OriginSearchCard onDone={handleOriginDone} />
         </div>
-
-        <div style={{ height: 20 }} />
       </div>
     </>,
     document.body,
