@@ -1189,9 +1189,9 @@ def places_autocomplete(
             "predictions": [
                 {
                     "place_id": p["place_id"],
-                    "description": p["description"],
                     "main_text": p.get("structured_formatting", {}).get("main_text", p["description"]),
                     "secondary_text": p.get("structured_formatting", {}).get("secondary_text", ""),
+                    "types": p.get("types", []),
                 }
                 for p in data.get("predictions", [])
             ]
