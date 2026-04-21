@@ -11,6 +11,7 @@ import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
 import { addDaysToIso } from '../map/trip-capacity-utils';
 import { ORIGIN_STRINGS } from '../../shared/strings';
+import { OriginInputSheet } from '../journey/OriginInputSheet';
 
 
 export function RouteScreen() {
@@ -34,7 +35,7 @@ export function RouteScreen() {
     goToNav,
   } = useRoute();
 
-  const { state, dispatch } = useAppStore();
+  const { state } = useAppStore();
   const { tripContext, persona } = state;
 
   // True when the user chose "not decided" — no origin leg in journey
@@ -42,6 +43,7 @@ export function RouteScreen() {
     ((state.journey ?? []).length > 0 && (state.journey ?? [])[0].type === 'origin') ||
     (state.tripContext?.locationLat != null);
   const [showRecSheet, setShowRecSheet] = useState(false);
+  const [showOriginSheet, setShowOriginSheet] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentScene, setCurrentScene] = useState(() =>
     loading ? SCENE_GENERATING : ''
@@ -193,7 +195,7 @@ export function RouteScreen() {
           {!hasOrigin && (
             <div style={{ padding: '16px 16px 0' }}>
               <button
-                onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+                onClick={() => setShowOriginSheet(true)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '10px 14px',
@@ -277,7 +279,7 @@ export function RouteScreen() {
             }}
           >
             <button
-              onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+              onClick={() => setShowOriginSheet(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '10px 14px',
@@ -316,6 +318,12 @@ export function RouteScreen() {
           onViewSaved={() => setTab('saved')}
         />
         {showRecSheet && <RecSheet onClose={() => setShowRecSheet(false)} />}
+        {showOriginSheet && (
+          <OriginInputSheet
+            onDone={() => setShowOriginSheet(false)}
+            onClose={() => setShowOriginSheet(false)}
+          />
+        )}
         {/* Edit stops FAB */}
         <button
           onClick={() => setShowRecSheet(true)}
