@@ -233,7 +233,7 @@ export function OriginSearchCard({ onDone }: Props) {
             boxShadow: '0 4px 20px rgba(59,130,246,.3)',
           }}
         >
-          Confirm starting point
+          {ORIGIN_STRINGS.cta}
         </button>
       )}
     </div>

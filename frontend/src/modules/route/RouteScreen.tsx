@@ -38,7 +38,9 @@ export function RouteScreen() {
   const { tripContext, persona } = state;
 
   // True when the user chose "not decided" — no origin leg in journey
-  const hasOrigin = (state.journey ?? []).length > 0 && state.journey![0].type === 'origin';
+  const hasOrigin =
+    ((state.journey ?? []).length > 0 && (state.journey ?? [])[0].type === 'origin') ||
+    (state.tripContext?.locationLat != null);
   const [showRecSheet, setShowRecSheet] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentScene, setCurrentScene] = useState(() =>
