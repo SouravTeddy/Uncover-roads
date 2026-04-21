@@ -6,6 +6,8 @@ import {
   calculateArrivalDates,
   detectTransitMode,
   buildJourneyLegs,
+  LATE_CHECKIN_THRESHOLD_HOUR,
+  POST_CHECKIN_REST_MINUTES,
 } from './journey-legs';
 
 vi.mock('../../shared/api', () => ({
@@ -158,5 +160,17 @@ describe('buildJourneyLegs', () => {
     expect(transitLeg).toBeDefined();
     expect(transitLeg.durationMinutes).toBe(150);
     expect(transitLeg.mode).toBe('train');
+  });
+});
+
+// ── check-in constants ─────────────────────────────────────────
+
+describe('check-in constants', () => {
+  it('LATE_CHECKIN_THRESHOLD_HOUR is 18 (6 PM)', () => {
+    expect(LATE_CHECKIN_THRESHOLD_HOUR).toBe(18);
+  });
+
+  it('POST_CHECKIN_REST_MINUTES is 45', () => {
+    expect(POST_CHECKIN_REST_MINUTES).toBe(45);
   });
 });

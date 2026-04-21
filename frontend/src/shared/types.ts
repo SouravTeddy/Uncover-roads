@@ -262,6 +262,7 @@ export interface AutocompleteResult {
   description: string;
   main_text: string;
   secondary_text: string;
+  types?: string[];
 }
 
 export interface PlaceDetails {

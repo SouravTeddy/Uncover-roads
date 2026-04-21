@@ -40,10 +40,11 @@ describe('generateDateStrip', () => {
     expect(generateDateStrip()).toHaveLength(7);
   });
 
-  it('first entry is today in ISO format', () => {
+  it('first entry is tomorrow in ISO format', () => {
     const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    expect(generateDateStrip()[0].isoDate).toBe(today);
+    d.setDate(d.getDate() + 1);
+    const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    expect(generateDateStrip()[0].isoDate).toBe(tomorrow);
   });
 
   it('each entry has isoDate, dayAbbr, and dayNum', () => {

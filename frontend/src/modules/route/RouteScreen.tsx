@@ -10,6 +10,8 @@ import { SCENE_GENERATING } from './sceneMap';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
 import { addDaysToIso } from '../map/trip-capacity-utils';
+import { ORIGIN_STRINGS } from '../../shared/strings';
+import { OriginInputSheet } from '../journey/OriginInputSheet';
 
 
 export function RouteScreen() {
@@ -35,7 +37,13 @@ export function RouteScreen() {
 
   const { state } = useAppStore();
   const { tripContext, persona } = state;
+
+  // True when the user chose "not decided" — no origin leg in journey
+  const hasOrigin =
+    ((state.journey ?? []).length > 0 && (state.journey ?? [])[0].type === 'origin') ||
+    (state.tripContext?.locationLat != null);
   const [showRecSheet, setShowRecSheet] = useState(false);
+  const [showOriginSheet, setShowOriginSheet] = useState(false);
   const [saved, setSaved] = useState(false);
   const [currentScene, setCurrentScene] = useState(() =>
     loading ? SCENE_GENERATING : ''
@@ -183,6 +191,28 @@ export function RouteScreen() {
             </div>
           </div>
 
+          {/* No-origin nudge */}
+          {!hasOrigin && (
+            <div style={{ padding: '16px 16px 0' }}>
+              <button
+                onClick={() => setShowOriginSheet(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px',
+                  background: 'rgba(59,130,246,.08)',
+                  border: '1px solid rgba(59,130,246,.2)',
+                  borderRadius: 12, cursor: 'pointer', width: '100%', textAlign: 'left',
+                  marginBottom: 12,
+                }}
+              >
+                <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0 }}>add_location</span>
+                <span style={{ fontSize: 12, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                  {ORIGIN_STRINGS.itineraryNudge}
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* Day slots */}
           {Array.from({ length: displayDays }, (_, i) => {
             const day = itineraryDays[i];
@@ -238,6 +268,34 @@ export function RouteScreen() {
           const [h, m] = t.split(':').map(Number);
           return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
         })()} />
+        {/* No-origin nudge overlay */}
+        {!hasOrigin && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+              left: 16, right: 16,
+              zIndex: 35,
+            }}
+          >
+            <button
+              onClick={() => setShowOriginSheet(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px',
+                background: 'rgba(59,130,246,.08)',
+                border: '1px solid rgba(59,130,246,.2)',
+                borderRadius: 12, cursor: 'pointer', width: '100%', textAlign: 'left',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0 }}>add_location</span>
+              <span style={{ fontSize: 12, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                {ORIGIN_STRINGS.itineraryNudge}
+              </span>
+            </button>
+          </div>
+        )}
         {weather && (
           <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 15 }}>
             <WeatherCanvas condition={weather.condition} />
@@ -260,6 +318,12 @@ export function RouteScreen() {
           onViewSaved={() => setTab('saved')}
         />
         {showRecSheet && <RecSheet onClose={() => setShowRecSheet(false)} />}
+        {showOriginSheet && (
+          <OriginInputSheet
+            onDone={() => setShowOriginSheet(false)}
+            onClose={() => setShowOriginSheet(false)}
+          />
+        )}
         {/* Edit stops FAB */}
         <button
           onClick={() => setShowRecSheet(true)}
