@@ -151,9 +151,9 @@ export function TripPlanningCard({ onClose }: Props) {
         {/* Body */}
         <div style={{ padding: '20px 20px 0' }}>
           <div style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
-            textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontSize: 17, fontWeight: 700, color: '#f1f5f9',
+            lineHeight: 1.3, marginBottom: 16,
           }}>
             {ORIGIN_STRINGS.cardHeading}
           </div>
