@@ -31,7 +31,7 @@ export interface SearchIntent {
 // ── Dictionaries ─────────────────────────────────────────────────
 
 const DIRECT_MAP: [RegExp, Category][] = [
-  [/\b(museums?|galleries|gallerys?|exhibits?)\b/i,           'museum'],
+  [/\b(museums?|galler(?:y|ies)|exhibits?)\b/i,           'museum'],
   [/\b(parks?|gardens?|nature|outdoor)\b/i,                 'park'],
   [/\b(restaurants?|dining|food|eats?|lunch|dinner)\b/i,    'restaurant'],
   [/\b(cafes?|coffee|brunch)\b/i,                         'cafe'],
