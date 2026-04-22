@@ -3,6 +3,16 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter, Category } from '../../shared/types';
+import { SearchResultRow } from './SearchResultRow';
+import { SearchNudge } from './SearchNudge';
+import {
+  nominatimToCategory,
+  multiTypeNominatimSearch,
+  extractSearchIntent,
+  bboxDiagonalKm,
+} from './useSmartSearch';
+import type { NominatimResult, SuggestedChip } from './useSmartSearch';
+import type { MapHandle } from './MapLibreMap';
 import { TripPlanningCard } from './TripPlanningCard';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
@@ -15,66 +25,6 @@ import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { JourneyStrip } from '../journey';
-
-// ── Nominatim place search ──────────────────────────────────────
-
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  name: string;
-  lat: string;
-  lon: string;
-  class: string;
-  type: string;
-}
-
-async function nominatimSearch(
-  query: string,
-  bbox: [number, number, number, number] | null,
-  signal: AbortSignal,
-): Promise<NominatimResult[]> {
-  const [south, north, west, east] = bbox ?? [0, 0, 0, 0];
-  const params = new URLSearchParams({
-    q: query,
-    format: 'json',
-    limit: '5',
-    'accept-language': 'en',
-  });
-  if (bbox) {
-    params.set('viewbox', `${west},${north},${east},${south}`);
-    params.set('bounded', '1');
-  }
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en' },
-    signal,
-  });
-  const data = await res.json();
-  // If bounded search returns nothing, retry without bounded
-  if (Array.isArray(data) && data.length === 0 && bbox) {
-    params.delete('bounded');
-    const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { 'Accept-Language': 'en' },
-      signal,
-    });
-    return res2.json();
-  }
-  return Array.isArray(data) ? data : [];
-}
-
-function nominatimToCategory(cls: string, type: string): Category {
-  if (cls === 'amenity') {
-    if (['restaurant', 'bar', 'fast_food', 'food_court', 'biergarten'].includes(type)) return 'restaurant';
-    if (type === 'cafe') return 'cafe';
-    if (type === 'museum') return 'museum';
-  }
-  if (cls === 'tourism') {
-    if (['museum', 'gallery', 'artwork'].includes(type)) return 'museum';
-    if (['attraction', 'viewpoint', 'theme_park'].includes(type)) return 'tourism';
-  }
-  if (cls === 'historic') return 'historic';
-  if (cls === 'leisure' || ['park', 'garden', 'nature_reserve'].includes(type)) return 'park';
-  return 'place';
-}
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -136,6 +86,12 @@ export function MapScreen() {
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef     = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mapHandleRef = useRef<MapHandle>(null);
+  const [currentBbox, setCurrentBbox] = useState<[number, number, number, number] | null>(null);
+  const [activeSearchTypes, setActiveSearchTypes] = useState<{ types: Category[]; label: string } | null>(null);
+  const [suggestedChips, setSuggestedChips] = useState<SuggestedChip[]>([]);
+  const [showZoomNudge, setShowZoomNudge] = useState(false);
+  const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set());
 
   // Rotating placeholder
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -207,9 +163,27 @@ export function MapScreen() {
     }, []),
   });
 
-  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, _bbox: [number, number, number, number]) => {
+  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, bbox: [number, number, number, number]) => {
+    setCurrentBbox(bbox);
     handleMoveEnd(center, zoom);
-  }, [handleMoveEnd]);
+
+    // Re-run area search if there's an active type-only search
+    if (activeSearchTypes && searchQuery) {
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      multiTypeNominatimSearch(activeSearchTypes.types, searchQuery, bbox, abortRef.current.signal)
+        .then(results => {
+          if (!abortRef.current?.signal.aborted) {
+            const newIds = new Set(results.map(r => `nominatim-${r.place_id}`));
+            setHighlightIds(newIds);
+            setTimeout(() => setHighlightIds(new Set()), 800);
+            setSearchResults(results.slice(0, 10));
+            setShowZoomNudge(bboxDiagonalKm(bbox) > 15);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [handleMoveEnd, activeSearchTypes, searchQuery]);
 
   async function loadEvents() {
     const date = state.tripContext.date;
@@ -294,16 +268,36 @@ export function MapScreen() {
   function handleSearchInput(val: string) {
     setSearchQuery(val);
     setSearchOpen(true);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+
     if (!val.trim()) { setSearchResults([]); return; }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
       setSearchLoading(true);
+
+      const intent = extractSearchIntent(val);
+
+      if (intent.types.length === 0 && intent.locationQuery === null) {
+        setSuggestedChips(intent.chips);
+        setSearchResults([]);
+        setSearchLoading(false);
+        return;
+      }
+
       try {
-        const bbox = cityGeo?.bbox ?? null;
-        const results = await nominatimSearch(val, bbox, abortRef.current.signal);
-        if (!abortRef.current.signal.aborted) setSearchResults(results.slice(0, 5));
+        const bbox = intent.locationQuery === null ? currentBbox : null;
+        const results = await multiTypeNominatimSearch(intent.types, val, bbox, abortRef.current.signal);
+        if (!abortRef.current.signal.aborted) {
+          setSearchResults(results.slice(0, 10));
+          if (intent.types.length > 0 && intent.locationQuery === null && bbox && bboxDiagonalKm(bbox) > 15) {
+            setShowZoomNudge(true);
+            setActiveSearchTypes({ types: intent.types, label: intent.types[0] });
+          }
+        }
       } catch {
         // aborted or network error — ignore
       } finally {
@@ -312,31 +306,66 @@ export function MapScreen() {
     }, 320);
   }
 
-  function handleSelectResult(r: NominatimResult) {
+  function navigateToResult(r: NominatimResult) {
     const lat = parseFloat(r.lat);
     const lon = parseFloat(r.lon);
     const name = r.name || r.display_name.split(',')[0];
     const category = nominatimToCategory(r.class, r.type);
-    const place: Place = {
-      id: `nominatim-${r.place_id}`,
-      title: name,
-      category,
-      lat,
-      lon,
-      _city: city,
-    };
+    const place: Place = { id: `nominatim-${r.place_id}`, title: name, category, lat, lon, _city: city };
     dispatch({ type: 'MERGE_PLACES', places: [place] });
-    setActivePlace(place);
+    mapHandleRef.current?.flyTo(lat, lon);
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
+    setSuggestedChips([]);
     searchInputRef.current?.blur();
+  }
+
+  function openCardFromResult(r: NominatimResult) {
+    const lat = parseFloat(r.lat);
+    const lon = parseFloat(r.lon);
+    const name = r.name || r.display_name.split(',')[0];
+    const category = nominatimToCategory(r.class, r.type);
+    const place: Place = { id: `nominatim-${r.place_id}`, title: name, category, lat, lon, _city: city };
+    dispatch({ type: 'MERGE_PLACES', places: [place] });
+    setActivePlace(place);
+    fetchDetails(place);
+    mapHandleRef.current?.flyTo(lat, lon);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchOpen(false);
+    setSuggestedChips([]);
+    searchInputRef.current?.blur();
+  }
+
+  function handleChipTap(chip: SuggestedChip) {
+    setSearchQuery(chip.label);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    setSearchLoading(true);
+    const bbox = currentBbox;
+    multiTypeNominatimSearch([chip.type], chip.label, bbox, abortRef.current.signal)
+      .then(results => {
+        if (!abortRef.current?.signal.aborted) {
+          setSearchResults(results.slice(0, 10));
+          setSearchOpen(true);
+          setActiveSearchTypes({ types: [chip.type], label: chip.label });
+          if (bbox && bboxDiagonalKm(bbox) > 15) setShowZoomNudge(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSearchLoading(false));
   }
 
   function clearSearch() {
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+    setActiveSearchTypes(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
   }
@@ -367,10 +396,12 @@ export function MapScreen() {
 
       {/* Map — full screen */}
       <MapLibreMap
+        ref={mapHandleRef}
         center={center}
         zoom={cityGeo ? 13 : 2}
         places={filteredPlaces}
         selectedPlace={activePlace}
+        highlightIds={highlightIds}
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
@@ -450,17 +481,25 @@ export function MapScreen() {
             }}
           >
             {searchResults.map((r, i) => (
-              <button
+              <SearchResultRow
                 key={r.place_id}
-                onMouseDown={() => handleSelectResult(r)}
-                className="w-full text-left px-4 py-3 transition-colors active:bg-white/5"
-                style={{ borderBottom: i < searchResults.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}
-              >
-                <p className="text-white text-sm font-medium truncate">{r.name || r.display_name.split(',')[0]}</p>
-                <p className="text-white/35 text-xs truncate mt-0.5">{r.display_name.split(',').slice(1, 3).join(',').trim()}</p>
-              </button>
+                result={r}
+                isLast={i === searchResults.length - 1}
+                onNavigate={() => navigateToResult(r)}
+                onOpenCard={() => openCardFromResult(r)}
+              />
             ))}
           </div>
+        )}
+
+        {/* Smart search nudge — chips or zoom nudge */}
+        {searchOpen && (suggestedChips.length > 0 || showZoomNudge) && (
+          <SearchNudge
+            chips={suggestedChips}
+            showZoomNudge={showZoomNudge}
+            activeTypeLabel={activeSearchTypes?.label ?? ''}
+            onChipTap={handleChipTap}
+          />
         )}
 
         {/* Journey strip — only visible in multi-city mode */}
