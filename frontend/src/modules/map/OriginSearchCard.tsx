@@ -118,7 +118,8 @@ export function OriginSearchCard({ onDone }: Props) {
                   background: '#1E2535',
                   border: `1px solid ${BORDER}`,
                   borderRadius: 16,
-                  overflow: 'hidden',
+                  overflowY: 'auto',
+                  maxHeight: 240,
                   boxShadow: '0 8px 32px rgba(0,0,0,.6)',
                 }}>
                   {searchResults.map((r, i) => (
