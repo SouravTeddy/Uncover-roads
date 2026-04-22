@@ -236,6 +236,20 @@ export function OriginSearchCard({ onDone }: Props) {
               </div>
             </div>
           )}
+
+          <button
+            onClick={chooseNotDecided}
+            style={{
+              height: 48, width: '100%',
+              background: 'none',
+              border: `1.5px dashed ${PRIMARY_BORDER}`,
+              borderRadius: 14, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 13, fontWeight: 600, color: '#93c5fd',
+            }}
+          >
+            {ORIGIN_STRINGS.notDecidedLabel}
+          </button>
         </>
       )}
 
