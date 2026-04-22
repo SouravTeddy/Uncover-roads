@@ -267,7 +267,7 @@ export function MapScreen() {
 
   const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
-    all:         places.filter(p => p.category !== 'event').length,
+    all:         places.length,
     recommended: recommendedPlaces.length,
     event:       eventsLoaded ? eventPlaces.length : undefined,
     museum:      places.filter(p => p.category === 'museum').length,
