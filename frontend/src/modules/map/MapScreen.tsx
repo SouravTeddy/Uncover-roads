@@ -127,6 +127,31 @@ export function MapScreen() {
   const abortRef     = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Rotating placeholder
+  const PLACEHOLDER_EXAMPLES = [
+    'Museums in this area…',
+    'Hotels nearby…',
+    'Parks to explore…',
+    'Restaurants around here…',
+    'Historic sites nearby…',
+    'Cafes to discover…',
+    'Galleries in this area…',
+  ];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [placeholderVisible, setPlaceholderVisible] = useState(true);
+
+  useEffect(() => {
+    if (searchQuery) return; // don't rotate while user is typing
+    const id = setInterval(() => {
+      setPlaceholderVisible(false);
+      setTimeout(() => {
+        setPlaceholderIdx(i => (i + 1) % PLACEHOLDER_EXAMPLES.length);
+        setPlaceholderVisible(true);
+      }, 200);
+    }, 1500);
+    return () => clearInterval(id);
+  }, [searchQuery]);
+
   const handleAreaLoad = useCallback(async (
     centerLat: number,
     centerLon: number,
@@ -378,14 +403,28 @@ export function MapScreen() {
               onChange={e => handleSearchInput(e.target.value)}
               onFocus={() => setSearchOpen(true)}
               onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-              placeholder={`Search places in ${city || 'city'}…`}
-              className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white placeholder-white/30 outline-none"
+              placeholder=""
+              className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white outline-none"
               style={{
                 background: 'rgba(15,20,30,.82)',
                 backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(255,255,255,.1)',
               }}
             />
+            {/* Rotating placeholder overlay — only visible when input is empty */}
+            {!searchQuery && (
+              <span
+                className="absolute left-9 top-1/2 -translate-y-1/2 text-sm pointer-events-none truncate"
+                style={{
+                  color: 'rgba(255,255,255,0.3)',
+                  opacity: placeholderVisible ? 1 : 0,
+                  transition: 'opacity 0.2s ease',
+                  maxWidth: 'calc(100% - 72px)',
+                }}
+              >
+                {PLACEHOLDER_EXAMPLES[placeholderIdx]}
+              </span>
+            )}
             {searchLoading ? (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
             ) : searchQuery ? (
