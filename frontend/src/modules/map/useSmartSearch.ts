@@ -43,7 +43,7 @@ const DIRECT_MAP: [RegExp, Category][] = [
 
 const INTENT_MAP: [RegExp, SuggestedChip[]][] = [
   [/morning|breakfast|cozy/i,   [{ emoji: '☕', label: 'cafe', type: 'cafe' }, { emoji: '🥐', label: 'bakery', type: 'restaurant' }]],
-  [/night|evening|drinks/i,     [{ emoji: '🍸', label: 'bar', type: 'place' }, { emoji: '🍽️', label: 'restaurant', type: 'restaurant' }]],
+  [/night|evening|drinks/i,     [{ emoji: '🍸', label: 'bar', type: 'restaurant' }, { emoji: '🍽️', label: 'restaurant', type: 'restaurant' }]],
   [/kids|family|children/i,     [{ emoji: '🌿', label: 'park', type: 'park' }, { emoji: '🏛️', label: 'museum', type: 'museum' }]],
   [/culture|art|history/i,      [{ emoji: '🏛️', label: 'museum', type: 'museum' }, { emoji: '🏰', label: 'historic', type: 'historic' }]],
   [/nature|walk|green/i,        [{ emoji: '🌿', label: 'park', type: 'park' }]],
