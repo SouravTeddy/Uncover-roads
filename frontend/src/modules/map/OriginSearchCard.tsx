@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOriginInput } from './useOriginInput';
-import { useAppStore } from '../../shared/store';
 import { ORIGIN_STRINGS, PLACE_TYPE_LABELS } from '../../shared/strings';
 import { classifyOriginType } from '../../shared/origin-utils';
 import type { OriginPlace } from '../../shared/types';
@@ -41,10 +40,8 @@ export function OriginSearchCard({ onDone }: Props) {
     handleTimeChange,
     chooseNotDecided,
     buildOrigin,
+    reset,
   } = useOriginInput();
-
-  const { state } = useAppStore();
-  const firstPlace = state.selectedPlaces[0] ?? null;
 
   const inputRef = useRef<HTMLDivElement>(null);
 
@@ -56,12 +53,63 @@ export function OriginSearchCard({ onDone }: Props) {
     ? (TYPE_BADGE_STYLES[selectedOrigin.originType] ?? TYPE_BADGE_STYLES.custom)
     : TYPE_BADGE_STYLES.custom;
 
+  const placeIsChosen = step === 'selected';
+  const notDecidedIsChosen = step === 'not_decided';
+  const isSearching = step === 'opening' || step === 'searching';
+
+  // Option 2 is disabled while user is actively typing or has a place chosen
+  const notDecidedDisabled = placeIsChosen || step === 'searching';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── Opening / Searching state ── */}
-      {(step === 'opening' || step === 'searching') && (
-        <>
-          <div ref={inputRef} style={{ position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* ── Option 1: Specific place ── */}
+      <div>
+        {placeIsChosen && selectedOrigin ? (
+          /* Selected chip with remove button */
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '12px 14px',
+            background: PRIMARY_BG,
+            border: `1px solid ${PRIMARY_BORDER}`,
+            borderRadius: 14,
+          }}>
+            <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+              {selectedOrigin.name}
+            </span>
+            <span style={{
+              fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
+              fontFamily: 'Inter, sans-serif',
+              background: badgeStyle.bg, color: badgeStyle.color,
+            }}>
+              {PLACE_TYPE_LABELS[selectedOrigin.originType] ?? 'Place'}
+            </span>
+            <button
+              onClick={reset}
+              aria-label="Remove place"
+              style={{
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(255,255,255,.08)',
+                border: `1px solid ${BORDER}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="ms" style={{ fontSize: 14, color: TEXT3 }}>close</span>
+            </button>
+          </div>
+        ) : (
+          /* Search input — disabled when "haven't decided" is chosen */
+          <div
+            ref={inputRef}
+            style={{
+              position: 'relative',
+              opacity: notDecidedIsChosen ? 0.38 : 1,
+              pointerEvents: notDecidedIsChosen ? 'none' : 'auto',
+              transition: 'opacity .15s',
+            }}
+          >
             <div style={{
               background: SURFACE2,
               border: `1.5px solid ${step === 'searching' ? PRIMARY_BORDER : BORDER}`,
@@ -72,7 +120,7 @@ export function OriginSearchCard({ onDone }: Props) {
             }}>
               <span className="ms" style={{ fontSize: 20, color: TEXT3, flexShrink: 0 }}>search</span>
               <input
-                autoFocus
+                autoFocus={isSearching}
                 type="text"
                 value={searchQuery}
                 onChange={e => handleSearchInput(e.target.value)}
@@ -169,128 +217,89 @@ export function OriginSearchCard({ onDone }: Props) {
               );
             })()}
           </div>
+        )}
 
-          <button
-            onClick={chooseNotDecided}
-            style={{
-              height: 48, width: '100%',
-              background: 'none',
-              border: `1.5px dashed ${PRIMARY_BORDER}`,
-              borderRadius: 14, cursor: 'pointer',
+        {/* Optional time field when place is selected */}
+        {placeIsChosen && timeFieldLabel && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+              textTransform: 'uppercase', color: TEXT3, marginBottom: 8,
               fontFamily: 'Inter, sans-serif',
-              fontSize: 13, fontWeight: 600, color: '#93c5fd',
-            }}
-          >
-            {ORIGIN_STRINGS.notDecidedLabel}
-          </button>
-        </>
-      )}
-
-      {/* ── Selected state ── */}
-      {step === 'selected' && selectedOrigin && (
-        <>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 14px',
-            background: PRIMARY_BG,
-            border: `1px solid ${PRIMARY_BORDER}`,
-            borderRadius: 14,
-          }}>
-            <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-              {selectedOrigin.name}
-            </span>
-            <span style={{
-              fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
-              background: badgeStyle.bg, color: badgeStyle.color,
             }}>
-              {PLACE_TYPE_LABELS[selectedOrigin.originType] ?? 'Place'}
-            </span>
-          </div>
-
-          {timeFieldLabel && (
-            <div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-                textTransform: 'uppercase', color: TEXT3, marginBottom: 8,
-                fontFamily: 'Inter, sans-serif',
-              }}>
-                {timeFieldLabel} <span style={{ color: '#475569', fontWeight: 400 }}>— optional</span>
-              </div>
-              <input
-                type="time"
-                value={timeValue}
-                onChange={e => handleTimeChange(e.target.value)}
-                style={{
-                  width: '100%', height: 52, background: SURFACE2,
-                  border: `1.5px solid rgba(59,130,246,.35)`, borderRadius: 14,
-                  fontSize: 24, fontWeight: 800, color: TEXT1,
-                  fontFamily: '"Plus Jakarta Sans", sans-serif',
-                  textAlign: 'center', outline: 'none', cursor: 'pointer',
-                  colorScheme: 'dark',
-                }}
-              />
-              <div style={{ fontSize: 11, color: PRIMARY, marginTop: 8, fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
-                {ORIGIN_STRINGS.optionalNudge}
-              </div>
+              {timeFieldLabel} <span style={{ color: '#475569', fontWeight: 400 }}>— optional</span>
             </div>
-          )}
+            <input
+              type="time"
+              value={timeValue}
+              onChange={e => handleTimeChange(e.target.value)}
+              style={{
+                width: '100%', height: 52, background: SURFACE2,
+                border: `1.5px solid rgba(59,130,246,.35)`, borderRadius: 14,
+                fontSize: 24, fontWeight: 800, color: TEXT1,
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                textAlign: 'center', outline: 'none', cursor: 'pointer',
+                colorScheme: 'dark',
+              }}
+            />
+            <div style={{ fontSize: 11, color: PRIMARY, marginTop: 8, fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
+              {ORIGIN_STRINGS.optionalNudge}
+            </div>
+          </div>
+        )}
+      </div>
 
-          <button
-            onClick={chooseNotDecided}
-            style={{
-              height: 48, width: '100%',
-              background: 'none',
-              border: `1.5px dashed ${PRIMARY_BORDER}`,
-              borderRadius: 14, cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 13, fontWeight: 600, color: '#93c5fd',
-            }}
-          >
-            {ORIGIN_STRINGS.notDecidedLabel}
-          </button>
-        </>
-      )}
-
-      {/* ── Not decided state ── */}
-      {step === 'not_decided' && (
+      {/* ── Option 2: Haven't decided yet ── */}
+      {notDecidedIsChosen ? (
+        /* Selected state — show chip with remove button */
         <div style={{
-          background: 'rgba(59,130,246,.06)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 14px',
+          background: PRIMARY_BG,
           border: `1px solid ${PRIMARY_BORDER}`,
           borderRadius: 14,
-          padding: '16px',
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: TEXT1, fontFamily: '"Plus Jakarta Sans", sans-serif', marginBottom: 4 }}>
-            {ORIGIN_STRINGS.notDecidedHeading}
-          </div>
-          <div style={{ fontSize: 12, color: TEXT3, fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
-            {ORIGIN_STRINGS.notDecidedSub}
-          </div>
-          {firstPlace && (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 12px',
-              background: 'rgba(255,255,255,.04)',
-              borderRadius: 10,
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-            }}>
-              <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0, marginTop: 1 }}>location_on</span>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-                  {firstPlace.title}
-                </div>
-                <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'Inter, sans-serif', marginTop: 2 }}>
-                  Get here early for the best experience
-                </div>
-              </div>
-            </div>
-          )}
+          <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+            {ORIGIN_STRINGS.notDecidedLabel}
+          </span>
+          <button
+            onClick={reset}
+            aria-label="Remove selection"
+            style={{
+              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(255,255,255,.08)',
+              border: `1px solid ${BORDER}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <span className="ms" style={{ fontSize: 14, color: TEXT3 }}>close</span>
+          </button>
         </div>
+      ) : (
+        /* Button — disabled while place is chosen or actively searching */
+        <button
+          onClick={notDecidedDisabled ? undefined : chooseNotDecided}
+          style={{
+            height: 48, width: '100%',
+            background: 'none',
+            border: `1.5px dashed ${notDecidedDisabled ? 'rgba(59,130,246,.12)' : PRIMARY_BORDER}`,
+            borderRadius: 14,
+            cursor: notDecidedDisabled ? 'default' : 'pointer',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 13, fontWeight: 600,
+            color: notDecidedDisabled ? 'rgba(147,197,253,.3)' : '#93c5fd',
+            opacity: notDecidedDisabled ? 0.5 : 1,
+            transition: 'opacity .15s, border-color .15s, color .15s',
+          }}
+        >
+          {ORIGIN_STRINGS.notDecidedLabel}
+        </button>
       )}
 
-      {/* ── Confirm button (selected + not_decided only) ── */}
-      {(step === 'selected' || step === 'not_decided') && (
+      {/* ── Confirm button (only when an option is chosen) ── */}
+      {(placeIsChosen || notDecidedIsChosen) && (
         <button
           onClick={handleConfirm}
           style={{
