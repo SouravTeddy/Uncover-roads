@@ -62,10 +62,10 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
     >
       <MapLibreRoute geojson={routeGeojson ?? null} />
-      {/* @ts-expect-error — highlightIds prop added in Task 4 */}
       <MapLibreMarkers
         places={places}
         selectedPlace={selectedPlace}
+        // @ts-expect-error — highlightIds prop added in Task 4
         highlightIds={highlightIds ?? new Set()}
         onPlaceClick={onPlaceClick}
       />

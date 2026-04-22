@@ -174,7 +174,7 @@ export function MapScreen() {
     }, []),
   });
 
-  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number) => {
+  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, _bbox: [number, number, number, number]) => {
     handleMoveEnd(center, zoom);
   }, [handleMoveEnd]);
 
