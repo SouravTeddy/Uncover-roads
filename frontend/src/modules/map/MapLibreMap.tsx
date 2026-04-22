@@ -65,7 +65,6 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       <MapLibreMarkers
         places={places}
         selectedPlace={selectedPlace}
-        // @ts-expect-error — highlightIds prop added in Task 4
         highlightIds={highlightIds ?? new Set()}
         onPlaceClick={onPlaceClick}
       />

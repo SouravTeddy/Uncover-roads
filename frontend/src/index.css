@@ -116,3 +116,13 @@ html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #0f17
   transform: translateX(-100%);
   animation: shimmer 1.5s infinite;
 }
+
+/* ── Marker glow burst (search area highlight) ───────────── */
+@keyframes marker-glow-burst {
+  0%   { transform: scale(1);   box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+  40%  { transform: scale(1.4); box-shadow: 0 0 16px 6px rgba(124,140,248,0.8); }
+  100% { transform: scale(1);   box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+}
+.marker-glow-burst {
+  animation: marker-glow-burst 0.5s ease-out forwards;
+}
