@@ -1,0 +1,4 @@
+{"type":"server-started","port":58194,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58194","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/70228-1776690329/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/70228-1776690329/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/70228-1776690329/content/approaches.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/70228-1776690329/content/card-flow.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-city detection — map screen</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; font-family: system-ui, sans-serif; color: white; padding: 24px; }
+  h2 { color: #f0f6fc; font-size: 18px; margin-bottom: 6px; }
+  .subtitle { color: #8b949e; font-size: 13px; margin-bottom: 28px; }
+
+  .split { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+  .phone-wrap { flex: 0 0 auto; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #58a6ff; margin-bottom: 10px; text-align: center; }
+
+  /* phone shell */
+  .phone {
+    width: 290px;
+    height: 580px;
+    background: #0f172a;
+    border-radius: 32px;
+    border: 2px solid rgba(255,255,255,.12);
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+
+  /* fake map */
+  .map {
+    position: absolute; inset: 0;
+    background: #1a2332;
+    overflow: hidden;
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  /* fake roads */
+  .road { position: absolute; background: rgba(255,255,255,.07); }
+  .road.h { height: 2px; }
+  .road.v { width: 2px; }
+
+  /* pins */
+  .pin {
+    position: absolute;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    border: 2px solid rgba(255,255,255,.25);
+    transform: translate(-50%,-50%);
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  .pin:hover { transform: translate(-50%,-50%) scale(1.15); }
+  .pin.tokyo { background: #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,.5); }
+  .pin.singapore { background: #22c55e; box-shadow: 0 0 12px rgba(34,197,94,.5); }
+  .pin.selected { border-color: white; }
+
+  /* city labels on map */
+  .city-label {
+    position: absolute;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.35);
+    pointer-events: none;
+  }
+
+  /* top bar */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 52px;
+    background: rgba(10,14,20,.92);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 14px;
+    z-index: 10;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .topbar-icon { font-size: 18px; color: #3b82f6; }
+  .topbar-city { font-size: 13px; font-weight: 700; color: white; }
+  .topbar-badge {
+    margin-left: auto;
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 20px;
+    background: rgba(59,130,246,.2); color: #60a5fa;
+    border: 1px solid rgba(59,130,246,.3);
+  }
+
+  /* ── Variant A: subtle banner ── */
+  .banner-a {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(10,14,20,.97);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,255,255,.1);
+    padding: 14px 16px;
+    z-index: 20;
+  }
+  .banner-a-top {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .flight-icon-wrap {
+    width: 36px; height: 36px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .banner-a-title { font-size: 13px; font-weight: 700; color: white; margin-bottom: 2px; }
+  .banner-a-sub { font-size: 11px; color: rgba(255,255,255,.45); }
+  .city-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .chip.tokyo { background: rgba(59,130,246,.18); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+  .chip.singapore { background: rgba(34,197,94,.18); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+  .chip-arrow { color: rgba(255,255,255,.3); font-size: 12px; }
+  .cta-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-primary {
+    flex: 1; height: 38px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg,#2563eb,#3b82f6);
+    color: white; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-ghost {
+    height: 38px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); cursor: pointer;
+    background: transparent; color: rgba(255,255,255,.5); font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Variant B: pulsing badge on map ── */
+  .map-badge {
+    position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+    border-radius: 20px;
+    padding: 8px 14px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 4px 20px rgba(59,130,246,.4);
+    animation: pulse 2s infinite;
+    white-space: nowrap;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 4px 20px rgba(59,130,246,.4); }
+    50%      { box-shadow: 0 4px 28px rgba(59,130,246,.7); }
+  }
+  .badge-dismiss { margin-left: 4px; color: rgba(255,255,255,.5); font-size: 11px; cursor: pointer; }
+
+  /* bottom sheet for variant B */
+  .sheet-b {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: #111827;
+    border-top: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 14px 16px;
+    z-index: 20;
+  }
+  .handle { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.15); margin: 0 auto 12px; }
+  .sheet-b-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .sheet-b-sub { font-size: 11px; color: rgba(255,255,255,.4); margin-bottom: 12px; }
+  .leg-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 10px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    margin-bottom: 6px;
+  }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .leg-dot.t { background: #3b82f6; }
+  .leg-dot.s { background: #22c55e; }
+  .leg-info { flex: 1; }
+  .leg-title { font-size: 11px; font-weight: 700; color: white; }
+  .leg-count { font-size: 10px; color: rgba(255,255,255,.4); }
+  .leg-days { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.5); }
+  .flight-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 10px;
+    background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2);
+    margin-bottom: 8px;
+  }
+  .flight-row-icon { font-size: 14px; }
+  .flight-row-text { font-size: 11px; color: rgba(255,255,255,.6); flex: 1; }
+  .flight-row-text strong { color: white; }
+</style>
+</head>
+<body>
+
+<h2>How should the app surface the multi-city detection?</h2>
+<p class="subtitle">Two approaches — same information, different moment of reveal. Which feels right?</p>
+
+<div class="split">
+
+  <!-- OPTION A: Bottom sheet on map -->
+  <div class="phone-wrap">
+    <div class="label">A — Bottom sheet on map</div>
+    <div class="phone">
+      <div class="map">
+        <div class="map-grid"></div>
+        <!-- roads -->
+        <div class="road h" style="top:38%;left:0;right:0;width:100%"></div>
+        <div class="road h" style="top:62%;left:0;right:0;width:100%"></div>
+        <div class="road v" style="left:35%;top:0;bottom:0;height:100%"></div>
+        <div class="road v" style="left:65%;top:0;bottom:0;height:100%"></div>
+        <!-- Tokyo pins -->
+        <span class="city-label" style="top:14%;left:12%">Tokyo</span>
+        <div class="pin tokyo selected" style="top:22%;left:22%">T</div>
+        <div class="pin tokyo selected" style="top:30%;left:40%">T</div>
+        <div class="pin tokyo" style="top:18%;left:55%">T</div>
+        <!-- Singapore pins -->
+        <span class="city-label" style="top:52%;left:12%">Singapore</span>
+        <div class="pin singapore selected" style="top:60%;left:28%">S</div>
+        <div class="pin singapore selected" style="top:68%;left:50%">S</div>
+        <!-- filter bar -->
+        <div style="position:absolute;top:58px;left:10px;right:10px;display:flex;gap:6px;overflow:hidden">
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.1);font-size:10px;color:white;font-weight:600;white-space:nowrap">All</div>
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.06);font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap">Restaurants</div>
+          <div style="padding:5px 10px;border-radius:20px;background:rgba(255,255,255,.06);font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap">Parks</div>
+        </div>
+      </div>
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <span class="topbar-icon">✈</span>
+        <span class="topbar-city">Multi-city journey</span>
+        <span class="topbar-badge">2 cities</span>
+      </div>
+
+      <!-- Bottom sheet -->
+      <div class="banner-a">
+        <div class="banner-a-top">
+          <div class="flight-icon-wrap">✈</div>
+          <div>
+            <div class="banner-a-title">This journey needs a flight</div>
+            <div class="banner-a-sub">You've added places in 2 cities</div>
+          </div>
+        </div>
+        <div class="city-chips">
+          <span class="chip tokyo">Tokyo · 3 places</span>
+          <span class="chip-arrow">→</span>
+          <span class="chip singapore">Singapore · 2 places</span>
+        </div>
+        <div class="cta-row">
+          <button class="btn-primary">✈ &nbsp;Find flights</button>
+          <button class="btn-ghost">Later</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Floating badge + compact sheet -->
+  <div class="phone-wrap">
+    <div class="label">B — Floating badge + leg summary</div>
+    <div class="phone">
+      <div class="map">
+        <div class="map-grid"></div>
+        <div class="road h" style="top:38%;left:0;right:0;width:100%"></div>
+        <div class="road h" style="top:62%;left:0;right:0;width:100%"></div>
+        <div class="road v" style="left:35%;top:0;bottom:0;height:100%"></div>
+        <div class="road v" style="left:65%;top:0;bottom:0;height:100%"></div>
+        <span class="city-label" style="top:18%;left:12%">Tokyo</span>
+        <div class="pin tokyo selected" style="top:26%;left:22%">T</div>
+        <div class="pin tokyo selected" style="top:34%;left:42%">T</div>
+        <div class="pin tokyo" style="top:22%;left:58%">T</div>
+        <span class="city-label" style="top:50%;left:50%">Singapore</span>
+        <div class="pin singapore selected" style="top:58%;left:30%">S</div>
+        <div class="pin singapore selected" style="top:66%;left:52%">S</div>
+      </div>
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <span style="font-size:16px">🗺</span>
+        <span class="topbar-city">Tokyo</span>
+      </div>
+
+      <!-- Floating badge -->
+      <div class="map-badge">
+        ✈ Multi-city detected
+        <span class="badge-dismiss">×</span>
+      </div>
+
+      <!-- Bottom compact sheet -->
+      <div class="sheet-b">
+        <div class="handle"></div>
+        <div class="sheet-b-title">Journey overview</div>
+        <div class="sheet-b-sub">4 places selected across 2 cities</div>
+
+        <div class="leg-row">
+          <div class="leg-dot t"></div>
+          <div class="leg-info">
+            <div class="leg-title">Tokyo</div>
+            <div class="leg-count">3 places selected</div>
+          </div>
+          <div class="leg-days">2 days</div>
+        </div>
+
+        <div class="flight-row">
+          <span class="flight-row-icon">✈</span>
+          <div class="flight-row-text"><strong>Flight needed</strong> · ~7 hrs · Find options →</div>
+        </div>
+
+        <div class="leg-row">
+          <div class="leg-dot s"></div>
+          <div class="leg-info">
+            <div class="leg-title">Singapore</div>
+            <div class="leg-count">2 places selected</div>
+          </div>
+          <div class="leg-days">1 day</div>
+        </div>
+
+        <div class="cta-row" style="margin-top:10px">
+          <button class="btn-primary">Build this journey</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

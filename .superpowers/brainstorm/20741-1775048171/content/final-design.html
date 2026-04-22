@@ -1,0 +1,95 @@
+<h2>Final Design — Map Initial Loading Overlay</h2>
+<p class="subtitle">Live mockup of the center card with fade-cycling messages. This is what users will see on first load.</p>
+
+<div class="mockup" style="max-width:380px;margin:0 auto;">
+  <div class="mockup-header">MapScreen — initial load state (mobile)</div>
+  <div class="mockup-body" style="background:#0f141e;height:600px;position:relative;overflow:hidden;border-radius:0 0 12px 12px;">
+
+    <!-- Map background -->
+    <div style="position:absolute;inset:0;background:linear-gradient(160deg,#1c2840 0%,#141e2e 40%,#1a2a3a 100%);"></div>
+    <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.2" viewBox="0 0 380 600" preserveAspectRatio="xMidYMid slice">
+      <line x1="0" y1="120" x2="380" y2="120" stroke="#8899aa" stroke-width="2.5"/>
+      <line x1="0" y1="240" x2="380" y2="240" stroke="#8899aa" stroke-width="1.5"/>
+      <line x1="0" y1="360" x2="380" y2="360" stroke="#8899aa" stroke-width="2"/>
+      <line x1="0" y1="460" x2="380" y2="460" stroke="#8899aa" stroke-width="1"/>
+      <line x1="90" y1="0" x2="90" y2="600" stroke="#8899aa" stroke-width="2"/>
+      <line x1="220" y1="0" x2="220" y2="600" stroke="#8899aa" stroke-width="1.5"/>
+      <line x1="320" y1="0" x2="320" y2="600" stroke="#8899aa" stroke-width="1"/>
+      <line x1="0" y1="30" x2="200" y2="600" stroke="#8899aa" stroke-width="1.5"/>
+      <line x1="160" y1="0" x2="380" y2="400" stroke="#8899aa" stroke-width="1"/>
+      <line x1="0" y1="200" x2="120" y2="600" stroke="#8899aa" stroke-width="1"/>
+    </svg>
+
+    <!-- Top bar (back + search) -->
+    <div style="position:absolute;top:16px;left:12px;right:12px;display:flex;align-items:center;gap:8px;opacity:0.4;">
+      <div style="width:40px;height:40px;border-radius:50%;background:rgba(15,20,30,.82);border:1px solid rgba(255,255,255,.1);flex-shrink:0;"></div>
+      <div style="flex:1;height:40px;border-radius:999px;background:rgba(15,20,30,.82);border:1px solid rgba(255,255,255,.1);"></div>
+    </div>
+
+    <!-- Loading overlay card -->
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+      <div style="background:rgba(15,20,30,0.93);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.11);border-radius:22px;padding:24px 32px;text-align:center;min-width:190px;box-shadow:0 12px 40px rgba(0,0,0,0.65);">
+        <!-- Spinner -->
+        <div id="spinner" style="width:38px;height:38px;border-radius:50%;border:3px solid rgba(59,130,246,0.18);border-top-color:#3b82f6;margin:0 auto 14px;"></div>
+        <!-- Message -->
+        <p id="loadMsg" style="color:#fff;font-size:14px;font-weight:600;margin:0 0 4px;letter-spacing:-0.2px;transition:opacity 0.4s ease;">Sketching Roads...</p>
+        <p style="color:rgba(255,255,255,0.28);font-size:11px;margin:0;font-weight:400;">hang tight</p>
+      </div>
+    </div>
+
+    <!-- Bottom nav hint (faded) -->
+    <div style="position:absolute;bottom:0;left:0;right:0;height:56px;background:rgba(12,16,26,0.9);border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-around;padding:0 16px;opacity:0.35;">
+      <div style="width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,0.15);"></div>
+      <div style="width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,0.15);"></div>
+      <div style="width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,0.15);"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>Message list</h3>
+  <p class="subtitle">Shuffled on mount, cycled every 1.8s with 400ms fade crossfade. Disappears as soon as the first data load completes.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Sketching Roads...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Cooking hotspots...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Loading something...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Finding hidden gems...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Waking up the city...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Sniffing out cafés...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Mapping the vibes...</span>
+    <span style="background:rgba(59,130,246,0.12);color:#93c5fd;padding:4px 12px;border-radius:999px;font-size:12px;">Connecting the dots...</span>
+  </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+#spinner { animation: spin 1s linear infinite; }
+</style>
+<script>
+const msgs = [
+  "Sketching Roads...",
+  "Cooking hotspots...",
+  "Loading something...",
+  "Finding hidden gems...",
+  "Waking up the city...",
+  "Sniffing out cafés...",
+  "Mapping the vibes...",
+  "Connecting the dots...",
+];
+// shuffle
+for (let i = msgs.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [msgs[i], msgs[j]] = [msgs[j], msgs[i]];
+}
+let idx = 0;
+setInterval(() => {
+  const el = document.getElementById('loadMsg');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    idx = (idx + 1) % msgs.length;
+    el.textContent = msgs[idx];
+    el.style.opacity = '1';
+  }, 400);
+}, 1800);
+</script>

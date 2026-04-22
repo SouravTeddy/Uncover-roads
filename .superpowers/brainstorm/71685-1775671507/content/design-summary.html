@@ -1,0 +1,99 @@
+<h2>Contextual Action Chips — Full Design</h2>
+<p class="subtitle">Review each section. Click to select if you approve.</p>
+
+<div style="display:flex;flex-direction:column;gap:16px;max-width:640px;margin:0 auto;font-family:system-ui,sans-serif;">
+
+  <!-- Section 1: Chip anatomy -->
+  <div class="card" data-choice="chips" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="card-body">
+      <h3>1 · Two chip types</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+        <div style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:7px 14px;font-size:11px;color:#a5b4fc;">☕ Café nearby ›</div>
+        <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:7px 14px;font-size:11px;color:#fff;">🚻 Restrooms ↗</div>
+      </div>
+      <p><strong>Indigo ›</strong> — tapping opens an inline list of 2–3 nearby results fetched from Google Places Nearby Search (new <code>/nearby</code> endpoint). User picks one and taps "Go ↗" to open in Maps.<br><br>
+      <strong>White ↗</strong> — tapping opens Apple Maps (iOS) or Google Maps (Android/web) directly, pre-filled with a search query near the stop's coordinates. No list, no delay.</p>
+    </div>
+  </div>
+
+  <!-- Section 2: Taxonomy -->
+  <div class="card" data-choice="taxonomy" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="card-body">
+      <h3>2 · Chip taxonomy by Google type</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;color:rgba(255,255,255,.8);">
+        <thead><tr style="border-bottom:1px solid rgba(255,255,255,.1);">
+          <th style="text-align:left;padding:6px 4px;color:rgba(255,255,255,.4);font-weight:600;">Type</th>
+          <th style="text-align:left;padding:6px 4px;color:rgba(255,255,255,.4);font-weight:600;">Expand ›</th>
+          <th style="text-align:left;padding:6px 4px;color:rgba(255,255,255,.4);font-weight:600;">Direct ↗</th>
+        </tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);"><td style="padding:7px 4px;">🏛 Museum / Gallery</td><td>Museum café, Gift shop</td><td>Book tickets, Restrooms</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);"><td style="padding:7px 4px;">🛕 Temple / Worship</td><td>Café nearby</td><td>Prayer times, Dress code, Restrooms</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);"><td style="padding:7px 4px;">🌿 Park / Nature</td><td>Café nearby, Photo spots</td><td>Trail map, Restrooms</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);"><td style="padding:7px 4px;">🗺 Attraction / Viewpoint</td><td>Best angles, Café nearby</td><td>Street view, Restrooms</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);"><td style="padding:7px 4px;">🍽 Restaurant / Café</td><td>Dessert nearby</td><td>Walk it off, Leave review, Restrooms</td></tr>
+          <tr><td style="padding:7px 4px;">🏰 Historic / Monument</td><td>Photo spots, Café nearby</td><td>Book ahead, Restrooms</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.5);">Time-based chips layer on top regardless of type: 🍽 Lunch nearby › (11am–2pm) · ☕ Afternoon coffee › (3–5pm) · 🌙 Dinner nearby › (6pm+)</p>
+    </div>
+  </div>
+
+  <!-- Section 3: Data -->
+  <div class="card" data-choice="data" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="card-body">
+      <h3>3 · Data &amp; backend</h3>
+      <p><strong>Chip selection</strong> — reads Google <code>types[]</code> from the existing <code>usePlaceDetails</code> cache (already fetched when user tapped the place on the map). No new fetch needed to pick chips.<br><br>
+      <strong>Expand results</strong> — new <code>GET /nearby?lat=&amp;lon=&amp;type=&amp;radius=500&amp;limit=3</code> endpoint, called only when user taps an expand chip. Returns name, rating, distance, lat/lon. Cost: ~$0.032 per tap.<br><br>
+      <strong>Direct chips</strong> — construct a Maps deep-link client-side using the stop's <code>lat</code>/<code>lon</code> already in <code>ItineraryStop</code>. Zero API cost.</p>
+    </div>
+  </div>
+
+  <!-- Section 4: Expand UX -->
+  <div class="card" data-choice="expand-ux" onclick="toggleSelect(this)" style="cursor:pointer;">
+    <div class="card-image" style="background:#0a0e18;padding:16px;font-family:system-ui,sans-serif;">
+      <div style="background:#111827;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
+        <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;">While you're here</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px;">Next up: <strong style="color:#fff;">Alto da Serafina</strong></div>
+        </div>
+        <div style="padding:10px 14px;">
+          <!-- chips -->
+          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;">
+            <div style="background:rgba(99,102,241,.25);border:1px solid rgba(99,102,241,.5);border-radius:20px;padding:6px 12px;font-size:10px;color:#c7d2fe;">☕ Café nearby ›</div>
+            <div style="background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:20px;padding:6px 12px;font-size:10px;color:#a5b4fc;">📸 Photo spots ›</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 12px;font-size:10px;color:#fff;">🥾 Trail map ↗</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 12px;font-size:10px;color:#fff;">🚻 Restrooms ↗</div>
+          </div>
+          <!-- expanded panel -->
+          <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:10px 12px;">
+            <div style="font-size:9px;color:#818cf8;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">☕ Café nearby</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div><div style="font-size:10px;color:#fff;font-weight:600;">Casa do Parque</div><div style="font-size:9px;color:rgba(255,255,255,.4);">3 min walk · ★ 4.2</div></div>
+                <div style="background:#4f46e5;border-radius:8px;padding:4px 10px;font-size:9px;color:#fff;font-weight:600;">Go ↗</div>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,.06);"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div><div style="font-size:10px;color:#fff;font-weight:600;">Miradouro Kiosk</div><div style="font-size:9px;color:rgba(255,255,255,.4);">7 min walk · ★ 4.0</div></div>
+                <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:4px 10px;font-size:9px;color:#fff;">Go ↗</div>
+              </div>
+              <div style="height:1px;background:rgba(255,255,255,.06);"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div><div style="font-size:10px;color:#fff;font-weight:600;">Snack Bar Floresta</div><div style="font-size:9px;color:rgba(255,255,255,.4);">11 min walk · ★ 3.8</div></div>
+                <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:4px 10px;font-size:9px;color:#fff;">Go ↗</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>4 · Expand UX</h3>
+      <p>Tapping an indigo chip highlights it and opens a panel below with 3 results (name, walk time, rating). Each has a "Go ↗" button that opens Maps directions. Tapping the chip again collapses it. Only one chip expands at a time.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:12px;">Click each section to approve. Let me know if anything needs changing.</p>

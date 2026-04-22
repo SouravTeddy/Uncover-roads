@@ -1,0 +1,119 @@
+<h2>How should the search input work?</h2>
+<p class="subtitle">The key UX decision: how does the controlled dropdown guide users toward structured queries?</p>
+
+<style>
+  .phone-shell {
+    width: 100%;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+  }
+  .phone-searchbar {
+    background: var(--bg-tertiary);
+    border-radius: 20px;
+    padding: 7px 12px;
+    color: var(--text-secondary);
+    margin: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .phone-searchbar .typed { color: var(--text-primary); }
+  .phone-dropdown {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+  }
+  .phone-row {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .phone-row:last-child { border-bottom: none; }
+  .phone-row .dim { color: var(--text-tertiary); font-size: 11px; margin-left: auto; }
+  .phone-section-label {
+    padding: 5px 14px 3px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  .phone-template-row {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .phone-template-row:last-child { border-bottom: none; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .pill-blue { background: rgba(10, 132, 255, 0.15); color: var(--accent); }
+  .pill-amber { background: rgba(255, 159, 10, 0.15); color: #ff9f0a; }
+  .pill-green { background: rgba(52, 199, 89, 0.15); color: #34c759; }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Smart Suggestions</h3>
+      <p>AI parses partial input in real-time and surfaces structured picks. Works like autocomplete that understands intent.</p>
+      <div class="phone-shell" style="margin-top:10px">
+        <div class="phone-searchbar">🔍 <span class="typed">museum near shinjuku</span></div>
+        <div class="phone-dropdown">
+          <div class="phone-row">🏛 Museum near <strong style="margin-left:3px">Shinjuku Station</strong></div>
+          <div class="phone-row">🏛 Museum near <strong style="margin-left:3px">Shinjuku Gyoen</strong></div>
+          <div class="phone-row">🏛 Museum near <strong style="margin-left:3px">Shinjuku (district)</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Template Picker</h3>
+      <p>Tapping search shows pre-built query templates. User picks a template and fills in the blanks. Very controlled, no ambiguity.</p>
+      <div class="phone-shell" style="margin-top:10px">
+        <div class="phone-searchbar">🔍 <span style="color:var(--text-tertiary)">What are you looking for?</span></div>
+        <div class="phone-dropdown">
+          <div class="phone-template-row"><span class="pill pill-blue">🗺 Place</span> <span style="color:var(--text-secondary)">type near location</span></div>
+          <div class="phone-template-row"><span class="pill pill-amber">🎉 Events</span> <span style="color:var(--text-secondary)">on a date</span></div>
+          <div class="phone-template-row"><span class="pill pill-green">⭐ Best of</span> <span style="color:var(--text-secondary)">category in this area</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Grouped Results Dropdown</h3>
+      <p>Type anything, get a grouped dropdown separating Places / Events / Areas. Results are always structured under the hood.</p>
+      <div class="phone-shell" style="margin-top:10px">
+        <div class="phone-searchbar">🔍 <span class="typed">museum near shinjuku</span></div>
+        <div class="phone-dropdown">
+          <div class="phone-section-label">Places</div>
+          <div class="phone-row">🏛 Museum <span class="dim">near shinjuku</span></div>
+          <div class="phone-row">🖼 Art Gallery <span class="dim">near shinjuku</span></div>
+          <div class="phone-section-label">Events</div>
+          <div class="phone-row">🎭 Live events <span class="dim">near shinjuku</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

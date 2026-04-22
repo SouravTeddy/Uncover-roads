@@ -1,0 +1,6 @@
+{"type":"server-started","port":56649,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:56649","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/content/chip-interactions.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/content/chip-taxonomy.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/content/design-summary.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/71685-1775671507/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

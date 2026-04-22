@@ -1,0 +1,178 @@
+<h2>Replace TripSheet — 3 Immersive Directions</h2>
+<p class="subtitle">The current bottom sheet collects: starting point, date, arrival time, trip duration. Here are 3 ways to do this that feel like the rest of the app.</p>
+
+<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+
+  <!-- Option A: Full-screen story flow -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:20px;display:flex;justify-content:center;align-items:center;min-height:320px;">
+      <div style="width:210px;font-family:system-ui,sans-serif;">
+        <!-- Step indicator -->
+        <div style="display:flex;justify-content:center;gap:5px;margin-bottom:20px;">
+          <div style="width:20px;height:3px;border-radius:2px;background:#6366f1;"></div>
+          <div style="width:8px;height:3px;border-radius:2px;background:#333;"></div>
+          <div style="width:8px;height:3px;border-radius:2px;background:#333;"></div>
+        </div>
+        <!-- Full screen step card -->
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:20px;backdrop-filter:blur(12px);">
+          <div style="font-size:10px;color:#6366f1;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Step 1 of 3</div>
+          <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:6px;">Where are you<br>staying?</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:16px;">Your starting point for the day</div>
+          <!-- Search input -->
+          <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span style="font-size:14px;">🏨</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.3);">Search hotel or address…</span>
+          </div>
+          <!-- Quick options -->
+          <div style="display:flex;gap:6px;margin-bottom:16px;">
+            <div style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:20px;padding:5px 10px;font-size:9px;color:#a5b4fc;font-weight:600;">🏨 Hotel</div>
+            <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:5px 10px;font-size:9px;color:rgba(255,255,255,.4);">✈ Airport</div>
+            <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:5px 10px;font-size:9px;color:rgba(255,255,255,.4);">📍 Pin</div>
+          </div>
+          <div style="background:#6366f1;border-radius:12px;padding:10px;text-align:center;font-size:11px;font-weight:700;color:#fff;">Continue →</div>
+        </div>
+        <!-- Peek of map blurred behind -->
+        <div style="margin-top:12px;height:40px;background:rgba(255,255,255,.03);border-radius:12px;border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:9px;color:rgba(255,255,255,.2);">5 places selected · Bengaluru</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Step-by-step full screen</h3>
+      <p>Map fades, 3 focused full-screen steps slide in — hotel, date, duration. Each step is clear and uncluttered. Like an onboarding flow.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Cinematic command overlay -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:0;overflow:hidden;min-height:320px;position:relative;display:flex;flex-direction:column;justify-content:flex-end;">
+      <!-- Map backdrop (blurred) -->
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0d1f35,#1a0d35,#0d1f1a);opacity:0.8;"></div>
+      <!-- Fake map dots -->
+      <div style="position:absolute;top:30px;left:40px;width:8px;height:8px;border-radius:50%;background:#6366f1;box-shadow:0 0 12px #6366f1;"></div>
+      <div style="position:absolute;top:60px;left:90px;width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 8px #ef4444;"></div>
+      <div style="position:absolute;top:45px;left:140px;width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;"></div>
+      <div style="position:absolute;top:80px;left:60px;width:5px;height:5px;border-radius:50%;background:#f97316;box-shadow:0 0 6px #f97316;"></div>
+      <!-- Route line between dots -->
+      <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 210 160">
+        <path d="M44,34 Q70,48 94,64 Q118,80 144,49" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-dasharray="4,3" opacity="0.4"/>
+      </svg>
+      <!-- Cinematic glass panel -->
+      <div style="position:relative;background:rgba(10,14,24,.85);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.08);padding:16px;font-family:system-ui,sans-serif;">
+        <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:12px;">Plan your day</div>
+        <!-- Inline fields -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+          <!-- Hotel row -->
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:9px 12px;">
+            <span style="font-size:14px;">🏨</span>
+            <div style="flex:1;">
+              <div style="font-size:8px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;">Starting from</div>
+              <div style="font-size:10px;color:#fff;font-weight:600;">The Leela Palace, Bengaluru</div>
+            </div>
+            <span style="font-size:9px;color:#6366f1;">✎</span>
+          </div>
+          <!-- Date + Time row -->
+          <div style="display:flex;gap:8px;">
+            <div style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:9px 12px;">
+              <div style="font-size:8px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1px;">Date</div>
+              <div style="font-size:10px;color:#fff;font-weight:600;">Sat 12 Apr</div>
+            </div>
+            <div style="flex:1;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:9px 12px;">
+              <div style="font-size:8px;color:#a5b4fc;text-transform:uppercase;letter-spacing:1px;">Start time</div>
+              <div style="font-size:10px;color:#c7d2fe;font-weight:600;">⚡ 9:30 AM</div>
+            </div>
+          </div>
+        </div>
+        <!-- Places filmstrip -->
+        <div style="display:flex;gap:6px;overflow:hidden;margin-bottom:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=100&q=60') center/cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,.15);"></div>
+          <div style="width:40px;height:40px;border-radius:10px;background:url('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&q=60') center/cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,.1);"></div>
+          <div style="width:40px;height:40px;border-radius:10px;background:url('https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=100&q=60') center/cover;flex-shrink:0;border:1.5px solid rgba(255,255,255,.1);"></div>
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,.3);">+</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px;padding:11px;text-align:center;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px;">Build my itinerary ✦</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Glass panel over live map</h3>
+      <p>Map stays fully visible with glowing pins. A cinematic glass panel sits at the bottom — hotel, date, app-suggested start time, place thumbnails. Everything in one view, no steps.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Immersive modal journey -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:16px;display:flex;justify-content:center;align-items:center;min-height:320px;">
+      <div style="width:210px;font-family:system-ui,sans-serif;">
+        <!-- Full dark modal -->
+        <div style="background:linear-gradient(160deg,rgba(30,20,60,.95),rgba(10,18,30,.98));border:1px solid rgba(255,255,255,.07);border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.8);">
+          <!-- Cinematic header with city image -->
+          <div style="height:90px;position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=400&q=60') center/cover;opacity:0.35;"></div>
+            <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent,rgba(20,14,50,.95));"></div>
+            <div style="position:absolute;bottom:12px;left:14px;">
+              <div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:2px;">Your day in</div>
+              <div style="font-size:18px;font-weight:800;color:#fff;">Bengaluru</div>
+            </div>
+            <div style="position:absolute;bottom:14px;right:14px;font-size:10px;color:rgba(255,255,255,.3);">5 places</div>
+          </div>
+          <!-- Fields -->
+          <div style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+            <!-- Hotel -->
+            <div>
+              <div style="font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Starting point</div>
+              <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:11px;padding:9px 12px;display:flex;gap:8px;align-items:center;">
+                <span style="font-size:13px;">🏨</span>
+                <span style="font-size:10px;color:rgba(255,255,255,.35);">Search your hotel…</span>
+              </div>
+            </div>
+            <!-- Date picker (visual calendar strip) -->
+            <div>
+              <div style="font-size:8px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Travel date</div>
+              <div style="display:flex;gap:5px;overflow:hidden;">
+                <div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 4px;text-align:center;">
+                  <div style="font-size:8px;color:rgba(255,255,255,.3);">Thu</div>
+                  <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.4);">10</div>
+                </div>
+                <div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 4px;text-align:center;">
+                  <div style="font-size:8px;color:rgba(255,255,255,.3);">Fri</div>
+                  <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.4);">11</div>
+                </div>
+                <div style="flex:1;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.5);border-radius:10px;padding:7px 4px;text-align:center;">
+                  <div style="font-size:8px;color:#a5b4fc;">Sat</div>
+                  <div style="font-size:12px;font-weight:800;color:#fff;">12</div>
+                </div>
+                <div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 4px;text-align:center;">
+                  <div style="font-size:8px;color:rgba(255,255,255,.3);">Sun</div>
+                  <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.4);">13</div>
+                </div>
+                <div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:7px 4px;text-align:center;">
+                  <div style="font-size:8px;color:rgba(255,255,255,.3);">Mon</div>
+                  <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.4);">14</div>
+                </div>
+              </div>
+            </div>
+            <!-- App-recommended time -->
+            <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:11px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="font-size:8px;color:#818cf8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">⚡ Recommended start</div>
+                <div style="font-size:12px;font-weight:700;color:#c7d2fe;">9:30 AM</div>
+              </div>
+              <div style="font-size:9px;color:rgba(255,255,255,.3);text-align:right;line-height:1.4;">Based on 5 places<br>+ opening hours</div>
+            </div>
+          </div>
+          <!-- CTA -->
+          <div style="padding:0 14px 14px;">
+            <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;padding:12px;text-align:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:.3px;">Build my itinerary ✦</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Cinematic modal with date strip</h3>
+      <p>A floating dark modal with the city as a backdrop image. Horizontal scrollable date strip, app auto-suggests start time based on selected places + hours. Feels premium.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:8px;">In all options the app recommends the start time — user just picks the date. Click your favourite.</p>

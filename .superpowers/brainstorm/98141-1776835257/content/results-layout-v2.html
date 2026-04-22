@@ -1,0 +1,225 @@
+<h2>Where do the result cards appear?</h2>
+<p class="subtitle">After picking "Museums near Shinjuku" — pins drop on the map. Where do the cards show?</p>
+
+<style>
+  .phone-frame {
+    width: 100%;
+    background: var(--bg-primary);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+  }
+  .map-area {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 24px;
+  }
+  .map-searchbar {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .map-pin {
+    position: absolute;
+    font-size: 18px;
+  }
+  .num-pin {
+    position: absolute;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    border: 2px solid white;
+  }
+  .bottom-strip {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    padding: 8px;
+    display: flex;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .strip-card {
+    min-width: 130px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 8px;
+    flex-shrink: 0;
+  }
+  .strip-card .name { font-weight: 600; color: var(--text-primary); font-size: 10px; }
+  .strip-card .meta { color: var(--text-secondary); font-size: 9px; margin-top: 3px; }
+  .strip-card .add-btn {
+    margin-top: 6px;
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 9px;
+    display: inline-block;
+  }
+  .sheet {
+    background: var(--bg-secondary);
+    border-top: 2px solid var(--border);
+    padding: 8px;
+  }
+  .sheet-handle {
+    width: 32px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 8px;
+  }
+  .sheet-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .sheet-row {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .sheet-row .name { font-weight: 600; color: var(--text-primary); font-size: 10px; }
+  .sheet-row .meta { color: var(--text-secondary); font-size: 9px; }
+  .sheet-row .add-btn {
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+  .float-card {
+    position: absolute;
+    bottom: 8px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .float-card .name { font-weight: 600; color: var(--text-primary); font-size: 11px; }
+  .float-card .meta { color: var(--text-secondary); font-size: 9px; margin-top: 2px; }
+  .float-actions { display: flex; gap: 5px; flex-shrink: 0; }
+  .btn-nav {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .btn-add {
+    background: var(--accent);
+    color: white;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+</style>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Horizontal swipe strip</h3>
+      <p>Slim row of cards peeks from the bottom. Swipe to browse. Map stays mostly visible. Good for quick scanning.</p>
+      <div class="phone-frame" style="margin-top:10px">
+        <div class="map-area" style="height:110px">
+          🗺
+          <div class="map-searchbar">🔍 Museums near Shinjuku</div>
+          <div class="map-pin" style="top:52px;left:52px">📍</div>
+          <div class="map-pin" style="top:70px;left:100px">📍</div>
+          <div class="map-pin" style="top:55px;right:60px">📍</div>
+        </div>
+        <div class="bottom-strip">
+          <div class="strip-card">
+            <div class="name">Tokyo Nat'l Museum</div>
+            <div class="meta">⭐ 4.8 · 0.3 km</div>
+            <div class="add-btn">+ Add</div>
+          </div>
+          <div class="strip-card">
+            <div class="name">Shinjuku Art Space</div>
+            <div class="meta">⭐ 4.5 · 0.8 km</div>
+            <div class="add-btn">+ Add</div>
+          </div>
+          <div class="strip-card" style="display:flex;align-items:center;justify-content:center;color:var(--text-tertiary);min-width:60px">+5 →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Draggable bottom sheet</h3>
+      <p>Sheet slides up with a scrollable vertical list. Drag to half or full height. Familiar — same as Google Maps.</p>
+      <div class="phone-frame" style="margin-top:10px">
+        <div class="map-area" style="height:80px">
+          🗺
+          <div class="map-searchbar">🔍 Museums near Shinjuku</div>
+          <div class="map-pin" style="top:40px;left:52px">📍</div>
+          <div class="map-pin" style="top:55px;left:100px">📍</div>
+          <div class="map-pin" style="top:42px;right:55px">📍</div>
+        </div>
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-label">8 results</div>
+          <div class="sheet-row">
+            <div><div class="name">Tokyo Nat'l Museum</div><div class="meta">⭐ 4.8 · Museum · 0.3 km</div></div>
+            <div class="add-btn">+ Add</div>
+          </div>
+          <div class="sheet-row">
+            <div><div class="name">Shinjuku Art Space</div><div class="meta">⭐ 4.5 · Museum · 0.8 km</div></div>
+            <div class="add-btn">+ Add</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Floating card on full map</h3>
+      <p>Full map with numbered pins. One floating card at the bottom — swipe to cycle through results. Very immersive.</p>
+      <div class="phone-frame" style="margin-top:10px">
+        <div class="map-area" style="height:160px;position:relative">
+          🗺
+          <div class="map-searchbar">🔍 Museums near Shinjuku</div>
+          <div class="num-pin" style="top:55px;left:52px">1</div>
+          <div class="num-pin" style="top:80px;left:105px">2</div>
+          <div class="num-pin" style="top:60px;right:55px">3</div>
+          <div class="float-card">
+            <div>
+              <div class="name">① Tokyo Nat'l Museum</div>
+              <div class="meta">⭐ 4.8 · Free entry · 0.3 km</div>
+            </div>
+            <div class="float-actions">
+              <div class="btn-nav">← →</div>
+              <div class="btn-add">+ Add</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

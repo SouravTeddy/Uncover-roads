@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey concepts</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:#0a0d12; font-family:system-ui,sans-serif; color:white; padding:24px 16px 40px; display:flex; flex-direction:column; align-items:center; gap:32px; }
+h2 { color:#f0f6fc; font-size:18px; text-align:center; letter-spacing:-.02em; }
+.subtitle { color:#6b7280; font-size:13px; text-align:center; max-width:540px; line-height:1.6; }
+.concept { display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; max-width:340px; }
+.concept-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#3b82f6; }
+.divider { width:100%; max-width:400px; height:1px; background:rgba(255,255,255,.06); }
+
+/* phone */
+.phone {
+  width:310px; height:620px; background:#0f172a;
+  border-radius:36px; border:1.5px solid rgba(255,255,255,.12);
+  overflow:hidden; position:relative; flex-shrink:0;
+  box-shadow:0 20px 60px rgba(0,0,0,.8);
+}
+.topbar {
+  position:absolute; top:0; left:0; right:0; height:52px;
+  background:rgba(8,12,20,.95); backdrop-filter:blur(16px);
+  display:flex; align-items:center; gap:10px; padding:0 16px;
+  z-index:20; border-bottom:1px solid rgba(255,255,255,.07);
+}
+.back { color:rgba(255,255,255,.45); font-size:20px; line-height:1; }
+.tb-title { font-size:13px; font-weight:700; color:white; flex:1; }
+.tb-badge { font-size:9px; font-weight:800; padding:3px 8px; border-radius:20px; background:rgba(59,130,246,.2); color:#60a5fa; border:1px solid rgba(59,130,246,.3); letter-spacing:.03em; }
+
+/* ══════════════════════════════════════════
+   CONCEPT 1 — ROUTE STRIP
+══════════════════════════════════════════ */
+.strip-bg {
+  position:absolute; inset:0; top:52px;
+  background:linear-gradient(180deg,#0d1520 0%,#111827 100%);
+}
+
+/* mini map */
+.strip-map {
+  position:absolute; top:52px; left:0; right:0; height:160px;
+  background:linear-gradient(180deg,#0d1f38,#132035);
+  overflow:hidden;
+}
+.strip-map-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:26px 26px;
+}
+
+/* boarding strip */
+.strip-scroll {
+  position:absolute; top:192px; left:0; right:0;
+  padding:0 16px;
+  display:flex; align-items:center; gap:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.strip-scroll::-webkit-scrollbar { display:none; }
+
+.strip-city {
+  flex-shrink:0;
+  height:52px; border-radius:14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:0 16px; gap:2px;
+  position:relative;
+}
+.strip-city-name { font-size:12px; font-weight:800; color:white; }
+.strip-city-days { font-size:9px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.04em; text-transform:uppercase; }
+
+.strip-flight {
+  flex-shrink:0;
+  height:52px; width:64px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2px;
+}
+.strip-flight-line {
+  width:100%; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(59,130,246,.5),transparent);
+  position:relative;
+}
+.strip-flight-plane { font-size:16px; margin-bottom:2px; }
+.strip-flight-label { font-size:9px; color:rgba(255,255,255,.3); }
+
+/* day ticks below strip */
+.strip-days-row {
+  position:absolute; top:252px; left:16px; right:16px;
+  display:flex; gap:4px;
+}
+.day-tick {
+  flex:1; height:28px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:rgba(255,255,255,.5);
+}
+
+/* expanded city detail */
+.strip-detail {
+  position:absolute; top:292px; left:0; right:0; bottom:0;
+  padding:14px 16px;
+}
+.sd-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.sd-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sd-title { font-size:14px; font-weight:800; color:white; }
+.sd-sub { font-size:11px; color:rgba(255,255,255,.35); margin-left:auto; }
+.sd-places { display:flex; flex-direction:column; gap:6px; }
+.sd-place { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); }
+.sd-place-img { width:36px; height:36px; border-radius:8px; flex-shrink:0; object-fit:cover; }
+.sd-place-name { font-size:11px; font-weight:700; color:white; }
+.sd-place-meta { font-size:10px; color:rgba(255,255,255,.35); }
+
+/* build btn */
+.build-btn {
+  position:absolute; bottom:20px; left:16px; right:16px;
+  height:44px; border-radius:14px; border:none; cursor:pointer;
+  background:linear-gradient(135deg,#2563eb,#3b82f6);
+  color:white; font-size:13px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+
+
+/* ══════════════════════════════════════════
+   CONCEPT 2 — MAP AS HERO
+══════════════════════════════════════════ */
+.map-hero {
+  position:absolute; inset:0; top:52px;
+  background:linear-gradient(180deg,#0c1929 0%,#0d1f36 100%);
+  overflow:hidden;
+}
+.map-hero-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+/* city node */
+.map-node {
+  position:absolute; transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  cursor:pointer; z-index:5;
+}
+.map-node-ring {
+  width:56px; height:56px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.map-node-ring::before {
+  content:''; position:absolute; inset:-4px; border-radius:50%;
+  border:1.5px solid currentColor; opacity:.3;
+}
+.map-node-ring::after {
+  content:''; position:absolute; inset:-10px; border-radius:50%;
+  border:1px solid currentColor; opacity:.12;
+}
+.map-node-img {
+  width:52px; height:52px; border-radius:50%;
+  object-fit:cover; border:2px solid currentColor;
+}
+.map-node-label {
+  background:rgba(8,12,20,.85); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1); border-radius:20px;
+  padding:4px 10px; white-space:nowrap;
+  text-align:center;
+}
+.map-node-city { font-size:11px; font-weight:800; color:white; }
+.map-node-days { font-size:9px; color:rgba(255,255,255,.45); }
+
+/* flight info chip */
+.flight-chip {
+  position:absolute; z-index:6;
+  background:linear-gradient(135deg,#1e3a8a,#2563eb);
+  border:1px solid rgba(59,130,246,.4);
+  border-radius:20px; padding:5px 12px;
+  display:flex; align-items:center; gap:6px;
+  box-shadow:0 4px 16px rgba(37,99,235,.4);
+  cursor:pointer;
+}
+.fc-plane { font-size:13px; }
+.fc-info { display:flex; flex-direction:column; }
+.fc-route-txt { font-size:10px; font-weight:700; color:white; }
+.fc-dur { font-size:9px; color:rgba(255,255,255,.5); }
+
+/* map bottom panel */
+.map-bottom {
+  position:absolute; bottom:0; left:0; right:0;
+  background:rgba(8,12,20,.95); backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,.08);
+  border-radius:20px 20px 0 0;
+  padding:12px 16px 20px;
+  z-index:10;
+}
+.mb-handle { width:36px; height:3px; border-radius:2px; background:rgba(255,255,255,.12); margin:0 auto 12px; }
+.mb-title { font-size:13px; font-weight:800; color:white; margin-bottom:4px; }
+.mb-sub { font-size:11px; color:rgba(255,255,255,.35); margin-bottom:12px; }
+.mb-places { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin-bottom:12px; }
+.mb-places::-webkit-scrollbar{display:none;}
+.mb-place-card {
+  flex-shrink:0; width:70px; border-radius:10px; overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);
+}
+.mb-place-img { width:70px; height:50px; object-fit:cover; display:block; }
+.mb-place-name { font-size:9px; font-weight:700; color:white; padding:4px 5px; background:rgba(255,255,255,.06); }
+
+
+/* ══════════════════════════════════════════
+   CONCEPT 3 — SWIPEABLE CITY CARDS
+══════════════════════════════════════════ */
+.cards-bg {
+  position:absolute; inset:0; top:52px;
+  background:#080c14;
+}
+/* progress dots */
+.progress-dots {
+  position:absolute; top:62px; left:0; right:0; z-index:10;
+  display:flex; justify-content:center; gap:5px; padding-top:8px;
+}
+.pdot { height:3px; border-radius:2px; }
+
+/* card stack */
+.card-stack {
+  position:absolute; top:84px; left:14px; right:14px; bottom:70px;
+  overflow:hidden;
+}
+.city-card {
+  position:absolute; inset:0; border-radius:24px; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.city-card-img {
+  position:absolute; inset:0; object-fit:cover; width:100%; height:100%;
+}
+.city-card-overlay {
+  position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.3) 50%, rgba(0,0,0,.1) 100%);
+}
+.city-card-content {
+  position:relative; z-index:2; padding:16px 18px 20px;
+}
+.cc-tag { display:inline-flex; align-items:center; gap:5px; font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:3px 9px; border-radius:20px; margin-bottom:8px; }
+.cc-name { font-size:26px; font-weight:900; color:white; letter-spacing:-.02em; line-height:1; margin-bottom:4px; }
+.cc-meta { font-size:11px; color:rgba(255,255,255,.55); margin-bottom:12px; }
+.cc-places { display:flex; gap:5px; flex-wrap:wrap; }
+.cc-place-chip { font-size:10px; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,.12); color:rgba(255,255,255,.8); backdrop-filter:blur(8px); }
+
+/* flight card */
+.flight-card-full {
+  position:absolute; inset:0; border-radius:24px; overflow:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#0c1f4a,#1a2f6a,#0d1b3e);
+  padding:24px;
+}
+.fc-airports { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.fc-airport-code { font-size:32px; font-weight:900; color:white; letter-spacing:-.02em; }
+.fc-plane-icon { font-size:20px; color:rgba(255,255,255,.4); }
+.fc-route-sub { font-size:11px; color:rgba(255,255,255,.4); text-align:center; margin-bottom:20px; }
+.fc-options-mini { width:100%; display:flex; flex-direction:column; gap:7px; }
+.fc-opt {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:12px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  cursor:pointer;
+}
+.fc-opt-airline { font-size:11px; font-weight:700; color:white; flex:1; }
+.fc-opt-time { font-size:10px; color:rgba(255,255,255,.45); }
+.fc-opt-price { font-size:11px; font-weight:800; color:#4ade80; }
+.fc-note-sm { font-size:9px; color:rgba(255,255,255,.25); text-align:center; margin-top:10px; }
+
+.swipe-hint { position:absolute; top:50%; right:14px; transform:translateY(-50%);
+  font-size:18px; color:rgba(255,255,255,.2); z-index:5; animation:nudge 2s infinite; }
+@keyframes nudge { 0%,100%{transform:translateY(-50%) translateX(0)} 50%{transform:translateY(-50%) translateX(4px)} }
+
+/* bottom bar for cards */
+.cards-bar {
+  position:absolute; bottom:0; left:0; right:0; height:64px;
+  background:rgba(8,12,20,.95); backdrop-filter:blur(16px);
+  border-top:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:center; justify-content:center; padding:0 16px;
+}
+</style>
+</head>
+<body>
+
+<h2>Three ways to feel like a journey</h2>
+<p class="subtitle">Same information — totally different energy. Tap a concept to select it.</p>
+
+<!-- ── CONCEPT 1 ── -->
+<div class="concept">
+  <div class="concept-label">1 — The Route Strip</div>
+  <div class="phone">
+    <div class="topbar">
+      <span class="back">‹</span>
+      <span class="tb-title">Your Journey</span>
+      <span class="tb-badge">4 DAYS</span>
+    </div>
+
+    <!-- mini map -->
+    <div class="strip-map">
+      <div class="strip-map-grid"></div>
+      <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 310 160" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity=".8"/>
+            <stop offset="100%" stop-color="#22c55e" stop-opacity=".8"/>
+          </linearGradient>
+        </defs>
+        <path d="M 70 110 Q 155 30 240 105" stroke="url(#arcGrad)" stroke-width="2" fill="none" stroke-dasharray="6 4"/>
+        <text x="155" y="55" font-size="14" text-anchor="middle" fill="rgba(255,255,255,.45)">✈</text>
+        <!-- Tokyo dot -->
+        <circle cx="70" cy="110" r="6" fill="#3b82f6"/>
+        <circle cx="70" cy="110" r="10" fill="none" stroke="#3b82f6" stroke-width="1" opacity=".4"/>
+        <text x="70" y="130" font-size="9" text-anchor="middle" fill="rgba(255,255,255,.6)" font-weight="700">TOKYO</text>
+        <!-- Singapore dot -->
+        <circle cx="240" cy="105" r="6" fill="#22c55e"/>
+        <circle cx="240" cy="105" r="10" fill="none" stroke="#22c55e" stroke-width="1" opacity=".4"/>
+        <text x="240" y="125" font-size="9" text-anchor="middle" fill="rgba(255,255,255,.6)" font-weight="700">SINGAPORE</text>
+      </svg>
+    </div>
+
+    <!-- boarding-pass strip -->
+    <div class="strip-scroll" style="top:212px; gap:0; display:flex; align-items:stretch;">
+      <!-- Tokyo segment -->
+      <div style="flex-shrink:0; background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3); border-radius:14px 0 0 14px; padding:8px 18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+        <div style="font-size:11px;font-weight:800;color:white;">Tokyo</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.45);">2 DAYS</div>
+        <div style="display:flex;gap:3px;margin-top:3px;">
+          <div style="width:5px;height:5px;border-radius:50%;background:#3b82f6;"></div>
+          <div style="width:5px;height:5px;border-radius:50%;background:#3b82f6;"></div>
+        </div>
+      </div>
+      <!-- flight notch -->
+      <div style="flex-shrink:0; width:2px; background:linear-gradient(rgba(59,130,246,.4),rgba(34,197,94,.4)); position:relative;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:#0f172a;border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;z-index:2;">✈</div>
+      </div>
+      <!-- Singapore segment -->
+      <div style="flex-shrink:0; background:rgba(34,197,94,.12); border:1px solid rgba(34,197,94,.25); border-radius:0 14px 14px 0; padding:8px 18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;">
+        <div style="font-size:11px;font-weight:800;color:white;">Singapore</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.45);">2 DAYS</div>
+        <div style="display:flex;gap:3px;margin-top:3px;">
+          <div style="width:5px;height:5px;border-radius:50%;background:#22c55e;"></div>
+          <div style="width:5px;height:5px;border-radius:50%;background:#22c55e;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Apr dates row -->
+    <div style="position:absolute;top:278px;left:16px;right:16px;display:flex;gap:3px;">
+      <div style="flex:1;background:rgba(59,130,246,.12);border-radius:6px;text-align:center;padding:5px 0;font-size:9px;font-weight:700;color:rgba(59,130,246,.9);">Apr 10</div>
+      <div style="flex:1;background:rgba(59,130,246,.12);border-radius:6px;text-align:center;padding:5px 0;font-size:9px;font-weight:700;color:rgba(59,130,246,.9);">Apr 11</div>
+      <div style="flex:0 0 30px;background:rgba(59,130,246,.08);border-radius:6px;text-align:center;padding:5px 0;font-size:11px;color:rgba(255,255,255,.3);">✈</div>
+      <div style="flex:1;background:rgba(34,197,94,.1);border-radius:6px;text-align:center;padding:5px 0;font-size:9px;font-weight:700;color:rgba(34,197,94,.9);">Apr 13</div>
+      <div style="flex:1;background:rgba(34,197,94,.1);border-radius:6px;text-align:center;padding:5px 0;font-size:9px;font-weight:700;color:rgba(34,197,94,.9);">Apr 14</div>
+    </div>
+
+    <!-- place list for selected city -->
+    <div style="position:absolute;top:310px;left:16px;right:16px;">
+      <div style="font-size:10px;font-weight:700;color:rgba(59,130,246,.8);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Tokyo · Selected places</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+          <img src="https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=60&q=80" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+          <div><div style="font-size:11px;font-weight:700;color:white;">Senso-ji Temple</div><div style="font-size:9px;color:rgba(255,255,255,.35);">Heritage · ~2 hrs</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:11px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+          <img src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=60&q=80" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+          <div><div style="font-size:11px;font-weight:700;color:white;">Shibuya Crossing</div><div style="font-size:9px;color:rgba(255,255,255,.35);">Landmark · ~1 hr</div></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="build-btn">✈ &nbsp;Build journey</button>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ── CONCEPT 2 ── -->
+<div class="concept">
+  <div class="concept-label">2 — Map as Hero</div>
+  <div class="phone">
+    <div class="topbar">
+      <span class="back">‹</span>
+      <span class="tb-title">Your Journey</span>
+      <span class="tb-badge">4 DAYS</span>
+    </div>
+    <div class="map-hero">
+      <div class="map-hero-grid"></div>
+      <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 310 420" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="arcGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity=".6"/>
+            <stop offset="100%" stop-color="#22c55e" stop-opacity=".6"/>
+          </linearGradient>
+        </defs>
+        <path d="M 80 180 Q 155 80 230 160" stroke="url(#arcGrad2)" stroke-width="2" fill="none" stroke-dasharray="8 5"/>
+      </svg>
+      <!-- Tokyo node -->
+      <div class="map-node" style="left:80px;top:180px;color:#3b82f6;">
+        <div class="map-node-ring">
+          <img class="map-node-img" src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=120&q=80" style="border-color:#3b82f6;">
+        </div>
+        <div class="map-node-label">
+          <div class="map-node-city">Tokyo</div>
+          <div class="map-node-days">2 days · 3 places</div>
+        </div>
+      </div>
+      <!-- Singapore node -->
+      <div class="map-node" style="left:230px;top:160px;color:#22c55e;">
+        <div class="map-node-ring">
+          <img class="map-node-img" src="https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=120&q=80" style="border-color:#22c55e;">
+        </div>
+        <div class="map-node-label">
+          <div class="map-node-city">Singapore</div>
+          <div class="map-node-days">2 days · 2 places</div>
+        </div>
+      </div>
+      <!-- flight chip on arc -->
+      <div class="flight-chip" style="left:50%;top:105px;transform:translateX(-50%);">
+        <span class="fc-plane">✈</span>
+        <div class="fc-info">
+          <div class="fc-route-txt">~7 hrs · Day 3</div>
+          <div class="fc-dur">Find flights →</div>
+        </div>
+      </div>
+    </div>
+    <!-- bottom sheet -->
+    <div class="map-bottom">
+      <div class="mb-handle"></div>
+      <div class="mb-title">Tokyo · Day 1–2</div>
+      <div class="mb-sub">3 places · tap city to switch</div>
+      <div class="mb-places">
+        <div class="mb-place-card">
+          <img class="mb-place-img" src="https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=120&q=80">
+          <div class="mb-place-name">Senso-ji</div>
+        </div>
+        <div class="mb-place-card">
+          <img class="mb-place-img" src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=120&q=80">
+          <div class="mb-place-name">Shibuya</div>
+        </div>
+        <div class="mb-place-card">
+          <img class="mb-place-img" src="https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=120&q=80">
+          <div class="mb-place-name">Tsukiji</div>
+        </div>
+      </div>
+      <button class="build-btn" style="position:relative;bottom:auto;left:auto;right:auto;width:100%;">✈ &nbsp;Build journey</button>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ── CONCEPT 3 ── -->
+<div class="concept">
+  <div class="concept-label">3 — Swipeable City Cards</div>
+  <div class="phone">
+    <div class="topbar">
+      <span class="back">‹</span>
+      <span class="tb-title">Your Journey</span>
+      <span class="tb-badge">4 DAYS</span>
+    </div>
+    <div class="cards-bg"></div>
+
+    <!-- progress bar -->
+    <div class="progress-dots" style="top:58px;">
+      <div class="pdot" style="width:28px;background:#3b82f6;"></div>
+      <div class="pdot" style="width:28px;background:rgba(255,255,255,.2);"></div>
+      <div class="pdot" style="width:28px;background:rgba(255,255,255,.2);"></div>
+    </div>
+
+    <!-- city card - Tokyo shown -->
+    <div class="card-stack">
+      <!-- card behind -->
+      <div class="city-card" style="left:18px;right:-18px;top:10px;bottom:-6px;opacity:.4;border-radius:24px;overflow:hidden;">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a1628,#162844);"></div>
+        <div style="position:absolute;bottom:20px;left:20px;font-size:22px;font-weight:900;color:rgba(255,255,255,.3);">Singapore</div>
+      </div>
+      <!-- main card -->
+      <div class="city-card">
+        <img class="city-card-img" src="https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&q=80">
+        <div class="city-card-overlay"></div>
+        <div class="city-card-content">
+          <div class="cc-tag" style="background:rgba(59,130,246,.25);color:#60a5fa;border:1px solid rgba(59,130,246,.3);">
+            📍 Day 1 – 2 · 2 days
+          </div>
+          <div class="cc-name">Tokyo</div>
+          <div class="cc-meta">3 places · Based on your pace</div>
+          <div class="cc-places">
+            <span class="cc-place-chip">Senso-ji</span>
+            <span class="cc-place-chip">Shibuya</span>
+            <span class="cc-place-chip">Tsukiji</span>
+          </div>
+        </div>
+      </div>
+      <div class="swipe-hint">›</div>
+    </div>
+
+    <!-- bottom action bar -->
+    <div class="cards-bar">
+      <button class="build-btn" style="position:relative;bottom:auto;left:auto;right:auto;width:100%;">✈ &nbsp;Build journey</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

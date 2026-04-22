@@ -1,0 +1,59 @@
+<h2>How should the search input work?</h2>
+<p class="subtitle">The key UX decision: how does the "controlled" dropdown guide users toward structured queries?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;font-family:monospace;font-size:13px;border-radius:8px 8px 0 0">
+      <div style="background:#1e293b;border-radius:10px;padding:10px 14px;color:#94a3b8;margin-bottom:8px">
+        🔍 <span style="color:#e2e8f0">museum</span><span style="color:#64748b"> near shinjuku...</span>
+      </div>
+      <div style="background:#1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid #334155;color:#60a5fa">🏛 Museum near <strong>Shinjuku Station</strong></div>
+        <div style="padding:10px 14px;border-bottom:1px solid #334155;color:#60a5fa">🏛 Museum near <strong>Shinjuku Gyoen</strong></div>
+        <div style="padding:10px 14px;color:#60a5fa">🏛 Museum near <strong>Shinjuku (district)</strong></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Smart Suggestions</h3>
+      <p>As the user types, AI parses partial input in real-time and surfaces structured suggestions. Users pick from the dropdown rather than hitting enter on free text. Works like a smart autocomplete that understands intent.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;font-family:monospace;font-size:13px;border-radius:8px 8px 0 0">
+      <div style="background:#1e293b;border-radius:10px;padding:10px 14px;color:#94a3b8;margin-bottom:8px">
+        🔍 <span style="color:#64748b">What are you looking for?</span>
+      </div>
+      <div style="background:#1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:8px 14px;border-bottom:1px solid #334155;color:#a78bfa;display:flex;align-items:center;gap:8px"><span>🗺</span> <span><strong>Place type</strong> near <strong>location</strong></span></div>
+        <div style="padding:8px 14px;border-bottom:1px solid #334155;color:#f59e0b;display:flex;align-items:center;gap:8px"><span>🎉</span> <span><strong>Events</strong> on <strong>date</strong></span></div>
+        <div style="padding:8px 14px;color:#34d399;display:flex;align-items:center;gap:8px"><span>⭐</span> <span><strong>Best of</strong> category in this area</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Template Picker</h3>
+      <p>Tapping the search bar shows pre-built query templates. User picks a template and fills in the blanks (e.g., taps "Events on [date]" → date picker appears). Very controlled, no ambiguity, but less natural to discover.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:16px;font-family:monospace;font-size:13px;border-radius:8px 8px 0 0">
+      <div style="background:#1e293b;border-radius:10px;padding:10px 14px;color:#94a3b8;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        🔍 <span style="color:#64748b">museum near shinjuku...</span>
+      </div>
+      <div style="background:#1e293b;border-radius:8px;overflow:hidden">
+        <div style="padding:6px 12px;border-bottom:1px solid #334155;font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px">Places</div>
+        <div style="padding:10px 14px;border-bottom:1px solid #334155;color:#60a5fa;display:flex;justify-content:space-between"><span>🏛 Museum</span><span style="color:#475569;font-size:11px">near shinjuku</span></div>
+        <div style="padding:10px 14px;border-bottom:1px solid #334155;color:#60a5fa;display:flex;justify-content:space-between"><span>🖼 Art Gallery</span><span style="color:#475569;font-size:11px">near shinjuku</span></div>
+        <div style="padding:6px 12px;border-bottom:1px solid #334155;font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:0.5px">Events</div>
+        <div style="padding:10px 14px;color:#a78bfa;display:flex;justify-content:space-between"><span>🎭 Live events</span><span style="color:#475569;font-size:11px">near shinjuku</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Grouped Results Dropdown</h3>
+      <p>Type anything, get a grouped dropdown that separates "Places" from "Events" from "Areas". Selections are always structured under the hood. The user feels free to type naturally while we control what can actually be selected.</p>
+    </div>
+  </div>
+
+</div>

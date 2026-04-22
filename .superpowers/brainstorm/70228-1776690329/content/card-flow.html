@@ -1,0 +1,242 @@
+<style>
+  .flow-container {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .card-mock {
+    background: #1a1a2e;
+    border-radius: 16px;
+    padding: 20px;
+    width: 280px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .card-mock .step-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #64748b;
+    margin-bottom: 12px;
+  }
+  .card-question {
+    font-size: 18px;
+    font-weight: 600;
+    color: #f1f5f9;
+    line-height: 1.4;
+    margin-bottom: 6px;
+  }
+  .card-sub {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 20px;
+  }
+  .card-search {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #94a3b8;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  .card-or {
+    text-align: center;
+    font-size: 11px;
+    color: #475569;
+    margin: 12px 0;
+  }
+  .card-undecided {
+    border: 1px dashed rgba(59,130,246,0.4);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #3b82f6;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .dropdown-mock {
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: -4px;
+  }
+  .dropdown-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .type-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .badge-hotel { background: rgba(168,85,247,0.15); color: #a855f7; }
+  .badge-airport { background: rgba(59,130,246,0.15); color: #3b82f6; }
+  .badge-street { background: rgba(100,116,139,0.2); color: #94a3b8; }
+  .badge-home { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .optional-section {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .optional-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #475569;
+    margin-bottom: 10px;
+  }
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .time-input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: #94a3b8;
+    font-size: 12px;
+    flex: 1;
+  }
+  .nudge-text {
+    font-size: 11px;
+    color: #3b82f6;
+    opacity: 0.8;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  .cta-btn {
+    background: #3b82f6;
+    color: white;
+    border-radius: 10px;
+    padding: 11px 16px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 16px;
+  }
+  .smart-narration {
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 4px;
+  }
+  .narration-line {
+    font-size: 13px;
+    color: #93c5fd;
+    line-height: 1.6;
+    margin-bottom: 6px;
+  }
+  .narration-line:last-child { margin-bottom: 0; }
+  .narration-time {
+    color: #60a5fa;
+    font-weight: 600;
+  }
+  .arrow {
+    font-size: 20px;
+    color: #334155;
+    align-self: center;
+    margin-top: 30px;
+  }
+  .place-name { color: #f1f5f9; font-weight: 500; }
+</style>
+
+<h2>Conversational Origin Card — Full Flow</h2>
+<p class="subtitle">Two paths, one clean card</p>
+
+<div class="flow-container" style="margin-top:24px">
+
+  <!-- STATE 1: Opening -->
+  <div class="card-mock">
+    <div class="step-label">Opening state</div>
+    <div class="card-question">Where are you starting your trip from?</div>
+    <div class="card-sub">Hotel, airport, home — anything works</div>
+    <div class="card-search">🔍 Search for a place...</div>
+    <div class="card-or">or</div>
+    <div class="card-undecided">Haven't decided yet</div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <!-- STATE 2A: Typing - dropdown shown -->
+  <div class="card-mock">
+    <div class="step-label">Path A — user is typing</div>
+    <div class="card-question">Where are you starting from?</div>
+    <div class="card-sub">Hotel, airport, home — anything works</div>
+    <div class="card-search" style="border-color:rgba(59,130,246,0.4);color:#e2e8f0">Marriott Ban</div>
+    <div class="dropdown-mock">
+      <div class="dropdown-item">
+        <span>Marriott Bangalore</span>
+        <span class="type-badge badge-hotel">Hotel</span>
+      </div>
+      <div class="dropdown-item">
+        <span>Marriott Courtyard, Whitefield</span>
+        <span class="type-badge badge-hotel">Hotel</span>
+      </div>
+      <div class="dropdown-item">
+        <span>Marriott Bannerghatta Rd</span>
+        <span class="type-badge badge-street">Street</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <!-- STATE 2A continued: Place selected, optional time -->
+  <div class="card-mock">
+    <div class="step-label">Path A — place selected</div>
+    <div class="card-question">Nice. When do you check in?</div>
+    <div class="card-sub" style="color:#22c55e">✓ Marriott Bangalore · Hotel</div>
+    <div class="optional-section">
+      <div class="optional-label">Optional — fill now or later</div>
+      <div class="time-row">
+        <div class="time-input">Check-in time</div>
+      </div>
+      <div class="nudge-text">No worries if you're not sure yet — you can always come back to fine-tune your plan.</div>
+    </div>
+    <div class="cta-btn">Build my itinerary →</div>
+  </div>
+
+</div>
+
+<!-- Path B -->
+<div style="margin-top:32px">
+  <div class="step-label">Path B — "Haven't decided yet"</div>
+  <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-top:12px">
+    <div class="card-mock">
+      <div class="card-question" style="font-size:15px">No starting point? No problem.</div>
+      <div class="card-sub">We'll build your plan around the places — just get to the first stop on time.</div>
+      <div class="smart-narration" style="margin-top:12px">
+        <div class="narration-line">📍 <span class="place-name">Lalbagh Botanical Garden</span></div>
+        <div class="narration-line">Arrive by <span class="narration-time">8:00 AM</span> for the best light & fewer crowds</div>
+        <div class="narration-line" style="margin-top:10px;color:#64748b;font-size:12px">Then → Tipu Sultan's Palace · Cubbon Park · ...</div>
+      </div>
+      <div class="cta-btn" style="margin-top:14px">Build my itinerary →</div>
+    </div>
+
+    <div style="max-width:260px;padding-top:8px">
+      <p class="label">What changes in this mode</p>
+      <ul style="color:#94a3b8;font-size:13px;line-height:1.8;padding-left:16px;margin-top:8px">
+        <li>No routing from a start point</li>
+        <li>Itinerary anchored to first destination's opening time</li>
+        <li>Narration flips: <em>"Be there by X"</em> not <em>"Leave at X"</em></li>
+        <li>User can add origin later to get travel-time estimates</li>
+      </ul>
+    </div>
+  </div>
+</div>

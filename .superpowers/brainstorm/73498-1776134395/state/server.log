@@ -1,0 +1,15 @@
+{"type":"server-started","port":60917,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:60917","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/flight-options.html"}
+{"source":"user-event","type":"click","text":"A\n    \n      Deep link to Google Flights\n      App shows a \"Fly Tokyo → Singapore\" card in the itinerary. Tapping opens Google Flights / Skyscanner pre-filled with cities + dates. No pricing in-app, no API needed.","choice":"a","id":null,"timestamp":1776134518215}
+{"source":"user-event","type":"click","text":"B\n    \n      Live flight search (Amadeus / Skyscanner API)\n      App queries a flight API and shows real prices + departure times inline. High complexity, API cost, requires airline data agreements.","choice":"b","id":null,"timestamp":1776134519214}
+{"source":"user-event","type":"click","text":"C\n    \n      Transit block only — no flight UI\n      The itinerary just has a \"Travel day: Tokyo → Singapore\" placeholder. Booking is entirely the user's responsibility. Keeps the app focused on the on-ground experience.","choice":"c","id":null,"timestamp":1776134519814}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/waiting-1.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/map-detection.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/map-detection-mix.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/side-tab.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/waiting-2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/journey-screen.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/waiting-3.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/journey-concepts.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/73498-1776134395/content/waiting-4.html"}
+{"type":"server-stopped","reason":"idle timeout"}

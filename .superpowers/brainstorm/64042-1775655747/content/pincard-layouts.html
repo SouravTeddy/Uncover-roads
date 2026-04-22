@@ -1,0 +1,136 @@
+<h2>Enhanced Pin Detail Card — Layout Options</h2>
+<p class="subtitle">Pick the layout that feels right for your app. All options show place image, rich details, and a persona-matched insight.</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#1a1a1a;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;">
+        <!-- Hero image -->
+        <div style="height:110px;background:linear-gradient(160deg,#2d1f3d,#1a3a4a);position:relative;display:flex;align-items:flex-end;padding:10px;">
+          <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=60') center/cover;opacity:0.5;"></div>
+          <div style="position:relative;z-index:1;">
+            <div style="font-size:9px;color:#a78bfa;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Restaurant</div>
+            <div style="font-size:13px;font-weight:700;color:#fff;">The Black Rabbit</div>
+          </div>
+        </div>
+        <!-- Persona tag -->
+        <div style="background:#1f1035;padding:6px 10px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;gap:6px;">
+          <div style="width:6px;height:6px;border-radius:50%;background:#a78bfa;"></div>
+          <div style="font-size:9px;color:#a78bfa;font-weight:600;">Epicurean pick · matches your taste bias</div>
+        </div>
+        <!-- Details -->
+        <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="font-size:11px;color:#fbbf24;">★ 4.7</span>
+              <span style="font-size:9px;color:#666;">(1,240)</span>
+            </div>
+            <span style="font-size:9px;color:#22c55e;font-weight:600;">● Open now</span>
+          </div>
+          <div style="font-size:9px;color:#888;">$$$ · Contemporary Indian</div>
+          <div style="font-size:9px;color:#888;">📞 +91 80 4123 5678</div>
+          <div style="font-size:9px;color:#60a5fa;text-decoration:underline;">🌐 theblackrabbit.in</div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <div style="flex:1;background:#6366f1;border-radius:8px;padding:6px;text-align:center;font-size:9px;font-weight:700;color:#fff;">Add to trip</div>
+            <div style="width:32px;background:#222;border-radius:8px;padding:6px;text-align:center;font-size:10px;">↗</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Hero Image + Details</h3>
+      <p>Large image at top, persona tag below it, details in a scrollable list. Clean and familiar.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#111;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;">
+        <!-- Image + name overlay (immersive) -->
+        <div style="height:140px;position:relative;">
+          <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=60') center/cover;"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.1) 60%);"></div>
+          <!-- Persona badge top-right -->
+          <div style="position:absolute;top:8px;right:8px;background:rgba(163,120,250,0.25);backdrop-filter:blur(8px);border:1px solid rgba(163,120,250,0.4);border-radius:20px;padding:3px 8px;font-size:8px;font-weight:700;color:#c4b5fd;">🍷 Epicurean</div>
+          <!-- Name at bottom -->
+          <div style="position:absolute;bottom:10px;left:10px;">
+            <div style="font-size:9px;color:#d1d5db;text-transform:uppercase;letter-spacing:1px;">Restaurant · $$$</div>
+            <div style="font-size:15px;font-weight:800;color:#fff;line-height:1.2;">The Black Rabbit</div>
+            <div style="font-size:9px;color:#fbbf24;margin-top:2px;">★ 4.7  <span style="color:#555;">(1,240 reviews)</span></div>
+          </div>
+        </div>
+        <!-- Persona insight -->
+        <div style="padding:8px 10px;background:#1a0f2e;border-bottom:1px solid #2a1f3d;">
+          <div style="font-size:9px;color:#c4b5fd;line-height:1.4;">"Tasting menu changes weekly — exactly the kind of curated experience your palate is after."</div>
+        </div>
+        <!-- Compact details -->
+        <div style="padding:8px 10px;display:flex;flex-direction:column;gap:5px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:9px;color:#22c55e;font-weight:600;">● Open · Closes 11pm</span>
+            <span style="font-size:9px;color:#888;">Contemporary Indian</span>
+          </div>
+          <div style="font-size:9px;color:#60a5fa;text-decoration:underline;">theblackrabbit.in · +91 80 4123 5678</div>
+        </div>
+        <!-- Actions -->
+        <div style="padding:8px 10px;display:flex;gap:6px;">
+          <div style="flex:1;background:#6366f1;border-radius:8px;padding:7px;text-align:center;font-size:9px;font-weight:700;color:#fff;">Add to trip</div>
+          <div style="width:32px;background:#1f1f1f;border-radius:8px;padding:7px;text-align:center;font-size:10px;">↗</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Immersive Image + Persona Insight</h3>
+      <p>Full-width image with name overlaid, persona badge top-right, a one-line insight matched to your archetype, then compact details.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f;padding:16px;display:flex;justify-content:center;">
+      <div style="width:200px;background:#111;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-family:system-ui,sans-serif;">
+        <!-- Side-by-side: thumb + header info -->
+        <div style="display:flex;gap:0;background:#1a1a1a;padding:10px;align-items:flex-start;gap:10px;">
+          <div style="width:64px;height:64px;border-radius:10px;overflow:hidden;flex-shrink:0;background:url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200&q=60') center/cover;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:8px;color:#888;text-transform:uppercase;letter-spacing:1px;">Restaurant</div>
+            <div style="font-size:12px;font-weight:700;color:#fff;line-height:1.2;">The Black Rabbit</div>
+            <div style="font-size:9px;color:#fbbf24;margin-top:2px;">★ 4.7 <span style="color:#555;">(1,240)</span></div>
+            <div style="font-size:9px;color:#22c55e;font-weight:600;margin-top:2px;">● Open now · $$$</div>
+          </div>
+        </div>
+        <!-- Tabbed sections -->
+        <div style="display:flex;border-bottom:1px solid #222;background:#111;">
+          <div style="flex:1;padding:6px;text-align:center;font-size:8px;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f1;">Overview</div>
+          <div style="flex:1;padding:6px;text-align:center;font-size:8px;color:#555;">Hours</div>
+          <div style="flex:1;padding:6px;text-align:center;font-size:8px;color:#555;">For You</div>
+        </div>
+        <!-- Overview tab content -->
+        <div style="padding:10px;display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:9px;color:#888;">Contemporary Indian · Koramangala</div>
+          <div style="font-size:9px;color:#60a5fa;">theblackrabbit.in</div>
+          <div style="font-size:9px;color:#888;">+91 80 4123 5678</div>
+          <!-- For You section preview -->
+          <div style="background:#1a0f2e;border-radius:8px;padding:7px;margin-top:2px;border-left:2px solid #a78bfa;">
+            <div style="font-size:8px;color:#a78bfa;font-weight:700;margin-bottom:3px;">🍷 Why this fits you</div>
+            <div style="font-size:9px;color:#c4b5fd;line-height:1.4;">"Tasting menu with wine pairings — your Epicurean instinct will love this."</div>
+          </div>
+        </div>
+        <!-- Actions -->
+        <div style="padding:8px 10px;display:flex;gap:6px;">
+          <div style="flex:1;background:#6366f1;border-radius:8px;padding:7px;text-align:center;font-size:9px;font-weight:700;color:#fff;">Add to trip</div>
+          <div style="width:32px;background:#1f1f1f;border-radius:8px;padding:7px;text-align:center;font-size:10px;">↗</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Thumbnail + Tabs</h3>
+      <p>Compact image thumbnail alongside name/rating, then tabs: Overview / Hours / For You. More info density, less visual drama.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click your preference, then let me know in the terminal.</p>

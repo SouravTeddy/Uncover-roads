@@ -1,0 +1,82 @@
+<h2>Question card design direction</h2>
+<p class="subtitle">Three approaches to displaying onboarding choices — all support multi-select. Which feels right for Uncover Roads?</p>
+
+<div class="cards" data-multiselect>
+
+  <!-- Option A: Minimal text rows -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:20px;display:flex;flex-direction:column;gap:8px;border-radius:10px 10px 0 0;">
+      <div style="font-size:11px;color:#64748b;font-family:monospace;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Q · How do you ease into the day?</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:#f1f5f9;font-size:14px;font-weight:500;">Coffee shop ritual</span>
+          <span style="width:18px;height:18px;border-radius:4px;border:1.5px solid #475569;display:inline-block;"></span>
+        </div>
+        <div style="background:#1e293b;border:1.5px solid #6366f1;border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:#f1f5f9;font-size:14px;font-weight:500;">Sit-down breakfast</span>
+          <span style="width:18px;height:18px;border-radius:4px;background:#6366f1;border:1.5px solid #6366f1;display:inline-block;"></span>
+        </div>
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:#f1f5f9;font-size:14px;font-weight:500;">Straight to it</span>
+          <span style="width:18px;height:18px;border-radius:4px;border:1.5px solid #475569;display:inline-block;"></span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Text rows</h3>
+      <p>Full-width stacked rows. One tap = selected. Checkbox at right. Clean, screenreader-friendly. Easy to scan vertically. Works well for 4–6 options.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Pill chips -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:20px;border-radius:10px 10px 0 0;">
+      <div style="font-size:11px;color:#64748b;font-family:monospace;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Q · What's the trip mood?</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span style="background:#1e293b;border:1px solid #334155;border-radius:100px;padding:9px 16px;color:#94a3b8;font-size:13px;font-weight:500;">Explore & discover</span>
+        <span style="background:rgba(99,102,241,0.15);border:1.5px solid #6366f1;border-radius:100px;padding:9px 16px;color:#a5b4fc;font-size:13px;font-weight:500;">Eat & drink ✓</span>
+        <span style="background:#1e293b;border:1px solid #334155;border-radius:100px;padding:9px 16px;color:#94a3b8;font-size:13px;font-weight:500;">Relax & recharge</span>
+        <span style="background:rgba(99,102,241,0.15);border:1.5px solid #6366f1;border-radius:100px;padding:9px 16px;color:#a5b4fc;font-size:13px;font-weight:500;">Deep culture ✓</span>
+        <span style="background:#1e293b;border:1px solid #334155;border-radius:100px;padding:9px 16px;color:#94a3b8;font-size:13px;font-weight:500;">Nightlife</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Pill chips</h3>
+      <p>Compact, wrapping pills. Feels like tagging. Great for 5–8 options. Very fast to scan & tap. Less accessible (small tap targets). Best for secondary / adjective-style answers.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Icon + label grid -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:20px;border-radius:10px 10px 0 0;">
+      <div style="font-size:11px;color:#64748b;font-family:monospace;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">Q · How do you pace a day?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">🌿</span>
+          <span style="color:#f1f5f9;font-size:13px;font-weight:600;text-align:center;">Slow & deep</span>
+          <span style="color:#64748b;font-size:11px;text-align:center;">2–3 stops/day</span>
+        </div>
+        <div style="background:rgba(99,102,241,0.12);border:1.5px solid #6366f1;border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">⚡</span>
+          <span style="color:#a5b4fc;font-size:13px;font-weight:600;text-align:center;">Pack it in</span>
+          <span style="color:#818cf8;font-size:11px;text-align:center;">6–8 stops/day</span>
+        </div>
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">⚖️</span>
+          <span style="color:#f1f5f9;font-size:13px;font-weight:600;text-align:center;">Balanced</span>
+          <span style="color:#64748b;font-size:11px;text-align:center;">4–5 stops/day</span>
+        </div>
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <span style="font-size:22px;">🎲</span>
+          <span style="color:#f1f5f9;font-size:13px;font-weight:600;text-align:center;">Spontaneous</span>
+          <span style="color:#64748b;font-size:11px;text-align:center;">3 anchors + gaps</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Icon + label grid</h3>
+      <p>2×2 or 2×3 grid. Emoji/icon as anchor. Label + descriptor. Good for 4–6 options. More visual than text rows but lighter than full image cards. Works with multi-select.</p>
+    </div>
+  </div>
+
+</div>

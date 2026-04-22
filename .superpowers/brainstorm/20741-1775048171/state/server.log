@@ -1,0 +1,5 @@
+{"type":"server-started","port":64144,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64144","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/20741-1775048171/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/20741-1775048171/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/20741-1775048171/content/loading-overlay-options.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/20741-1775048171/content/message-animation-style.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/20741-1775048171/content/final-design.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,301 @@
+<h2>Results Display — Search Mode States</h2>
+<p class="subtitle">Three states the map enters after a user selects a query from the dropdown</p>
+
+<style>
+  .phone-frame {
+    width: 100%;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+  }
+  .map-area {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 22px;
+  }
+  .map-searchbar {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .map-searchbar .query { color: var(--text-primary); font-weight: 500; }
+  .clear-btn { color: var(--text-tertiary); font-size: 13px; cursor: pointer; }
+  .num-pin {
+    position: absolute;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    border: 2px solid var(--bg-secondary);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  .num-pin.active {
+    background: #ff9f0a;
+    width: 28px; height: 28px;
+    font-size: 11px;
+  }
+  .float-card {
+    position: absolute;
+    bottom: 10px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .float-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .float-card .name { font-weight: 600; color: var(--text-primary); font-size: 11px; }
+  .float-card .meta { color: var(--text-secondary); font-size: 9px; margin-top: 2px; }
+  .float-card-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .view-all-pill {
+    background: var(--bg-tertiary);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 9px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .float-actions { display: flex; gap: 5px; }
+  .btn-nav {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .btn-add {
+    background: var(--accent);
+    color: white;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 10px;
+  }
+  .btn-added {
+    background: #34c759;
+    color: white;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 10px;
+  }
+  .swipe-hint {
+    text-align: center;
+    font-size: 9px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+  }
+  .sheet-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg-secondary);
+    border-top: 2px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    padding: 8px;
+  }
+  .sheet-handle {
+    width: 32px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 8px;
+  }
+  .sheet-title { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+  .sheet-row {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 7px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .sheet-row .name { font-weight: 600; color: var(--text-primary); font-size: 10px; }
+  .sheet-row .meta { color: var(--text-secondary); font-size: 9px; }
+  .sheet-row .add-btn {
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+  .nudge-bar {
+    position: absolute;
+    top: 42px; left: 8px; right: 8px;
+    background: rgba(255,159,10,0.15);
+    border: 1px solid rgba(255,159,10,0.4);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 9px;
+    color: #ff9f0a;
+  }
+  .states-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 800px) {
+    .states-grid { grid-template-columns: 1fr; }
+  }
+  .state-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    padding-left: 2px;
+  }
+</style>
+
+<div class="states-grid">
+
+  <!-- State 1: Results loaded -->
+  <div>
+    <div class="state-label">① Results loaded</div>
+    <div class="phone-frame">
+      <div class="map-area" style="height:220px;position:relative">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="clear-btn">✕</span>
+        </div>
+        <div class="num-pin active" style="top:70px;left:50px">1</div>
+        <div class="num-pin" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:75px;right:55px">3</div>
+        <div class="num-pin" style="top:115px;right:80px">4</div>
+        <div class="float-card">
+          <div class="float-card-top">
+            <div>
+              <div class="name">① Tokyo Nat'l Museum</div>
+              <div class="meta">⭐ 4.8 · Free · 0.3 km away</div>
+            </div>
+            <div class="float-actions">
+              <div class="btn-nav">← →</div>
+              <div class="btn-add">+ Add</div>
+            </div>
+          </div>
+          <div class="float-card-bottom">
+            <div class="view-all-pill">View all 8 →</div>
+            <div class="swipe-hint">swipe card to browse</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Added to itinerary -->
+  <div>
+    <div class="state-label">② Added — keep browsing</div>
+    <div class="phone-frame">
+      <div class="map-area" style="height:220px;position:relative">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="clear-btn">✕</span>
+        </div>
+        <div class="num-pin" style="top:70px;left:50px;background:#34c759">✓</div>
+        <div class="num-pin active" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:75px;right:55px">3</div>
+        <div class="num-pin" style="top:115px;right:80px">4</div>
+        <div class="float-card">
+          <div class="float-card-top">
+            <div>
+              <div class="name">② Shinjuku Art Space</div>
+              <div class="meta">⭐ 4.5 · ¥500 · 0.8 km away</div>
+            </div>
+            <div class="float-actions">
+              <div class="btn-nav">← →</div>
+              <div class="btn-add">+ Add</div>
+            </div>
+          </div>
+          <div class="float-card-bottom">
+            <div style="font-size:9px;color:#34c759;font-weight:500">✓ Tokyo Nat'l Museum added</div>
+            <div class="view-all-pill">View all 8 →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 3: View all sheet -->
+  <div>
+    <div class="state-label">③ View all sheet</div>
+    <div class="phone-frame">
+      <div class="map-area" style="height:220px;position:relative">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="clear-btn">✕</span>
+        </div>
+        <div class="num-pin" style="top:70px;left:50px;background:#34c759">✓</div>
+        <div class="num-pin" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:75px;right:55px">3</div>
+        <div class="num-pin" style="top:115px;right:80px">4</div>
+        <div class="sheet-overlay">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">Museums near Shinjuku · 8 results</div>
+          <div class="sheet-row">
+            <div><div class="name" style="color:#34c759">✓ Tokyo Nat'l Museum</div><div class="meta">⭐ 4.8 · 0.3 km</div></div>
+            <div style="font-size:9px;color:#34c759">Added</div>
+          </div>
+          <div class="sheet-row">
+            <div><div class="name">② Shinjuku Art Space</div><div class="meta">⭐ 4.5 · 0.8 km</div></div>
+            <div class="add-btn">+ Add</div>
+          </div>
+          <div class="sheet-row">
+            <div><div class="name">③ Sword Museum</div><div class="meta">⭐ 4.2 · 1.1 km</div></div>
+            <div class="add-btn">+ Add</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <h3>Date nudge (events outside travel window)</h3>
+  <p class="subtitle" style="margin-bottom:0.75rem">Shown inline in dropdown when user types a date outside trip dates</p>
+  <div class="phone-frame">
+    <div style="background:var(--bg-secondary);padding:8px">
+      <div style="background:var(--bg-tertiary);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--text-primary);margin-bottom:6px">🔍 events on may 10</div>
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:7px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px">🎉</span>
+          <span style="font-size:11px;color:var(--text-primary)">Events on May 10 near Shinjuku</span>
+        </div>
+        <div style="padding:6px 12px;background:rgba(255,159,10,0.08);display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px">⚠️</span>
+          <span style="font-size:10px;color:#ff9f0a">May 10 is after your trip ends (Apr 26). Still search?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

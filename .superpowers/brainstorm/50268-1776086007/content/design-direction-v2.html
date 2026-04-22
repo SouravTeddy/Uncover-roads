@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onboarding Card Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  /* ── Design tokens (matching app exactly) ── */
+  :root {
+    --bg:        #0f172a;
+    --surface:   #1e293b;
+    --surf-hst:  #334155;
+    --primary:   #3b82f6;
+    --primary-c: #2563eb;
+    --orange:    #f97316;
+    --text-1:    #f1f5f9;
+    --text-2:    #cbd5e1;
+    --text-3:    #8e9099;
+    --font-sans: 'Inter', sans-serif;
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: var(--font-sans);
+    padding: 32px 24px 64px;
+    min-height: 100vh;
+  }
+
+  .page-title {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-1);
+    margin: 0 0 6px;
+  }
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--text-3);
+    margin: 0 0 32px;
+  }
+
+  /* ── Section labels ── */
+  .option-label {
+    font-family: var(--font-heading);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin: 0 0 10px;
+  }
+  .option-section { margin-bottom: 48px; }
+
+  /* ── Question header shared ── */
+  .q-head {
+    margin-bottom: 14px;
+  }
+  .q-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    font-family: var(--font-sans);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .q-title {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-1);
+    margin: 0;
+    line-height: 1.2;
+  }
+  .q-sub {
+    font-size: 13px;
+    color: var(--text-3);
+    margin: 4px 0 0;
+  }
+
+  /* ════════════════════════════════════
+     OPTION A — Text rows with image strip
+     ════════════════════════════════════ */
+  .row-option {
+    background: var(--surface);
+    border: 1px solid var(--surf-hst);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    margin-bottom: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+  .row-option::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(59,130,246,0.06) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .row-option:hover { transform: translateX(3px); border-color: var(--surf-hst); }
+  .row-option:hover::before { opacity: 1; }
+  .row-option.selected {
+    background: rgba(59,130,246,0.1);
+    border-color: var(--primary);
+  }
+  .row-option.selected::before { opacity: 1; }
+
+  .row-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+  }
+  .row-option:hover .row-img,
+  .row-option.selected .row-img { transform: scale(1.06); }
+
+  .row-text { flex: 1; min-width: 0; }
+  .row-name {
+    font-family: var(--font-heading);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+    display: block;
+  }
+  .row-desc {
+    font-size: 12px;
+    color: var(--text-3);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .row-check {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    border: 1.5px solid var(--surf-hst);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  }
+  .row-option.selected .row-check {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.1);
+  }
+  .row-check svg { opacity: 0; transform: scale(0.6); transition: opacity 0.2s, transform 0.2s; }
+  .row-option.selected .row-check svg { opacity: 1; transform: scale(1); }
+
+  /* ════════════════════════════════════
+     OPTION B — Pill chips with image bg
+     ════════════════════════════════════ */
+  .chip-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .chip {
+    position: relative;
+    overflow: hidden;
+    border-radius: 100px;
+    border: 1px solid var(--surf-hst);
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    padding: 0;
+  }
+  .chip:hover { transform: scale(1.04); }
+  .chip.selected { border-color: var(--primary); }
+
+  .chip-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .chip.selected .chip-img { opacity: 0.25; }
+
+  .chip-inner {
+    position: relative;
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 16px;
+    z-index: 1;
+  }
+  .chip-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--surf-hst);
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+  }
+  .chip.selected .chip-dot {
+    background: var(--primary);
+    transform: scale(1.3);
+    box-shadow: 0 0 6px rgba(59,130,246,0.7);
+  }
+  .chip-text {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    transition: color 0.2s;
+  }
+  .chip.selected .chip-text { color: var(--text-1); }
+
+  /* ripple on chip */
+  .chip::after {
+    content: '';
+    position: absolute;
+    inset: 0; border-radius: 100px;
+    background: radial-gradient(circle at center, rgba(59,130,246,0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .chip.selected::after { opacity: 1; }
+
+  /* ════════════════════════════════════
+     OPTION C — Image cards (2×2 grid)
+     ════════════════════════════════════ */
+  .img-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .img-card {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: border-color 0.2s, transform 0.2s;
+    aspect-ratio: 1 / 1.1;
+  }
+  .img-card:hover { transform: scale(1.02); }
+  .img-card.selected { border-color: var(--primary); }
+
+  .img-card-bg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease, filter 0.3s;
+    filter: brightness(0.55) saturate(0.8);
+  }
+  .img-card:hover .img-card-bg,
+  .img-card.selected .img-card-bg {
+    transform: scale(1.06);
+    filter: brightness(0.65) saturate(1);
+  }
+
+  .img-card-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.1) 55%, transparent 100%);
+  }
+  .img-card.selected .img-card-overlay {
+    background: linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(59,130,246,0.15) 100%);
+  }
+
+  .img-card-body {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 12px;
+  }
+  .img-card-icon {
+    font-size: 20px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .img-card-name {
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-1);
+    display: block;
+    line-height: 1.2;
+  }
+  .img-card-hint {
+    font-size: 11px;
+    color: var(--text-3);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .img-card-tick {
+    position: absolute; top: 10px; right: 10px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.2s, transform 0.25s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  .img-card.selected .img-card-tick { opacity: 1; transform: scale(1); }
+
+  /* ── Selection glow pulse on selected ── */
+  @keyframes glow-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+    70%  { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+    100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+  }
+  .row-option.selected,
+  .img-card.selected {
+    animation: glow-pulse 0.5s ease-out;
+  }
+
+  /* ── Slide-in animation on load ── */
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .option-section {
+    animation: slide-up 0.45s ease both;
+  }
+  .option-section:nth-child(1) { animation-delay: 0.05s; }
+  .option-section:nth-child(2) { animation-delay: 0.15s; }
+  .option-section:nth-child(3) { animation-delay: 0.25s; }
+
+  /* ── Font note ── */
+  .font-note {
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--text-2);
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+  .font-note strong { color: var(--text-1); font-family: var(--font-heading); }
+</style>
+</head>
+<body>
+
+<p class="page-title">Onboarding — Design Direction</p>
+<p class="page-subtitle">Three patterns. Click to toggle selections and feel the interactions.</p>
+
+<div class="font-note">
+  <strong>App tokens applied:</strong> bg <code>#0f172a</code> · surface <code>#1e293b</code> · primary <code>#3b82f6</code> · orange <code>#f97316</code> &nbsp;|&nbsp; <strong>Heading:</strong> Plus Jakarta Sans · <strong>Body:</strong> Inter
+</div>
+
+<!-- ══ OPTION A ══ -->
+<div class="option-section">
+  <p class="option-label">Option A — Image rows (accessible, screenreader-friendly)</p>
+  <div class="q-head">
+    <span class="q-label">Step 04 of 07</span>
+    <h2 class="q-title">How do you ease into the day?</h2>
+    <p class="q-sub">Sets your day-opening block in the itinerary</p>
+  </div>
+
+  <div class="row-option selected" onclick="this.classList.toggle('selected')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=120&q=80" alt="Coffee">
+    <div class="row-text">
+      <span class="row-name">Coffee shop ritual</span>
+      <span class="row-desc">Day opens at a local café · 30 min buffer before first spot</span>
+    </div>
+    <div class="row-check">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+
+  <div class="row-option" onclick="this.classList.toggle('selected')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=120&q=80" alt="Breakfast">
+    <div class="row-text">
+      <span class="row-name">Sit-down breakfast</span>
+      <span class="row-desc">Restaurant first · 45 min · then attractions</span>
+    </div>
+    <div class="row-check">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+
+  <div class="row-option" onclick="this.classList.toggle('selected')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=120&q=80" alt="Straight to it">
+    <div class="row-text">
+      <span class="row-name">Straight to it</span>
+      <span class="row-desc">Top attraction first · opens early · no food stop</span>
+    </div>
+    <div class="row-check">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+
+  <div class="row-option" onclick="this.classList.toggle('selected')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=120&q=80" alt="Grab and go">
+    <div class="row-text">
+      <span class="row-name">Grab & go</span>
+      <span class="row-desc">Street food en route · no dedicated start stop</span>
+    </div>
+    <div class="row-check">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OPTION B ══ -->
+<div class="option-section">
+  <p class="option-label">Option B — Image-backed pills (compact, fast scan)</p>
+  <div class="q-head">
+    <span class="q-label">Step 02 of 07</span>
+    <h2 class="q-title">What's the trip mood?</h2>
+    <p class="q-sub">Shapes the dominant activity category</p>
+  </div>
+
+  <div class="chip-wrap">
+    <div class="chip selected" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Explore & discover</span>
+      </div>
+    </div>
+    <div class="chip" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Eat & drink</span>
+      </div>
+    </div>
+    <div class="chip" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Relax & recharge</span>
+      </div>
+    </div>
+    <div class="chip selected" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1555993539-1732b0258235?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Deep culture</span>
+      </div>
+    </div>
+    <div class="chip" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Nightlife</span>
+      </div>
+    </div>
+    <div class="chip" onclick="this.classList.toggle('selected')">
+      <img class="chip-img" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=70" alt="">
+      <div class="chip-inner">
+        <span class="chip-dot"></span>
+        <span class="chip-text">Outdoor & nature</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OPTION C ══ -->
+<div class="option-section">
+  <p class="option-label">Option C — Full image cards (rich, immersive)</p>
+  <div class="q-head">
+    <span class="q-label">Step 03 of 07</span>
+    <h2 class="q-title">How do you pace a day?</h2>
+    <p class="q-sub">Sets stops per day and time per stop</p>
+  </div>
+
+  <div class="img-grid">
+
+    <div class="img-card selected" onclick="this.classList.toggle('selected')">
+      <img class="img-card-bg" src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=75" alt="Slow">
+      <div class="img-card-overlay"></div>
+      <div class="img-card-body">
+        <span class="img-card-icon">🌿</span>
+        <span class="img-card-name">Slow & deep</span>
+        <span class="img-card-hint">2–3 stops · 90 min each</span>
+      </div>
+      <div class="img-card-tick">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,6 4,8.5 9.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div class="img-card" onclick="this.classList.toggle('selected')">
+      <img class="img-card-bg" src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=75" alt="Pack it">
+      <div class="img-card-overlay"></div>
+      <div class="img-card-body">
+        <span class="img-card-icon">⚡</span>
+        <span class="img-card-name">Pack it in</span>
+        <span class="img-card-hint">6–8 stops · 25 min each</span>
+      </div>
+      <div class="img-card-tick">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,6 4,8.5 9.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div class="img-card" onclick="this.classList.toggle('selected')">
+      <img class="img-card-bg" src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&q=75" alt="Balanced">
+      <div class="img-card-overlay"></div>
+      <div class="img-card-body">
+        <span class="img-card-icon">⚖️</span>
+        <span class="img-card-name">Balanced</span>
+        <span class="img-card-hint">4–5 stops · 45 min each</span>
+      </div>
+      <div class="img-card-tick">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,6 4,8.5 9.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <div class="img-card" onclick="this.classList.toggle('selected')">
+      <img class="img-card-bg" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&q=75" alt="Spontaneous">
+      <div class="img-card-overlay"></div>
+      <div class="img-card-body">
+        <span class="img-card-icon">🎲</span>
+        <span class="img-card-name">Spontaneous</span>
+        <span class="img-card-hint">3 anchors + open gaps</span>
+      </div>
+      <div class="img-card-tick">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,6 4,8.5 9.5,2.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Re-trigger glow on toggle
+document.querySelectorAll('.row-option, .img-card').forEach(el => {
+  el.addEventListener('click', () => {
+    if (el.classList.contains('selected')) {
+      el.style.animation = 'none';
+      requestAnimationFrame(() => {
+        el.style.animation = '';
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>
