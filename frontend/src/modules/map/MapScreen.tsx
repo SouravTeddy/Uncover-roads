@@ -78,6 +78,16 @@ function nominatimToCategory(cls: string, type: string): Category {
 
 // ── Main screen ─────────────────────────────────────────────────
 
+const PLACEHOLDER_EXAMPLES = [
+  'Museums in this area…',
+  'Hotels nearby…',
+  'Parks to explore…',
+  'Restaurants around here…',
+  'Historic sites nearby…',
+  'Cafes to discover…',
+  'Galleries in this area…',
+];
+
 export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
@@ -128,28 +138,23 @@ export function MapScreen() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Rotating placeholder
-  const PLACEHOLDER_EXAMPLES = [
-    'Museums in this area…',
-    'Hotels nearby…',
-    'Parks to explore…',
-    'Restaurants around here…',
-    'Historic sites nearby…',
-    'Cafes to discover…',
-    'Galleries in this area…',
-  ];
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [placeholderVisible, setPlaceholderVisible] = useState(true);
 
   useEffect(() => {
-    if (searchQuery) return; // don't rotate while user is typing
+    if (searchQuery) return;
+    let fadeTimer: ReturnType<typeof setTimeout>;
     const id = setInterval(() => {
       setPlaceholderVisible(false);
-      setTimeout(() => {
+      fadeTimer = setTimeout(() => {
         setPlaceholderIdx(i => (i + 1) % PLACEHOLDER_EXAMPLES.length);
         setPlaceholderVisible(true);
       }, 200);
     }, 1500);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      clearTimeout(fadeTimer);
+    };
   }, [searchQuery]);
 
   const handleAreaLoad = useCallback(async (
