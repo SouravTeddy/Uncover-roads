@@ -76,6 +76,20 @@ function nominatimToCategory(cls: string, type: string): Category {
   return 'place';
 }
 
+async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`,
+      { headers: { 'Accept-Language': 'en' } },
+    );
+    const data = await res.json();
+    const addr = data.address ?? {};
+    return addr.city ?? addr.town ?? addr.suburb ?? addr.county ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
@@ -142,6 +156,11 @@ export function MapScreen() {
         ? { type: 'SET_PLACES', places: withIds }
         : { type: 'MERGE_PLACES', places: withIds },
       );
+      // Update the city label when the user scrolls to a new area
+      const label = await reverseGeocode(centerLat, centerLon);
+      if (label && label !== city) {
+        dispatch({ type: 'UPDATE_CITY_LABEL', city: label });
+      }
     } catch (e) {
       console.error('[MapScreen] handleAreaLoad failed:', e);
     } finally {
