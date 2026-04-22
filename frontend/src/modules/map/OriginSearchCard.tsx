@@ -251,31 +251,46 @@ export function OriginSearchCard({ onDone }: Props) {
 
       {/* ── Option 2: Haven't decided yet ── */}
       {notDecidedIsChosen ? (
-        /* Selected state — show chip with remove button */
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 14px',
-          background: PRIMARY_BG,
-          border: `1px solid ${PRIMARY_BORDER}`,
-          borderRadius: 14,
-        }}>
-          <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-            {ORIGIN_STRINGS.notDecidedLabel}
-          </span>
-          <button
-            onClick={reset}
-            aria-label="Remove selection"
-            style={{
-              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(255,255,255,.08)',
-              border: `1px solid ${BORDER}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <span className="ms" style={{ fontSize: 14, color: TEXT3 }}>close</span>
-          </button>
+        /* Selected state — chip + empathetic message */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '12px 14px',
+            background: PRIMARY_BG,
+            border: `1px solid ${PRIMARY_BORDER}`,
+            borderRadius: 14,
+          }}>
+            <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+              {ORIGIN_STRINGS.notDecidedLabel}
+            </span>
+            <button
+              onClick={reset}
+              aria-label="Remove selection"
+              style={{
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(255,255,255,.08)',
+                border: `1px solid ${BORDER}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="ms" style={{ fontSize: 14, color: TEXT3 }}>close</span>
+            </button>
+          </div>
+          <div style={{
+            padding: '12px 14px',
+            background: 'rgba(59,130,246,.06)',
+            border: `1px solid rgba(59,130,246,.12)`,
+            borderRadius: 12,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, fontFamily: '"Plus Jakarta Sans", sans-serif', marginBottom: 4 }}>
+              {ORIGIN_STRINGS.notDecidedHeading}
+            </div>
+            <div style={{ fontSize: 12, color: TEXT3, fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
+              {ORIGIN_STRINGS.notDecidedSub}
+            </div>
+          </div>
         </div>
       ) : (
         /* Button — disabled while place is chosen or actively searching */
