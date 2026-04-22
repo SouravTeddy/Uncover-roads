@@ -1,5 +1,5 @@
 // modules/map/MapLibreMap.tsx
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Map, { Marker } from 'react-map-gl/maplibre';
 import type { MapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
@@ -8,6 +8,10 @@ import { MapLibreRoute } from './MapLibreRoute';
 
 // OpenFreeMap — completely free, no token required, OSM-based, global CDN
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+
+export interface MapLibreMapHandle {
+  flyTo: (lat: number, lon: number, zoom?: number) => void;
+}
 
 interface Props {
   center: [number, number]; // [lat, lon]
@@ -22,7 +26,7 @@ interface Props {
   children?: React.ReactNode;
 }
 
-export function MapLibreMap({
+export const MapLibreMap = forwardRef<MapLibreMapHandle, Props>(function MapLibreMap({
   center,
   zoom = 13,
   places,
@@ -33,8 +37,14 @@ export function MapLibreMap({
   routeGeojson,
   pinDropResult,
   children,
-}: Props) {
+}: Props, ref) {
   const mapRef = useRef<MapRef>(null);
+
+  useImperativeHandle(ref, () => ({
+    flyTo: (lat: number, lon: number, zoom = 15) => {
+      mapRef.current?.flyTo({ center: [lon, lat], zoom, duration: 600 });
+    },
+  }));
 
   const handleMoveEnd = useCallback(
     (e: ViewStateChangeEvent) => {
@@ -74,4 +84,4 @@ export function MapLibreMap({
       {children}
     </Map>
   );
-}
+});
