@@ -1,4 +1,4 @@
-// modules/map/SearchResultRow.tsx
+// frontend/src/modules/map/SearchResultRow.tsx
 import type { NominatimResult } from './useSmartSearch';
 import { CATEGORY_ICONS } from './types';
 import { nominatimToCategory } from './useSmartSearch';
@@ -12,7 +12,7 @@ interface Props {
 
 export function SearchResultRow({ result, isLast, onNavigate, onOpenCard }: Props) {
   const name    = result.name || result.display_name.split(',')[0];
-  const address = result.display_name.split(',').slice(1, 3).join(',').trim();
+  const address = result.display_name.split(',').slice(1, 3).map(s => s.trim()).join(', ');
   const category = nominatimToCategory(result.class, result.type);
   const icon     = CATEGORY_ICONS[category] ?? 'location_on';
 
@@ -23,6 +23,7 @@ export function SearchResultRow({ result, isLast, onNavigate, onOpenCard }: Prop
     >
       {/* Left zone — navigate to pin */}
       <button
+        type="button"
         onMouseDown={onNavigate}
         className="flex-1 flex items-center gap-3 px-4 py-3 text-left active:bg-white/5 min-w-0"
       >
@@ -35,6 +36,7 @@ export function SearchResultRow({ result, isLast, onNavigate, onOpenCard }: Prop
 
       {/* Right zone — open PinCard */}
       <button
+        type="button"
         onMouseDown={onOpenCard}
         className="flex-shrink-0 px-4 py-3 active:bg-white/5"
         aria-label="View details"
