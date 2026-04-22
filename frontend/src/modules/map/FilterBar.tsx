@@ -57,10 +57,10 @@ export function FilterBar({ active, counts, onSelect }: Props) {
               cls += 'bg-primary text-white';
             } else if (chip.key === 'recommended') {
               cls += 'text-amber-400';
-              style = { background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.2)' };
+              style = { background: 'rgba(35,22,4,.88)', border: '1px solid rgba(245,158,11,.35)' };
             } else if (chip.key === 'event') {
               cls += 'text-violet-400';
-              style = { background: 'rgba(167,139,250,.1)', border: '1px solid rgba(167,139,250,.2)' };
+              style = { background: 'rgba(22,14,38,.88)', border: '1px solid rgba(167,139,250,.35)' };
             } else {
               cls += 'text-text-2';
               style = { background: 'rgba(15,20,30,.8)', border: '1px solid rgba(255,255,255,.1)' };
