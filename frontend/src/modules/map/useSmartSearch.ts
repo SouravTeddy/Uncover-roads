@@ -35,7 +35,7 @@ const DIRECT_MAP: [RegExp, Category][] = [
   [/park|garden|nature|outdoor/i,                 'park'],
   [/restaurant|dining|food|eat|lunch|dinner/i,    'restaurant'],
   [/cafe|coffee|brunch/i,                         'cafe'],
-  [/bar|pub|nightlife/i,                          'place'],
+  [/bar|pub|nightlife/i,                          'restaurant'],
   [/church|mosque|temple|cathedral|synagogue/i,   'historic'],
   [/landmark|monument|heritage|historic/i,        'historic'],
   [/hotel|hostel|accommodation|stay|sleep/i,      'tourism'],
@@ -122,16 +122,19 @@ export async function nominatimSearch(
     params.set('bounded', '1');
   }
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en' },
+    headers: { 'Accept-Language': 'en', 'User-Agent': 'uncover-roads/1.0' },
     signal,
   });
+  if (!res.ok) throw new Error(`Nominatim error ${res.status}`);
   const data = await res.json();
   if (Array.isArray(data) && data.length === 0 && bbox) {
     params.delete('bounded');
+    params.delete('viewbox');
     const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { 'Accept-Language': 'en' },
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'uncover-roads/1.0' },
       signal,
     });
+    if (!res2.ok) throw new Error(`Nominatim error ${res2.status}`);
     return res2.json();
   }
   return Array.isArray(data) ? data : [];

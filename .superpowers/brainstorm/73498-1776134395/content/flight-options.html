@@ -1,0 +1,26 @@
+<h2>Multi-City Journey: Flight suggestions</h2>
+<p class="subtitle">This decision has the biggest impact on scope. What should the app do between cities?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Deep link to Google Flights</h3>
+      <p>App shows a "Fly Tokyo → Singapore" card in the itinerary. Tapping opens Google Flights / Skyscanner pre-filled with cities + dates. No pricing in-app, no API needed.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Live flight search (Amadeus / Skyscanner API)</h3>
+      <p>App queries a flight API and shows real prices + departure times inline. High complexity, API cost, requires airline data agreements.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Transit block only — no flight UI</h3>
+      <p>The itinerary just has a "Travel day: Tokyo → Singapore" placeholder. Booking is entirely the user's responsibility. Keeps the app focused on the on-ground experience.</p>
+    </div>
+  </div>
+</div>

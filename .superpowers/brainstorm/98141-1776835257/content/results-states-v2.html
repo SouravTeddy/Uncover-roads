@@ -1,0 +1,288 @@
+<h2>Results Display — Search Mode States</h2>
+<p class="subtitle">Cards show only real Place fields: title, category, rating, price_level</p>
+
+<style>
+  .states-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 800px) { .states-grid { grid-template-columns: 1fr; } }
+
+  .state-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .phone-frame {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 12px;
+    font-family: system-ui, sans-serif;
+  }
+  .map-area {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    position: relative;
+    height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 22px;
+  }
+  .map-searchbar {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .map-searchbar .query { color: var(--text-primary); font-weight: 500; }
+  .map-searchbar .x { color: var(--text-tertiary); }
+  .num-pin {
+    position: absolute;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    border: 2px solid var(--bg-secondary);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  .num-pin.active { background: #ff9f0a; width: 26px; height: 26px; }
+  .num-pin.done { background: #34c759; }
+
+  .float-card {
+    position: absolute;
+    bottom: 8px; left: 8px; right: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .card-thumb {
+    height: 48px;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--text-tertiary);
+  }
+  .card-body {
+    padding: 8px 10px;
+  }
+  .card-title {
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+.badge-cat { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .badge-price { background: var(--bg-tertiary); color: var(--text-secondary); }
+  .rating { font-size: 9px; color: var(--text-secondary); }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-top: 1px solid var(--border);
+  }
+  .view-all { font-size: 9px; color: var(--accent); font-weight: 500; }
+  .right-actions { display: flex; gap: 4px; align-items: center; }
+  .btn-nav { background: var(--bg-tertiary); border-radius: 6px; padding: 3px 7px; font-size: 9px; color: var(--accent); }
+  .btn-add { background: var(--accent); color: white; border-radius: 6px; padding: 3px 9px; font-size: 9px; }
+  .btn-added { background: #34c759; color: white; border-radius: 6px; padding: 3px 9px; font-size: 9px; }
+
+  .toast { font-size: 9px; color: #34c759; font-weight: 500; }
+
+  .sheet-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg-secondary);
+    border-top: 2px solid var(--border);
+    border-radius: 12px 12px 0 0;
+    padding: 8px;
+  }
+  .sheet-handle { width: 28px; height: 3px; background: var(--border); border-radius: 2px; margin: 0 auto 7px; }
+  .sheet-title { font-size: 10px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; }
+  .sheet-row {
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3px;
+  }
+  .sheet-row-left .name { font-size: 10px; font-weight: 600; color: var(--text-primary); }
+  .sheet-row-left .meta { font-size: 9px; color: var(--text-secondary); margin-top: 1px; }
+  .sheet-add { background: var(--accent); color: white; border-radius: 5px; padding: 2px 7px; font-size: 9px; }
+  .sheet-done { font-size: 9px; color: #34c759; font-weight: 500; }
+</style>
+
+<div class="states-grid">
+
+  <!-- State 1 -->
+  <div>
+    <div class="state-label">① Results loaded</div>
+    <div class="phone-frame">
+      <div class="map-area">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="num-pin active" style="top:68px;left:48px">1</div>
+        <div class="num-pin" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:72px;right:52px">3</div>
+        <div class="num-pin" style="top:115px;right:78px">4</div>
+
+        <div class="float-card">
+          <div class="card-thumb">🏛</div>
+          <div class="card-body">
+            <div class="card-title">① Tokyo National Museum</div>
+            <div class="card-meta">
+              <span class="rating">⭐ 4.8</span>
+              <span class="badge badge-cat">Museum</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <span class="view-all">View all 8 →</span>
+            <div class="right-actions">
+              <span class="btn-nav">← →</span>
+              <span class="btn-add">+ Add</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Added -->
+  <div>
+    <div class="state-label">② After adding</div>
+    <div class="phone-frame">
+      <div class="map-area">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="num-pin done" style="top:68px;left:48px">✓</div>
+        <div class="num-pin active" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:72px;right:52px">3</div>
+        <div class="num-pin" style="top:115px;right:78px">4</div>
+
+        <div class="float-card">
+          <div class="card-thumb">🖼</div>
+          <div class="card-body">
+            <div class="card-title">② Shinjuku Historical Museum</div>
+            <div class="card-meta">
+              <span class="rating">⭐ 4.3</span>
+              <span class="badge badge-cat">Museum</span>
+              <span class="badge badge-price">$$</span>
+            </div>
+          </div>
+          <div class="card-actions">
+            <span class="toast">✓ Tokyo National Museum added</span>
+            <div class="right-actions">
+              <span class="btn-nav">← →</span>
+              <span class="btn-add">+ Add</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 3: View all sheet -->
+  <div>
+    <div class="state-label">③ View all sheet</div>
+    <div class="phone-frame">
+      <div class="map-area">
+        🗺
+        <div class="map-searchbar">
+          <span class="query">🏛 Museum near Shinjuku</span>
+          <span class="x">✕</span>
+        </div>
+        <div class="num-pin done" style="top:68px;left:48px">✓</div>
+        <div class="num-pin" style="top:95px;left:105px">2</div>
+        <div class="num-pin" style="top:72px;right:52px">3</div>
+        <div class="num-pin" style="top:115px;right:78px">4</div>
+
+        <div class="sheet-overlay">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">Museum near Shinjuku · 8 results</div>
+          <div class="sheet-row">
+            <div class="sheet-row-left">
+              <div class="name" style="color:#34c759">✓ Tokyo National Museum</div>
+              <div class="meta">⭐ 4.8 · Museum</div>
+            </div>
+            <span class="sheet-done">Added</span>
+          </div>
+          <div class="sheet-row">
+            <div class="sheet-row-left">
+              <div class="name">② Shinjuku Historical Museum</div>
+              <div class="meta">⭐ 4.3 · Museum · $$</div>
+            </div>
+            <span class="sheet-add">+ Add</span>
+          </div>
+          <div class="sheet-row">
+            <div class="sheet-row-left">
+              <div class="name">③ Sword Museum</div>
+              <div class="meta">⭐ 4.1 · Museum</div>
+            </div>
+            <span class="sheet-add">+ Add</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:1.5rem">
+  <h3>Date nudge — events outside travel window</h3>
+  <p class="subtitle" style="margin-bottom: 0.75rem">Inline in dropdown, user can still proceed</p>
+  <div class="phone-frame">
+    <div style="padding:8px;background:var(--bg-secondary)">
+      <div style="background:var(--bg-tertiary);border-radius:20px;padding:6px 12px;font-size:11px;color:var(--text-primary);margin-bottom:6px">
+        🔍 events on may 10
+      </div>
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+          <span>🎉</span>
+          <span style="font-size:11px;color:var(--text-primary)">Events on May 10 near Shinjuku</span>
+        </div>
+        <div style="padding:6px 12px;background:rgba(255,159,10,0.08)">
+          <span style="font-size:10px;color:#ff9f0a">⚠ May 10 is after your trip ends (Apr 26). Still search?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
