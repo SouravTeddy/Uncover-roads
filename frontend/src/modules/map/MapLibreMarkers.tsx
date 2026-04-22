@@ -53,9 +53,11 @@ export function MapLibreMarkers({ places, selectedPlace, highlightIds, onPlaceCl
                 borderRadius: '50%',
                 backgroundColor: color,
                 border: isSelected ? '2.5px solid #fff' : '2px solid rgba(255,255,255,0.85)',
-                boxShadow: isSelected
-                  ? `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,.45)`
-                  : '0 2px 6px rgba(0,0,0,0.35)',
+                boxShadow: shouldGlow
+                  ? undefined
+                  : isSelected
+                    ? `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,.45)`
+                    : '0 2px 6px rgba(0,0,0,0.35)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 display: 'flex',
