@@ -31,14 +31,14 @@ export interface SearchIntent {
 // ── Dictionaries ─────────────────────────────────────────────────
 
 const DIRECT_MAP: [RegExp, Category][] = [
-  [/museum|gallery|galleries|exhibit/i,           'museum'],
-  [/park|garden|nature|outdoor/i,                 'park'],
-  [/restaurant|dining|food|eat|lunch|dinner/i,    'restaurant'],
-  [/cafe|coffee|brunch/i,                         'cafe'],
-  [/bar|pub|nightlife/i,                          'restaurant'],
-  [/church|mosque|temple|cathedral|synagogue/i,   'historic'],
-  [/landmark|monument|heritage|historic/i,        'historic'],
-  [/hotel|hostel|accommodation|stay|sleep/i,      'tourism'],
+  [/\b(museums?|galleries|gallerys?|exhibits?)\b/i,           'museum'],
+  [/\b(parks?|gardens?|nature|outdoor)\b/i,                 'park'],
+  [/\b(restaurants?|dining|food|eats?|lunch|dinner)\b/i,    'restaurant'],
+  [/\b(cafes?|coffee|brunch)\b/i,                         'cafe'],
+  [/\b(bars?|pubs?|nightlife)\b/i,                          'restaurant'],
+  [/\b(churches?|mosques?|temples?|cathedrals?|synagogues?)\b/i,   'historic'],
+  [/\b(landmarks?|monuments?|heritage|historic)\b/i,        'historic'],
+  [/\b(hotels?|hostels?|accommodations?|stays?|sleep)\b/i,      'tourism'],
 ];
 
 const INTENT_MAP: [RegExp, SuggestedChip[]][] = [
