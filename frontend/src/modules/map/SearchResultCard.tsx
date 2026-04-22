@@ -11,12 +11,10 @@ interface Props {
   onNavigate: (index: number) => void;
   onAdd: (result: SearchResult) => void;
   onViewAll: () => void;
-  onClear: () => void;
-  queryLabel: string;
 }
 
 export function SearchResultCard({
-  results, activeIndex, addedIds, onNavigate, onAdd, onViewAll, onClear, queryLabel,
+  results, activeIndex, addedIds, onNavigate, onAdd, onViewAll,
 }: Props) {
   const place = results[activeIndex];
   const [toastText, setToastText] = useState<string | null>(null);

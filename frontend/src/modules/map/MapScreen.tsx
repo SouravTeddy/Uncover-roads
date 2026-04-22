@@ -152,7 +152,6 @@ export function MapScreen() {
     searchResults: conversationalResults,
     activeResultIndex,
     addedIds,
-    isLoading: searchModeLoading,
     executeQuery,
     clearSearch: clearSearchMode,
     goToResult,
@@ -560,8 +559,6 @@ export function MapScreen() {
           onNavigate={goToResult}
           onAdd={handleSearchResultAdd}
           onViewAll={() => setShowViewAll(true)}
-          onClear={clearSearch}
-          queryLabel={queryLabel}
         />
       )}
 

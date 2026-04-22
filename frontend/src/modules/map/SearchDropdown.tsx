@@ -1,6 +1,6 @@
 import type { ParsedQuery, DateValidation } from './parseSearchQuery';
 import type { StructuredQuery } from './useSearchMode';
-import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
+import { CATEGORY_LABELS } from './types';
 import type { Category } from '../../shared/types';
 
 interface NominatimSuggestion {
