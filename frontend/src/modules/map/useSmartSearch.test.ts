@@ -50,6 +50,11 @@ describe('extractSearchIntent', () => {
     const result = extractSearchIntent('museum');
     expect(result.chips).toHaveLength(0);
   });
+
+  it('maps bar and pub queries to restaurant category', () => {
+    expect(extractSearchIntent('bar near me').types).toContain('restaurant');
+    expect(extractSearchIntent('pub in the city').types).toContain('restaurant');
+  });
 });
 
 describe('bboxDiagonalKm', () => {
