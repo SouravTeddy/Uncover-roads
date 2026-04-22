@@ -211,6 +211,8 @@ export function MapScreen() {
     const el = clusterSheetRef.current;
     if (!el || !clusterGroup) return;
 
+    let dismissTimer: ReturnType<typeof setTimeout> | null = null;
+
     const onStart = (e: TouchEvent) => {
       clusterTouchStartY.current = e.touches[0].clientY;
       clusterDragY.current = 0;
@@ -229,7 +231,7 @@ export function MapScreen() {
       el.style.transition = '';
       if (clusterDragY.current > 80) {
         el.style.transform = 'translateY(100%)';
-        setTimeout(() => setClusterGroup(null), 220);
+        dismissTimer = setTimeout(() => setClusterGroup(null), 220);
       } else {
         el.style.transform = 'translateY(0)';
       }
@@ -243,6 +245,7 @@ export function MapScreen() {
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove',  onMove);
       el.removeEventListener('touchend',   onEnd);
+      if (dismissTimer !== null) clearTimeout(dismissTimer);
     };
   }, [clusterGroup]);
 
