@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Marker } from 'react-map-gl/maplibre';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
@@ -15,6 +16,13 @@ import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { JourneyStrip } from '../journey';
+import { parseSearchQuery, validateSearchDate } from './parseSearchQuery';
+import { useSearchMode } from './useSearchMode';
+import type { StructuredQuery, SearchResult } from './useSearchMode';
+import { SearchDropdown } from './SearchDropdown';
+import { SearchResultCard } from './SearchResultCard';
+import { ViewAllSheet } from './ViewAllSheet';
+import type { MapLibreMapHandle } from './MapLibreMap';
 
 // ── Nominatim place search ──────────────────────────────────────
 
@@ -137,6 +145,23 @@ export function MapScreen() {
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef     = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mapRef = useRef<MapLibreMapHandle>(null);
+  const {
+    isActive: searchModeActive,
+    queryLabel,
+    searchResults: conversationalResults,
+    activeResultIndex,
+    addedIds,
+    isLoading: searchModeLoading,
+    executeQuery,
+    clearSearch: clearSearchMode,
+    goToResult,
+    markAdded,
+  } = useSearchMode(city);
+
+  const [showViewAll, setShowViewAll] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<NominatimResult[]>([]);
+  const [parsedQuery, setParsedQuery] = useState<ReturnType<typeof parseSearchQuery> | null>(null);
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
@@ -197,6 +222,14 @@ export function MapScreen() {
     handleMoveEnd(center, zoom);
   }, [handleMoveEnd]);
 
+  useEffect(() => {
+    if (!searchModeActive || conversationalResults.length === 0) return;
+    const result = conversationalResults[activeResultIndex];
+    if (result) {
+      mapRef.current?.flyTo(result.lat, result.lon, 15);
+    }
+  }, [activeResultIndex, searchModeActive, conversationalResults]);
+
   async function loadEvents() {
     const date = state.tripContext.date;
     if (!date || !city) return;
@@ -237,22 +270,43 @@ export function MapScreen() {
   function handleSearchInput(val: string) {
     setSearchQuery(val);
     setSearchOpen(true);
-    if (!val.trim()) { setSearchResults([]); return; }
+    if (!val.trim()) {
+      setSearchResults([]);
+      setLocationSuggestions([]);
+      setParsedQuery(null);
+      return;
+    }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
+
+      const parsed = parseSearchQuery(val);
+      setParsedQuery(parsed);
+
+      // Location to search with Nominatim
+      const locationQuery = parsed.locationString ?? val;
+
       setSearchLoading(true);
       try {
         const bbox = cityGeo?.bbox ?? null;
-        const results = await nominatimSearch(val, bbox, abortRef.current.signal);
-        if (!abortRef.current.signal.aborted) setSearchResults(results.slice(0, 5));
+        const results = await nominatimSearch(locationQuery, bbox, abortRef.current.signal);
+        if (!abortRef.current.signal.aborted) {
+          if (parsed.category) {
+            setLocationSuggestions(results.slice(0, 3));
+            setSearchResults([]);
+          } else {
+            setSearchResults(results.slice(0, 5));
+            setLocationSuggestions([]);
+          }
+        }
       } catch {
-        // aborted or network error — ignore
+        // aborted or network error
       } finally {
         setSearchLoading(false);
       }
-    }, 320);
+    }, 300);
   }
 
   function handleSelectResult(r: NominatimResult) {
@@ -279,9 +333,28 @@ export function MapScreen() {
   function clearSearch() {
     setSearchQuery('');
     setSearchResults([]);
+    setLocationSuggestions([]);
+    setParsedQuery(null);
     setSearchOpen(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
+    clearSearchMode();
+    setShowViewAll(false);
+  }
+
+  function handleSelectStructuredQuery(query: StructuredQuery) {
+    setSearchQuery('');
+    setSearchResults([]);
+    setLocationSuggestions([]);
+    setParsedQuery(null);
+    setSearchOpen(false);
+    searchInputRef.current?.blur();
+    executeQuery(query);
+  }
+
+  function handleSearchResultAdd(result: SearchResult) {
+    dispatch({ type: 'TOGGLE_PLACE', place: result });
+    markAdded(result.id);
   }
 
   const eventPlaces = places.filter(p => p.category === 'event');
@@ -310,14 +383,46 @@ export function MapScreen() {
 
       {/* Map — full screen */}
       <MapLibreMap
+        ref={mapRef}
         center={center}
         zoom={cityGeo ? 13 : 2}
-        places={filteredPlaces}
-        selectedPlace={activePlace}
-        onPlaceClick={handlePinClick}
+        places={searchModeActive ? [] : filteredPlaces}
+        selectedPlace={searchModeActive ? null : activePlace}
+        onPlaceClick={searchModeActive ? (_p: Place) => {} : handlePinClick}
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
-      />
+      >
+        {searchModeActive && conversationalResults.map((place, index) => (
+          <Marker
+            key={`search-pin-${place.id}`}
+            latitude={place.lat}
+            longitude={place.lon}
+            anchor="center"
+            onClick={(e) => { e.originalEvent.stopPropagation(); goToResult(index); }}
+          >
+            <div
+              style={{
+                width: index === activeResultIndex ? 28 : 24,
+                height: index === activeResultIndex ? 28 : 24,
+                borderRadius: '50%',
+                background: addedIds.has(place.id) ? '#34c759' : index === activeResultIndex ? '#ff9f0a' : '#3b82f6',
+                border: '2.5px solid white',
+                color: 'white',
+                fontSize: index === activeResultIndex ? 11 : 10,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0,0,0,.35)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {addedIds.has(place.id) ? '✓' : index + 1}
+            </div>
+          </Marker>
+        ))}
+      </MapLibreMap>
 
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
@@ -351,7 +456,9 @@ export function MapScreen() {
               onChange={e => handleSearchInput(e.target.value)}
               onFocus={() => setSearchOpen(true)}
               onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-              placeholder={`Search places in ${city || 'city'}…`}
+              placeholder={searchModeActive
+                ? queryLabel
+                : `Search places in ${city || 'city'}…`}
               className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white placeholder-white/30 outline-none"
               style={{
                 background: 'rgba(15,20,30,.82)',
@@ -367,8 +474,22 @@ export function MapScreen() {
           </div>
         </div>
 
-        {/* Search results dropdown */}
-        {searchOpen && searchResults.length > 0 && (
+        {/* Conversational grouped dropdown */}
+        {searchOpen && parsedQuery && locationSuggestions.length > 0 && (
+          <SearchDropdown
+            parsedQuery={parsedQuery}
+            locationSuggestions={locationSuggestions}
+            dateValidation={
+              parsedQuery.dateString
+                ? validateSearchDate(parsedQuery.dateString, state.travelStartDate, state.travelEndDate)
+                : null
+            }
+            onSelect={handleSelectStructuredQuery}
+          />
+        )}
+
+        {/* Existing Nominatim fallback dropdown (no category detected) */}
+        {searchOpen && !parsedQuery?.category && searchResults.length > 0 && (
           <div
             className="mx-12 rounded-2xl overflow-hidden"
             style={{
@@ -428,6 +549,32 @@ export function MapScreen() {
           <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>calendar_today</span>
           <span className="text-amber-300 text-xs font-medium">Set a travel date to see events</span>
         </div>
+      )}
+
+      {/* Search result floating card */}
+      {searchModeActive && conversationalResults.length > 0 && (
+        <SearchResultCard
+          results={conversationalResults}
+          activeIndex={activeResultIndex}
+          addedIds={addedIds}
+          onNavigate={goToResult}
+          onAdd={handleSearchResultAdd}
+          onViewAll={() => setShowViewAll(true)}
+          onClear={clearSearch}
+          queryLabel={queryLabel}
+        />
+      )}
+
+      {/* View all sheet */}
+      {showViewAll && (
+        <ViewAllSheet
+          results={conversationalResults}
+          addedIds={addedIds}
+          onSelect={(index) => { goToResult(index); setShowViewAll(false); }}
+          onAdd={handleSearchResultAdd}
+          onClose={() => setShowViewAll(false)}
+          queryLabel={queryLabel}
+        />
       )}
 
       {/* Loading — tiny spinner, corner, barely visible */}
