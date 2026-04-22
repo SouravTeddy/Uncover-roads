@@ -104,6 +104,9 @@ export function MapScreen() {
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
   const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
+  const clusterSheetRef    = useRef<HTMLDivElement>(null);
+  const clusterTouchStartY = useRef(0);
+  const clusterDragY       = useRef(0);
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
@@ -202,6 +205,46 @@ export function MapScreen() {
       setEventsLoading(false);
     }
   }
+
+  // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
+  useEffect(() => {
+    const el = clusterSheetRef.current;
+    if (!el || !clusterGroup) return;
+
+    const onStart = (e: TouchEvent) => {
+      clusterTouchStartY.current = e.touches[0].clientY;
+      clusterDragY.current = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - clusterTouchStartY.current;
+      if (dy > 0 && el) {
+        if (e.cancelable) e.preventDefault();
+        el.style.transition = 'none';
+        el.style.transform  = `translateY(${dy}px)`;
+        clusterDragY.current = dy;
+      }
+    };
+    const onEnd = () => {
+      if (!el) return;
+      el.style.transition = '';
+      if (clusterDragY.current > 80) {
+        el.style.transform = 'translateY(100%)';
+        setTimeout(() => setClusterGroup(null), 220);
+      } else {
+        el.style.transform = 'translateY(0)';
+      }
+      clusterDragY.current = 0;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove',  onMove,  { passive: false });
+    el.addEventListener('touchend',   onEnd,   { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove',  onMove);
+      el.removeEventListener('touchend',   onEnd);
+    };
+  }, [clusterGroup]);
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
@@ -433,9 +476,14 @@ export function MapScreen() {
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
         >
           <div
+            ref={clusterSheetRef}
             className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
-            style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)' }}
+            style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)', transition: 'transform 0.22s ease' }}
           >
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px', touchAction: 'none' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.2)' }} />
+            </div>
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
               <div className="flex items-center gap-2">
                 <span className="ms fill text-primary" style={{ fontSize: 14 }}>layers</span>
