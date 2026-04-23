@@ -85,6 +85,7 @@ export function MapScreen() {
   const [searchOpen, setSearchOpen]         = useState(false);
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef     = useRef<AbortController | null>(null);
+  const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mapHandleRef = useRef<MapHandle>(null);
   const [currentBbox, setCurrentBbox] = useState<[number, number, number, number] | null>(null);
@@ -146,6 +147,7 @@ export function MapScreen() {
     if (!cityGeo) return;
     initialLoadFired.current = true;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
+    if (cityGeo.bbox) setCurrentBbox(cityGeo.bbox);
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
@@ -176,7 +178,11 @@ export function MapScreen() {
           if (!abortRef.current?.signal.aborted) {
             const newIds = new Set(results.map(r => `nominatim-${r.place_id}`));
             setHighlightIds(newIds);
-            setTimeout(() => setHighlightIds(new Set()), 800);
+            if (glowTimerRef.current !== null) clearTimeout(glowTimerRef.current);
+            glowTimerRef.current = setTimeout(() => {
+              setHighlightIds(new Set());
+              glowTimerRef.current = null;
+            }, 800);
             setSearchResults(results.slice(0, 10));
             setShowZoomNudge(bboxDiagonalKm(bbox) > 15);
           }
@@ -270,6 +276,7 @@ export function MapScreen() {
     setSearchOpen(true);
     setSuggestedChips([]);
     setShowZoomNudge(false);
+    setActiveSearchTypes(null);
 
     if (!val.trim()) { setSearchResults([]); return; }
 
@@ -339,6 +346,7 @@ export function MapScreen() {
   }
 
   function handleChipTap(chip: SuggestedChip) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     setSearchQuery(chip.label);
     setSuggestedChips([]);
     setShowZoomNudge(false);
@@ -368,6 +376,7 @@ export function MapScreen() {
     setActiveSearchTypes(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
+    if (glowTimerRef.current !== null) { clearTimeout(glowTimerRef.current); glowTimerRef.current = null; }
   }
 
   const eventPlaces = places.filter(p => p.category === 'event');
