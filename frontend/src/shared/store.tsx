@@ -183,6 +183,7 @@ export type Action =
   | { type: 'SET_OB_ANSWER'; key: keyof OnboardingAnswers; value: OnboardingAnswers[keyof OnboardingAnswers] }
   | { type: 'SET_PERSONA'; persona: Persona }
   | { type: 'SET_CITY'; city: string }
+  | { type: 'UPDATE_CITY_LABEL'; city: string }
   | { type: 'SET_CITY_GEO'; geo: GeoData }
   | { type: 'SET_PLACES'; places: Place[] }
   | { type: 'MERGE_PLACES'; places: Place[] }
@@ -242,6 +243,10 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_sel', []);
       ssSave('ur_ss_geo', null);
       return { ...state, city: action.city, places: [], selectedPlaces: [], cityGeo: null };
+
+    case 'UPDATE_CITY_LABEL':
+      ssSave('ur_ss_city', action.city);
+      return { ...state, city: action.city };
 
     case 'SET_CITY_GEO':
       ssSave('ur_ss_geo', action.geo);
