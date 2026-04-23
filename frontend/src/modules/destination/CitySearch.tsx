@@ -64,7 +64,7 @@ export function CitySearch({ onSelect }: Props) {
             autoCapitalize="words"
             onChange={e => handleInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleEnter(); }}
-            className="flex-1 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
+            className="flex-1 min-w-0 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
           />
           {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
           {query && !loading && (
