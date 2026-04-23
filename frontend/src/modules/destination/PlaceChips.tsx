@@ -26,7 +26,7 @@ export function PlaceChips({ places, onChipTap }: Props) {
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ background: '#4ade80' }}
           />
-          {place.name}
+          {place.title}
         </button>
       ))}
     </div>

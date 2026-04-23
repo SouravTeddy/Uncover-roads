@@ -50,7 +50,7 @@ function PlaceCard({ place, onTap }: PlaceCardProps) {
       </div>
       {/* Name */}
       <p className="absolute bottom-1.5 left-1.5 right-1.5 text-white text-[8px] font-semibold leading-tight z-10">
-        {place.name}
+        {place.title}
       </p>
     </button>
   );
