@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import type { Place } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { ExploreSearchBar } from './ExploreSearchBar';
 import { InProgressSection } from './InProgressSection';
 import { ExploreEmptyState } from './ExploreEmptyState';
+import { DateRangeSheet } from '../map/TravelDateBar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
   const { city, selectedPlaces, travelStartDate, travelEndDate } = state;
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const rawUser = localStorage.getItem('ur_user');
   const user: { name: string; avatar: string | null } | null = rawUser
@@ -23,6 +26,17 @@ export function DestinationScreen() {
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 
+  function handleCitySelected(nearMe?: boolean) {
+    if (nearMe) {
+      // Near me = current date, skip date picker
+      const todayIso = new Date().toISOString().split('T')[0];
+      dispatch({ type: 'SET_TRAVEL_DATES', startDate: todayIso, endDate: todayIso });
+      goToMap();
+    } else {
+      setShowDatePicker(true);
+    }
+  }
+
   function openPlaceOnMap(place: Place) {
     dispatch({ type: 'SET_PENDING_PLACE', place });
     dispatch({ type: 'GO_TO', screen: 'map' });
@@ -30,6 +44,19 @@ export function DestinationScreen() {
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
+
+      {showDatePicker && (
+        <DateRangeSheet
+          initialStart={travelStartDate}
+          initialEnd={travelEndDate}
+          onDone={(start, end) => {
+            dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
+            setShowDatePicker(false);
+            goToMap();
+          }}
+          onClose={() => setShowDatePicker(false)}
+        />
+      )}
 
       {/* Header */}
       <header
@@ -71,7 +98,7 @@ export function DestinationScreen() {
 
       {/* Search bar */}
       <div className="flex-shrink-0">
-        <ExploreSearchBar onCitySelected={goToMap} />
+        <ExploreSearchBar onCitySelected={handleCitySelected} />
       </div>
 
       {/* Body */}
