@@ -338,6 +338,26 @@ export async function fetchNearby(
   return Array.isArray(data) ? data : [];
 }
 
+export async function searchNearby(
+  lat: number,
+  lon: number,
+  type: string,
+  radius: number,
+  limit: number,
+): Promise<NearbyResult[]> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    type,
+    radius: String(radius),
+    limit: String(limit),
+  });
+  const res = await fetch(`${BASE}/nearby?${params}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export interface InterCityRouteResult {
   duration_min: number;
   distance_km: number;
