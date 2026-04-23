@@ -46,12 +46,21 @@ export function MapScreen() {
   } = useMap();
 
   const { state, dispatch } = useAppStore();
+  const { pendingActivePlace } = state;
 
   // Guard: if city was lost (fresh tab, cleared session), kick back to destination
   useEffect(() => {
     if (!city) dispatch({ type: 'GO_TO', screen: 'destination' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Consume a place requested from the Explore tab — open its PinCard then clear
+  useEffect(() => {
+    if (pendingActivePlace) {
+      setActivePlace(pendingActivePlace);
+      dispatch({ type: 'CLEAR_PENDING_PLACE' });
+    }
+  }, [pendingActivePlace, setActivePlace, dispatch]);
 
   // Auto-navigate to journey screen when multi-city places are detected
   useEffect(() => {
