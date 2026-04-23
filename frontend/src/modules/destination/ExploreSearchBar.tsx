@@ -3,7 +3,7 @@ import { CitySearch } from './CitySearch';
 import { api } from '../../shared/api';
 
 interface Props {
-  onCitySelected: () => void;
+  onCitySelected: (nearMe?: boolean) => void;
 }
 
 export function ExploreSearchBar({ onCitySelected }: Props) {
@@ -28,7 +28,7 @@ export function ExploreSearchBar({ onCitySelected }: Props) {
         // proceed without geo — map handles it
       }
     }
-    onCitySelected();
+    onCitySelected(false);
   }
 
   function useLocation() {
@@ -62,7 +62,7 @@ export function ExploreSearchBar({ onCitySelected }: Props) {
           geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] },
         });
       }
-      onCitySelected();
+      onCitySelected(true);
     });
   }
 
