@@ -100,12 +100,7 @@ function getInitialScreen(): Screen {
     }
     const stored = localStorage.getItem('ur_persona');
     if (stored) {
-      // Only restore mid-session screen when the user has already completed OB.
-      const sessionScreen = ssGet<Screen>('ur_ss_screen');
-      if (sessionScreen && ['map', 'route', 'destination', 'journey'].includes(sessionScreen)) {
-        return sessionScreen;
-      }
-      return 'welcome';
+      return 'destination';
     }
   } catch {
     // ignore
