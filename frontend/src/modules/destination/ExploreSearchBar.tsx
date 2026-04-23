@@ -71,8 +71,8 @@ export function ExploreSearchBar({ onCitySelected }: Props) {
       className="px-5 pb-4"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
     >
-      <div className="flex items-center gap-2">
-        <div className="flex-1 relative">
+      <div className="flex items-center gap-2 pr-0.5">
+        <div className="flex-1 relative min-w-0">
           <CitySearch onSelect={selectCity} />
         </div>
         <button
@@ -84,7 +84,7 @@ export function ExploreSearchBar({ onCitySelected }: Props) {
             color: '#8aa8ff',
           }}
         >
-          <span className="ms text-sm">near_me</span>
+          <span className="ms text-sm">my_location</span>
           Near me
         </button>
       </div>
