@@ -69,6 +69,7 @@ export interface AppState {
   journey: JourneyLeg[] | null;
   journeyBudgetDays: number | null;
   advisorMessages: AdvisorMessage[];
+  pendingActivePlace: Place | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -169,6 +170,7 @@ export const initialState: AppState = {
   journey: null,
   journeyBudgetDays: null,
   advisorMessages: [],
+  pendingActivePlace: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -207,7 +209,9 @@ export type Action =
   | { type: 'SET_JOURNEY_BUDGET'; days: number }
   | { type: 'ADD_ADVISOR_MESSAGE'; message: AdvisorMessage }
   | { type: 'CLEAR_ADVISOR_MESSAGES' }
-  | { type: 'RESET_JOURNEY' };
+  | { type: 'RESET_JOURNEY' }
+  | { type: 'SET_PENDING_PLACE'; place: Place }
+  | { type: 'CLEAR_PENDING_PLACE' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -395,6 +399,12 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'RESET_JOURNEY':
       return { ...state, journey: null, journeyBudgetDays: null, advisorMessages: [] };
+
+    case 'SET_PENDING_PLACE':
+      return { ...state, pendingActivePlace: action.place };
+
+    case 'CLEAR_PENDING_PLACE':
+      return { ...state, pendingActivePlace: null };
 
     default:
       return state;
