@@ -25,7 +25,10 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
-        <button onClick={onBack}><span className="ms text-xl text-text-3">arrow_back</span></button>
+        <button onClick={onBack} className="flex items-center gap-1 text-white/70">
+          <span className="ms text-xl text-text-3">arrow_back</span>
+          <span className="text-sm">Profile</span>
+        </button>
         <span className="font-heading font-bold text-text-1 text-lg">{tierLabel}</span>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pt-5"

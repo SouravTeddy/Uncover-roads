@@ -28,6 +28,10 @@ export function ProfileScreen() {
     localStorage.removeItem('ur_saved_itineraries');
     localStorage.removeItem('ur_user_tier');
     localStorage.removeItem('ur_trip_packs');
+    localStorage.removeItem('ur_pack_count');
+    localStorage.removeItem('ur_gen_count');
+    localStorage.removeItem('ur_notif_prefs');
+    localStorage.removeItem('ur_units');
     dispatch({ type: 'GO_TO', screen: 'login' });
   }
 
