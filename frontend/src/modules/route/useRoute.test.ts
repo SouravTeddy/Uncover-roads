@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { retryDay } from './useRoute';
-import { shouldShowPaywall } from '../../shared/tier';
+import { renderHook, act } from '@testing-library/react';
+import { retryDay, useRoute } from './useRoute';
 import type { ItineraryRequest } from '../../shared/api';
 import type { AppState } from '../../shared/store';
 import type { Itinerary, TripPack } from '../../shared/types';
@@ -132,115 +132,62 @@ describe('retryDay', () => {
 });
 
 // ---------------------------------------------------------------------------
-// shouldShowPaywall — pure function tests
+// shouldShowPaywall pure-function tests live in shared/tier.test.ts.
+// Paywall gate logic (the dispatch branch at the top of buildItinerary) is
+// covered by the integration test below.
 // ---------------------------------------------------------------------------
 
-describe('shouldShowPaywall', () => {
-  it('returns true for free user with generationCount === 3 and no trip packs', () => {
-    const state = makeState({ userTier: 'free', generationCount: 3, tripPacks: [] });
-    expect(shouldShowPaywall(state)).toBe(true);
-  });
+// ---------------------------------------------------------------------------
+// buildItinerary paywall gate — real integration test
+// ---------------------------------------------------------------------------
+// Verifies that the actual buildItinerary() implementation dispatches
+// GO_TO subscription and makes no network call when shouldShowPaywall is true.
+// ---------------------------------------------------------------------------
 
-  it('returns true for free user with generationCount > 3 and no trip packs', () => {
-    const state = makeState({ userTier: 'free', generationCount: 5, tripPacks: [] });
-    expect(shouldShowPaywall(state)).toBe(true);
-  });
-
-  it('returns false for free user with generationCount === 2 (below threshold)', () => {
-    const state = makeState({ userTier: 'free', generationCount: 2, tripPacks: [] });
-    expect(shouldShowPaywall(state)).toBe(false);
-  });
-
-  it('returns false for pro user regardless of generationCount', () => {
-    const state = makeState({ userTier: 'pro', generationCount: 10, tripPacks: [] });
-    expect(shouldShowPaywall(state)).toBe(false);
-  });
-
-  it('returns false for unlimited user regardless of generationCount', () => {
-    const state = makeState({ userTier: 'unlimited', generationCount: 100, tripPacks: [] });
-    expect(shouldShowPaywall(state)).toBe(false);
-  });
-
-  it('returns false when free user has non-expired pack trips (generationCount === 3)', () => {
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
-    const pack: TripPack = { id: 'pack-1', trips: 3, usedTrips: 0, expiresAt: tomorrow };
-    const state = makeState({ userTier: 'free', generationCount: 3, tripPacks: [pack] });
-    expect(shouldShowPaywall(state)).toBe(false);
-  });
-
-  it('returns true when free user has exhausted all pack trips (generationCount === 3)', () => {
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
-    const pack: TripPack = { id: 'pack-1', trips: 2, usedTrips: 2, expiresAt: tomorrow };
-    const state = makeState({ userTier: 'free', generationCount: 3, tripPacks: [pack] });
-    expect(shouldShowPaywall(state)).toBe(true);
-  });
-
-  it('returns true when free user only has expired packs (generationCount === 3)', () => {
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
-    const pack: TripPack = { id: 'pack-1', trips: 5, usedTrips: 0, expiresAt: yesterday };
-    const state = makeState({ userTier: 'free', generationCount: 3, tripPacks: [pack] });
-    expect(shouldShowPaywall(state)).toBe(true);
-  });
+vi.mock('../../shared/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../shared/store')>();
+  return { ...actual, useAppStore: vi.fn() };
 });
 
-// ---------------------------------------------------------------------------
-// buildItinerary paywall gate — dispatch behaviour
-// ---------------------------------------------------------------------------
-// We verify the gate branch logic directly using shouldShowPaywall, mirroring
-// exactly what the implementation does at the top of buildItinerary().
-// ---------------------------------------------------------------------------
+vi.mock('../../shared/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../shared/api')>();
+  return {
+    ...actual,
+    aiItineraryStream: vi.fn(async function* () { /* never yields */ }),
+  };
+});
 
-describe('buildItinerary paywall gate (dispatch behaviour)', () => {
+vi.mock('../../shared/supabase', () => ({
+  supabase: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) } },
+}));
+
+vi.mock('../../shared/userSync', () => ({
+  syncSavedItinerary: vi.fn(),
+  incrementGenerationCount: vi.fn(),
+}));
+
+describe('buildItinerary paywall gate (real integration)', () => {
   let dispatch: ReturnType<typeof vi.fn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     dispatch = vi.fn();
+    const { useAppStore } = await import('../../shared/store');
+    vi.mocked(useAppStore).mockReturnValue({
+      state: makeState({ userTier: 'free', generationCount: 3, tripPacks: [] }),
+      dispatch,
+    });
   });
 
-  // Simulate the gate added at the top of buildItinerary.
-  function simulateBuildItineraryGate(state: AppState): boolean {
-    if (shouldShowPaywall(state)) {
-      dispatch({ type: 'GO_TO', screen: 'subscription' });
-      return true; // early return
-    }
-    return false; // generation proceeds
-  }
+  it('dispatches GO_TO subscription and does not call aiItineraryStream when paywall condition is met', async () => {
+    const { aiItineraryStream } = await import('../../shared/api');
 
-  it('dispatches GO_TO subscription and returns early when free user has 3 generations and no packs', () => {
-    const state = makeState({ userTier: 'free', generationCount: 3, tripPacks: [] });
-    const earlyReturn = simulateBuildItineraryGate(state);
-    expect(earlyReturn).toBe(true);
-    expect(dispatch).toHaveBeenCalledOnce();
+    const { result } = renderHook(() => useRoute());
+
+    await act(async () => {
+      await result.current.buildItinerary();
+    });
+
     expect(dispatch).toHaveBeenCalledWith({ type: 'GO_TO', screen: 'subscription' });
-  });
-
-  it('does NOT dispatch GO_TO subscription when free user has only 2 generations', () => {
-    const state = makeState({ userTier: 'free', generationCount: 2, tripPacks: [] });
-    const earlyReturn = simulateBuildItineraryGate(state);
-    expect(earlyReturn).toBe(false);
-    expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  it('does NOT dispatch GO_TO subscription when pro user has 10 generations', () => {
-    const state = makeState({ userTier: 'pro', generationCount: 10, tripPacks: [] });
-    const earlyReturn = simulateBuildItineraryGate(state);
-    expect(earlyReturn).toBe(false);
-    expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  it('does NOT dispatch GO_TO subscription when unlimited user has many generations', () => {
-    const state = makeState({ userTier: 'unlimited', generationCount: 100, tripPacks: [] });
-    const earlyReturn = simulateBuildItineraryGate(state);
-    expect(earlyReturn).toBe(false);
-    expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  it('does NOT dispatch GO_TO subscription when free user has active pack trips at 5 generations', () => {
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().split('T')[0];
-    const pack: TripPack = { id: 'pack-1', trips: 1, usedTrips: 0, expiresAt: tomorrow };
-    const state = makeState({ userTier: 'free', generationCount: 5, tripPacks: [pack] });
-    const earlyReturn = simulateBuildItineraryGate(state);
-    expect(earlyReturn).toBe(false);
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(aiItineraryStream).not.toHaveBeenCalled();
   });
 });
