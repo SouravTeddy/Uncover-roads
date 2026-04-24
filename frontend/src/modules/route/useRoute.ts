@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { api, aiItineraryStream } from '../../shared/api';
+import { shouldShowPaywall } from '../../shared/tier';
 import type { ItineraryRequest } from '../../shared/api';
 import type { Itinerary, SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
@@ -30,6 +31,11 @@ export function useRoute() {
   }, []);
 
   async function buildItinerary(overridePlaces?: typeof state.selectedPlaces) {
+    if (shouldShowPaywall(state)) {
+      dispatch({ type: 'GO_TO', screen: 'subscription' });
+      return;
+    }
+
     if (!persona || !state.cityGeo) return;
 
     const days = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
