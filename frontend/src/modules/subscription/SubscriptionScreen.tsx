@@ -35,6 +35,7 @@ interface PlanCardProps {
   ctaStyle?: React.CSSProperties;
   ctaDisabled?: boolean;
   badge?: string;
+  borderClass?: string;
   borderStyle?: React.CSSProperties;
   onCta?: () => void;
 }
@@ -48,12 +49,13 @@ function PlanCard({
   ctaStyle,
   ctaDisabled,
   badge,
+  borderClass,
   borderStyle,
   onCta,
 }: PlanCardProps) {
   return (
     <div
-      className="flex flex-col rounded-xl p-3 gap-3 flex-1 bg-surface"
+      className={`flex flex-col rounded-xl p-3 gap-3 flex-1 bg-surface${borderClass ? ` ${borderClass}` : ''}`}
       style={{ minWidth: 0, ...borderStyle }}
     >
       {badge && (
@@ -78,12 +80,8 @@ function PlanCard({
       <button
         onClick={onCta}
         disabled={ctaDisabled}
-        className="w-full py-2 rounded-lg text-sm font-semibold mt-auto transition-opacity"
-        style={
-          ctaDisabled
-            ? { background: '#334155', color: '#64748b', cursor: 'not-allowed' }
-            : ctaStyle
-        }
+        className={`w-full py-2 rounded-lg text-sm font-semibold mt-auto transition-opacity${ctaDisabled ? ' bg-surf-hst text-[#64748b] cursor-not-allowed' : ''}`}
+        style={ctaDisabled ? undefined : ctaStyle}
       >
         {ctaLabel}
       </button>
@@ -171,7 +169,7 @@ export function SubscriptionScreen() {
               title="Free"
               price="$0"
               priceSub="forever"
-              borderStyle={{ border: '1px solid #334155' }}
+              borderClass="border border-surf-hst"
               features={[
                 { text: '3 lifetime itinerary attempts' },
                 { text: '1st trip: full experience' },
@@ -187,10 +185,7 @@ export function SubscriptionScreen() {
             />
 
             {/* ── Section 2: Trip Packs (below Free column) ── */}
-            <div
-              className="rounded-xl p-3 flex flex-col gap-3 bg-surface"
-              style={{ border: '1px solid #334155' }}
-            >
+            <div className="rounded-xl p-3 flex flex-col gap-3 bg-surface border border-surf-hst">
               <div>
                 <div className="font-bold text-white text-sm">Buy a Trip Pack</div>
                 <div className="text-xs leading-tight mt-0.5 text-[#64748b]">
@@ -199,10 +194,7 @@ export function SubscriptionScreen() {
               </div>
 
               {/* 5 Trips pack */}
-              <div
-                className="rounded-lg p-3 flex flex-col gap-1.5 bg-bg"
-                style={{ border: '1px solid #334155' }}
-              >
+              <div className="rounded-lg p-3 flex flex-col gap-1.5 bg-bg border border-surf-hst">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">5 Trips 🗺️</span>
                   <span className="font-bold text-white text-sm">$9.99</span>
@@ -212,22 +204,14 @@ export function SubscriptionScreen() {
                 </div>
                 <button
                   onClick={() => buyPack(5)}
-                  className="w-full py-1.5 rounded-lg text-sm font-semibold mt-1"
-                  style={{
-                    border: '1.5px solid #f97316',
-                    color: '#f97316',
-                    background: 'transparent',
-                  }}
+                  className="w-full py-1.5 rounded-lg text-sm font-semibold mt-1 border border-orange text-orange bg-transparent"
                 >
                   Buy
                 </button>
               </div>
 
               {/* 10 Trips pack */}
-              <div
-                className="rounded-lg p-3 flex flex-col gap-1.5 relative bg-bg"
-                style={{ border: '2px solid #f97316' }}
-              >
+              <div className="rounded-lg p-3 flex flex-col gap-1.5 relative bg-bg border-2 border-orange">
                 <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
                   <span
                     className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange text-white"
@@ -280,7 +264,7 @@ export function SubscriptionScreen() {
             price="$6.99/mo"
             priceSub="billed monthly"
             badge="MOST POPULAR"
-            borderStyle={{ border: '2px solid #f97316' }}
+            borderClass="border-2 border-orange"
             features={[
               { text: '5 saved trips per month' },
               { text: 'Our Picks + Live Events on all trips' },
@@ -329,10 +313,7 @@ export function SubscriptionScreen() {
         </div>
 
         {/* ── Section 3: Coupon ── */}
-        <div
-          className="rounded-xl p-4 flex flex-col gap-3 bg-surface"
-          style={{ border: '1px solid #334155' }}
-        >
+        <div className="rounded-xl p-4 flex flex-col gap-3 bg-surface border border-surf-hst">
           <div className="font-bold text-white text-sm">Have a coupon?</div>
           <div className="flex gap-2">
             <input
@@ -341,9 +322,7 @@ export function SubscriptionScreen() {
               onChange={e => setCoupon(e.target.value)}
               placeholder="Enter coupon code"
               className="flex-1 rounded-lg px-3 py-2 text-sm outline-none bg-bg text-white"
-              style={{
-                border: '1px solid #334155',
-              }}
+              className="border border-surf-hst"
             />
             <button
               onClick={applyCoupon}
