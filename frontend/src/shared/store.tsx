@@ -17,6 +17,9 @@ import type {
   JourneyLeg,
   AdvisorMessage,
   OriginPlace,
+  UserTier,
+  TripPack,
+  NotifPrefs,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -66,6 +69,11 @@ export interface AppState {
   userRole: 'user' | 'admin';
   generationCount: number;
   profileLoaded: boolean;
+  userTier: UserTier;
+  tripPacks: TripPack[];
+  packPurchaseCount: number;
+  notifPrefs: NotifPrefs;
+  units: 'km' | 'miles';
   journey: JourneyLeg[] | null;
   journeyBudgetDays: number | null;
   advisorMessages: AdvisorMessage[];
@@ -144,6 +152,42 @@ function getStoredUserRole(): 'user' | 'admin' {
   }
 }
 
+function getStoredTier(): UserTier {
+  const v = localStorage.getItem('ur_user_tier');
+  if (v === 'pro' || v === 'unlimited') return v;
+  return 'free';
+}
+
+function getStoredTripPacks(): TripPack[] {
+  try {
+    const v = localStorage.getItem('ur_trip_packs');
+    return v ? (JSON.parse(v) as TripPack[]) : [];
+  } catch { return []; }
+}
+
+function getStoredPackPurchaseCount(): number {
+  const v = localStorage.getItem('ur_pack_count');
+  return v ? parseInt(v, 10) : 0;
+}
+
+function getStoredNotifPrefs(): NotifPrefs {
+  try {
+    const v = localStorage.getItem('ur_notif_prefs');
+    return v ? (JSON.parse(v) as NotifPrefs) : {
+      tripReminders: true,
+      destinationSuggestions: true,
+      liveEventAlerts: false,
+      appUpdates: true,
+    };
+  } catch {
+    return { tripReminders: true, destinationSuggestions: true, liveEventAlerts: false, appUpdates: true };
+  }
+}
+
+function getStoredUnits(): 'km' | 'miles' {
+  return localStorage.getItem('ur_units') === 'miles' ? 'miles' : 'km';
+}
+
 export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
@@ -167,6 +211,11 @@ export const initialState: AppState = {
   userRole: getStoredUserRole(),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
+  userTier: getStoredTier(),
+  tripPacks: getStoredTripPacks(),
+  packPurchaseCount: getStoredPackPurchaseCount(),
+  notifPrefs: getStoredNotifPrefs(),
+  units: getStoredUnits(),
   journey: null,
   journeyBudgetDays: null,
   advisorMessages: [],
@@ -211,7 +260,12 @@ export type Action =
   | { type: 'CLEAR_ADVISOR_MESSAGES' }
   | { type: 'RESET_JOURNEY' }
   | { type: 'SET_PENDING_PLACE'; place: Place }
-  | { type: 'CLEAR_PENDING_PLACE' };
+  | { type: 'CLEAR_PENDING_PLACE' }
+  | { type: 'SET_USER_TIER'; tier: UserTier }
+  | { type: 'ADD_TRIP_PACK'; pack: TripPack }
+  | { type: 'USE_PACK_TRIP'; packId: string }
+  | { type: 'SET_NOTIF_PREFS'; prefs: Partial<NotifPrefs> }
+  | { type: 'SET_UNITS'; units: 'km' | 'miles' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -405,6 +459,38 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'CLEAR_PENDING_PLACE':
       return { ...state, pendingActivePlace: null };
+
+    case 'SET_USER_TIER':
+      try { localStorage.setItem('ur_user_tier', action.tier); } catch { /* ignore */ }
+      return { ...state, userTier: action.tier };
+
+    case 'ADD_TRIP_PACK': {
+      const packs = [...state.tripPacks, action.pack];
+      const count = state.packPurchaseCount + 1;
+      try {
+        localStorage.setItem('ur_trip_packs', JSON.stringify(packs));
+        localStorage.setItem('ur_pack_count', String(count));
+      } catch { /* ignore */ }
+      return { ...state, tripPacks: packs, packPurchaseCount: count };
+    }
+
+    case 'USE_PACK_TRIP': {
+      const packs = state.tripPacks.map(p =>
+        p.id === action.packId ? { ...p, usedTrips: p.usedTrips + 1 } : p
+      );
+      try { localStorage.setItem('ur_trip_packs', JSON.stringify(packs)); } catch { /* ignore */ }
+      return { ...state, tripPacks: packs };
+    }
+
+    case 'SET_NOTIF_PREFS': {
+      const prefs = { ...state.notifPrefs, ...action.prefs };
+      try { localStorage.setItem('ur_notif_prefs', JSON.stringify(prefs)); } catch { /* ignore */ }
+      return { ...state, notifPrefs: prefs };
+    }
+
+    case 'SET_UNITS':
+      try { localStorage.setItem('ur_units', action.units); } catch { /* ignore */ }
+      return { ...state, units: action.units };
 
     default:
       return state;

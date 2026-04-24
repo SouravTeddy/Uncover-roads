@@ -14,7 +14,24 @@ export type Screen =
   | 'route'
   | 'trips'
   | 'nav'
-  | 'profile';
+  | 'profile'
+  | 'subscription';
+
+export type UserTier = 'free' | 'pro' | 'unlimited';
+
+export interface TripPack {
+  id: string;
+  trips: number;
+  usedTrips: number;
+  expiresAt: string; // ISO date string
+}
+
+export interface NotifPrefs {
+  tripReminders: boolean;
+  destinationSuggestions: boolean;
+  liveEventAlerts: boolean;
+  appUpdates: boolean;
+}
 
 // ── New OB answer types ───────────────────────────────────────
 export type OBGroup    = 'solo' | 'couple' | 'family' | 'friends';
