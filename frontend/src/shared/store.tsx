@@ -153,9 +153,11 @@ function getStoredUserRole(): 'user' | 'admin' {
 }
 
 function getStoredTier(): UserTier {
-  const v = localStorage.getItem('ur_user_tier');
-  if (v === 'pro' || v === 'unlimited') return v;
-  return 'free';
+  try {
+    const v = localStorage.getItem('ur_user_tier');
+    if (v === 'pro' || v === 'unlimited') return v;
+    return 'free';
+  } catch { return 'free'; }
 }
 
 function getStoredTripPacks(): TripPack[] {
@@ -166,8 +168,12 @@ function getStoredTripPacks(): TripPack[] {
 }
 
 function getStoredPackPurchaseCount(): number {
-  const v = localStorage.getItem('ur_pack_count');
-  return v ? parseInt(v, 10) : 0;
+  try {
+    const v = localStorage.getItem('ur_pack_count');
+    if (!v) return 0;
+    const parsed = parseInt(v, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  } catch { return 0; }
 }
 
 function getStoredNotifPrefs(): NotifPrefs {
@@ -185,7 +191,9 @@ function getStoredNotifPrefs(): NotifPrefs {
 }
 
 function getStoredUnits(): 'km' | 'miles' {
-  return localStorage.getItem('ur_units') === 'miles' ? 'miles' : 'km';
+  try {
+    return localStorage.getItem('ur_units') === 'miles' ? 'miles' : 'km';
+  } catch { return 'km'; }
 }
 
 export const initialState: AppState = {
