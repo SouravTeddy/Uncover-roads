@@ -189,6 +189,9 @@ describe('IntroCard curation lock', () => {
   });
 
   it('"Upgrade to unlock" dispatches GO_TO subscription', async () => {
+    // Locked state is controlled via the curationLocked prop directly.
+    // If IntroCard is ever refactored to read from store, add:
+    //   vi.mocked(isCurationLocked).mockReturnValue(true);
     const { IntroCard } = await import('./ItineraryCards');
 
     render(
