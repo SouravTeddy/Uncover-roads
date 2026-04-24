@@ -1,6 +1,9 @@
 import { useAppStore } from '../../../shared/store';
 import type { NotifPrefs } from '../../../shared/types';
 
+const TOGGLE_ON_LEFT = '22px';
+const TOGGLE_OFF_LEFT = '2px';
+
 export function NotificationsScreen({ onBack }: { onBack: () => void }) {
   const { state, dispatch } = useAppStore();
   const { notifPrefs, userTier } = state;
@@ -53,7 +56,7 @@ export function NotificationsScreen({ onBack }: { onBack: () => void }) {
               >
                 <div
                   className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all"
-                  style={{ left: notifPrefs[row.key] && !row.locked ? '22px' : '2px' }}
+                  style={{ left: notifPrefs[row.key] && !row.locked ? TOGGLE_ON_LEFT : TOGGLE_OFF_LEFT }}
                 />
               </button>
             </div>

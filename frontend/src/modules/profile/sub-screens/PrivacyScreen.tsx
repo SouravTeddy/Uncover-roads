@@ -6,19 +6,26 @@ export function PrivacyScreen({ onBack, onSignOut }: { onBack: () => void; onSig
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const rawUser = localStorage.getItem('ur_user');
-  const user: { email: string } | null = rawUser ? JSON.parse(rawUser) : null;
+  let user: { email: string } | null = null;
+  try {
+    const raw = localStorage.getItem('ur_user');
+    if (raw) user = JSON.parse(raw) as { email: string };
+  } catch { /* ignore */ }
 
   async function handleDeleteAccount() {
     if (deleteInput !== 'DELETE') return;
     setDeleting(true);
-    await supabase.auth.signOut().catch(console.warn);
-    ['ur_persona','ur_user','ur_saved_itineraries','ur_user_tier','ur_trip_packs',
-     'ur_gen_count','ur_notif_prefs','ur_units'].forEach(k => localStorage.removeItem(k));
-    onSignOut();
+    try {
+      await supabase.auth.signOut().catch(console.warn);
+      ['ur_persona','ur_user','ur_saved_itineraries','ur_user_tier','ur_trip_packs',
+       'ur_pack_count','ur_gen_count','ur_notif_prefs','ur_units'].forEach(k => localStorage.removeItem(k));
+      onSignOut();
+    } finally {
+      setDeleting(false);
+    }
   }
 
-  async function handleExportData() {
+  function handleExportData() {
     alert(`Export request sent to ${user?.email ?? 'your email'}.`);
   }
 

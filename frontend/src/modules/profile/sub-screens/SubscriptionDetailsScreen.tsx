@@ -1,23 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../../shared/store';
 
 export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
   const { state, dispatch } = useAppStore();
   const { userTier } = state;
   const [showDowngrade, setShowDowngrade] = useState(false);
-  const [downgrading, setDowngrading] = useState(false);
 
-  const tierLabel = userTier === 'pro' ? 'Pro Plan' : 'Unlimited Plan';
-  const nextBilling = (() => {
+  const tierLabel = userTier === 'pro' ? 'Pro Plan' : userTier === 'unlimited' ? 'Unlimited Plan' : 'Plan';
+  const nextBilling = useMemo(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);
     return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-  })();
+  }, []);
 
-  async function handleDowngrade() {
-    setDowngrading(true);
+  function handleDowngrade() {
     dispatch({ type: 'SET_USER_TIER', tier: 'free' });
-    setDowngrading(false);
     onBack();
   }
 
@@ -47,11 +44,14 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
             { label: 'Billing cycle', value: 'Monthly' },
             { label: 'Next billing date', value: nextBilling },
             { label: 'Amount', value: '—' },
-            { label: 'Status', value: 'Active ✓', valueClass: 'text-amber-400' },
+            { label: 'Status', value: 'Active', valueClass: 'text-amber-400' },
           ].map((row, i) => (
             <div key={row.label} className={`flex items-center justify-between px-4 py-3.5 ${i > 0 ? 'border-t border-white/6' : ''}`}>
               <span className="text-white/40 text-sm">{row.label}</span>
-              <span className={`text-sm font-medium ${row.valueClass ?? 'text-white'}`}>{row.value}</span>
+              <span className={`flex items-center gap-1 text-sm font-medium ${row.valueClass ?? 'text-white'}`}>
+                {row.value}
+                {row.label === 'Status' && <span className="ms fill text-amber-400 text-sm">check_circle</span>}
+              </span>
             </div>
           ))}
         </div>
@@ -75,8 +75,8 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
             <p className="text-white/40 text-sm mb-6">You'll lose access to unlimited trips and curation features at the end of your billing period.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDowngrade(false)} className="flex-1 h-11 rounded-xl text-sm text-white/50 border border-white/10">Cancel</button>
-              <button onClick={handleDowngrade} disabled={downgrading} className="flex-1 h-11 rounded-xl text-sm font-semibold text-white/60 border border-white/20">
-                {downgrading ? 'Processing…' : 'Downgrade'}
+              <button onClick={handleDowngrade} className="flex-1 h-11 rounded-xl text-sm font-semibold text-white/60 border border-white/20">
+                Downgrade to Free
               </button>
             </div>
           </div>
