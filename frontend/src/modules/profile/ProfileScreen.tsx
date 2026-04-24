@@ -225,7 +225,7 @@ function AttemptsCounter({ count }: { count: number }) {
         </div>
       </div>
       <p className="text-white/30 text-[10px]">
-        {used} of 3 used · 1st: full · 2nd–3rd: no curation · 4th+: upgrade
+        {used} of 3 used · 1st–2nd: full · 3rd: no curation · 4th+: upgrade
       </p>
     </div>
   );

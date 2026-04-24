@@ -12,13 +12,14 @@ export function getPackRemainingTrips(packs: TripPack[]): number {
 
 /**
  * Returns true when Our Picks and Live Events should be hidden/locked.
- * Locked for free tier after the 1st generation (generationCount >= 1),
+ * Locked for free tier after the 2nd generation (generationCount >= 2),
  * unless they have active pack trips (packs unlock full experience).
+ * 1st and 2nd generations are fully free; restriction kicks in on 3rd.
  */
 export function isCurationLocked(state: AppState): boolean {
   if (state.userTier === 'pro' || state.userTier === 'unlimited') return false;
   if (getPackRemainingTrips(state.tripPacks) > 0) return false;
-  return state.generationCount >= 1;
+  return state.generationCount >= 2;
 }
 
 /**
