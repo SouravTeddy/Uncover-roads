@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import React from 'react';
+import type { Action } from '../../shared/store';
 
 // ── Mock store ────────────────────────────────────────────────────
 
@@ -130,10 +130,10 @@ describe('LockedCurationCard', () => {
 });
 
 describe('IntroCard curation lock', () => {
-  let dispatch: ReturnType<typeof vi.fn>;
+  let dispatch: (action: Action) => void;
 
   beforeEach(async () => {
-    dispatch = vi.fn();
+    dispatch = vi.fn() as unknown as (action: Action) => void;
     const { useAppStore } = await import('../../shared/store');
     vi.mocked(useAppStore).mockReturnValue({
       state: makeState({ userTier: 'free', generationCount: 2, tripPacks: [] }),

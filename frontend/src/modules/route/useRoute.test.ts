@@ -3,7 +3,8 @@ import { renderHook, act } from '@testing-library/react';
 import { retryDay, useRoute } from './useRoute';
 import type { ItineraryRequest } from '../../shared/api';
 import type { AppState } from '../../shared/store';
-import type { Itinerary, TripPack } from '../../shared/types';
+import type { Itinerary } from '../../shared/types';
+import type { Action } from '../../shared/store';
 
 const mockItinerary: Itinerary = {
   itinerary: [{ day: 2, time: '9:00 AM', place: 'Park', duration: '1h', category: 'park', tip: 'Go early', transit_to_next: '5 min walk', tags: [] }],
@@ -167,10 +168,10 @@ vi.mock('../../shared/userSync', () => ({
 }));
 
 describe('buildItinerary paywall gate (real integration)', () => {
-  let dispatch: ReturnType<typeof vi.fn>;
+  let dispatch: (action: Action) => void;
 
   beforeEach(async () => {
-    dispatch = vi.fn();
+    dispatch = vi.fn() as unknown as (action: Action) => void;
     const { useAppStore } = await import('../../shared/store');
     vi.mocked(useAppStore).mockReturnValue({
       state: makeState({ userTier: 'free', generationCount: 3, tripPacks: [] }),

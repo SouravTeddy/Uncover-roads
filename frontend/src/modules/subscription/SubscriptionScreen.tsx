@@ -327,8 +327,7 @@ export function SubscriptionScreen() {
               value={coupon}
               onChange={e => setCoupon(e.target.value)}
               placeholder="Enter coupon code"
-              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none bg-bg text-white"
-              className="border border-surf-hst"
+              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none bg-bg text-white border border-surf-hst"
             />
             <button
               onClick={applyCoupon}
