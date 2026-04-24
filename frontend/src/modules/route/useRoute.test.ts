@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { retryDay } from './useRoute';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { retryDay, useRoute } from './useRoute';
 import type { ItineraryRequest } from '../../shared/api';
+import type { AppState } from '../../shared/store';
 import type { Itinerary } from '../../shared/types';
+import type { Action } from '../../shared/store';
 
 const mockItinerary: Itinerary = {
   itinerary: [{ day: 2, time: '9:00 AM', place: 'Park', duration: '1h', category: 'park', tip: 'Go early', transit_to_next: '5 min walk', tags: [] }],
@@ -32,6 +35,63 @@ const baseRequest: ItineraryRequest = {
 };
 
 afterEach(() => vi.restoreAllMocks());
+
+// ---------------------------------------------------------------------------
+// Helpers for paywall tests
+// ---------------------------------------------------------------------------
+
+function makeState(overrides: Partial<AppState>): AppState {
+  return {
+    currentScreen: 'route',
+    obAnswers: { ritual: null, sensory: null, style: null, attractions: [], pace: null, social: null },
+    rawOBAnswers: null,
+    personaProfile: null,
+    obPreResolved: [],
+    persona: null,
+    city: 'Paris',
+    cityGeo: { lat: 48.8566, lon: 2.3522 },
+    places: [],
+    selectedPlaces: [],
+    activeFilter: 'all',
+    tripContext: {
+      startType: 'hotel',
+      arrivalTime: null,
+      date: '2026-04-24',
+      days: 1,
+      dayNumber: 1,
+      flightTime: null,
+      isLongHaul: false,
+      locationLat: null,
+      locationLon: null,
+      locationName: null,
+    },
+    itinerary: null,
+    itineraryDays: [],
+    travelStartDate: null,
+    travelEndDate: null,
+    weather: null,
+    route: null,
+    savedItineraries: [],
+    userRole: 'user',
+    generationCount: 0,
+    profileLoaded: true,
+    userTier: 'free',
+    tripPacks: [],
+    packPurchaseCount: 0,
+    notifPrefs: {
+      tripReminders: true,
+      destinationSuggestions: true,
+      liveEventAlerts: false,
+      appUpdates: true,
+    },
+    units: 'km',
+    journey: null,
+    journeyBudgetDays: null,
+    advisorMessages: [],
+    pendingActivePlace: null,
+    ...overrides,
+  } as AppState;
+}
 
 describe('retryDay', () => {
   it('returns null when api.aiItinerary fails both attempts', async () => {
@@ -69,5 +129,66 @@ describe('retryDay', () => {
     const calledBody = spy.mock.calls[0][0];
     expect(calledBody.day_number).toBe(3);
     expect(calledBody.trip_context.travel_date).toBe('2026-05-03'); // +2 days from start
+  });
+});
+
+// ---------------------------------------------------------------------------
+// shouldShowPaywall pure-function tests live in shared/tier.test.ts.
+// Paywall gate logic (the dispatch branch at the top of buildItinerary) is
+// covered by the integration test below.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// buildItinerary paywall gate — real integration test
+// ---------------------------------------------------------------------------
+// Verifies that the actual buildItinerary() implementation dispatches
+// GO_TO subscription and makes no network call when shouldShowPaywall is true.
+// ---------------------------------------------------------------------------
+
+vi.mock('../../shared/store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../shared/store')>();
+  return { ...actual, useAppStore: vi.fn() };
+});
+
+vi.mock('../../shared/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../shared/api')>();
+  return {
+    ...actual,
+    aiItineraryStream: vi.fn(async function* () { /* never yields */ }),
+  };
+});
+
+vi.mock('../../shared/supabase', () => ({
+  supabase: { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) } },
+}));
+
+vi.mock('../../shared/userSync', () => ({
+  syncSavedItinerary: vi.fn(),
+  incrementGenerationCount: vi.fn(),
+}));
+
+describe('buildItinerary paywall gate (real integration)', () => {
+  let dispatch: (action: Action) => void;
+
+  beforeEach(async () => {
+    dispatch = vi.fn() as unknown as (action: Action) => void;
+    const { useAppStore } = await import('../../shared/store');
+    vi.mocked(useAppStore).mockReturnValue({
+      state: makeState({ userTier: 'free', generationCount: 3, tripPacks: [] }),
+      dispatch,
+    });
+  });
+
+  it('dispatches GO_TO subscription and does not call aiItineraryStream when paywall condition is met', async () => {
+    const { aiItineraryStream } = await import('../../shared/api');
+
+    const { result } = renderHook(() => useRoute());
+
+    await act(async () => {
+      await result.current.buildItinerary();
+    });
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'GO_TO', screen: 'subscription' });
+    expect(aiItineraryStream).not.toHaveBeenCalled();
   });
 });

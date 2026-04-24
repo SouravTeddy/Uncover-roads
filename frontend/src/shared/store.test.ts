@@ -113,3 +113,33 @@ describe('journey reducer actions', () => {
     expect(next.journey).toEqual(legs);
   });
 });
+
+describe('tier state', () => {
+  it('defaults to free tier', () => {
+    expect(initialState.userTier).toBe('free');
+  });
+
+  it('SET_USER_TIER updates tier and persists', () => {
+    const next = reducer(initialState, { type: 'SET_USER_TIER', tier: 'pro' });
+    expect(next.userTier).toBe('pro');
+  });
+
+  it('ADD_TRIP_PACK adds a pack and increments purchaseCount', () => {
+    const pack = { id: 'p1', trips: 5, usedTrips: 0, expiresAt: '2027-01-01' };
+    const next = reducer(initialState, { type: 'ADD_TRIP_PACK', pack });
+    expect(next.tripPacks).toHaveLength(1);
+    expect(next.packPurchaseCount).toBe(1);
+  });
+
+  it('USE_PACK_TRIP increments usedTrips on the matching pack', () => {
+    const pack = { id: 'p1', trips: 5, usedTrips: 0, expiresAt: '2027-01-01' };
+    const s1 = reducer(initialState, { type: 'ADD_TRIP_PACK', pack });
+    const s2 = reducer(s1, { type: 'USE_PACK_TRIP', packId: 'p1' });
+    expect(s2.tripPacks[0].usedTrips).toBe(1);
+  });
+
+  it('SET_UNITS persists units preference', () => {
+    const next = reducer(initialState, { type: 'SET_UNITS', units: 'miles' });
+    expect(next.units).toBe('miles');
+  });
+});
