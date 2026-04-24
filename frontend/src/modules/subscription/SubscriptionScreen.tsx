@@ -135,7 +135,7 @@ export function SubscriptionScreen() {
   const freeCta =
     userTier === 'free'
       ? { label: 'Current Plan', disabled: true }
-      : null; // hide if already pro/unlimited
+      : { label: 'Downgrade to Free', disabled: false };
 
   const proCta =
     userTier === 'pro'
@@ -272,7 +272,7 @@ export function SubscriptionScreen() {
                     you ${nudgeSavings.toFixed(2)}.
                   </div>
                   <button
-                    onClick={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
+                    onClick={() => dispatch({ type: 'SET_USER_TIER', tier: 'pro' })}
                     className="text-left font-semibold mt-0.5"
                     style={{ color: '#f97316' }}
                   >
