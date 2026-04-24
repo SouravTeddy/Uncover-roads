@@ -19,6 +19,7 @@ import { RouteScreen } from './modules/route';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen } from './modules/trips';
+import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
 
 const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 
@@ -166,6 +167,7 @@ function ScreenRouter() {
       {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
+      {currentScreen === 'subscription' && <SubscriptionScreen />}
 
       <BottomNav />
     </div>

@@ -3,6 +3,7 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter, Category } from '../../shared/types';
+import { isCurationLocked } from '../../shared/tier';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchNudge } from './SearchNudge';
 import {
@@ -527,7 +528,13 @@ export function MapScreen() {
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
-          <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={handleFilterSelect} />
+          <FilterBar
+            active={activeFilter as MapFilter}
+            counts={counts}
+            onSelect={handleFilterSelect}
+            lockedFilters={isCurationLocked(state) ? ['recommended', 'event'] : []}
+            onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
+          />
         </div>
 
         {/* Journey breadcrumb */}

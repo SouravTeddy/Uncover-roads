@@ -10,6 +10,8 @@ import {
 } from './ItineraryView';
 import { getContextualChips, buildDirectUrl, type ChipDef } from './chip-utils';
 import { getAllCachedDetails, getCachedPlaceIdKey } from '../map/usePlaceDetails';
+import { useAppStore } from '../../shared/store';
+import { isCurationLocked } from '../../shared/tier';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -17,6 +19,29 @@ const CARD_GRADIENT =
   'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.38) 60%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.95) 100%)';
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+// ── LockedCurationCard ───────────────────────────────────────────
+
+interface LockedCurationCardProps {
+  title: string;
+  description: string;
+  onUpgrade: () => void;
+}
+
+export function LockedCurationCard({ title, description, onUpgrade }: LockedCurationCardProps) {
+  return (
+    <div className="rounded-xl p-4 border border-dashed border-surf-hst bg-surface flex flex-col gap-2">
+      <div className="flex items-center gap-2 opacity-50">
+        <span className="ms text-base">lock</span>
+        <span className="font-semibold text-text-3 text-sm">{title}</span>
+      </div>
+      <p className="text-xs text-text-3">{description}</p>
+      <button onClick={onUpgrade} className="text-orange text-sm font-semibold text-left">
+        Upgrade to unlock
+      </button>
+    </div>
+  );
+}
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -72,6 +97,10 @@ export function ItineraryCards({
   const stopsArr = stops ?? [];
   const startMins = startMinsFromContext(tripContext);
   const timeline = buildTimeline(stopsArr, startMins, selectedPlaces);
+
+  const { state, dispatch } = useAppStore();
+  const curationLocked = isCurationLocked(state);
+  const onUpgrade = () => dispatch({ type: 'GO_TO', screen: 'subscription' });
 
   // Flat card sequence: intro → [stop, reco]* → finale
   const cards = useMemo<CardDef[]>(() => {
@@ -197,6 +226,8 @@ export function ItineraryCards({
                   summary={summary}
                   weather={weather}
                   persona={persona}
+                  curationLocked={curationLocked}
+                  onUpgrade={onUpgrade}
                 />
               </div>
             );
@@ -259,8 +290,8 @@ export function ItineraryCards({
 
 // ── IntroCard ────────────────────────────────────────────────────
 
-function IntroCard({
-  city, tripContext, stops, summary, weather, persona,
+export function IntroCard({
+  city, tripContext, stops, summary, weather, persona, curationLocked, onUpgrade,
 }: {
   city?: string;
   tripContext: TripContext;
@@ -268,6 +299,8 @@ function IntroCard({
   summary?: ItinerarySummary;
   weather?: WeatherData | null;
   persona?: Persona | null;
+  curationLocked?: boolean;
+  onUpgrade?: () => void;
 }) {
   const dayLabel = tripContext.days && tripContext.days > 1
     ? `Day ${tripContext.dayNumber ?? 1} of ${tripContext.days}`
@@ -305,6 +338,21 @@ function IntroCard({
         <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, lineHeight: 1.55, margin: 0, fontStyle: 'italic' }}>
           {summary.pro_tip}
         </p>
+      )}
+
+      {curationLocked && onUpgrade && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <LockedCurationCard
+            title="Our Picks"
+            description="Curated local spots for your travel persona"
+            onUpgrade={onUpgrade}
+          />
+          <LockedCurationCard
+            title="Live Events"
+            description="Events happening during your trip"
+            onUpgrade={onUpgrade}
+          />
+        </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 8 }}>
