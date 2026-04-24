@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { shouldShowConversionNudge } from '../../shared/tier';
 
-const VALID_COUPONS = ['LAUNCH50', 'UNCOVERTEST'];
-
 function oneYearFromNow(): string {
   const d = new Date();
   d.setFullYear(d.getFullYear() + 1);
@@ -36,7 +34,6 @@ interface PlanCardProps {
   ctaLabel: string;
   ctaStyle?: React.CSSProperties;
   ctaDisabled?: boolean;
-  isCurrent?: boolean;
   badge?: string;
   borderStyle?: React.CSSProperties;
   onCta?: () => void;
@@ -56,14 +53,13 @@ function PlanCard({
 }: PlanCardProps) {
   return (
     <div
-      className="flex flex-col rounded-xl p-3 gap-3 flex-1"
-      style={{ background: '#1e293b', minWidth: 0, ...borderStyle }}
+      className="flex flex-col rounded-xl p-3 gap-3 flex-1 bg-surface"
+      style={{ minWidth: 0, ...borderStyle }}
     >
       {badge && (
         <div className="self-center">
           <span
-            className="text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ background: '#f97316', color: 'white' }}
+            className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange text-white"
           >
             {badge}
           </span>
@@ -72,11 +68,11 @@ function PlanCard({
       <div>
         <div className="font-bold text-white text-base">{title}</div>
         <div className="font-bold text-white text-xl leading-tight">{price}</div>
-        <div className="text-xs" style={{ color: '#94a3b8' }}>{priceSub}</div>
+        <div className="text-xs text-[#94a3b8]">{priceSub}</div>
       </div>
       <ul className="flex flex-col gap-1.5 flex-1">
-        {features.map((f, i) => (
-          <FeatureRow key={i} text={f.text} muted={f.muted} />
+        {features.map((f) => (
+          <FeatureRow key={f.text} text={f.text} muted={f.muted} />
         ))}
       </ul>
       <button
@@ -102,6 +98,7 @@ export function SubscriptionScreen() {
   const { userTier, packPurchaseCount } = state;
 
   const [coupon, setCoupon] = useState('');
+  const [couponFeedback, setCouponFeedback] = useState('');
 
   function back() {
     dispatch({ type: 'GO_TO', screen: 'profile' });
@@ -120,11 +117,8 @@ export function SubscriptionScreen() {
   }
 
   function applyCoupon() {
-    if (VALID_COUPONS.includes(coupon.trim().toUpperCase())) {
-      alert('Coupon applied!');
-    } else {
-      alert('Invalid coupon code.');
-    }
+    // Coupon validation is server-side — not implemented yet
+    setCouponFeedback('Coupon validation coming soon.');
   }
 
   // Conversion nudge math
@@ -149,8 +143,8 @@ export function SubscriptionScreen() {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col overflow-y-auto"
-      style={{ zIndex: 20, background: '#0f172a' }}
+      className="fixed inset-0 flex flex-col overflow-y-auto bg-bg"
+      style={{ zIndex: 20 }}
     >
       {/* Header */}
       <div
@@ -194,26 +188,26 @@ export function SubscriptionScreen() {
 
             {/* ── Section 2: Trip Packs (below Free column) ── */}
             <div
-              className="rounded-xl p-3 flex flex-col gap-3"
-              style={{ background: '#1e293b', border: '1px solid #334155' }}
+              className="rounded-xl p-3 flex flex-col gap-3 bg-surface"
+              style={{ border: '1px solid #334155' }}
             >
               <div>
                 <div className="font-bold text-white text-sm">Buy a Trip Pack</div>
-                <div className="text-xs leading-tight mt-0.5" style={{ color: '#64748b' }}>
+                <div className="text-xs leading-tight mt-0.5 text-[#64748b]">
                   One-time purchase · 1-year validity · Full experience · Hard stop when trips run out
                 </div>
               </div>
 
               {/* 5 Trips pack */}
               <div
-                className="rounded-lg p-3 flex flex-col gap-1.5"
-                style={{ background: '#0f172a', border: '1px solid #334155' }}
+                className="rounded-lg p-3 flex flex-col gap-1.5 bg-bg"
+                style={{ border: '1px solid #334155' }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-white">5 Trips 🗺️</span>
                   <span className="font-bold text-white text-sm">$9.99</span>
                 </div>
-                <div className="text-xs" style={{ color: '#64748b' }}>
+                <div className="text-xs text-[#64748b]">
                   $2.00/trip · expires in 1 year
                 </div>
                 <button
@@ -231,13 +225,12 @@ export function SubscriptionScreen() {
 
               {/* 10 Trips pack */}
               <div
-                className="rounded-lg p-3 flex flex-col gap-1.5 relative"
-                style={{ background: '#0f172a', border: '2px solid #f97316' }}
+                className="rounded-lg p-3 flex flex-col gap-1.5 relative bg-bg"
+                style={{ border: '2px solid #f97316' }}
               >
                 <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
                   <span
-                    className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: '#f97316', color: 'white' }}
+                    className="text-xs font-bold px-2 py-0.5 rounded-full bg-orange text-white"
                   >
                     BEST VALUE
                   </span>
@@ -246,13 +239,12 @@ export function SubscriptionScreen() {
                   <span className="text-sm font-semibold text-white">10 Trips 🧳</span>
                   <span className="font-bold text-white text-sm">$17.99</span>
                 </div>
-                <div className="text-xs" style={{ color: '#64748b' }}>
+                <div className="text-xs text-[#64748b]">
                   $1.80/trip · expires in 1 year
                 </div>
                 <button
                   onClick={() => buyPack(10)}
-                  className="w-full py-1.5 rounded-lg text-sm font-semibold mt-1"
-                  style={{ background: '#f97316', color: 'white' }}
+                  className="w-full py-1.5 rounded-lg text-sm font-semibold mt-1 bg-orange text-white"
                 >
                   Buy
                 </button>
@@ -273,8 +265,7 @@ export function SubscriptionScreen() {
                   </div>
                   <button
                     onClick={() => dispatch({ type: 'SET_USER_TIER', tier: 'pro' })}
-                    className="text-left font-semibold mt-0.5"
-                    style={{ color: '#f97316' }}
+                    className="text-left font-semibold mt-0.5 text-orange"
                   >
                     Switch to Pro →
                   </button>
@@ -339,8 +330,8 @@ export function SubscriptionScreen() {
 
         {/* ── Section 3: Coupon ── */}
         <div
-          className="rounded-xl p-4 flex flex-col gap-3"
-          style={{ background: '#1e293b', border: '1px solid #334155' }}
+          className="rounded-xl p-4 flex flex-col gap-3 bg-surface"
+          style={{ border: '1px solid #334155' }}
         >
           <div className="font-bold text-white text-sm">Have a coupon?</div>
           <div className="flex gap-2">
@@ -349,22 +340,22 @@ export function SubscriptionScreen() {
               value={coupon}
               onChange={e => setCoupon(e.target.value)}
               placeholder="Enter coupon code"
-              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+              className="flex-1 rounded-lg px-3 py-2 text-sm outline-none bg-bg text-white"
               style={{
-                background: '#0f172a',
                 border: '1px solid #334155',
-                color: 'white',
               }}
             />
             <button
               onClick={applyCoupon}
-              className="px-4 py-2 rounded-lg text-sm font-semibold"
-              style={{ background: '#f97316', color: 'white' }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-orange text-white"
             >
               Apply
             </button>
           </div>
-          <p className="text-xs" style={{ color: '#64748b' }}>
+          {couponFeedback && (
+            <p className="text-xs mt-2 text-[#94a3b8]">{couponFeedback}</p>
+          )}
+          <p className="text-xs text-[#64748b]">
             Valid coupons unlock free access or bonus trips for the specified period.
           </p>
         </div>

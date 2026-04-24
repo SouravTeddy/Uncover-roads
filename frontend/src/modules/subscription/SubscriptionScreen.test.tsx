@@ -96,8 +96,7 @@ describe('SubscriptionScreen', () => {
     expect(screen.queryByText(/Switch to Pro/)).toBeNull();
   });
 
-  it('Apply button with valid coupon code shows alert', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('Apply button shows inline "coming soon" feedback instead of alert', () => {
     renderWithState(makeState());
 
     const input = screen.getByPlaceholderText('Enter coupon code');
@@ -106,12 +105,10 @@ describe('SubscriptionScreen', () => {
     const applyBtn = screen.getByText('Apply');
     fireEvent.click(applyBtn);
 
-    expect(alertSpy).toHaveBeenCalledWith('Coupon applied!');
-    alertSpy.mockRestore();
+    expect(screen.getByText('Coupon validation coming soon.')).toBeTruthy();
   });
 
-  it('Apply button with invalid coupon code shows alert "Invalid coupon code."', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('Apply button shows inline feedback for any coupon code (no client-side validation)', () => {
     renderWithState(makeState());
 
     const input = screen.getByPlaceholderText('Enter coupon code');
@@ -120,7 +117,6 @@ describe('SubscriptionScreen', () => {
     const applyBtn = screen.getByText('Apply');
     fireEvent.click(applyBtn);
 
-    expect(alertSpy).toHaveBeenCalledWith('Invalid coupon code.');
-    alertSpy.mockRestore();
+    expect(screen.getByText('Coupon validation coming soon.')).toBeTruthy();
   });
 });
