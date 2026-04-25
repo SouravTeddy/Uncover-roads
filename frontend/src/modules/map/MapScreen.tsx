@@ -71,6 +71,10 @@ export function MapScreen() {
   }, [selectedPlaces, dispatch]);
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const favouritedIds = useMemo(
+    () => new Set(state.favouritedPins.map(f => f.placeId)),
+    [state.favouritedPins],
+  );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
   const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
@@ -643,6 +647,24 @@ export function MapScreen() {
           onAdd={() => togglePlace(activePlace)}
           onClose={() => { setActivePlace(null); clearDetails(); }}
           details={details}
+          isFavourited={activePlace ? favouritedIds.has(activePlace.id) : false}
+          onSimilar={() => {
+            // no-op in MapScreen — Similar is handled in RouteScreen
+          }}
+          onFavourite={() => {
+            if (!activePlace) return;
+            dispatch({
+              type: 'TOGGLE_FAVOURITE',
+              pin: {
+                placeId: activePlace.id,
+                title: activePlace.title,
+                lat: activePlace.lat,
+                lon: activePlace.lon,
+                city,
+              },
+            });
+          }}
+          travelDate={state.tripContext.date}
         />
       )}
 
