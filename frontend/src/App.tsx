@@ -113,7 +113,7 @@ function ScreenRouter() {
     // already on one of these, a spurious SIGNED_IN event (e.g. token refresh
     // on Android app resume) must NOT kick them back to the welcome screen.
     const activeMidSessionScreens = new Set([
-      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'profile',
+      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'profile', 'subscription',
     ]);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
