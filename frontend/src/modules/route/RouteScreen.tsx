@@ -9,6 +9,8 @@ import { FootprintChips } from '../map/FootprintChips';
 import { PinCard } from '../map/PinCard';
 import { SimilarPinsBanner, useSimilarPins } from '../map/SimilarPins';
 import { usePlaceDetails } from '../map/usePlaceDetails';
+import { ItineraryMapCard } from './ItineraryMapCard';
+import { ItineraryPlaceCard } from './ItineraryPlaceCard';
 import type { Place, ReferencePin, FavouritedPin } from '../../shared/types';
 
 type RouteMode = 'explore' | 'itinerary';
@@ -149,70 +151,37 @@ export function RouteScreen() {
           Explore
         </button>
 
-        {/* Top 50%: map placeholder — will be replaced by ItineraryMapCard in Task 11 */}
+        {/* Top 50%: map with numbered pins + route line */}
         <div style={{ flex: '0 0 50%', position: 'relative', background: '#0a0f1a' }}>
-          <MapLibreMap
-            ref={mapRef}
+          <ItineraryMapCard
+            mapRef={mapRef}
             center={center}
-            places={selectedPlaces}
-            selectedPlace={selectedPlaces[itineraryActiveStop] ?? null}
-            onPlaceClick={() => {}}
-            onMoveEnd={() => {}}
+            selectedPlaces={selectedPlaces}
+            activeStopIdx={itineraryActiveStop}
+            onFullMap={() => setMode('explore')}
           />
-          <button
-            onClick={() => setMode('explore')}
-            style={{
-              position: 'absolute', top: 56, right: 12, zIndex: 10,
-              background: 'rgba(15,20,30,.8)', backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,.12)', borderRadius: 10,
-              width: 36, height: 36,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <span className="ms" style={{ fontSize: 18, color: '#94a3b8' }}>fit_screen</span>
-          </button>
         </div>
 
-        {/* Bottom 50%: place card placeholder — will be replaced by ItineraryPlaceCard in Task 12 */}
+        {/* Bottom 50%: swipeable place card */}
         <div style={{
           flex: '0 0 50%', position: 'relative', overflow: 'hidden',
           background: '#0d1117', borderTop: '1px solid rgba(255,255,255,.06)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {itinerary ? (
-            <div style={{ padding: '20px', color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
-                {itinerary.itinerary[itineraryActiveStop]?.place ?? 'No stop selected'}
-              </div>
-              <div style={{ fontSize: '0.75rem' }}>
-                Stop {itineraryActiveStop + 1} of {itinerary.itinerary.length}
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
-                <button
-                  onClick={() => setItineraryActiveStop(i => Math.max(0, i - 1))}
-                  disabled={itineraryActiveStop === 0}
-                  style={{
-                    padding: '8px 16px', borderRadius: 10,
-                    background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.08)',
-                    color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem',
-                    opacity: itineraryActiveStop === 0 ? 0.3 : 1,
-                  }}
-                >← Prev</button>
-                <button
-                  onClick={() => setItineraryActiveStop(i => Math.min(itinerary.itinerary.length - 1, i + 1))}
-                  disabled={itineraryActiveStop >= itinerary.itinerary.length - 1}
-                  style={{
-                    padding: '8px 16px', borderRadius: 10,
-                    background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.3)',
-                    color: '#a5b4fc', cursor: 'pointer', fontSize: '0.78rem',
-                    opacity: itineraryActiveStop >= itinerary.itinerary.length - 1 ? 0.3 : 1,
-                  }}
-                >Next →</button>
-              </div>
-            </div>
+            <ItineraryPlaceCard
+              stops={itinerary.itinerary}
+              selectedPlaces={selectedPlaces}
+              weather={weather}
+              referencePins={referencePins}
+              travelDate={tripContext.date ?? ''}
+              onStopChange={setItineraryActiveStop}
+            />
           ) : (
-            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>
+            <div style={{
+              height: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#64748b', fontSize: '0.85rem',
+            }}>
               No itinerary yet — add places in Explore mode
             </div>
           )}
