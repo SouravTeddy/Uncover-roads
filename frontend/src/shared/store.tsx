@@ -23,6 +23,7 @@ import type {
   ReferencePin,
   FavouritedPin,
   CityFootprint,
+  UserTier,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -70,6 +71,9 @@ export interface AppState {
   route: RouteData | null;
   savedItineraries: SavedItinerary[];
   userRole: 'user' | 'admin';
+  userTier: UserTier;
+  packTripsRemaining: number;
+  autoReplenish: boolean;
   generationCount: number;
   profileLoaded: boolean;
   userTier: UserTier;
@@ -224,6 +228,9 @@ export const initialState: AppState = {
   route: null,
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
+  userTier: (ssGet<UserTier>('ur_ss_tier') ?? 'free'),
+  packTripsRemaining: (ssGet<number>('ur_ss_pack_trips') ?? 0),
+  autoReplenish: (ssGet<boolean>('ur_ss_auto_replenish') ?? false),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
   userTier: getStoredTier(),
@@ -265,6 +272,10 @@ export type Action =
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
   | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
   | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
+  | { type: 'SET_TIER'; tier: UserTier }
+  | { type: 'SET_PACK_TRIPS'; count: number }
+  | { type: 'CONSUME_PACK_TRIP' }
+  | { type: 'SET_AUTO_REPLENISH'; enabled: boolean }
   | { type: 'SET_GENERATION_COUNT'; count: number }
   | { type: 'INCREMENT_GENERATION_COUNT' }
   | { type: 'PROFILE_LOADED' }
@@ -402,6 +413,24 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_USER_ROLE':
       try { localStorage.setItem('ur_user_role', action.role); } catch { /* ignore */ }
       return { ...state, userRole: action.role };
+
+    case 'SET_TIER':
+      ssSave('ur_ss_tier', action.tier);
+      return { ...state, userTier: action.tier };
+
+    case 'SET_PACK_TRIPS':
+      ssSave('ur_ss_pack_trips', action.count);
+      return { ...state, packTripsRemaining: action.count };
+
+    case 'CONSUME_PACK_TRIP': {
+      const updated = Math.max(0, state.packTripsRemaining - 1);
+      ssSave('ur_ss_pack_trips', updated);
+      return { ...state, packTripsRemaining: updated };
+    }
+
+    case 'SET_AUTO_REPLENISH':
+      ssSave('ur_ss_auto_replenish', action.enabled);
+      return { ...state, autoReplenish: action.enabled };
 
     case 'SET_GENERATION_COUNT':
       try { localStorage.setItem('ur_gen_count', String(action.count)); } catch { /* ignore */ }

@@ -143,4 +143,39 @@ describe('tier state', () => {
     const next = reducer(initialState, { type: 'SET_UNITS', units: 'miles' });
     expect(next.units).toBe('miles');
   });
+
+  it('defaults packTripsRemaining to 0', () => {
+    expect(initialState.packTripsRemaining).toBe(0);
+  });
+
+  it('defaults autoReplenish to false', () => {
+    expect(initialState.autoReplenish).toBe(false);
+  });
+
+  it('SET_TIER updates userTier', () => {
+    const next = reducer(initialState, { type: 'SET_TIER', tier: 'pro' });
+    expect(next.userTier).toBe('pro');
+  });
+
+  it('SET_PACK_TRIPS sets trip balance', () => {
+    const next = reducer(initialState, { type: 'SET_PACK_TRIPS', count: 5 });
+    expect(next.packTripsRemaining).toBe(5);
+  });
+
+  it('CONSUME_PACK_TRIP decrements by 1', () => {
+    const state = { ...initialState, packTripsRemaining: 3 };
+    const next = reducer(state, { type: 'CONSUME_PACK_TRIP' });
+    expect(next.packTripsRemaining).toBe(2);
+  });
+
+  it('CONSUME_PACK_TRIP does not go below 0', () => {
+    const state = { ...initialState, packTripsRemaining: 0 };
+    const next = reducer(state, { type: 'CONSUME_PACK_TRIP' });
+    expect(next.packTripsRemaining).toBe(0);
+  });
+
+  it('SET_AUTO_REPLENISH toggles the flag', () => {
+    const next = reducer(initialState, { type: 'SET_AUTO_REPLENISH', enabled: true });
+    expect(next.autoReplenish).toBe(true);
+  });
 });
