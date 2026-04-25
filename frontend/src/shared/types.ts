@@ -17,8 +17,6 @@ export type Screen =
   | 'profile'
   | 'subscription';
 
-export type UserTier = 'free' | 'pro' | 'unlimited';
-
 export interface TripPack {
   id: string;
   trips: number;
@@ -399,3 +397,7 @@ export interface FavouritedPin {
 
 /** Visual state of a pin on the explore map. */
 export type PinState = 'added' | 'reference' | 'similar' | 'favourited';
+
+// ── Pricing / subscription ────────────────────────────────────
+
+export type UserTier = 'free' | 'pack' | 'pro';

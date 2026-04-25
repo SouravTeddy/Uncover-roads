@@ -162,7 +162,7 @@ function getStoredUserRole(): 'user' | 'admin' {
 function getStoredTier(): UserTier {
   try {
     const v = localStorage.getItem('ur_user_tier');
-    if (v === 'pro' || v === 'unlimited') return v;
+    if (v === 'pack' || v === 'pro') return v;
     return 'free';
   } catch { return 'free'; }
 }
