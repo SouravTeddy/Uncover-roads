@@ -114,6 +114,8 @@ describe('journey reducer actions', () => {
   });
 });
 
+import type { UserTier } from './types';
+
 describe('tier state', () => {
   it('defaults to free tier', () => {
     expect(initialState.userTier).toBe('free');
@@ -141,5 +143,12 @@ describe('tier state', () => {
   it('SET_UNITS persists units preference', () => {
     const next = reducer(initialState, { type: 'SET_UNITS', units: 'miles' });
     expect(next.units).toBe('miles');
+  });
+});
+
+describe('UserTier type', () => {
+  it('accepts valid tier values', () => {
+    const tiers: UserTier[] = ['free', 'pack', 'pro'];
+    expect(tiers).toHaveLength(3);
   });
 });
