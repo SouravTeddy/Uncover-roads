@@ -20,6 +20,9 @@ import type {
   UserTier,
   TripPack,
   NotifPrefs,
+  ReferencePin,
+  FavouritedPin,
+  CityFootprint,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -78,6 +81,10 @@ export interface AppState {
   journeyBudgetDays: number | null;
   advisorMessages: AdvisorMessage[];
   pendingActivePlace: Place | null;
+  referencePins: ReferencePin[];
+  favouritedPins: FavouritedPin[];
+  cityFootprints: CityFootprint[];
+  similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -228,6 +235,10 @@ export const initialState: AppState = {
   journeyBudgetDays: null,
   advisorMessages: [],
   pendingActivePlace: null,
+  referencePins: [],
+  favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
+  cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
+  similarPinsState: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -273,7 +284,11 @@ export type Action =
   | { type: 'ADD_TRIP_PACK'; pack: TripPack }
   | { type: 'USE_PACK_TRIP'; packId: string }
   | { type: 'SET_NOTIF_PREFS'; prefs: Partial<NotifPrefs> }
-  | { type: 'SET_UNITS'; units: 'km' | 'miles' };
+  | { type: 'SET_UNITS'; units: 'km' | 'miles' }
+  | { type: 'SET_REFERENCE_PINS'; pins: ReferencePin[] }
+  | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
+  | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
+  | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -499,6 +514,32 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_UNITS':
       try { localStorage.setItem('ur_units', action.units); } catch { /* ignore */ }
       return { ...state, units: action.units };
+
+    case 'SET_REFERENCE_PINS':
+      return { ...state, referencePins: action.pins };
+
+    case 'TOGGLE_FAVOURITE': {
+      const exists = state.favouritedPins.some(f => f.placeId === action.pin.placeId);
+      const updated = exists
+        ? state.favouritedPins.filter(f => f.placeId !== action.pin.placeId)
+        : [...state.favouritedPins, action.pin];
+      ssSave('ur_ss_favs', updated);
+      return { ...state, favouritedPins: updated };
+    }
+
+    case 'ADD_CITY_FOOTPRINT': {
+      const exists = state.cityFootprints.some(f => f.city === action.footprint.city);
+      const updated = exists
+        ? state.cityFootprints.map(f =>
+            f.city === action.footprint.city ? action.footprint : f
+          )
+        : [...state.cityFootprints, action.footprint];
+      ssSave('ur_ss_footprints', updated);
+      return { ...state, cityFootprints: updated };
+    }
+
+    case 'SET_SIMILAR_PINS':
+      return { ...state, similarPinsState: action.state };
 
     default:
       return state;
