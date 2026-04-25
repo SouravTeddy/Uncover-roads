@@ -132,7 +132,7 @@ export function SubscriptionScreen() {
   const proCta =
     userTier === 'pro'
       ? { label: 'Current Plan', disabled: true }
-      : { label: 'Get Pro', disabled: false };
+      : { label: 'Go Pro · $9.99/mo', disabled: false };
 
   const unlimitedCta =
     userTier === 'unlimited'
