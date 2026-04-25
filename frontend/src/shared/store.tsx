@@ -594,3 +594,24 @@ export function useAppStore() {
   if (!ctx) throw new Error('useAppStore must be used within AppProvider');
   return ctx;
 }
+
+/**
+ * Pure function — determines whether a generation attempt is allowed
+ * and whether it should be degraded (no Our Picks / Live Events).
+ *
+ * @param tier       Current user tier
+ * @param genCount   Number of itineraries generated so far (free tier)
+ * @param packTrips  Current pack trip balance (pack tier)
+ */
+export function getGenerationAccess(
+  tier: UserTier,
+  genCount: number,
+  packTrips: number,
+): { allowed: boolean; degraded: boolean } {
+  if (tier === 'pro') return { allowed: true, degraded: false };
+  if (tier === 'pack') return { allowed: packTrips > 0, degraded: false };
+  // Free tier
+  if (genCount < 2) return { allowed: true, degraded: false };
+  if (genCount === 2) return { allowed: true, degraded: true };
+  return { allowed: false, degraded: false };
+}
