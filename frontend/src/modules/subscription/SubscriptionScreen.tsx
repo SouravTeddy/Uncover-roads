@@ -347,3 +347,4 @@ export function SubscriptionScreen() {
     </div>
   );
 }
+

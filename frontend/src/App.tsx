@@ -167,7 +167,7 @@ function ScreenRouter() {
       {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
-      {currentScreen === 'subscription' && <SubscriptionScreen />}
+{currentScreen === 'subscription' && <SubscriptionScreen onBack={() => dispatch({ type: 'GO_TO', screen: 'profile' })} />}
 
       <BottomNav />
     </div>
