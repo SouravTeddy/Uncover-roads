@@ -357,3 +357,45 @@ export interface AdvisorMessage {
   trigger: string;
   timestamp: number;
 }
+
+// ── Itinerary screen redesign ─────────────────────────────────
+
+/** A LLM-generated reference pin — shown as a ghost on the map. */
+export interface ReferencePin {
+  id: string;
+  title: string;
+  lat: number;
+  lon: number;
+  category: Category;
+  whyRec: string;    // "Why this for you" — one persona-matched sentence
+  localTip: string;  // one insider tip line
+}
+
+/** A city the user has explored, shown in the footprint chip bar. */
+export interface CityFootprint {
+  city: string;
+  emoji: string;       // e.g. "🗼"
+  pinCount: number;    // number of places explored (not added), shown in chip
+  lat: number;
+  lon: number;
+}
+
+/** A story card shown during city-hop loading transition. */
+export interface StoryCard {
+  imageUrl: string;
+  headline: string;
+  body: string;
+  cityContext: string;  // e.g. "Tokyo → Kyoto"
+}
+
+/** A place the user has saved to favourites (heart icon), not yet added. */
+export interface FavouritedPin {
+  placeId: string;  // matches Place.id
+  title: string;
+  lat: number;
+  lon: number;
+  city: string;
+}
+
+/** Visual state of a pin on the explore map. */
+export type PinState = 'added' | 'reference' | 'similar' | 'favourited';
