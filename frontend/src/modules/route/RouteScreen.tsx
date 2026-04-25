@@ -1,390 +1,376 @@
-import { useState } from 'react';
-import { useRoute } from './useRoute';
-import { ItineraryCards } from './ItineraryCards';
-import { RecSheet } from './RecSheet';
-import { WeatherCanvas } from './WeatherCanvas';
-import { AmbientVideo } from './AmbientVideo';
-import { DayShimmer } from './DayShimmer';
-import { DayStops } from './DayStops';
-import { SCENE_GENERATING } from './sceneMap';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary } from '../../shared/types';
-import { addDaysToIso } from '../map/trip-capacity-utils';
-import { ORIGIN_STRINGS } from '../../shared/strings';
-import { OriginInputSheet } from '../journey/OriginInputSheet';
+import { api } from '../../shared/api';
+import { MapLibreMap } from '../map/MapLibreMap';
+import type { MapHandle } from '../map/MapLibreMap';
+import { ExploreMapMarkers } from '../map/ExploreMapMarkers';
+import type { MarkerData } from '../map/ExploreMapMarkers';
+import { FootprintChips } from '../map/FootprintChips';
+import { PinCard } from '../map/PinCard';
+import { SimilarPinsBanner, useSimilarPins } from '../map/SimilarPins';
+import { usePlaceDetails } from '../map/usePlaceDetails';
+import type { Place, ReferencePin, FavouritedPin } from '../../shared/types';
 
+type RouteMode = 'explore' | 'itinerary';
 
 export function RouteScreen() {
+  const { state, dispatch } = useAppStore();
   const {
-    loading,
-    error,
-    tab,
-    setTab,
-    itinerary,
-    itineraryDays,
-    totalDays,
-    streamingDays,
-    weather,
-    city,
-    selectedPlaces,
-    savedItineraries,
-    removeStop,
-    saveItinerary,
-    buildItinerary,
-    goBack,
-    goToNav,
-  } = useRoute();
+    city, cityGeo, persona, selectedPlaces,
+    referencePins, favouritedPins, cityFootprints,
+    tripContext, itinerary, weather,
+  } = state;
 
-  const { state } = useAppStore();
-  const { tripContext, persona } = state;
+  const [mode, setMode] = useState<RouteMode>('explore');
+  const [activeMarker, setActiveMarker] = useState<MarkerData | null>(null);
+  const [referencePinsLoading, setReferencePinsLoading] = useState(false);
+  const [itineraryActiveStop, setItineraryActiveStop] = useState(0);
+  const [showSequencingReveal, setShowSequencingReveal] = useState(false);
+  const [sequencingNote, setSequencingNote] = useState<string | null>(null);
+  const mapRef = useRef<MapHandle>(null);
+  const { details, fetchDetails } = usePlaceDetails();
+  const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
 
-  // True when the user chose "not decided" — no origin leg in journey
-  const hasOrigin =
-    ((state.journey ?? []).length > 0 && (state.journey ?? [])[0].type === 'origin') ||
-    (state.tripContext?.locationLat != null);
-  const [showRecSheet, setShowRecSheet] = useState(false);
-  const [showOriginSheet, setShowOriginSheet] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [currentScene, setCurrentScene] = useState(() =>
-    loading ? SCENE_GENERATING : ''
-  );
+  const center: [number, number] = cityGeo
+    ? [cityGeo.lat, cityGeo.lon]
+    : [35.68, 139.69];
 
-  function handleSave() {
-    saveItinerary();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  // Load reference pins on mount
+  useEffect(() => {
+    if (!city || referencePins.length > 0) return;
+    setReferencePinsLoading(true);
+    api.referencePins({
+      city,
+      personaArchetype: persona?.archetype ?? 'Explorer',
+      days: tripContext.days,
+    }).then(result => {
+      if (result.pins?.length) {
+        dispatch({ type: 'SET_REFERENCE_PINS', pins: result.pins });
+      }
+    }).catch(console.error).finally(() => setReferencePinsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city]);
 
+  const selectedIds = new Set(selectedPlaces.map(p => p.id));
+  const favouritedIds = new Set(favouritedPins.map(f => f.placeId));
+  const similarIds = new Set(similarPinsState?.similarIds ?? []);
 
-  // Loading / error screens rendered over the ambient bg
-  if (loading) {
+  const markers: MarkerData[] = [
+    ...selectedPlaces.map((p): MarkerData => ({
+      kind: 'place', place: p,
+      state: 'added',
+      isFavourited: favouritedIds.has(p.id),
+    })),
+    ...referencePins
+      .filter(rp => !selectedIds.has(rp.id))
+      .map((rp): MarkerData => ({
+        kind: 'reference', pin: rp,
+        state: similarIds.has(rp.id) ? 'similar' : 'reference',
+      })),
+  ];
+
+  const activePlace: Place | null = activeMarker?.kind === 'place' ? activeMarker.place : null;
+  const activeRefPin: ReferencePin | null = activeMarker?.kind === 'reference' ? activeMarker.pin : null;
+  const activePlaceForCard: Place | null = activePlace ?? (activeRefPin ? {
+    id: activeRefPin.id,
+    title: activeRefPin.title,
+    lat: activeRefPin.lat,
+    lon: activeRefPin.lon,
+    category: activeRefPin.category,
+  } : null);
+
+  const handleMarkerClick = useCallback((marker: MarkerData) => {
+    setActiveMarker(marker);
+    if (marker.kind === 'place') {
+      fetchDetails(marker.place);
+    }
+  }, [fetchDetails]);
+
+  const handleAdd = useCallback(() => {
+    if (!activePlaceForCard) return;
+    dispatch({ type: 'TOGGLE_PLACE', place: activePlaceForCard });
+    dispatch({
+      type: 'ADD_CITY_FOOTPRINT',
+      footprint: {
+        city,
+        emoji: '📍',
+        pinCount: selectedPlaces.length + (selectedIds.has(activePlaceForCard.id) ? -1 : 1),
+        lat: cityGeo?.lat ?? 0,
+        lon: cityGeo?.lon ?? 0,
+      },
+    });
+  }, [activePlaceForCard, city, cityGeo, selectedPlaces, selectedIds, dispatch]);
+
+  const handleFavourite = useCallback(() => {
+    if (!activePlaceForCard) return;
+    const fav: FavouritedPin = {
+      placeId: activePlaceForCard.id,
+      title: activePlaceForCard.title,
+      lat: activePlaceForCard.lat,
+      lon: activePlaceForCard.lon,
+      city,
+    };
+    dispatch({ type: 'TOGGLE_FAVOURITE', pin: fav });
+  }, [activePlaceForCard, city, dispatch]);
+
+  const handleSimilar = useCallback(() => {
+    if (!activePlaceForCard) return;
+    triggerSimilar({
+      id: activePlaceForCard.id,
+      title: activePlaceForCard.title,
+      lat: activePlaceForCard.lat,
+      lon: activePlaceForCard.lon,
+      category: activePlaceForCard.category,
+    });
+  }, [activePlaceForCard, triggerSimilar]);
+
+  const handleFootprintTap = useCallback((footprint: typeof cityFootprints[0]) => {
+    mapRef.current?.flyTo(footprint.lat, footprint.lon, 13);
+  }, []);
+
+  // ── Itinerary mode ──────────────────────────────────────────────────────
+  if (mode === 'itinerary') {
     return (
-      <>
-        <AmbientVideo src={SCENE_GENERATING} timeMins={(() => {
-          const t = tripContext.arrivalTime ?? '9:00';
-          const [h, m] = t.split(':').map(Number);
-          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-        })()} />
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-4" style={{ zIndex: 25 }}>
-          <span className="ms text-primary text-4xl animate-spin">autorenew</span>
-          <p className="text-text-2 text-sm">Building your journey…</p>
-        </div>
-      </>
-    );
-  }
-
-  if (error) {
-    return (
-      <>
-        <AmbientVideo src="" timeMins={(() => {
-          const t = tripContext.arrivalTime ?? '9:00';
-          const [h, m] = t.split(':').map(Number);
-          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-        })()} />
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-4" style={{ zIndex: 25 }}>
-          <p className="text-red-400 text-sm">{error}</p>
-          <button
-            onClick={() => buildItinerary()}
-            className="px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm"
-          >
-            Retry
-          </button>
-        </div>
-      </>
-    );
-  }
-
-  // Saved itineraries view (not the reel)
-  if (tab === 'saved') {
-    return (
-      <>
-        <AmbientVideo src={currentScene} timeMins={(() => {
-          const t = tripContext.arrivalTime ?? '9:00';
-          const [h, m] = t.split(':').map(Number);
-          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-        })()} />
-        <div className="fixed inset-0 flex flex-col" style={{ zIndex: 25 }}>
-          <div
-            className="flex-shrink-0 flex items-center gap-3 px-4 border-b border-white/6"
-            style={{
-              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
-              paddingBottom: '1rem',
-              background: 'rgba(10,14,20,0.82)',
-              backdropFilter: 'blur(16px)',
-            }}
-          >
-            <button
-              onClick={() => setTab('active')}
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(255,255,255,.07)' }}
-            >
-              <span className="ms text-text-2 text-base">arrow_back</span>
-            </button>
-            <h1 className="font-heading font-bold text-text-1 text-base">Saved Trips</h1>
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 pb-10 pt-2">
-            <SavedList items={savedItineraries} onOpen={() => {}} />
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // Multi-day view — totalDays > 1 OR itineraryDays already has content
-  if (totalDays > 1 || itineraryDays.length > 1) {
-    const startIso = state.travelStartDate ?? state.tripContext.date;
-    const displayDays = Math.max(totalDays, itineraryDays.length);
-    return (
-      <>
-        <AmbientVideo src={currentScene} timeMins={(() => {
-          const t = tripContext.arrivalTime ?? '9:00';
-          const [h, m] = t.split(':').map(Number);
-          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-        })()} />
-        <div
-          className="fixed inset-0 overflow-y-auto"
-          style={{ zIndex: 25, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              padding: '0 20px 16px',
-              paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
-              background: 'rgba(10,14,20,0.82)',
-              backdropFilter: 'blur(16px)',
-              position: 'sticky', top: 0, zIndex: 10,
-              borderBottom: '1px solid rgba(255,255,255,.06)',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}
-          >
-            <button
-              onClick={goBack}
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: 'rgba(255,255,255,.07)',
-                border: '1px solid rgba(255,255,255,.08)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', flexShrink: 0,
-              }}
-            >
-              <span className="ms" style={{ fontSize: 18, color: '#94a3b8' }}>arrow_back</span>
-            </button>
-            <div>
-              <div style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: 2,
-                textTransform: 'uppercase', color: '#3b82f6',
-                fontFamily: 'Inter, sans-serif', marginBottom: 2,
-              }}>
-                Your trip
-              </div>
-              <div style={{
-                fontFamily: '"Plus Jakarta Sans", sans-serif',
-                fontSize: 18, fontWeight: 800, color: '#f1f5f9',
-              }}>
-                {city} · {displayDays} days
-                {streamingDays && (
-                  <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginLeft: 8 }}>
-                    building…
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* No-origin nudge */}
-          {!hasOrigin && (
-            <div style={{ padding: '16px 16px 0' }}>
-              <button
-                onClick={() => setShowOriginSheet(true)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px',
-                  background: 'rgba(59,130,246,.08)',
-                  border: '1px solid rgba(59,130,246,.2)',
-                  borderRadius: 12, cursor: 'pointer', width: '100%', textAlign: 'left',
-                  marginBottom: 12,
-                }}
-              >
-                <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0 }}>add_location</span>
-                <span style={{ fontSize: 12, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
-                  {ORIGIN_STRINGS.itineraryNudge}
-                </span>
-              </button>
-            </div>
-          )}
-
-          {/* Day slots */}
-          {Array.from({ length: displayDays }, (_, i) => {
-            const day = itineraryDays[i];
-            const dayDate = addDaysToIso(startIso, i);
-            const dayLabel = new Date(dayDate + 'T12:00:00').toLocaleDateString('en-US', {
-              weekday: 'short', month: 'short', day: 'numeric',
-            });
-            return (
-              <div key={i} style={{ padding: '0 16px' }}>
-                {/* Day divider */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  margin: '24px 0 16px',
-                }}>
-                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
-                  <div style={{
-                    fontFamily: '"Plus Jakarta Sans", sans-serif',
-                    fontSize: 13, fontWeight: 700, color: '#cbd5e1',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    Day {i + 1} · {dayLabel}
-                  </div>
-                  <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
-                </div>
-
-                {/* Slot content */}
-                {day === undefined ? (
-                  <DayShimmer />
-                ) : day === null ? (
-                  <div style={{
-                    textAlign: 'center', padding: '20px 0', color: '#8e9099',
-                    fontFamily: 'Inter, sans-serif', fontSize: 12,
-                  }}>
-                    Could not load this day
-                  </div>
-                ) : (
-                  <DayStops stops={day.itinerary} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
-
-  // Main reel — itinerary exists
-  if (itinerary) {
-    return (
-      <>
-        <AmbientVideo src={currentScene} timeMins={(() => {
-          const t = tripContext.arrivalTime ?? '9:00';
-          const [h, m] = t.split(':').map(Number);
-          return (isNaN(h) ? 9 : h) * 60 + (isNaN(m) ? 0 : m);
-        })()} />
-        {/* No-origin nudge overlay */}
-        {!hasOrigin && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
-              left: 16, right: 16,
-              zIndex: 35,
-            }}
-          >
-            <button
-              onClick={() => setShowOriginSheet(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '10px 14px',
-                background: 'rgba(59,130,246,.08)',
-                border: '1px solid rgba(59,130,246,.2)',
-                borderRadius: 12, cursor: 'pointer', width: '100%', textAlign: 'left',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <span className="ms" style={{ fontSize: 16, color: '#3b82f6', flexShrink: 0 }}>add_location</span>
-              <span style={{ fontSize: 12, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
-                {ORIGIN_STRINGS.itineraryNudge}
-              </span>
-            </button>
-          </div>
-        )}
-        {weather && (
-          <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 15 }}>
-            <WeatherCanvas condition={weather.condition} />
-          </div>
-        )}
-        <ItineraryCards
-          stops={itinerary.itinerary}
-          selectedPlaces={selectedPlaces}
-          tripContext={tripContext}
-          summary={itinerary.summary}
-          persona={persona}
-          weather={weather}
-          city={city ?? itinerary.city}
-          onRemove={removeStop}
-          onSceneChange={setCurrentScene}
-          onSave={handleSave}
-          saved={saved}
-          onGoBack={goBack}
-          onGoToNav={goToNav}
-          onViewSaved={() => setTab('saved')}
-        />
-        {showRecSheet && <RecSheet onClose={() => setShowRecSheet(false)} />}
-        {showOriginSheet && (
-          <OriginInputSheet
-            onDone={() => setShowOriginSheet(false)}
-            onClose={() => setShowOriginSheet(false)}
-          />
-        )}
-        {/* Edit stops FAB */}
+      <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0d1117' }}>
+        {/* Back to explore */}
         <button
-          onClick={() => setShowRecSheet(true)}
+          onClick={() => setMode('explore')}
           style={{
-            position: 'fixed',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-            left: 20,
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 12,
             zIndex: 30,
-            width: 48,
-            height: 48,
-            borderRadius: 16,
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(10px)',
-            color: 'rgba(255,255,255,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
+            background: 'rgba(15,20,30,.85)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,.12)', borderRadius: 12,
+            padding: '8px 14px', color: '#94a3b8',
+            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
-          <span className="ms fill" style={{ fontSize: 20 }}>edit_location</span>
+          <span className="ms" style={{ fontSize: 16 }}>arrow_back</span>
+          Explore
         </button>
-      </>
-    );
-  }
 
-  return null;
-}
+        {/* Top 50%: map placeholder — will be replaced by ItineraryMapCard in Task 11 */}
+        <div style={{ flex: '0 0 50%', position: 'relative', background: '#0a0f1a' }}>
+          <MapLibreMap
+            ref={mapRef}
+            center={center}
+            places={selectedPlaces}
+            selectedPlace={selectedPlaces[itineraryActiveStop] ?? null}
+            onPlaceClick={() => {}}
+            onMoveEnd={() => {}}
+          />
+          <button
+            onClick={() => setMode('explore')}
+            style={{
+              position: 'absolute', top: 56, right: 12, zIndex: 10,
+              background: 'rgba(15,20,30,.8)', backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,.12)', borderRadius: 10,
+              width: 36, height: 36,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <span className="ms" style={{ fontSize: 18, color: '#94a3b8' }}>fit_screen</span>
+          </button>
+        </div>
 
-
-// ── Saved list ─────────────────────────────────────────────────
-
-function SavedList({ items, onOpen }: { items: SavedItinerary[]; onOpen: (id: string) => void }) {
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center py-12 gap-3">
-        <span className="ms text-5xl text-white/10">route</span>
-        <p className="text-text-3 text-sm text-center leading-relaxed">
-          No saved itineraries yet.
-          <br />
-          Build one and tap <strong className="text-text-2">Save</strong>.
-        </p>
+        {/* Bottom 50%: place card placeholder — will be replaced by ItineraryPlaceCard in Task 12 */}
+        <div style={{
+          flex: '0 0 50%', position: 'relative', overflow: 'hidden',
+          background: '#0d1117', borderTop: '1px solid rgba(255,255,255,.06)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {itinerary ? (
+            <div style={{ padding: '20px', color: '#64748b', fontSize: '0.85rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
+                {itinerary.itinerary[itineraryActiveStop]?.place ?? 'No stop selected'}
+              </div>
+              <div style={{ fontSize: '0.75rem' }}>
+                Stop {itineraryActiveStop + 1} of {itinerary.itinerary.length}
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+                <button
+                  onClick={() => setItineraryActiveStop(i => Math.max(0, i - 1))}
+                  disabled={itineraryActiveStop === 0}
+                  style={{
+                    padding: '8px 16px', borderRadius: 10,
+                    background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.08)',
+                    color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem',
+                    opacity: itineraryActiveStop === 0 ? 0.3 : 1,
+                  }}
+                >← Prev</button>
+                <button
+                  onClick={() => setItineraryActiveStop(i => Math.min(itinerary.itinerary.length - 1, i + 1))}
+                  disabled={itineraryActiveStop >= itinerary.itinerary.length - 1}
+                  style={{
+                    padding: '8px 16px', borderRadius: 10,
+                    background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.3)',
+                    color: '#a5b4fc', cursor: 'pointer', fontSize: '0.78rem',
+                    opacity: itineraryActiveStop >= itinerary.itinerary.length - 1 ? 0.3 : 1,
+                  }}
+                >Next →</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: '#64748b', fontSize: '0.85rem' }}>
+              No itinerary yet — add places in Explore mode
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
+  // ── Explore mode ────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3 pt-1">
-      {items.map(item => (
-        <button
-          key={item.id}
-          onClick={() => onOpen(item.id)}
-          className="w-full bg-surface rounded-2xl p-4 text-left border border-white/8"
-        >
-          <div className="font-heading font-bold text-text-1 text-sm">{item.city}</div>
-          <div className="text-text-3 text-xs mt-1">
-            {new Date(item.date).toLocaleDateString()} · {item.itinerary.itinerary.length} stops
-          </div>
-        </button>
-      ))}
+    <div style={{ position: 'fixed', inset: 0 }}>
+      <MapLibreMap
+        ref={mapRef}
+        center={center}
+        places={[]}
+        selectedPlace={null}
+        onPlaceClick={() => {}}
+        onMoveEnd={() => {}}
+      >
+        <ExploreMapMarkers
+          markers={markers}
+          selectedId={
+            activeMarker?.kind === 'place'
+              ? activeMarker.place.id
+              : activeMarker?.kind === 'reference'
+                ? activeMarker.pin.id
+                : null
+          }
+          onMarkerClick={handleMarkerClick}
+        />
+      </MapLibreMap>
+
+      <FootprintChips
+        footprints={cityFootprints}
+        activeCityIdx={cityFootprints.findIndex(f => f.city === city)}
+        onChipTap={handleFootprintTap}
+      />
+
+      {similarPinsState && (
+        <SimilarPinsBanner
+          category={activePlaceForCard?.category ?? 'places'}
+          onClear={clearSimilar}
+        />
+      )}
+
+      {referencePinsLoading && (
+        <div style={{
+          position: 'absolute',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
+          left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20,
+          background: 'rgba(15,20,30,.85)', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,.1)', borderRadius: 999,
+          padding: '8px 16px',
+          fontSize: '0.75rem', color: '#94a3b8',
+          display: 'flex', alignItems: 'center', gap: 8,
+          whiteSpace: 'nowrap',
+        }}>
+          <span className="ms" style={{ fontSize: 14, color: '#6366f1' }}>autorenew</span>
+          Loading place suggestions…
+        </div>
+      )}
+
+      {/* Sequencing reveal overlay */}
+      {showSequencingReveal && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 50,
+          background: 'rgba(5,8,15,0.88)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 20,
+          animation: 'fadeIn 0.3s ease',
+        }}>
+          <span className="ms fill" style={{ fontSize: 48, color: '#6366f1', animation: 'spin 1s linear infinite' }}>
+            route
+          </span>
+          {sequencingNote && (
+            <div style={{
+              maxWidth: 280, textAlign: 'center',
+              fontSize: '0.85rem', color: 'rgba(193,198,215,.8)',
+              lineHeight: 1.55, padding: '12px 20px',
+              background: 'rgba(99,102,241,.1)',
+              border: '1px solid rgba(99,102,241,.2)',
+              borderRadius: 14,
+            }}>
+              {sequencingNote}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Itinerary button */}
+      <button
+        onClick={() => {
+          setSequencingNote(
+            selectedPlaces.length > 1
+              ? `Sequenced ${selectedPlaces.length} stops by travel time and your preferences`
+              : null
+          );
+          setShowSequencingReveal(true);
+          setTimeout(() => {
+            setShowSequencingReveal(false);
+            setMode('itinerary');
+          }, 1800);
+        }}
+        disabled={selectedPlaces.length === 0}
+        style={{
+          position: 'absolute',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
+          right: 16,
+          zIndex: 20,
+          background: selectedPlaces.length === 0 ? 'rgba(99,102,241,.4)' : '#6366f1',
+          border: 'none',
+          borderRadius: 14, padding: '12px 20px',
+          fontSize: '0.85rem', fontWeight: 700, color: '#fff',
+          cursor: selectedPlaces.length === 0 ? 'not-allowed' : 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8,
+          boxShadow: '0 4px 20px rgba(99,102,241,.4)',
+        }}
+      >
+        <span className="ms fill" style={{ fontSize: 18 }}>route</span>
+        Itinerary ({selectedPlaces.length})
+      </button>
+
+      {/* Back button */}
+      <button
+        onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+          left: cityFootprints.length > 0 ? undefined : 12,
+          right: cityFootprints.length > 0 ? 12 : undefined,
+          zIndex: 20,
+          background: 'rgba(15,20,30,.75)', backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,.12)', borderRadius: '50%',
+          width: 40, height: 40,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+      >
+        <span className="ms" style={{ fontSize: 20, color: '#94a3b8' }}>arrow_back</span>
+      </button>
+
+      {/* PinCard */}
+      {activePlaceForCard && (
+        <PinCard
+          place={activePlaceForCard}
+          city={city}
+          isSelected={selectedIds.has(activePlaceForCard.id)}
+          isFavourited={favouritedIds.has(activePlaceForCard.id)}
+          onAdd={handleAdd}
+          onClose={() => setActiveMarker(null)}
+          onSimilar={handleSimilar}
+          onFavourite={handleFavourite}
+          details={details}
+          referencePin={activeRefPin}
+          travelDate={tripContext.date}
+        />
+      )}
     </div>
   );
 }
