@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { reducer, initialState } from './store';
 import type { AppState } from './store';
 import type { Itinerary } from './types';
+import type { UserTier } from './types';
 
 const mockDay1: Itinerary = {
   itinerary: [{ day: 1, time: '9:00 AM', place: 'Museum', duration: '2h', category: 'museum', tip: 'Go early', transit_to_next: '10 min walk', tags: [] }],
@@ -114,8 +115,6 @@ describe('journey reducer actions', () => {
   });
 });
 
-import type { UserTier } from './types';
-
 describe('tier state', () => {
   it('defaults to free tier', () => {
     expect(initialState.userTier).toBe('free');
@@ -143,12 +142,5 @@ describe('tier state', () => {
   it('SET_UNITS persists units preference', () => {
     const next = reducer(initialState, { type: 'SET_UNITS', units: 'miles' });
     expect(next.units).toBe('miles');
-  });
-});
-
-describe('UserTier type', () => {
-  it('accepts valid tier values', () => {
-    const tiers: UserTier[] = ['free', 'pack', 'pro'];
-    expect(tiers).toHaveLength(3);
   });
 });
