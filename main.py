@@ -1155,10 +1155,10 @@ Rules:
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
         result = json.loads(raw)
         # Normalise: ensure resolved/choice fields exist
         for card in result.get("swap_cards", []):
