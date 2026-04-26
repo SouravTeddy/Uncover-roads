@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getDaysUntilTravel, getCountdownColour } from './TripCountdown';
+import { isOnCooldown, timeSinceLabel } from './SmartUpdates';
 
 describe('getDaysUntilTravel', () => {
   it('returns null when travelDate is null', () => {
@@ -33,5 +34,37 @@ describe('getCountdownColour', () => {
 
   it('returns indigo for more than 7 days', () => {
     expect(getCountdownColour(14)).toBe('#6366f1');
+  });
+});
+
+describe('isOnCooldown', () => {
+  it('returns false for null', () => {
+    expect(isOnCooldown(null)).toBe(false);
+  });
+
+  it('returns true when last check was 1 hour ago', () => {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    expect(isOnCooldown(oneHourAgo)).toBe(true);
+  });
+
+  it('returns false when last check was 5 hours ago', () => {
+    const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
+    expect(isOnCooldown(fiveHoursAgo)).toBe(false);
+  });
+});
+
+describe('timeSinceLabel', () => {
+  it('returns empty string for null', () => {
+    expect(timeSinceLabel(null)).toBe('');
+  });
+
+  it('returns hours label for > 60 min', () => {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    expect(timeSinceLabel(twoHoursAgo)).toBe('Checked 2h ago');
+  });
+
+  it('returns minutes label for < 60 min', () => {
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    expect(timeSinceLabel(tenMinAgo)).toBe('Checked 10m ago');
   });
 });
