@@ -45,7 +45,7 @@ export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, goBack,
+    togglePlace, setFilter, trackViewedCategory, goBack,
   } = useMap();
 
   const { state, dispatch } = useAppStore();
@@ -79,7 +79,12 @@ export function MapScreen() {
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
   const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
-  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
+  const handlePinClick = useCallback((p: Place) => {
+    setClusterGroup(null);
+    setActivePlace(p);
+    fetchDetails(p);
+    trackViewedCategory(p.category);
+  }, [setActivePlace, fetchDetails, trackViewedCategory]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const clusterSheetRef    = useRef<HTMLDivElement>(null);
   const clusterTouchStartY = useRef(0);
