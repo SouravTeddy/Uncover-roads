@@ -23,7 +23,6 @@ import type {
   ReferencePin,
   FavouritedPin,
   CityFootprint,
-  UserTier,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -76,7 +75,6 @@ export interface AppState {
   autoReplenish: boolean;
   generationCount: number;
   profileLoaded: boolean;
-  userTier: UserTier;
   tripPacks: TripPack[];
   packPurchaseCount: number;
   notifPrefs: NotifPrefs;
@@ -142,15 +140,18 @@ function getStoredItineraries(): SavedItinerary[] {
     const stored = localStorage.getItem('ur_saved_itineraries');
     const items = stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
     // Backfill new fields for itineraries saved before this version
-    return items.map(item => ({
-      travelDate: null,
-      cityLat: null,
-      cityLon: null,
-      selectedPlaces: [],
-      lastUpdateCheck: null,
-      pendingSwapCards: [],
-      ...item,
-    }));
+    return items.map(rawItem => {
+      const item = rawItem as unknown as Record<string, unknown>;
+      return {
+        travelDate: null,
+        cityLat: null,
+        cityLon: null,
+        selectedPlaces: [],
+        lastUpdateCheck: null,
+        pendingSwapCards: [],
+        ...item,
+      } as unknown as SavedItinerary;
+    });
   } catch {
     return [];
   }
@@ -238,12 +239,11 @@ export const initialState: AppState = {
   route: null,
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
-  userTier: (ssGet<UserTier>('ur_ss_tier') ?? 'free'),
+  userTier: getStoredTier(),
   packTripsRemaining: (ssGet<number>('ur_ss_pack_trips') ?? 0),
   autoReplenish: (ssGet<boolean>('ur_ss_auto_replenish') ?? false),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
-  userTier: getStoredTier(),
   tripPacks: getStoredTripPacks(),
   packPurchaseCount: getStoredPackPurchaseCount(),
   notifPrefs: getStoredNotifPrefs(),

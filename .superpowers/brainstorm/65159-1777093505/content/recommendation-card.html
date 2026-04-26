@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Recommendation Card Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070c14; color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; padding: 20px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
+
+  .phone-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+
+  .phone { width: 220px; flex-shrink: 0; }
+  .phone-label { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-align: center; }
+  .phone-frame { background: #0f172a; border-radius: 28px; border: 2px solid #1e293b; overflow: hidden; aspect-ratio: 9/19.5; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+
+  /* Map half */
+  .map-half { flex: 1; background: linear-gradient(160deg, #0c1f35 0%, #0a1628 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #1e293b; }
+  .map-bg { position: absolute; inset: 0; opacity: 0.25; background-image: radial-gradient(circle at 30% 60%, #1e3a5f 0%, transparent 50%), radial-gradient(circle at 70% 30%, #1e3a5f 0%, transparent 50%); }
+  .map-pin-active { position: absolute; }
+  .pin-icon { font-size: 18px; filter: drop-shadow(0 0 8px rgba(99,202,255,.8)); }
+  .pin-label { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); background: #3b82f6; color: white; font-size: 7px; padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-weight: 600; }
+  .map-expand-btn { position: absolute; top: 8px; right: 8px; background: rgba(15,23,42,.8); border: 1px solid rgba(255,255,255,.1); border-radius: 6px; padding: 4px 7px; font-size: 9px; color: #94a3b8; backdrop-filter: blur(6px); }
+  .route-line { position: absolute; width: 60%; height: 1px; background: linear-gradient(90deg, transparent, #3b82f6 30%, #3b82f6 70%, transparent); opacity: 0.6; }
+
+  /* Card half */
+  .card-half { flex: 1; background: #0f172a; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Swipe dots */
+  .swipe-dots { display: flex; gap: 3px; justify-content: center; padding: 6px 0 4px; }
+  .dot { width: 14px; height: 3px; border-radius: 2px; }
+  .dot.active { background: #3b82f6; }
+  .dot.inactive { background: #1e293b; width: 4px; }
+
+  /* Card scroll area */
+  .card-scroll { flex: 1; overflow-y: auto; padding: 0 10px 8px; scrollbar-width: none; }
+  .card-scroll::-webkit-scrollbar { display: none; }
+
+  /* Stop header */
+  .stop-header { padding: 2px 0 6px; }
+  .stop-number { font-size: 9px; color: #475569; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .stop-name { font-size: 15px; font-weight: 800; color: #f1f5f9; line-height: 1.2; margin: 2px 0; }
+  .stop-meta { font-size: 9px; color: #64748b; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .stop-meta span { display: flex; align-items: center; gap: 2px; }
+
+  /* Why this rec */
+  .why-rec { background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(99,102,241,.08)); border: 1px solid rgba(59,130,246,.2); border-radius: 8px; padding: 7px 9px; margin: 6px 0; }
+  .why-rec-label { font-size: 7px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .why-rec-text { font-size: 9px; color: #94a3b8; line-height: 1.4; }
+
+  /* Intel row */
+  .intel-row { display: flex; gap: 5px; margin: 5px 0; flex-wrap: wrap; }
+  .intel-pill { background: #1e293b; border: 1px solid #273548; border-radius: 6px; padding: 4px 7px; font-size: 8px; color: #94a3b8; display: flex; align-items: center; gap: 3px; flex: 1; min-width: 60px; }
+  .intel-pill.highlight { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); color: #34d399; }
+  .intel-pill.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); color: #fbbf24; }
+  .intel-pill.info { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.2); color: #a78bfa; }
+
+  /* Detour banner */
+  .detour-banner { background: linear-gradient(135deg, rgba(245,158,11,.1), rgba(251,191,36,.05)); border: 1px solid rgba(245,158,11,.25); border-radius: 8px; padding: 7px 9px; margin: 5px 0; display: flex; gap: 6px; align-items: flex-start; }
+  .detour-icon { font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+  .detour-text { font-size: 8.5px; color: #fcd34d; line-height: 1.4; }
+  .detour-text strong { color: #fbbf24; display: block; font-size: 9px; margin-bottom: 1px; }
+
+  /* Local tip */
+  .local-tip { background: rgba(99,102,241,.06); border-left: 2px solid #6366f1; padding: 5px 8px; margin: 5px 0; border-radius: 0 6px 6px 0; }
+  .local-tip-label { font-size: 7px; color: #818cf8; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .local-tip-text { font-size: 8.5px; color: #94a3b8; line-height: 1.4; }
+
+  /* Best time -->
+  /* Action chips */
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; }
+  .chip { padding: 4px 8px; border-radius: 6px; font-size: 8px; font-weight: 600; cursor: pointer; border: none; }
+  .chip-primary { background: #2563eb; color: white; }
+  .chip-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #273548; }
+  .chip-book { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+
+  /* Section labels */
+  .section-divider { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; }
+  .section-divider-line { flex: 1; height: 1px; background: #1e293b; }
+  .section-divider-text { font-size: 8px; color: #334155; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Option labels */
+  .option-tag { display: inline-block; font-size: 9px; font-weight: 700; color: #60a5fa; background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2); border-radius: 4px; padding: 2px 6px; margin-bottom: 6px; }
+
+  /* Recommendation score bar */
+  .rec-score { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+  .rec-score-label { font-size: 8px; color: #475569; width: 48px; flex-shrink: 0; }
+  .rec-score-bar { flex: 1; height: 3px; background: #1e293b; border-radius: 2px; overflow: hidden; }
+  .rec-score-fill { height: 100%; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h2>Recommendation Layer in the Card</h2>
+<p class="subtitle">The bottom card is where your moat lives. These are 3 different "density levels" of intelligence shown to the user.</p>
+
+<div class="phone-row">
+
+  <!-- Option A: Essential intel only -->
+  <div class="phone">
+    <div class="option-tag">A — Essential intel</div>
+    <div class="phone-frame">
+      <div class="map-half">
+        <div class="map-bg"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+          <div style="font-size:22px;filter:drop-shadow(0 0 10px rgba(99,202,255,.9));">🕌</div>
+        </div>
+        <div class="map-expand-btn">⛶ Full map</div>
+        <div style="position:absolute;bottom:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">← 12 min walk</div>
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">8 min drive →</div>
+        </div>
+      </div>
+      <div class="card-half">
+        <div class="swipe-dots"><div class="dot inactive"></div><div class="dot active"></div><div class="dot inactive"></div><div class="dot inactive"></div></div>
+        <div class="card-scroll">
+          <div class="stop-header">
+            <div class="stop-number">Stop 2 of 6 · 10:30am</div>
+            <div class="stop-name">Jama Masjid</div>
+            <div class="stop-meta"><span>📍 Old Delhi</span><span>⏱ 45 min</span><span>💰 Free</span></div>
+          </div>
+          <div class="why-rec">
+            <div class="why-rec-label">✦ Why we picked this</div>
+            <div class="why-rec-text">Matches your <strong style="color:#93c5fd;">cultural explorer</strong> persona. One of Asia's largest mosques — best visited on a weekday morning before crowds.</div>
+          </div>
+          <div class="intel-row">
+            <div class="intel-pill highlight">🌤 Clear skies today</div>
+            <div class="intel-pill warn">⏰ Closes 12:30pm Fri</div>
+          </div>
+          <div class="local-tip">
+            <div class="local-tip-label">Local tip</div>
+            <div class="local-tip-text">Climb the southern minaret for a rooftop view of Old Delhi — worth the ₹100 extra.</div>
+          </div>
+          <div class="chips">
+            <button class="chip chip-primary">Directions</button>
+            <button class="chip chip-secondary">Photos</button>
+            <button class="chip chip-secondary">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Full intelligence -->
+  <div class="phone">
+    <div class="option-tag">B — Full intelligence</div>
+    <div class="phone-frame">
+      <div class="map-half">
+        <div class="map-bg"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+          <div style="font-size:22px;filter:drop-shadow(0 0 10px rgba(99,202,255,.9));">🕌</div>
+        </div>
+        <div class="map-expand-btn">⛶ Full map</div>
+        <div style="position:absolute;bottom:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">← 12 min walk</div>
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">8 min drive →</div>
+        </div>
+      </div>
+      <div class="card-half">
+        <div class="swipe-dots"><div class="dot inactive"></div><div class="dot active"></div><div class="dot inactive"></div><div class="dot inactive"></div></div>
+        <div class="card-scroll">
+          <div class="stop-header">
+            <div class="stop-number">Stop 2 of 6 · 10:30am</div>
+            <div class="stop-name">Jama Masjid</div>
+            <div class="stop-meta"><span>📍 Old Delhi</span><span>⏱ 45 min</span><span>💰 Free</span></div>
+          </div>
+          <div class="why-rec">
+            <div class="why-rec-label">✦ Why we picked this</div>
+            <div class="why-rec-text">Matches your <strong style="color:#93c5fd;">cultural explorer</strong> + <strong style="color:#93c5fd;">slow pace</strong> profile. Paired with Red Fort next — walking distance, same era.</div>
+          </div>
+
+          <!-- Persona fit bars -->
+          <div style="margin: 5px 0;">
+            <div class="rec-score"><div class="rec-score-label" style="font-size:7px;">Culture fit</div><div class="rec-score-bar"><div class="rec-score-fill" style="width:92%;background:#3b82f6;"></div></div><div style="font-size:7px;color:#60a5fa;">92%</div></div>
+            <div class="rec-score"><div class="rec-score-label" style="font-size:7px;">Budget fit</div><div class="rec-score-bar"><div class="rec-score-fill" style="width:100%;background:#10b981;"></div></div><div style="font-size:7px;color:#34d399;">Free</div></div>
+            <div class="rec-score"><div class="rec-score-label" style="font-size:7px;">Time fit</div><div class="rec-score-bar"><div class="rec-score-fill" style="width:78%;background:#a78bfa;"></div></div><div style="font-size:7px;color:#a78bfa;">Good</div></div>
+          </div>
+
+          <div class="intel-row">
+            <div class="intel-pill highlight">🌤 Clear, 28°C</div>
+            <div class="intel-pill warn">⏰ Closes 12:30pm Fri</div>
+            <div class="intel-pill info">👥 Low crowd now</div>
+          </div>
+
+          <div class="detour-banner">
+            <div class="detour-icon">🔀</div>
+            <div class="detour-text">
+              <strong>Detour nearby: Karim's Restaurant</strong>
+              +22 min · 400m detour · Perfect for lunch after this stop. Mughlai cuisine, legendary since 1913.
+              <span style="display:inline-block;margin-top:3px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:3px;padding:1px 5px;font-size:7px;color:#fbbf24;cursor:pointer;">Add to route →</span>
+            </div>
+          </div>
+
+          <div class="local-tip">
+            <div class="local-tip-label">Local tip</div>
+            <div class="local-tip-text">Climb the southern minaret for a panoramic view — ₹100 extra, absolutely worth it. Dress modestly; scarves available at entry.</div>
+          </div>
+
+          <div class="chips">
+            <button class="chip chip-primary">Directions</button>
+            <button class="chip chip-book">Book entry</button>
+            <button class="chip chip-secondary">Photos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Contextual — collapses to essential, expands on tap -->
+  <div class="phone">
+    <div class="option-tag">C — Progressive reveal</div>
+    <div class="phone-frame">
+      <div class="map-half">
+        <div class="map-bg"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+          <div style="font-size:22px;filter:drop-shadow(0 0 10px rgba(99,202,255,.9));">🕌</div>
+        </div>
+        <div class="map-expand-btn">⛶ Full map</div>
+        <div style="position:absolute;bottom:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">← 12 min walk</div>
+          <div style="font-size:8px;color:#60a5fa;opacity:.7;">8 min drive →</div>
+        </div>
+      </div>
+      <div class="card-half">
+        <div class="swipe-dots"><div class="dot inactive"></div><div class="dot active"></div><div class="dot inactive"></div><div class="dot inactive"></div></div>
+        <div class="card-scroll">
+          <div class="stop-header">
+            <div class="stop-number">Stop 2 of 6 · 10:30am</div>
+            <div class="stop-name">Jama Masjid</div>
+            <div class="stop-meta"><span>📍 Old Delhi</span><span>⏱ 45 min</span><span>💰 Free</span></div>
+          </div>
+
+          <!-- Always-visible summary rec -->
+          <div style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(99,102,241,.06));border:1px solid rgba(59,130,246,.18);border-radius:8px;padding:6px 8px;margin:5px 0;">
+            <div style="font-size:9px;color:#93c5fd;line-height:1.4;">Picked for your <strong>culture + slow pace</strong> profile. Pairs perfectly with Red Fort — same walk, same era.</div>
+          </div>
+
+          <!-- Alert pills — only critical ones always shown -->
+          <div class="intel-row">
+            <div class="intel-pill warn">⏰ Closes 12:30pm Fri</div>
+            <div class="intel-pill highlight">👥 Low crowds now</div>
+          </div>
+
+          <!-- Detour — always visible if relevant -->
+          <div class="detour-banner">
+            <div class="detour-icon">🔀</div>
+            <div class="detour-text">
+              <strong>Detour: Karim's · +22 min</strong>
+              Legendary Mughlai lunch spot, 400m away.
+              <span style="display:inline-block;margin-top:2px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:3px;padding:1px 5px;font-size:7px;color:#fbbf24;cursor:pointer;">Add →</span>
+            </div>
+          </div>
+
+          <!-- "More intel" expand -->
+          <div style="border:1px dashed #1e293b;border-radius:7px;padding:6px 9px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
+            <span style="font-size:8.5px;color:#475569;">Local tips · weather · fit score</span>
+            <span style="font-size:10px;color:#334155;">▾</span>
+          </div>
+
+          <div class="chips">
+            <button class="chip chip-primary">Directions</button>
+            <button class="chip chip-book">Book entry</button>
+            <button class="chip chip-secondary">Photos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="background:#1e293b;border-radius:10px;padding:14px;margin-top:4px;">
+  <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:8px;">Intelligence signals always available across all options</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#60a5fa;font-weight:700;margin-bottom:3px;">✦ Why picked</div>
+      <div style="font-size:8px;color:#64748b;">Persona match reason — cultural, budget, pace, group type</div>
+    </div>
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#34d399;font-weight:700;margin-bottom:3px;">🌤 Live weather</div>
+      <div style="font-size:8px;color:#64748b;">Temp, condition, impact on this stop (outdoor/indoor)</div>
+    </div>
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#f59e0b;font-weight:700;margin-bottom:3px;">🔀 Detour intel</div>
+      <div style="font-size:8px;color:#64748b;">Amber, not red. Extra time, why it's worth it, one-tap add</div>
+    </div>
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#a78bfa;font-weight:700;margin-bottom:3px;">⏱ Best time</div>
+      <div style="font-size:8px;color:#64748b;">Crowd forecast, opening hours alert, golden hour flag</div>
+    </div>
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#fb923c;font-weight:700;margin-bottom:3px;">📍 Local tip</div>
+      <div style="font-size:8px;color:#64748b;">One curated insider tip per stop — not generic copy</div>
+    </div>
+    <div style="background:#0f172a;border-radius:7px;padding:8px;">
+      <div style="font-size:9px;color:#38bdf8;font-weight:700;margin-bottom:3px;">🔗 Pair logic</div>
+      <div style="font-size:8px;color:#64748b;">"Pairs with next stop" — explains why stops are sequenced</div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:16px;font-size:12px;color:#64748b;line-height:1.5;">💡 Recommendation: <strong style="color:#f1f5f9;">B (Full intelligence)</strong> — this is your moat. Every signal, always visible. The card should feel like a knowledgeable local friend is talking, not a database. Option C (progressive) hides intel behind a tap — that's a miss for a first impression. Show the depth upfront.</p>
+</body>
+</html>
