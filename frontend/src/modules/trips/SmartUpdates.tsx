@@ -100,7 +100,7 @@ export function SmartUpdates({ trip }: Props) {
     setUpdateCards(prev => prev.filter(c => c.id !== cardId));
   }
 
-  function handleAction(card: TripUpdateCard) {
+  function handleAction(_card: TripUpdateCard) {
     // View action — stub until deep-link to event is available
   }
 

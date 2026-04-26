@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { reducer, initialState, getGenerationAccess } from './store';
 import type { AppState } from './store';
 import type { Itinerary } from './types';
-import type { UserTier } from './types';
 
 const mockDay1: Itinerary = {
   itinerary: [{ day: 1, time: '9:00 AM', place: 'Museum', duration: '2h', category: 'museum', tip: 'Go early', transit_to_next: '10 min walk', tags: [] }],

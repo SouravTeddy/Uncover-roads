@@ -14,7 +14,7 @@ interface Props {
 const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
 export function ItineraryPlaceCard({
-  stops, selectedPlaces, weather, referencePins, travelDate, onStopChange,
+  stops, selectedPlaces, weather, referencePins, onStopChange,
 }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const touchStartX = useRef(0);

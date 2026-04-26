@@ -35,6 +35,8 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     generationCount: 0,
     profileLoaded: false,
     userTier: 'free',
+    packTripsRemaining: 0,
+    autoReplenish: false,
     tripPacks: [],
     packPurchaseCount: 0,
     notifPrefs: {
@@ -48,6 +50,10 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     journeyBudgetDays: null,
     advisorMessages: [],
     pendingActivePlace: null,
+    referencePins: [],
+    favouritedPins: [],
+    cityFootprints: [],
+    similarPinsState: null,
     ...overrides,
   };
 }

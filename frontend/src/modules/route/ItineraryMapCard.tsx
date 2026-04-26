@@ -5,7 +5,7 @@ import type { Place } from '../../shared/types';
 import { CATEGORY_EMOJI } from '../map/ExploreMapMarkers';
 
 interface Props {
-  mapRef: React.RefObject<MapHandle>;
+  mapRef: React.RefObject<MapHandle | null>;
   center: [number, number];
   selectedPlaces: Place[];
   activeStopIdx: number;

@@ -17,7 +17,7 @@ export function getPackRemainingTrips(packs: TripPack[]): number {
  * 1st and 2nd generations are fully free; restriction kicks in on 3rd.
  */
 export function isCurationLocked(state: AppState): boolean {
-  if (state.userTier === 'pro' || state.userTier === 'unlimited') return false;
+  if (state.userTier === 'pro') return false;
   if (getPackRemainingTrips(state.tripPacks) > 0) return false;
   return state.generationCount >= 2;
 }
@@ -29,7 +29,7 @@ export function isCurationLocked(state: AppState): boolean {
  * Unlimited: never blocked.
  */
 export function shouldShowPaywall(state: AppState): boolean {
-  if (state.userTier === 'pro' || state.userTier === 'unlimited') return false;
+  if (state.userTier === 'pro') return false;
   if (getPackRemainingTrips(state.tripPacks) > 0) return false;
   return state.generationCount >= 3;
 }
