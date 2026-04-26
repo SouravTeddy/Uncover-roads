@@ -254,6 +254,56 @@ export const api = {
     if (lon !== undefined) params.set('lon', String(lon));
     return get<Place[]>(`/events?${params}`);
   },
+
+  referencePins: async (params: {
+    city: string;
+    personaArchetype: string;
+    days: number;
+    prevCity?: string;
+    prevPicks?: string[];
+  }): Promise<{ pins: import('./types').ReferencePin[]; storyCards: import('./types').StoryCard[] }> => {
+    return post('/reference-pins', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      days: params.days,
+      prev_city: params.prevCity ?? '',
+      prev_picks: params.prevPicks ?? [],
+    });
+  },
+
+  similarPlaces: async (params: {
+    placeName: string;
+    city: string;
+    personaArchetype: string;
+    category: string;
+  }): Promise<{ places: import('./types').ReferencePin[] }> => {
+    return post('/similar-places', {
+      place_name: params.placeName,
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      category: params.category,
+    });
+  },
+
+  recalibrate: (params: {
+    stops: import('./types').ItineraryStop[];
+    currentTime: string;
+    persona: string;
+    pace: string;
+    city: string;
+    lat: number;
+    lon: number;
+    travelDate: string;
+  }) => post<{ swap_cards: import('./types').SwapCard[] }>('/recalibrate', {
+    stops:        params.stops,
+    current_time: params.currentTime,
+    persona:      params.persona,
+    pace:         params.pace,
+    city:         params.city,
+    lat:          params.lat,
+    lon:          params.lon,
+    travel_date:  params.travelDate,
+  }),
 };
 
 // Note: backend param is 'query' (not 'input') — renamed to avoid Python builtin shadow
