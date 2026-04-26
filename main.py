@@ -1089,6 +1089,90 @@ Rules:
         return {"error": str(e)}
 
 
+@app.post("/recalibrate")
+def recalibrate_endpoint(body: dict):
+    """
+    Day-of recalibration: given current stops, time, and live conditions,
+    return only stops that benefit from a timing/routing adjustment.
+    Returns: { swap_cards: [...] }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"swap_cards": []}
+
+    stops         = body.get("stops", [])
+    current_time  = body.get("current_time", "09:00")
+    persona       = body.get("persona", "explorer")
+    pace          = body.get("pace", "balanced")
+    city          = body.get("city", "")
+    travel_date   = body.get("travel_date", "")
+
+    if not stops or not city:
+        return {"swap_cards": []}
+
+    stops_text = "\n".join(
+        f"{i+1}. {s.get('place','?')} | time: {s.get('time','?')} | duration: {s.get('duration','?')}"
+        for i, s in enumerate(stops)
+    )
+
+    prompt = f"""You are a real-time travel advisor. A {persona} traveler with a {pace} pace
+is currently in {city} on {travel_date}. The current local time is {current_time}.
+
+Their planned itinerary:
+{stops_text}
+
+Identify ONLY stops that genuinely benefit from a change given the current time and typical
+day-of conditions (opening times, crowds, sequencing efficiency). Do not suggest changes just
+to change things.
+
+For each stop that needs adjustment, return a swap card. Return an empty array if no changes
+are needed.
+
+Return JSON only:
+{{
+  "swap_cards": [
+    {{
+      "id": "swap-<stop_slug>",
+      "stop_name": "Place Name",
+      "stop_idx": 0,
+      "current_summary": "2:00 PM · 2 hrs",
+      "current_note": "optional note about current plan",
+      "suggested_summary": "Move to 11:00 AM",
+      "suggested_note": "Reason in 1-2 sentences. Be specific about why now is better."
+    }}
+  ]
+}}
+
+Rules:
+- stop_idx is zero-based
+- Return only valid JSON, no markdown fences
+- Maximum 3 swap cards — prioritise the highest-impact changes only"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        result = json.loads(raw)
+        # Normalise: ensure resolved/choice fields exist
+        for card in result.get("swap_cards", []):
+            card.setdefault("resolved", False)
+            card.setdefault("choice", None)
+        return result
+    except json.JSONDecodeError as e:
+        print(f"RECALIBRATE JSON ERROR: {e}")
+        return {"swap_cards": []}
+    except Exception as e:
+        print(f"RECALIBRATE ERROR: {e}")
+        return {"swap_cards": []}
+
+
 # =========================================
 # PERSONA ENGINE (protected — logic in ip_engine.py)
 # =========================================
