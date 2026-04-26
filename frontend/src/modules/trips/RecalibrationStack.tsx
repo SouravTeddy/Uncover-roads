@@ -66,7 +66,7 @@ export function RecalibrationStack({ trip }: Props) {
 
     // If 'new', update the stop in the itinerary
     if (choice === 'new') {
-      const card = cards.find(c => c.id === cardId);
+      const card = updated.find(c => c.id === cardId);
       if (card && trip.itinerary) {
         const stops = [...trip.itinerary.itinerary];
         if (stops[card.stopIdx]) {
@@ -139,6 +139,3 @@ export function RecalibrationStack({ trip }: Props) {
     </div>
   );
 }
-
-// Export runRecalibration for external trigger from ArrivalBanner integration
-export type RecalibrationHandle = { run: () => void };
