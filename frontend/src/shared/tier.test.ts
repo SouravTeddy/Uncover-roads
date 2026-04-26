@@ -18,8 +18,8 @@ describe('isCurationLocked', () => {
     expect(isCurationLocked(state({ userTier: 'free', generationCount: 0 }))).toBe(false);
   });
 
-  it('is true for free tier on 2nd generation', () => {
-    expect(isCurationLocked(state({ userTier: 'free', generationCount: 1 }))).toBe(true);
+  it('is false for free tier on 2nd generation', () => {
+    expect(isCurationLocked(state({ userTier: 'free', generationCount: 1 }))).toBe(false);
   });
 
   it('is true for free tier on 3rd generation', () => {
