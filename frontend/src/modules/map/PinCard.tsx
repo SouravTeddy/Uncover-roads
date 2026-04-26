@@ -147,6 +147,7 @@ export function PinCard({
 
   const whyRec = referencePin?.whyRec ?? place.reason ?? null;
   const localTip = referencePin?.localTip ?? null;
+  const reasonSignal = place.reasonSignal ?? null;
 
   const googleMapsUrl = details?.place_id
     ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
@@ -310,6 +311,18 @@ export function PinCard({
               }}>
                 {whyRec}
               </div>
+              {reasonSignal && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  marginTop: 6, padding: '3px 9px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700,
+                  ...(reasonSignal === 'persona'
+                    ? { background: 'rgba(99,102,241,.12)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,.25)' }
+                    : { background: 'rgba(20,184,166,.1)', color: '#5eead4', border: '1px solid rgba(20,184,166,.25)' }
+                  ),
+                }}>
+                  {reasonSignal === 'persona' ? '✦ Matched to your travel style' : "◎ Based on what you've been exploring"}
+                </div>
+              )}
             </div>
           )}
 
