@@ -150,7 +150,7 @@ export function PinCard({
 
   const googleMapsUrl = details?.place_id
     ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.title + ' ' + city)}`;
+    : `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`;
   const website = d?.website || place.tags?.website || null;
 
   let catLabel = CATEGORY_LABELS[place.category] ?? 'Place';
