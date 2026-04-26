@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
+import { PackPurchaseConfirm } from './PackPurchaseConfirm';
 
 interface Props {
   onClose: () => void;
@@ -8,6 +10,7 @@ interface Props {
 
 export function MiniPaywall({ onClose, context }: Props) {
   const { state, dispatch } = useAppStore();
+  const [purchaseConfirm, setPurchaseConfirm] = useState<{ tripsAdded: number } | null>(null);
 
   function handlePackPurchase(size: 1 | 5) {
     // TODO: integrate payment provider (Stripe / App Store / Play Store)
@@ -15,12 +18,24 @@ export function MiniPaywall({ onClose, context }: Props) {
     const current = state.packTripsRemaining;
     dispatch({ type: 'SET_TIER', tier: 'pack' });
     dispatch({ type: 'SET_PACK_TRIPS', count: current + size });
-    onClose();
+    setPurchaseConfirm({ tripsAdded: size });
   }
 
   function handleViewAllPlans() {
     onClose();
     dispatch({ type: 'GO_TO', screen: 'subscription' });
+  }
+
+  if (purchaseConfirm) {
+    return (
+      <PackPurchaseConfirm
+        tripsAdded={purchaseConfirm.tripsAdded}
+        onDone={() => {
+          setPurchaseConfirm(null);
+          onClose();
+        }}
+      />
+    );
   }
 
   return (
