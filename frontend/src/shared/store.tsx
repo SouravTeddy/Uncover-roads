@@ -140,7 +140,17 @@ function getStoredPersona(): Persona | null {
 function getStoredItineraries(): SavedItinerary[] {
   try {
     const stored = localStorage.getItem('ur_saved_itineraries');
-    return stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    const items = stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    // Backfill new fields for itineraries saved before this version
+    return items.map(item => ({
+      travelDate: null,
+      cityLat: null,
+      cityLon: null,
+      selectedPlaces: [],
+      lastUpdateCheck: null,
+      pendingSwapCards: [],
+      ...item,
+    }));
   } catch {
     return [];
   }
@@ -271,6 +281,7 @@ export type Action =
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
   | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
+  | { type: 'UPDATE_SAVED_ITINERARY'; id: string; patch: Partial<SavedItinerary> }
   | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
   | { type: 'SET_TIER'; tier: UserTier }
   | { type: 'SET_PACK_TRIPS'; count: number }
@@ -404,6 +415,16 @@ export function reducer(state: AppState, action: Action): AppState {
       } catch {
         // ignore
       }
+      return { ...state, savedItineraries: updated };
+    }
+
+    case 'UPDATE_SAVED_ITINERARY': {
+      const updated = state.savedItineraries.map(s =>
+        s.id === action.id ? { ...s, ...action.patch } : s
+      );
+      try {
+        localStorage.setItem('ur_saved_itineraries', JSON.stringify(updated));
+      } catch { /* ignore */ }
       return { ...state, savedItineraries: updated };
     }
 
