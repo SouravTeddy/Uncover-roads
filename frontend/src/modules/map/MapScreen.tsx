@@ -27,6 +27,7 @@ import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { JourneyStrip } from '../journey';
+import { FavoritesMarker, FavoritesSheet } from './FavoritesLayer';
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ export function MapScreen() {
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
+  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
 
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
@@ -442,7 +444,14 @@ export function MapScreen() {
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
-      />
+      >
+        {!activePlace && state.favouritedPins.length > 0 && (
+          <FavoritesMarker
+            pins={state.favouritedPins}
+            onClick={() => setShowFavoritesSheet(true)}
+          />
+        )}
+      </MapLibreMap>
 
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
@@ -670,6 +679,27 @@ export function MapScreen() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Favorites sheet */}
+      {showFavoritesSheet && !activePlace && (
+        <FavoritesSheet
+          pins={state.favouritedPins}
+          onClose={() => setShowFavoritesSheet(false)}
+          onSelect={(pin) => {
+            setShowFavoritesSheet(false);
+            const place: Place = {
+              id: pin.placeId,
+              title: pin.title,
+              lat: pin.lat,
+              lon: pin.lon,
+              category: 'place',
+              _city: pin.city,
+            };
+            mapHandleRef.current?.flyTo(pin.lat, pin.lon);
+            handlePinClick(place);
+          }}
+        />
       )}
 
       {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
