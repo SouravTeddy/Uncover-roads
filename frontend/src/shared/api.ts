@@ -208,10 +208,22 @@ export const api = {
     return get<Place[]>(`/map-data?city=${encodeURIComponent(city)}`);
   },
 
-  recommended: (city: string, persona: Persona) =>
-    get<Place[]>(
-      `/recommended-places?city=${encodeURIComponent(city)}&persona=${encodeURIComponent(JSON.stringify(persona))}`
-    ),
+  recommendedPlaces: (params: {
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    venueFilters: string[];
+    itineraryBias: string[];
+    viewedCategories: string[];
+  }) =>
+    post<{ picks: Place[] }>('/recommended-places', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc: params.personaDesc,
+      venue_filters: params.venueFilters,
+      itinerary_bias: params.itineraryBias,
+      viewed_categories: params.viewedCategories,
+    }),
 
   citySearch: (q: string) =>
     get<CityResult[]>(`/city-search?q=${encodeURIComponent(q)}`),
