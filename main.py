@@ -1179,7 +1179,7 @@ Rules:
                     pass  # skip geocode failure, keep original coords
 
             valid.append({
-                "id":       f"rec-{p['title'].lower().replace(' ', '-')[:20]}",
+                "id":       f"rec-{p['title'].lower()[:20]}",
                 "title":    p["title"],
                 "category": p.get("category", "place"),
                 "lat":      lat,
