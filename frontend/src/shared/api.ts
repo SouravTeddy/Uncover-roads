@@ -285,7 +285,7 @@ export const api = {
     });
   },
 
-  recalibrate: (params: {
+  recalibrate: async (params: {
     stops: import('./types').ItineraryStop[];
     currentTime: string;
     persona: string;
@@ -294,16 +294,41 @@ export const api = {
     lat: number;
     lon: number;
     travelDate: string;
-  }) => post<{ swap_cards: import('./types').SwapCard[] }>('/recalibrate', {
-    stops:        params.stops,
-    current_time: params.currentTime,
-    persona:      params.persona,
-    pace:         params.pace,
-    city:         params.city,
-    lat:          params.lat,
-    lon:          params.lon,
-    travel_date:  params.travelDate,
-  }),
+  }): Promise<{ swap_cards: import('./types').SwapCard[] }> => {
+    const raw = await post<{ swap_cards: Array<{
+      id: string;
+      stop_name: string;
+      stop_idx: number;
+      current_summary: string;
+      current_note?: string;
+      suggested_summary: string;
+      suggested_note: string;
+      resolved: boolean;
+      choice: 'new' | 'original' | null;
+    }> }>('/recalibrate', {
+      stops:        params.stops,
+      current_time: params.currentTime,
+      persona:      params.persona,
+      pace:         params.pace,
+      city:         params.city,
+      lat:          params.lat,
+      lon:          params.lon,
+      travel_date:  params.travelDate,
+    });
+    return {
+      swap_cards: (raw.swap_cards ?? []).map(c => ({
+        id:               c.id,
+        stopName:         c.stop_name,
+        stopIdx:          c.stop_idx,
+        currentSummary:   c.current_summary,
+        currentNote:      c.current_note,
+        suggestedSummary: c.suggested_summary,
+        suggestedNote:    c.suggested_note,
+        resolved:         c.resolved,
+        choice:           c.choice,
+      })),
+    };
+  },
 };
 
 // Note: backend param is 'query' (not 'input') — renamed to avoid Python builtin shadow
