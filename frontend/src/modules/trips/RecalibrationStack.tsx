@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { SwapCard } from './SwapCard';
@@ -6,15 +6,23 @@ import type { SavedItinerary, SwapCard as SwapCardType } from '../../shared/type
 
 interface Props {
   trip: SavedItinerary;
+  autoRun?: boolean;  // if true, trigger runRecalibration on mount
 }
 
-export function RecalibrationStack({ trip }: Props) {
+export function RecalibrationStack({ trip, autoRun }: Props) {
   const { dispatch } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [cards, setCards] = useState<SwapCardType[]>(trip.pendingSwapCards ?? []);
 
   const unresolved = cards.filter(c => !c.resolved);
   const allDone    = cards.length > 0 && unresolved.length === 0;
+
+  useEffect(() => {
+    if (autoRun && cards.length === 0) {
+      runRecalibration();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
 
   async function runRecalibration() {
     if (!trip.itinerary?.itinerary || loading) return;
@@ -72,8 +80,7 @@ export function RecalibrationStack({ trip }: Props) {
         if (stops[card.stopIdx]) {
           stops[card.stopIdx] = {
             ...stops[card.stopIdx],
-            time: card.suggestedSummary,
-            tip: card.suggestedNote,
+            tip: `${card.suggestedSummary} · ${card.suggestedNote}`,
           };
           dispatch({
             type: 'UPDATE_SAVED_ITINERARY',

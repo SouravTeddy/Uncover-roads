@@ -42,6 +42,7 @@ function groupByMonth(items: SavedItinerary[]): { label: string; items: SavedIti
 
 function TripCard({ item }: { item: SavedItinerary }) {
   const [expanded, setExpanded] = useState(false);
+  const [autoRunRecalibration, setAutoRunRecalibration] = useState(false);
 
   const archetype = item.persona?.archetype ?? '';
   const colors    = ARCHETYPE_COLORS[archetype] ?? { primary: '#60a5fa', bg: 'rgba(96,165,250,.12)' };
@@ -66,6 +67,7 @@ function TripCard({ item }: { item: SavedItinerary }) {
 
   function handleArrivalCheck() {
     setExpanded(true);
+    setAutoRunRecalibration(true);
   }
 
   return (
@@ -152,7 +154,7 @@ function TripCard({ item }: { item: SavedItinerary }) {
 
           {/* Recalibration stack — pending swap cards (day-of) */}
           {isToday && (
-            <RecalibrationStack trip={item} />
+            <RecalibrationStack trip={item} autoRun={autoRunRecalibration} />
           )}
 
           {/* Full stop list */}

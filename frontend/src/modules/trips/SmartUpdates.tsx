@@ -101,8 +101,7 @@ export function SmartUpdates({ trip }: Props) {
   }
 
   function handleAction(card: TripUpdateCard) {
-    // For event cards: open website if available (no-op stub otherwise)
-    console.log('Update card action:', card);
+    // View action — stub until deep-link to event is available
   }
 
   return (
