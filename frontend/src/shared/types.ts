@@ -258,9 +258,15 @@ export interface RouteData {
 export interface SavedItinerary {
   id: string;
   city: string;
-  date: string;
+  date: string;              // ISO datetime the trip was saved
+  travelDate: string | null; // ISO date of actual travel (YYYY-MM-DD)
+  cityLat: number | null;
+  cityLon: number | null;
+  selectedPlaces: Place[];   // places user added — needed for hours re-check
   itinerary: Itinerary;
   persona: Persona;
+  lastUpdateCheck: string | null; // ISO datetime of last update check
+  pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
 }
 
 // ── City search ───────────────────────────────────────────────
@@ -401,3 +407,30 @@ export type PinState = 'added' | 'reference' | 'similar' | 'favourited';
 // ── Pricing / subscription ────────────────────────────────────
 
 export type UserTier = 'free' | 'pack' | 'pro';
+
+// ── Trip intelligence ─────────────────────────────────────────
+
+export type UpdateCardKind = 'event' | 'hours_change' | 'weather';
+
+export interface TripUpdateCard {
+  id: string;
+  kind: UpdateCardKind;
+  tripId: string;
+  title: string;
+  detail: string;
+  affectedStop?: string;
+  actionLabel?: string;
+  severity: 'info' | 'warning';
+}
+
+export interface SwapCard {
+  id: string;
+  stopName: string;
+  stopIdx: number;
+  currentSummary: string;
+  currentNote?: string;
+  suggestedSummary: string;
+  suggestedNote: string;
+  resolved: boolean;
+  choice: 'new' | 'original' | null;
+}
