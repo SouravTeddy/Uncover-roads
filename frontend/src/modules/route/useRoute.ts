@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../shared/store';
+import { useAppStore, getGenerationAccess } from '../../shared/store';
 import { api, aiItineraryStream } from '../../shared/api';
 import { shouldShowPaywall } from '../../shared/tier';
 import type { ItineraryRequest } from '../../shared/api';
@@ -37,6 +37,14 @@ export function useRoute() {
     }
 
     if (!persona || !state.cityGeo) return;
+
+    const access = getGenerationAccess(state.userTier, state.generationCount, state.packTripsRemaining);
+    if (!access.allowed) {
+      // Navigate to subscription screen for free users who've hit limit
+      // or pack users with zero balance
+      dispatch({ type: 'GO_TO', screen: 'subscription' });
+      return;
+    }
 
     const days = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
     const startDate = state.travelStartDate ?? state.tripContext.date;
