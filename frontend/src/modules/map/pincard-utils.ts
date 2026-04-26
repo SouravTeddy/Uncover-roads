@@ -43,3 +43,50 @@ export function getDirectionsUrl(lat: number, lon: number, userAgent = navigator
     ? `maps://maps.apple.com/?q=${lat},${lon}`
     : `https://maps.google.com/maps?q=${lat},${lon}`;
 }
+
+const SHORT_DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Given Google's weekday_text array and an ISO travel date ("YYYY-MM-DD"),
+ * returns a badge object for the travel date's day of week.
+ *
+ * Returns null if weekdayText is empty or travelDate is not parseable.
+ */
+export function getTravelDateBadge(
+  weekdayText: string[],
+  travelDate: string,
+): { text: string; status: 'open' | 'closed' } | null {
+  if (!weekdayText.length) return null;
+
+  // Parse the travel date as UTC noon to avoid timezone shifts
+  const d = new Date(travelDate + 'T12:00:00Z');
+  if (isNaN(d.getTime())) return null;
+
+  const jsDay = d.getUTCDay(); // 0=Sun, 1=Mon, …, 6=Sat
+  const googleIdx = jsDay === 0 ? 6 : jsDay - 1; // Google's array: Mon=0 … Sun=6
+  const line = weekdayText[googleIdx];
+  if (!line) return null;
+
+  const shortDay = SHORT_DAY[jsDay];
+  const dayNum = d.getUTCDate();
+  const monthName = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+
+  const isClosed = /closed/i.test(line);
+  if (isClosed) {
+    return {
+      text: `⚠️ Closed ${shortDay} · Your travel day is ${shortDay} ${dayNum} ${monthName}`,
+      status: 'closed',
+    };
+  }
+
+  // Extract closing time from "DayName: HH:MM AM – HH:MM AM"
+  const closeMatch = line.match(/[–\-]\s*(\d+:\d+\s*(?:AM|PM))/i);
+  const closeTime = closeMatch ? closeMatch[1] : null;
+
+  return {
+    text: closeTime
+      ? `📅 Open · ${shortDay} ${dayNum} ${monthName} · Closes ${closeTime}`
+      : `📅 Open · ${shortDay} ${dayNum} ${monthName}`,
+    status: 'open',
+  };
+}

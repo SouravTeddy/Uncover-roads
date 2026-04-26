@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pin Card v3</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070c14; color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; padding: 20px 16px 40px; }
+  h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; line-height: 1.5; }
+  .section-title { font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+  .phone { width: 210px; flex-shrink: 0; }
+  .phone-label { font-size: 10px; font-weight: 700; color: #475569; margin-bottom: 8px; text-align: center; letter-spacing: .5px; text-transform: uppercase; }
+
+  .sheet { background: #141921; border-radius: 20px 20px 0 0; overflow: hidden; box-shadow: 0 -8px 48px rgba(0,0,0,.7); }
+  .drag-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .drag-handle div { width: 32px; height: 3px; background: rgba(255,255,255,.12); border-radius: 2px; }
+
+  .hero { position: relative; height: 118px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .hero-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 35%, rgba(0,0,0,.65) 100%); }
+
+  .travel-badge { position: absolute; bottom: 8px; left: 10px; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 7.5px; font-weight: 700; backdrop-filter: blur(10px); }
+  .travel-badge.ok { background: rgba(22,163,74,.25); border: 1px solid rgba(74,222,128,.25); color: #4ade80; }
+  .travel-badge.warn { background: rgba(245,158,11,.2); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; }
+
+  /* Heart button — top right of hero */
+  .heart-btn { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; transition: transform .15s; z-index: 2; }
+  .heart-btn:active { transform: scale(.88); }
+  .heart-btn.active { background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.35); }
+
+  /* Close button — top left */
+  .close-btn { position: absolute; top: 10px; left: 10px; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; color: #94a3b8; z-index: 2; }
+
+  .body { padding: 11px 14px 14px; }
+  .name-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .place-name { font-size: 15px; font-weight: 800; color: #f9f9ff; line-height: 1.2; }
+  .place-sub { font-size: 9px; color: rgba(193,198,215,.4); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+  .rating-block { text-align: right; flex-shrink: 0; margin-left: 8px; }
+  .rating { font-size: 12px; color: #fbbf24; font-weight: 700; }
+  .rating-count { font-size: 9px; color: #475569; }
+
+  .divider { height: 1px; background: rgba(255,255,255,.06); margin: 9px 0; }
+
+  .why-rec { background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(99,102,241,.06)); border: 1px solid rgba(59,130,246,.18); border-radius: 8px; padding: 7px 9px; margin-bottom: 7px; }
+  .why-rec-label { font-size: 7px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .why-rec-text { font-size: 9px; color: #93c5fd; line-height: 1.4; }
+
+  .intel-row { display: flex; gap: 5px; margin-bottom: 7px; flex-wrap: wrap; }
+  .intel-pill { background: #1e293b; border: 1px solid #273548; border-radius: 6px; padding: 3px 7px; font-size: 8px; color: #94a3b8; display: flex; align-items: center; gap: 3px; }
+  .intel-pill.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); color: #fbbf24; }
+
+  .tip { border-left: 2px solid #6366f1; padding: 4px 8px; margin-bottom: 9px; }
+  .tip-label { font-size: 7px; color: #818cf8; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .tip-text { font-size: 8.5px; color: #94a3b8; line-height: 1.4; }
+
+  .link-row { display: flex; gap: 5px; margin-bottom: 9px; }
+  .link-pill { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 8px; font-weight: 600; white-space: nowrap; text-decoration: none; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.05); color: rgba(193,198,215,.7); cursor: pointer; }
+  .link-pill.maps { background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.3); color: #93c5fd; }
+
+  /* CTA row — Add primary + Similar Places secondary */
+  .action-row { display: flex; gap: 6px; }
+  .btn-add { flex: 1; background: #6366f1; border: none; border-radius: 10px; padding: 10px 0; font-size: 11px; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .btn-add.added { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: #a5b4fc; }
+  .btn-similar { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 11px; font-size: 10px; color: #94a3b8; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .btn-similar:hover { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); color: #34d399; }
+
+  /* Map state illustration */
+  .map-state { background: #0a1628; border-radius: 12px; padding: 14px; margin-bottom: 16px; position: relative; overflow: hidden; min-height: 180px; }
+  .map-state-label { font-size: 9px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+  /* Pin styles for map illustration */
+  .pin { position: absolute; display: flex; flex-direction: column; align-items: center; }
+  .pin-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 1.5px solid; }
+  .pin-label { font-size: 7px; margin-top: 2px; font-weight: 600; }
+
+  /* Normal pin */
+  .pin-normal .pin-icon { background: #1e293b; border-color: #334155; }
+  .pin-normal .pin-label { color: #475569; }
+
+  /* Active/selected pin */
+  .pin-active .pin-icon { background: #3b82f6; border-color: white; box-shadow: 0 0 12px rgba(59,130,246,.7); }
+  .pin-active .pin-label { color: #93c5fd; }
+
+  /* Similar glow pins — the new state */
+  .pin-similar .pin-icon { background: rgba(16,185,129,.15); border-color: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,.5); animation: simPulse 1.4s ease-in-out infinite; }
+  .pin-similar .pin-label { color: #34d399; }
+
+  /* Ghost reference pin */
+  .pin-ghost .pin-icon { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.3); opacity: .5; }
+  .pin-ghost .pin-label { color: #4c1d95; }
+
+  /* Favourite pin — heart overlay */
+  .pin-fav .pin-icon { background: #1e293b; border-color: #334155; }
+  .pin-fav-heart { position: absolute; top: -5px; right: -5px; font-size: 9px; }
+
+  @keyframes simPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
+    50%  { box-shadow: 0 0 0 7px rgba(16,185,129,.0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,.0); }
+  }
+
+  /* Route line */
+  .route-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* Callout box */
+  .callout-box { background: #1e293b; border-radius: 10px; padding: 14px; margin-top: 8px; }
+  .callout-title { font-size: 11px; font-weight: 700; color: #f1f5f9; margin-bottom: 10px; }
+  .callout-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+  .callout-tag { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+  .tag-new { background: rgba(16,185,129,.1); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+  .tag-change { background: rgba(99,102,241,.15); color: #a78bfa; border: 1px solid rgba(99,102,241,.2); }
+  .callout-desc { font-size: 9px; color: #64748b; line-height: 1.5; }
+  .callout-desc strong { color: #94a3b8; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .flow-step { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 9px; font-size: 8px; color: #64748b; white-space: nowrap; }
+  .flow-step.highlight { border-color: rgba(16,185,129,.25); color: #34d399; background: rgba(16,185,129,.06); }
+  .flow-arrow { font-size: 10px; color: #334155; }
+</style>
+</head>
+<body>
+
+<h2>Pin Card v3 — Heart + Similar Places</h2>
+<p class="subtitle">Heart icon on hero = save to favourites. "Similar places" CTA = card closes, map reveals glowing similar pins.</p>
+
+<div class="row">
+
+  <!-- State 1: Default card -->
+  <div class="phone">
+    <div class="phone-label">Default state</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background: linear-gradient(135deg,rgba(139,92,246,.2),rgba(59,130,246,.1));">
+        <div style="font-size:44px;opacity:.3;filter:drop-shadow(0 4px 16px rgba(99,102,241,.5));">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="close-btn">✕</div>
+        <!-- Heart unfilled -->
+        <div class="heart-btn">🤍</div>
+        <div class="travel-badge ok">📅 Open · Sat 14 Jun · 5:30 PM</div>
+      </div>
+      <div class="body">
+        <div class="name-row">
+          <div><div class="place-name">Jama Masjid</div><div class="place-sub">Historic · Old Delhi</div></div>
+          <div class="rating-block"><div class="rating">★ 4.6</div><div class="rating-count">42K</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="why-rec">
+          <div class="why-rec-label">✦ Why this for you</div>
+          <div class="why-rec-text">Matches your <strong style="color:#bfdbfe;">cultural + slow pace</strong> profile. Pairs with Red Fort — same walk, same Mughal era. Free entry.</div>
+        </div>
+        <div class="intel-row">
+          <div class="intel-pill">🕌 Free · dress modestly</div>
+          <div class="intel-pill">⏱ ~45 min</div>
+        </div>
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">South minaret — ₹100, best panoramic view of Old Delhi.</div>
+        </div>
+        <div class="link-row">
+          <a class="link-pill maps">🗺 Google Maps</a>
+          <span class="link-pill">🌐 Website</span>
+        </div>
+        <div class="action-row">
+          <button class="btn-add">＋ Add to itinerary</button>
+          <button class="btn-similar">✦ Similar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Favourited -->
+  <div class="phone">
+    <div class="phone-label">After heart tap</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background: linear-gradient(135deg,rgba(139,92,246,.2),rgba(59,130,246,.1));">
+        <div style="font-size:44px;opacity:.3;">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="close-btn">✕</div>
+        <!-- Heart filled — active -->
+        <div class="heart-btn active">❤️</div>
+        <div class="travel-badge ok">📅 Open · Sat 14 Jun · 5:30 PM</div>
+      </div>
+      <div class="body">
+        <div class="name-row">
+          <div><div class="place-name">Jama Masjid</div><div class="place-sub">Historic · Old Delhi</div></div>
+          <div class="rating-block"><div class="rating">★ 4.6</div><div class="rating-count">42K</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="why-rec">
+          <div class="why-rec-label">✦ Why this for you</div>
+          <div class="why-rec-text">Matches your <strong style="color:#bfdbfe;">cultural + slow pace</strong> profile. Pairs with Red Fort — same walk, same Mughal era.</div>
+        </div>
+        <div class="intel-row">
+          <div class="intel-pill">🕌 Free · dress modestly</div>
+          <div class="intel-pill">⏱ ~45 min</div>
+        </div>
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">South minaret — ₹100, best panoramic view of Old Delhi.</div>
+        </div>
+        <div class="link-row">
+          <a class="link-pill maps">🗺 Google Maps</a>
+        </div>
+        <div class="action-row">
+          <button class="btn-add">＋ Add to itinerary</button>
+          <button class="btn-similar">✦ Similar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 3: After "Similar" tap — map view -->
+  <div class="phone">
+    <div class="phone-label">After "Similar" tap</div>
+    <!-- Full screen map state — card dismissed -->
+    <div style="background:#0a1628;border-radius:16px;overflow:hidden;aspect-ratio:9/16;position:relative;border:2px solid #1e293b;">
+
+      <!-- Map background -->
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 50%,#0c2040,#070c14);"></div>
+
+      <!-- Route lines (SVG) -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 210 373" preserveAspectRatio="none">
+        <!-- Main route -->
+        <path d="M 60 280 Q 80 220 105 180" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".5"/>
+        <!-- Similar place connectors — teal dashed -->
+        <path d="M 105 180 Q 130 150 155 130" stroke="#10b981" stroke-width="1" fill="none" stroke-dasharray="4,3" stroke-linecap="round" opacity=".6"/>
+        <path d="M 105 180 Q 85 145 70 120" stroke="#10b981" stroke-width="1" fill="none" stroke-dasharray="4,3" stroke-linecap="round" opacity=".6"/>
+        <path d="M 105 180 Q 140 170 160 190" stroke="#10b981" stroke-width="1" fill="none" stroke-dasharray="4,3" stroke-linecap="round" opacity=".6"/>
+      </svg>
+
+      <!-- Pin: Added stop 1 -->
+      <div style="position:absolute;left:45px;top:255px;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:26px;height:26px;border-radius:7px;background:#1e3a5f;border:1.5px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:13px;">🏛️</div>
+        <div style="font-size:7px;color:#60a5fa;margin-top:2px;font-weight:600;">Red Fort</div>
+      </div>
+
+      <!-- Pin: Active (tapped) -->
+      <div style="position:absolute;left:88px;top:155px;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:30px;height:30px;border-radius:8px;background:#3b82f6;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 14px rgba(59,130,246,.8);">🕌</div>
+        <div style="font-size:7px;color:#93c5fd;margin-top:2px;font-weight:700;">Jama Masjid</div>
+      </div>
+
+      <!-- Similar pins: glowing teal pulse -->
+      <div style="position:absolute;left:138px;top:108px;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:26px;height:26px;border-radius:7px;background:rgba(16,185,129,.15);border:1.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:13px;animation:simPulse 1.4s ease-in-out infinite;">🕌</div>
+        <div style="font-size:7px;color:#34d399;margin-top:2px;font-weight:600;">Nizamuddin</div>
+      </div>
+
+      <div style="position:absolute;left:50px;top:95px;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:26px;height:26px;border-radius:7px;background:rgba(16,185,129,.15);border:1.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:13px;animation:simPulse 1.4s ease-in-out infinite;animation-delay:.5s;">🕌</div>
+        <div style="font-size:7px;color:#34d399;margin-top:2px;font-weight:600;">Humayun Tomb</div>
+      </div>
+
+      <div style="position:absolute;left:142px;top:168px;display:flex;flex-direction:column;align-items:center;">
+        <div style="width:26px;height:26px;border-radius:7px;background:rgba(16,185,129,.15);border:1.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:13px;animation:simPulse 1.4s ease-in-out infinite;animation-delay:.9s;">🕍</div>
+        <div style="font-size:7px;color:#34d399;margin-top:2px;font-weight:600;">Lodi Garden</div>
+      </div>
+
+      <!-- Similar label banner -->
+      <div style="position:absolute;top:10px;left:10px;right:10px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:7px 10px;backdrop-filter:blur(8px);">
+        <div style="font-size:8px;font-weight:700;color:#34d399;margin-bottom:1px;">✦ Similar historic sites nearby</div>
+        <div style="font-size:7.5px;color:#64748b;">Tap any glowing pin to explore · Swipe down to clear</div>
+      </div>
+
+      <!-- Fav pin with heart badge -->
+      <div style="position:absolute;right:12px;bottom:60px;display:flex;flex-direction:column;align-items:center;">
+        <div style="position:relative;">
+          <div style="width:26px;height:26px;border-radius:7px;background:#1e293b;border:1.5px solid #334155;display:flex;align-items:center;justify-content:center;font-size:13px;">🍜</div>
+          <div style="position:absolute;top:-5px;right:-5px;font-size:9px;">❤️</div>
+        </div>
+        <div style="font-size:7px;color:#475569;margin-top:2px;">Karim's</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Pin state legend -->
+<div class="section-title">Pin states on map</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+  <div style="background:#1e293b;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+    <div style="width:22px;height:22px;border-radius:6px;background:#1e3a5f;border:1.5px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:11px;">🏛️</div>
+    <div><div style="font-size:9px;font-weight:700;color:#f1f5f9;">Added to itinerary</div><div style="font-size:8px;color:#475569;">Blue border, solid bg</div></div>
+  </div>
+  <div style="background:#1e293b;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+    <div style="width:22px;height:22px;border-radius:6px;background:rgba(16,185,129,.15);border:1.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:11px;animation:simPulse 1.4s infinite;">🕌</div>
+    <div><div style="font-size:9px;font-weight:700;color:#34d399;">Similar places (active)</div><div style="font-size:8px;color:#475569;">Teal pulse animation</div></div>
+  </div>
+  <div style="background:#1e293b;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+    <div style="width:22px;height:22px;border-radius:6px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);display:flex;align-items:center;justify-content:center;font-size:11px;opacity:.5;">🏯</div>
+    <div><div style="font-size:9px;font-weight:700;color:#a78bfa;">Reference pin</div><div style="font-size:8px;color:#475569;">Muted, no animation</div></div>
+  </div>
+  <div style="background:#1e293b;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;">
+    <div style="position:relative;width:22px;height:22px;">
+      <div style="width:22px;height:22px;border-radius:6px;background:#1e293b;border:1.5px solid #334155;display:flex;align-items:center;justify-content:center;font-size:11px;">🍜</div>
+      <div style="position:absolute;top:-4px;right:-4px;font-size:8px;">❤️</div>
+    </div>
+    <div style="margin-left:4px;"><div style="font-size:9px;font-weight:700;color:#f87171;">Favourited</div><div style="font-size:8px;color:#475569;">Heart badge, untracked</div></div>
+  </div>
+</div>
+
+<!-- What changed -->
+<div class="callout-box">
+  <div class="callout-title">Changes from v2</div>
+  <div class="callout-row">
+    <span class="callout-tag tag-change">CHANGED</span>
+    <div class="callout-desc"><strong>Shortlist → Heart icon on hero.</strong> Top-right corner of the hero image. 🤍 unfilled → ❤️ filled on tap. Universal pattern — no label needed. Shows as a small heart badge on the pin on the map so user can see their saved places at a glance.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>"Similar" CTA → card dismisses, map animates.</strong> Card slides down. Map zooms slightly to fit active pin + similar cluster. Similar pins glow teal with a ripple pulse — distinct from the blue added-pin glow. A banner at top reads "Similar historic sites nearby." Swipe down or tap elsewhere clears the similar state.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>Dashed teal connector lines.</strong> When similar pins appear, light dashed lines connect the active pin to each similar pin — reinforces the relationship, shows geographic proximity at a glance.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-change">CHANGED</span>
+    <div class="callout-desc"><strong>Four pin states total.</strong> Added (blue) · Similar (teal pulse) · Reference (muted purple) · Favourited (heart badge). Each is visually distinct with no overlap. User always knows exactly what state each pin is in.</div>
+  </div>
+</div>
+
+<div style="margin-top:12px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:12px;">
+  <div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px;">Similar places — how the LLM query works</div>
+  <div style="font-size:9px;color:#475569;line-height:1.6;">When user taps "Similar" on Jama Masjid, fire: <code style="color:#93c5fd;background:#1e293b;padding:1px 5px;border-radius:3px;">"Give me 4 places similar to Jama Masjid in Delhi for a cultural explorer persona — same category, nearby, worth visiting."</code> Returns place names → match against existing map pins first (light them up) → any new places become new ghost pins. User sees instant feedback on existing pins while new ones load in.</div>
+</div>
+
+</body>
+</html>

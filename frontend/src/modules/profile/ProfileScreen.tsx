@@ -163,7 +163,7 @@ export function ProfileScreen() {
 // ── Sub-components ─────────────────────────────────────────────
 
 function AvatarCircle({ user, tier }: { user: { name: string; avatar: string | null } | null; tier: UserTier }) {
-  const isPaid = tier === 'pro' || tier === 'unlimited';
+  const isPaid = tier === 'pro';
   const initials = (user?.name ?? 'U')[0].toUpperCase();
 
   return (

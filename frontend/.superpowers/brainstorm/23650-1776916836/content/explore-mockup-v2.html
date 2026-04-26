@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explore Tab v2 — Section Separators</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a14;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .page-wrap { width: 100%; max-width: 920px; }
+  .page-title { font-size: 13px; color: #555; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 24px; text-align: center; }
+
+  .split-view { display: flex; gap: 32px; align-items: flex-start; justify-content: center; }
+
+  /* Phone */
+  .phone {
+    width: 320px;
+    flex-shrink: 0;
+    background: #111;
+    border-radius: 36px;
+    border: 2px solid #222;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .phone-notch {
+    height: 28px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .notch-pill { width: 80px; height: 10px; background: #0a0a14; border-radius: 10px; }
+  .phone-screen { background: #0a0a14; height: 640px; overflow: hidden; }
+  .screen-scroll { height: 100%; overflow-y: auto; scrollbar-width: none; padding-bottom: 16px; }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  .phone-bottom-bar {
+    height: 52px;
+    background: rgba(10,10,20,0.97);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+  }
+  .nav-item { display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;border-radius:12px; }
+  .nav-item.active { background: rgba(108,143,255,0.12); }
+  .nav-icon { font-size: 15px; }
+  .nav-label { font-size: 9px; opacity: 0.35; }
+  .nav-item.active .nav-label { color: #6c8fff; opacity: 1; }
+
+  /* ─── HEADER ─── */
+  .screen-header {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .greeting { font-size: 10px; color: #444; letter-spacing: 0.5px; }
+  .app-name {
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #6c8fff, #b06cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #6c8fff, #b06cff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600;
+  }
+
+  /* ─── SEARCH SECTION ─── */
+  .section-search {
+    padding: 0 16px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 0;
+  }
+  .search-bar {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+  }
+  .search-icon { font-size: 13px; opacity: 0.35; flex-shrink: 0; }
+  .search-placeholder { font-size: 12px; color: #484848; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .location-btn {
+    background: linear-gradient(135deg, rgba(108,143,255,0.18), rgba(176,108,255,0.18));
+    border: 1px solid rgba(108,143,255,0.22);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 9px;
+    color: #8aa8ff;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* ─── SECTION BLOCK ─── */
+  /* Each section has its own visual container */
+  .section-block {
+    margin: 12px 16px;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .section-header {
+    padding: 10px 14px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+  }
+  .section-action {
+    font-size: 9px;
+    color: #555;
+  }
+
+  /* IN PROGRESS — warm purple tint */
+  .section-inprogress {
+    background: rgba(20,16,36,0.9);
+    border-color: rgba(176,108,255,0.12);
+  }
+  .section-inprogress .section-header {
+    border-bottom: 1px solid rgba(176,108,255,0.08);
+  }
+  .section-inprogress .section-title { color: #b06cff; }
+
+  /* DISCOVER — warm blue tint */
+  .section-discover {
+    background: rgba(12,18,36,0.9);
+    border-color: rgba(108,143,255,0.12);
+  }
+  .section-discover .section-header {
+    border-bottom: 1px solid rgba(108,143,255,0.08);
+  }
+  .section-discover .section-title { color: #6c8fff; }
+
+  /* City hero */
+  .city-hero {
+    margin: 0 12px 8px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    height: 90px;
+    cursor: pointer;
+  }
+  .city-hero-bg {
+    position: absolute; inset: 0;
+    background-image: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&q=70');
+    background-size: cover; background-position: center;
+  }
+  .city-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(10,10,20,0.78) 0%, rgba(30,20,60,0.55) 100%);
+  }
+  .city-hero-content {
+    position: relative; z-index: 1; padding: 12px;
+    height: 100%; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .city-hero-top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .city-name { font-size: 17px; font-weight: 700; color: #fff; }
+  .city-sub { font-size: 10px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+  .resume-btn {
+    background: rgba(255,255,255,0.13);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 10px; color: #fff;
+    display: flex; align-items: center; gap: 3px;
+  }
+
+  /* Chips */
+  .chips-scroll {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 0 12px 8px; scrollbar-width: none;
+  }
+  .chips-scroll::-webkit-scrollbar { display: none; }
+  .place-chip {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(176,108,255,0.1);
+    border: 1px solid rgba(176,108,255,0.18);
+    border-radius: 20px;
+    padding: 4px 9px;
+    font-size: 10px; color: #c088ff;
+  }
+  .chip-dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+
+  /* Divider inside section */
+  .inner-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.05);
+    margin: 0 12px 8px;
+  }
+
+  /* Draft banner */
+  .draft-banner {
+    margin: 0 12px 10px;
+    background: rgba(176,108,255,0.07);
+    border: 1px solid rgba(176,108,255,0.12);
+    border-radius: 10px;
+    padding: 9px 11px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .draft-thumb {
+    width: 32px; height: 32px; border-radius: 7px;
+    background-image: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=100&q=60');
+    background-size: cover; flex-shrink: 0;
+  }
+  .draft-info { flex: 1; min-width: 0; }
+  .draft-title { font-size: 11px; font-weight: 600; color: #ddd; }
+  .draft-sub { font-size: 9px; color: #555; margin-top: 1px; }
+  .draft-dots { display: flex; gap: 3px; margin-top: 4px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .dot.filled { background: #b06cff; }
+  .dot.empty { background: #2a2a3a; }
+  .draft-arrow { font-size: 15px; color: #444; }
+
+  /* Place card scroll */
+  .place-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 0 12px 12px; scrollbar-width: none;
+  }
+  .place-scroll::-webkit-scrollbar { display: none; }
+  .place-card {
+    flex-shrink: 0; width: 74px; border-radius: 11px;
+    overflow: hidden; position: relative; height: 90px; cursor: pointer;
+  }
+  .place-card-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center; opacity: 0.72;
+  }
+  .place-card-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.05) 55%);
+  }
+  .place-card-label {
+    position: absolute; bottom: 6px; left: 5px; right: 5px;
+    font-size: 8px; font-weight: 600; color: #fff; line-height: 1.2;
+  }
+  .place-check {
+    position: absolute; top: 5px; right: 5px;
+    width: 13px; height: 13px; background: #4ade80; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: 700; color: #000;
+  }
+  .place-card-add {
+    flex-shrink: 0; width: 74px; height: 90px;
+    border-radius: 11px;
+    background: rgba(176,108,255,0.06);
+    border: 1px dashed rgba(176,108,255,0.2);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px;
+  }
+  .place-card-add span:first-child { font-size: 16px; opacity: 0.3; }
+  .place-card-add span:last-child { font-size: 8px; color: #555; }
+
+  /* Discover cards */
+  .carousel-scroll {
+    display: flex; gap: 10px; overflow-x: auto;
+    padding: 0 12px 12px; scrollbar-width: none;
+  }
+  .carousel-scroll::-webkit-scrollbar { display: none; }
+  .info-card {
+    flex-shrink: 0; width: 165px; border-radius: 14px;
+    overflow: hidden; position: relative; height: 112px; cursor: pointer;
+  }
+  .info-card-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .info-card-overlay { position: absolute; inset: 0; }
+  .info-card-content {
+    position: relative; z-index: 1; padding: 10px;
+    height: 100%; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .info-card-tag {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.9px;
+    text-transform: uppercase; padding: 3px 7px; border-radius: 7px;
+    display: inline-block; align-self: flex-start;
+  }
+  .info-card-title { font-size: 11px; font-weight: 700; color: #fff; line-height: 1.3; }
+  .info-card-stat { font-size: 20px; font-weight: 800; color: #fff; line-height: 1; }
+  .info-card-stat-label { font-size: 9px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+
+  /* ─── ANNOTATIONS ─── */
+  .annotations { flex: 1; min-width: 0; max-width: 340px; }
+  .annotation-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+  .annotation { display: flex; gap: 12px; margin-bottom: 20px; align-items: flex-start; }
+  .ann-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: linear-gradient(135deg, #6c8fff, #b06cff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+  }
+  .ann-body h4 { font-size: 12px; font-weight: 600; color: #ccc; margin-bottom: 3px; }
+  .ann-body p { font-size: 11px; color: #555; line-height: 1.55; }
+
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-title">Explore Tab v2 — Section Separators</div>
+
+  <div class="split-view">
+
+    <div class="phone">
+      <div class="phone-notch"><div class="notch-pill"></div></div>
+      <div class="phone-screen">
+        <div class="screen-scroll">
+
+          <!-- Header -->
+          <div class="screen-header">
+            <div>
+              <div class="greeting">Wednesday, April 23</div>
+              <div class="app-name">uncover roads</div>
+            </div>
+            <div class="avatar">S</div>
+          </div>
+
+          <!-- ① SEARCH SECTION — separated by bottom border -->
+          <div class="section-search">
+            <div class="search-bar">
+              <span class="search-icon">🔍</span>
+              <span class="search-placeholder">Paris, Eiffel Tower, cafés in Rome…</span>
+              <div class="location-btn"><span>📍</span><span>Near me</span></div>
+            </div>
+          </div>
+
+          <!-- ② IN PROGRESS SECTION — card container, purple tint -->
+          <div class="section-block section-inprogress">
+            <div class="section-header">
+              <span class="section-title">In Progress</span>
+              <span class="section-action">Edit ›</span>
+            </div>
+
+            <!-- City hero -->
+            <div class="city-hero">
+              <div class="city-hero-bg"></div>
+              <div class="city-hero-overlay"></div>
+              <div class="city-hero-content">
+                <div class="city-hero-top">
+                  <div>
+                    <div class="city-name">Paris</div>
+                    <div class="city-sub">3 places · no dates set</div>
+                  </div>
+                  <div class="resume-btn">Resume →</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Place chips -->
+            <div class="chips-scroll">
+              <div class="place-chip"><span class="chip-dot"></span>Eiffel Tower</div>
+              <div class="place-chip"><span class="chip-dot"></span>Le Marais</div>
+              <div class="place-chip"><span class="chip-dot"></span>Musée d'Orsay</div>
+            </div>
+
+            <!-- Inner divider -->
+            <div class="inner-divider"></div>
+
+            <!-- Draft banner -->
+            <div class="draft-banner">
+              <div class="draft-thumb"></div>
+              <div class="draft-info">
+                <div class="draft-title">Paris draft</div>
+                <div class="draft-sub">No dates · 3 stops selected</div>
+                <div class="draft-dots">
+                  <div class="dot filled"></div><div class="dot filled"></div>
+                  <div class="dot filled"></div><div class="dot empty"></div>
+                  <div class="dot empty"></div>
+                </div>
+              </div>
+              <div class="draft-arrow">›</div>
+            </div>
+
+            <!-- Inner divider -->
+            <div class="inner-divider"></div>
+
+            <!-- Place photo scroll -->
+            <div class="place-scroll">
+              <div class="place-card">
+                <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1431274172761-fca41d930114?w=200&q=60')"></div>
+                <div class="place-card-overlay"></div>
+                <div class="place-check">✓</div>
+                <div class="place-card-label">Eiffel Tower</div>
+              </div>
+              <div class="place-card">
+                <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=200&q=60')"></div>
+                <div class="place-card-overlay"></div>
+                <div class="place-check">✓</div>
+                <div class="place-card-label">Le Marais</div>
+              </div>
+              <div class="place-card">
+                <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1563115298-e9585e7943d4?w=200&q=60')"></div>
+                <div class="place-card-overlay"></div>
+                <div class="place-check">✓</div>
+                <div class="place-card-label">Musée d'Orsay</div>
+              </div>
+              <div class="place-card-add">
+                <span>+</span>
+                <span>Add place</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ DISCOVER SECTION — card container, blue tint -->
+          <div class="section-block section-discover">
+            <div class="section-header">
+              <span class="section-title">Discover</span>
+              <span class="section-action">See all ›</span>
+            </div>
+
+            <div class="carousel-scroll">
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1504512485720-7d83a16ee930?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(20,10,40,0.85),rgba(80,20,120,0.55))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(176,108,255,0.25);color:#d094ff">TRAVEL STAT</div>
+                  <div><div class="info-card-stat">€52</div><div class="info-card-stat-label">avg. daily cost in Lisbon</div></div>
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(10,30,40,0.85),rgba(10,80,55,0.55))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(74,222,128,0.2);color:#4ade80">BEST TIME</div>
+                  <div class="info-card-title">Cherry blossoms peak in Kyoto — early April</div>
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(40,10,10,0.85),rgba(120,35,10,0.55))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(255,140,60,0.22);color:#ff9b5e">TRAVEL STAT</div>
+                  <div><div class="info-card-stat">#1</div><div class="info-card-stat-label">Bangkok — most visited 2025</div></div>
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1555992336-03a23c7b20ee?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(10,20,50,0.85),rgba(15,50,110,0.55))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(108,143,255,0.22);color:#8aa8ff">INSIDER TIP</div>
+                  <div class="info-card-title">Paris museums free on first Sunday of each month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="phone-bottom-bar">
+        <div class="nav-item active"><div class="nav-icon">🧭</div><div class="nav-label" style="color:#6c8fff;opacity:1">Explore</div></div>
+        <div class="nav-item"><div class="nav-icon">📋</div><div class="nav-label">Itinerary</div></div>
+        <div class="nav-item"><div class="nav-icon">👥</div><div class="nav-label">Community</div></div>
+        <div class="nav-item"><div class="nav-icon">👤</div><div class="nav-label">Profile</div></div>
+      </div>
+    </div>
+
+    <!-- Annotations -->
+    <div class="annotations">
+      <div class="annotation-title">What changed in v2</div>
+
+      <div class="annotation">
+        <div class="ann-num">1</div>
+        <div class="ann-body">
+          <h4>Search — isolated by border</h4>
+          <p>A subtle <code>border-bottom</code> line separates the search bar from everything below. Clean and familiar — like every good app's top bar.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">2</div>
+        <div class="ann-body">
+          <h4>In Progress — card with purple tint</h4>
+          <p><span class="swatch" style="background:rgba(176,108,255,0.18);border:1px solid rgba(176,108,255,0.25)"></span>Rounded card container with a warm purple background tint and border. Section title "IN PROGRESS" in purple. Everything inside (city hero, chips, draft banner, photo scroll) lives inside this one card — so it reads as a single block.</p>
+          <p style="margin-top:6px">Inner dividers (hairline lines) separate the sub-rows within it without making them feel like separate sections.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">3</div>
+        <div class="ann-body">
+          <h4>Discover — card with blue tint</h4>
+          <p><span class="swatch" style="background:rgba(108,143,255,0.1);border:1px solid rgba(108,143,255,0.18)"></span>Separate rounded card with a cool blue background tint. Section title "DISCOVER" in blue. The color difference alone makes the boundary obvious even without any explicit divider line.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">4</div>
+        <div class="ann-body">
+          <h4>Why cards, not lines?</h4>
+          <p>Divider lines between sections feel dated and flat. Tinted cards give each section its own spatial identity — purple = "your stuff", blue = "explore new". Users immediately associate color with context, no label needed.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

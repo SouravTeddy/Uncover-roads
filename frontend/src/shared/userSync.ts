@@ -107,5 +107,11 @@ export async function loadSavedItineraries(userId: string): Promise<SavedItinera
     date: row.date,
     itinerary: row.itinerary,
     persona: row.persona,
+    travelDate: row.travel_date ?? null,
+    cityLat: row.city_lat ?? null,
+    cityLon: row.city_lon ?? null,
+    selectedPlaces: row.selected_places ?? [],
+    lastUpdateCheck: null,
+    pendingSwapCards: [],
   }));
 }

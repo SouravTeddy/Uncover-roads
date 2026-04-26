@@ -6,7 +6,7 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
   const { userTier } = state;
   const [showDowngrade, setShowDowngrade] = useState(false);
 
-  const tierLabel = userTier === 'pro' ? 'Pro Plan' : userTier === 'unlimited' ? 'Unlimited Plan' : userTier === 'free' ? 'Free Plan' : 'Plan';
+  const tierLabel = userTier === 'pro' ? 'Pro Plan' : userTier === 'pack' ? 'Pack Plan' : 'Free Plan';
   const nextBilling = useMemo(() => {
     const d = new Date();
     d.setMonth(d.getMonth() + 1);

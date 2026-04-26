@@ -132,12 +132,7 @@ export function SubscriptionScreen() {
   const proCta =
     userTier === 'pro'
       ? { label: 'Current Plan', disabled: true }
-      : { label: 'Get Pro', disabled: false };
-
-  const unlimitedCta =
-    userTier === 'unlimited'
-      ? { label: 'Current Plan', disabled: true }
-      : { label: 'Go Unlimited', disabled: false };
+      : { label: 'Go Pro · $9.99/mo', disabled: false };
 
   return (
     <div
@@ -289,33 +284,6 @@ export function SubscriptionScreen() {
             }
           />
 
-          {/* Unlimited */}
-          <PlanCard
-            title="Unlimited"
-            price="$13.99/mo"
-            priceSub="billed monthly"
-            borderStyle={{ border: '1px solid #f59e0b' }}
-            features={[
-              { text: 'Endless trips — no monthly cap' },
-              { text: 'Our Picks + Live Events always on' },
-              { text: 'Unlimited cities per trip' },
-              { text: 'Full persona experience' },
-              { text: 'Share itinerary' },
-              { text: 'Explore + Wishlist' },
-              { text: 'Early access to new features' },
-            ]}
-            ctaLabel={unlimitedCta.label}
-            ctaDisabled={unlimitedCta.disabled}
-            ctaStyle={{
-              background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-              color: '#1e293b',
-            }}
-            onCta={
-              unlimitedCta.disabled
-                ? undefined
-                : () => dispatch({ type: 'SET_USER_TIER', tier: 'unlimited' })
-            }
-          />
         </div>
 
         {/* ── Section 3: Coupon ── */}
@@ -347,3 +315,4 @@ export function SubscriptionScreen() {
     </div>
   );
 }
+
