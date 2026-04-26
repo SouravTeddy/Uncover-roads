@@ -273,6 +273,7 @@ export function RouteScreen() {
         />
       )}
 
+
       {/* Sequencing reveal overlay */}
       {showSequencingReveal && (
         <div style={{
