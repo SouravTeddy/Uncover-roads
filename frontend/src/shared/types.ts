@@ -180,6 +180,7 @@ export interface Place {
   tags?: Record<string, string>;
   imageUrl?: string | null;
   reason?: string;
+  reasonSignal?: 'persona' | 'behaviour';
   // Google fields — present when place came from Google Nearby Search
   place_id?: string;
   rating?: number;

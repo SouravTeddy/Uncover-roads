@@ -84,9 +84,9 @@ describe('SubscriptionScreen', () => {
     expect(disabledBtn).toBeTruthy();
   });
 
-  it('renders "Get Pro" CTA for Free user on the Pro column', () => {
+  it('renders "Go Pro" CTA for Free user on the Pro column', () => {
     renderWithState(makeState({ userTier: 'free' }));
-    const getProButtons = screen.getAllByText('Get Pro');
+    const getProButtons = screen.getAllByText('Go Pro · $9.99/mo');
     expect(getProButtons.length).toBeGreaterThan(0);
   });
 

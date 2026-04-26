@@ -20,12 +20,14 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
+import { useSimilarPins, SimilarPinsBanner } from './SimilarPins';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { JourneyStrip } from '../journey';
+import { FavoritesMarker, FavoritesSheet } from './FavoritesLayer';
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -43,7 +45,7 @@ export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, goBack,
+    togglePlace, setFilter, trackViewedCategory, goBack,
   } = useMap();
 
   const { state, dispatch } = useAppStore();
@@ -76,7 +78,13 @@ export function MapScreen() {
     [state.favouritedPins],
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
-  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
+  const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
+  const handlePinClick = useCallback((p: Place) => {
+    setClusterGroup(null);
+    setActivePlace(p);
+    fetchDetails(p);
+    trackViewedCategory(p.category);
+  }, [setActivePlace, fetchDetails, trackViewedCategory]);
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const clusterSheetRef    = useRef<HTMLDivElement>(null);
   const clusterTouchStartY = useRef(0);
@@ -84,6 +92,7 @@ export function MapScreen() {
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [showTripSheet, setShowTripSheet] = useState(false);
+  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
 
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
@@ -91,6 +100,7 @@ export function MapScreen() {
   const [eventsLoaded, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
+  const [eventsError, setEventsError]           = useState<string | null>(null);
 
   // Place search
   const [searchQuery, setSearchQuery]       = useState('');
@@ -217,14 +227,25 @@ export function MapScreen() {
     setEventsLoading(true);
     try {
       const data = await api.events(city, date, endDate, cityGeo?.lat, cityGeo?.lon);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
-        ...p,
-        id: p.id ?? `event-${i}`,
-      }));
+      // Backend returns {"error": "..."} when API key is missing
+      if (!Array.isArray(data)) {
+        setEventsError('Events unavailable right now');
+        setTimeout(() => setEventsError(null), 4000);
+        return;
+      }
+      const withIds = data.map((p, i) => ({ ...p, id: p.id ?? `event-${i}` }));
+      if (withIds.length === 0) {
+        setEventsError(`No events found in ${city} for your dates`);
+        setTimeout(() => setEventsError(null), 4000);
+      } else {
+        setEventsError(null);
+      }
       dispatch({ type: 'MERGE_PLACES', places: withIds });
       setEventsLoaded(true);
     } catch (e) {
       console.error('[MapScreen] loadEvents failed:', e);
+      setEventsError('Events unavailable right now');
+      setTimeout(() => setEventsError(null), 4000);
     } finally {
       setEventsLoading(false);
     }
@@ -428,7 +449,14 @@ export function MapScreen() {
         onPlaceClick={handlePinClick}
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
-      />
+      >
+        {!activePlace && state.favouritedPins.length > 0 && (
+          <FavoritesMarker
+            pins={state.favouritedPins}
+            onClick={() => setShowFavoritesSheet(true)}
+          />
+        )}
+      </MapLibreMap>
 
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
@@ -530,6 +558,15 @@ export function MapScreen() {
           <JourneyStrip />
         </div>
 
+        {similarPinsState && (
+          <div style={{ pointerEvents: 'auto' }}>
+            <SimilarPinsBanner
+              category={activePlace?.category ?? 'places'}
+              onClear={clearSimilar}
+            />
+          </div>
+        )}
+
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
@@ -566,6 +603,17 @@ export function MapScreen() {
         >
           <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>calendar_today</span>
           <span className="text-amber-300 text-xs font-medium">Set a travel date to see events</span>
+        </div>
+      )}
+
+      {/* Events error toast */}
+      {eventsError && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(245,158,11,.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(245,158,11,.3)' }}
+        >
+          <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>event_busy</span>
+          <span className="text-amber-300 text-xs font-medium">{eventsError}</span>
         </div>
       )}
 
@@ -638,6 +686,27 @@ export function MapScreen() {
         </div>
       )}
 
+      {/* Favorites sheet */}
+      {showFavoritesSheet && !activePlace && (
+        <FavoritesSheet
+          pins={state.favouritedPins}
+          onClose={() => setShowFavoritesSheet(false)}
+          onSelect={(pin) => {
+            setShowFavoritesSheet(false);
+            const place: Place = {
+              id: pin.placeId,
+              title: pin.title,
+              lat: pin.lat,
+              lon: pin.lon,
+              category: 'place',
+              _city: pin.city,
+            };
+            mapHandleRef.current?.flyTo(pin.lat, pin.lon);
+            handlePinClick(place);
+          }}
+        />
+      )}
+
       {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
       {activePlace && (
         <PinCard
@@ -649,7 +718,14 @@ export function MapScreen() {
           details={details}
           isFavourited={activePlace ? favouritedIds.has(activePlace.id) : false}
           onSimilar={() => {
-            // no-op in MapScreen — Similar is handled in RouteScreen
+            if (!activePlace) return;
+            triggerSimilar({
+              id: activePlace.id,
+              title: activePlace.title,
+              lat: activePlace.lat,
+              lon: activePlace.lon,
+              category: activePlace.category,
+            });
           }}
           onFavourite={() => {
             if (!activePlace) return;

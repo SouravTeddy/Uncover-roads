@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
 import type { Place, MapFilter } from '../../shared/types';
@@ -26,6 +26,9 @@ export function useMap() {
   const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>([]);
   const [recLoading, setRecLoading] = useState(false);
 
+  // Session-only: tracks which categories the user has tapped — passed to LLM as behavior signal
+  const viewedCategoriesRef = useRef<Set<string>>(new Set());
+
   const { city, places, selectedPlaces, activeFilter, cityGeo, persona } = state;
 
   // Recommended places load once we have places to filter against
@@ -35,6 +38,11 @@ export function useMap() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city, places.length]);
+
+  /** Call this whenever the user opens a place card — tracks browsing behavior for Our Picks */
+  function trackViewedCategory(category: string) {
+    viewedCategoriesRef.current.add(category);
+  }
 
   async function loadPlaces() {
     setLoading(true);
@@ -61,10 +69,20 @@ export function useMap() {
     if (!persona) return;
     setRecLoading(true);
     try {
-      const data = await api.recommended(city, persona);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
+      const result = await api.recommendedPlaces({
+        city,
+        personaArchetype: persona.archetype,
+        personaDesc: persona.archetype_desc ?? '',
+        venueFilters: persona.venue_filters ?? [],
+        itineraryBias: persona.itinerary_bias ?? [],
+        viewedCategories: [...viewedCategoriesRef.current],
+      });
+      const picks = Array.isArray(result.picks) ? result.picks : [];
+      const withIds = picks.map((p, i) => ({
         ...p,
-        id: p.id ?? `${p.title}-${i}`,
+        id: p.id ?? `rec-${i}`,
+        reason: (p as any).whyRec ?? p.reason,
+        reasonSignal: (p as any).signal ?? p.reasonSignal,
       }));
       setRecommendedPlaces(withIds.length > 0 ? withIds : clientSideFallback());
     } catch {
@@ -75,8 +93,9 @@ export function useMap() {
   }
 
   /**
-   * Client-side fallback: maps persona venue_filters + itinerary_bias
-   * to actual OSM categories and marks matching places as recommended.
+   * Client-side fallback when the LLM call fails.
+   * Filters events out, maps persona signals to OSM categories,
+   * marks all results with reasonSignal: 'persona'.
    */
   function clientSideFallback(): Place[] {
     if (!persona || places.length === 0) return [];
@@ -92,14 +111,24 @@ export function useMap() {
       if (cat) targetCategories.add(cat);
     });
 
-    // If no mapping resolved, mark all places (better than showing nothing)
+    const nonEvents = places.filter(p => p.category !== 'event');
+
+    // If no mapping resolved, return all non-event places
     if (targetCategories.size === 0) {
-      return places.map(p => ({ ...p, reason: 'Curated for your travel style' }));
+      return nonEvents.map(p => ({
+        ...p,
+        reason: 'Curated for your travel style',
+        reasonSignal: 'persona' as const,
+      }));
     }
 
-    return places
+    return nonEvents
       .filter(p => targetCategories.has(p.category))
-      .map(p => ({ ...p, reason: `Recommended for your travel style` }));
+      .map(p => ({
+        ...p,
+        reason: 'Recommended for your travel style',
+        reasonSignal: 'persona' as const,
+      }));
   }
 
   const filteredPlaces: Place[] =
@@ -140,6 +169,7 @@ export function useMap() {
     setActivePlace,
     togglePlace,
     setFilter,
+    trackViewedCategory,
     goToRoute,
     goBack,
   };

@@ -9,6 +9,7 @@ import { FootprintChips } from '../map/FootprintChips';
 import { PinCard } from '../map/PinCard';
 import { SimilarPinsBanner, useSimilarPins } from '../map/SimilarPins';
 import { usePlaceDetails } from '../map/usePlaceDetails';
+import { FavoritesMarker, FavoritesSheet } from '../map/FavoritesLayer';
 import { ItineraryMapCard } from './ItineraryMapCard';
 import { ItineraryPlaceCard } from './ItineraryPlaceCard';
 import type { Place, ReferencePin, FavouritedPin } from '../../shared/types';
@@ -29,6 +30,7 @@ export function RouteScreen() {
   const [itineraryActiveStop, setItineraryActiveStop] = useState(0);
   const [showSequencingReveal, setShowSequencingReveal] = useState(false);
   const [sequencingNote, setSequencingNote] = useState<string | null>(null);
+  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
   const mapRef = useRef<MapHandle>(null);
   const { details, fetchDetails } = usePlaceDetails();
   const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
@@ -212,6 +214,12 @@ export function RouteScreen() {
           }
           onMarkerClick={handleMarkerClick}
         />
+        {!activeMarker && favouritedPins.length > 0 && (
+          <FavoritesMarker
+            pins={favouritedPins}
+            onClick={() => setShowFavoritesSheet(true)}
+          />
+        )}
       </MapLibreMap>
 
       <FootprintChips
@@ -244,6 +252,27 @@ export function RouteScreen() {
           Loading place suggestions…
         </div>
       )}
+
+      {showFavoritesSheet && !activeMarker && (
+        <FavoritesSheet
+          pins={favouritedPins}
+          onClose={() => setShowFavoritesSheet(false)}
+          onSelect={(pin) => {
+            setShowFavoritesSheet(false);
+            const place: Place = {
+              id: pin.placeId,
+              title: pin.title,
+              lat: pin.lat,
+              lon: pin.lon,
+              category: 'place',
+              _city: pin.city,
+            };
+            mapRef.current?.flyTo(pin.lat, pin.lon);
+            setActiveMarker({ kind: 'place', place, state: 'added', isFavourited: true });
+          }}
+        />
+      )}
+
 
       {/* Sequencing reveal overlay */}
       {showSequencingReveal && (
