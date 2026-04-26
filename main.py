@@ -1008,11 +1008,10 @@ Rules:
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
-        # Strip markdown code fences if present
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
         result = json.loads(raw)
         return result
     except json.JSONDecodeError as e:
@@ -1075,10 +1074,10 @@ Rules:
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
         result = json.loads(raw)
         return result
     except json.JSONDecodeError as e:
