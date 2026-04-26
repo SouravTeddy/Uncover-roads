@@ -157,8 +157,14 @@ export function useRoute() {
       id: Date.now().toString(),
       city,
       date: new Date().toISOString(),
+      travelDate: state.tripContext.date ?? null,
+      cityLat: state.cityGeo?.lat ?? null,
+      cityLon: state.cityGeo?.lon ?? null,
+      selectedPlaces: state.selectedPlaces,
       itinerary,
       persona,
+      lastUpdateCheck: null,
+      pendingSwapCards: [],
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
     const { data: { user } } = await supabase.auth.getUser();
