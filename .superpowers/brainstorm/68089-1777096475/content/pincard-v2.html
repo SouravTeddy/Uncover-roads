@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pin Card v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070c14; color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; padding: 20px 16px 40px; }
+  h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; line-height: 1.5; }
+
+  .row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+  .phone { width: 210px; flex-shrink: 0; }
+  .phone-label { font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-align: center; letter-spacing: .5px; text-transform: uppercase; }
+
+  .sheet { background: #141921; border-radius: 20px 20px 0 0; overflow: hidden; box-shadow: 0 -8px 48px rgba(0,0,0,.7); }
+  .drag-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .drag-handle div { width: 32px; height: 3px; background: rgba(255,255,255,.12); border-radius: 2px; }
+
+  .hero { position: relative; height: 120px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .hero-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.65) 100%); }
+
+  /* Travel date badge — replaces open now */
+  .travel-badge { position: absolute; bottom: 8px; left: 10px; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 8px; font-weight: 700; letter-spacing: .5px; backdrop-filter: blur(10px); }
+  .travel-badge.ok { background: rgba(22,163,74,.25); border: 1px solid rgba(74,222,128,.25); color: #4ade80; }
+  .travel-badge.warn { background: rgba(245,158,11,.2); border: 1px solid rgba(245,158,11,.3); color: #fbbf24; }
+  .travel-badge.closed { background: rgba(239,68,68,.15); border: 1px solid rgba(248,113,113,.2); color: #f87171; }
+
+  .body { padding: 12px 14px 16px; }
+
+  .name-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .place-name { font-size: 15px; font-weight: 800; color: #f9f9ff; line-height: 1.2; }
+  .place-sub { font-size: 9px; color: rgba(193,198,215,.4); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+  .rating-block { text-align: right; flex-shrink: 0; margin-left: 8px; }
+  .rating { font-size: 12px; color: #fbbf24; font-weight: 700; }
+  .rating-count { font-size: 9px; color: #475569; }
+
+  .divider { height: 1px; background: rgba(255,255,255,.06); margin: 10px 0; }
+
+  .why-rec { background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(99,102,241,.06)); border: 1px solid rgba(59,130,246,.18); border-radius: 8px; padding: 7px 9px; margin-bottom: 8px; }
+  .why-rec-label { font-size: 7px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .why-rec-text { font-size: 9px; color: #93c5fd; line-height: 1.4; }
+
+  .intel-row { display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
+  .intel-pill { background: #1e293b; border: 1px solid #273548; border-radius: 6px; padding: 4px 7px; font-size: 8px; color: #94a3b8; display: flex; align-items: center; gap: 3px; }
+  .intel-pill.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); color: #fbbf24; }
+  .intel-pill.info { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.2); color: #a78bfa; }
+
+  .tip { border-left: 2px solid #6366f1; padding: 4px 8px; margin-bottom: 10px; }
+  .tip-label { font-size: 7px; color: #818cf8; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .tip-text { font-size: 8.5px; color: #94a3b8; line-height: 1.4; }
+
+  /* Link row */
+  .link-row { display: flex; gap: 5px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 2px; }
+  .link-pill { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 8px; font-weight: 600; white-space: nowrap; text-decoration: none; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.05); color: rgba(193,198,215,.7); cursor: pointer; }
+  .link-pill.maps { background: rgba(59,130,246,.1); border-color: rgba(59,130,246,.3); color: #93c5fd; }
+
+  .action-row { display: flex; gap: 6px; }
+  .btn-add { flex: 1; background: #6366f1; border: none; border-radius: 10px; padding: 10px 0; font-size: 11px; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .btn-add.added { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: #a5b4fc; }
+  .btn-shortlist { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 12px; font-size: 10px; color: #94a3b8; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .btn-shortlist.active { background: rgba(251,191,36,.08); border-color: rgba(251,191,36,.25); color: #fbbf24; }
+
+  /* Annotation section */
+  .callout-box { background: #1e293b; border-radius: 10px; padding: 14px; margin-top: 8px; }
+  .callout-title { font-size: 11px; font-weight: 700; color: #f1f5f9; margin-bottom: 10px; }
+  .callout-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+  .callout-tag { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+  .tag-change { background: rgba(99,102,241,.15); color: #a78bfa; border: 1px solid rgba(99,102,241,.2); }
+  .tag-new { background: rgba(16,185,129,.1); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+  .tag-keep { background: rgba(59,130,246,.1); color: #60a5fa; border: 1px solid rgba(59,130,246,.2); }
+  .callout-desc { font-size: 9px; color: #64748b; line-height: 1.5; }
+  .callout-desc strong { color: #94a3b8; }
+
+  /* Scenario tabs */
+  .scenario-header { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .scenario-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .scenario-card { background: #1e293b; border-radius: 8px; padding: 10px; }
+  .scenario-label { font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .scenario-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 999px; font-size: 8px; font-weight: 700; margin-bottom: 5px; }
+  .scenario-note { font-size: 8px; color: #64748b; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<h2>Pin Card v2 — Three Fixes Applied</h2>
+<p class="subtitle">Google Maps link restored. Travel-date context replaces "open now". Shortlist replaces Directions.</p>
+
+<div class="row">
+
+  <!-- SCENARIO A: Place is open on travel day -->
+  <div class="phone">
+    <div class="phone-label">Travel day: open ✓</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background: linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.1));">
+        <div style="font-size:44px;opacity:.35;filter:drop-shadow(0 4px 12px rgba(99,102,241,.4));">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="travel-badge ok">📅 Open · Sat 14 Jun · Closes 5:30 PM</div>
+      </div>
+      <div class="body">
+        <div class="name-row">
+          <div>
+            <div class="place-name">Jama Masjid</div>
+            <div class="place-sub">Historic Mosque · Old Delhi</div>
+          </div>
+          <div class="rating-block">
+            <div class="rating">★ 4.6</div>
+            <div class="rating-count">42K reviews</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="why-rec">
+          <div class="why-rec-label">✦ Why this for you</div>
+          <div class="why-rec-text">Matches your <strong style="color:#bfdbfe;">cultural + slow pace</strong> profile. Pairs with Red Fort — same walk, same Mughal era. Free entry.</div>
+        </div>
+        <div class="intel-row">
+          <div class="intel-pill info">🕌 Free entry · dress modestly</div>
+        </div>
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">Climb the south minaret — ₹100, panoramic view over Old Delhi.</div>
+        </div>
+        <div class="link-row">
+          <a class="link-pill maps">🗺 Google Maps</a>
+          <span class="link-pill">🌐 Website</span>
+        </div>
+        <div class="action-row">
+          <button class="btn-add">＋ Add to itinerary</button>
+          <button class="btn-shortlist">🔖 Shortlist</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENARIO B: Closed on travel day -->
+  <div class="phone">
+    <div class="phone-label">Travel day: closed ✗</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background: linear-gradient(135deg,rgba(139,92,246,.2),rgba(99,102,241,.1));">
+        <div style="font-size:44px;opacity:.35;">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="travel-badge closed">⚠️ Closed Fri · Your Day 2 is Friday</div>
+      </div>
+      <div class="body">
+        <div class="name-row">
+          <div>
+            <div class="place-name">Jama Masjid</div>
+            <div class="place-sub">Historic Mosque · Old Delhi</div>
+          </div>
+          <div class="rating-block">
+            <div class="rating">★ 4.6</div>
+            <div class="rating-count">42K reviews</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="why-rec">
+          <div class="why-rec-label">✦ Why this for you</div>
+          <div class="why-rec-text">Matches your <strong style="color:#bfdbfe;">cultural</strong> profile — but note the closure conflict. Move to Day 1 (Thursday) to visit.</div>
+        </div>
+        <div class="intel-row">
+          <div class="intel-pill warn">⚠️ Closed Fri noon for prayers</div>
+          <div class="intel-pill warn">📅 Open Sat–Thu</div>
+        </div>
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">If you must visit Friday, arrive before 12 PM — closes mid-afternoon for Jumu'ah prayers.</div>
+        </div>
+        <div class="link-row">
+          <a class="link-pill maps">🗺 Google Maps</a>
+        </div>
+        <div class="action-row">
+          <button class="btn-add">＋ Add anyway</button>
+          <button class="btn-shortlist active">🔖 Shortlisted</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENARIO C: Reference pin (ghost) — not yet added -->
+  <div class="phone">
+    <div class="phone-label">Reference pin (ghost)</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background: linear-gradient(135deg,rgba(59,130,246,.15),rgba(99,102,241,.08));">
+        <div style="font-size:44px;opacity:.25;">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="travel-badge ok">📅 Open · Sat 14 Jun</div>
+        <!-- Reference badge -->
+        <div style="position:absolute;top:8px;left:10px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.35);border-radius:999px;padding:2px 8px;font-size:7px;font-weight:700;color:#a78bfa;backdrop-filter:blur(8px);">✦ Popular with cultural travelers</div>
+      </div>
+      <div class="body">
+        <div class="name-row">
+          <div>
+            <div class="place-name">Jama Masjid</div>
+            <div class="place-sub">Historic Mosque · Old Delhi</div>
+          </div>
+          <div class="rating-block">
+            <div class="rating">★ 4.6</div>
+            <div class="rating-count">42K reviews</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="why-rec" style="border-color:rgba(99,102,241,.25);background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.06));">
+          <div class="why-rec-label" style="color:#a78bfa;">✦ Reference suggestion</div>
+          <div class="why-rec-text" style="color:#c4b5fd;">Travelers with your <strong style="color:#ddd6fe;">cultural explorer</strong> profile commonly visit this. 68% include it in a Delhi trip.</div>
+        </div>
+        <div class="intel-row">
+          <div class="intel-pill info">🕌 Free entry</div>
+          <div class="intel-pill info">⏱ ~45 min</div>
+        </div>
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">Climb the south minaret — ₹100, panoramic view over Old Delhi.</div>
+        </div>
+        <div class="link-row">
+          <a class="link-pill maps">🗺 Google Maps</a>
+        </div>
+        <div class="action-row">
+          <button class="btn-add">＋ Add to itinerary</button>
+          <button class="btn-shortlist">🔖 Shortlist</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- What changed -->
+<div class="callout-box">
+  <div class="callout-title">Changes from your feedback</div>
+
+  <div class="callout-row">
+    <span class="callout-tag tag-keep">KEEP</span>
+    <div class="callout-desc"><strong>Google Maps link</strong> — restored as a link pill. You're right: we can't show everything. Google Maps is depth. Our card is decision. Both have a job.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-change">CHANGED</span>
+    <div class="callout-desc"><strong>"Open now" → travel-date context.</strong> Badge now reads "Open · Sat 14 Jun · Closes 5:30 PM" — relative to actual travel day. If closed on their travel day, the badge turns red and says exactly why: "Closed Fri · Your Day 2 is Friday." Actionable, not ambient.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-change">CHANGED</span>
+    <div class="callout-desc"><strong>Crowd level removed.</strong> "Low crowd now" is meaningless for future travel. Crowd intel could return later if we add crowd-by-time-of-day data (e.g. "usually quiet on Saturday mornings") — but not in V1.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-change">CHANGED</span>
+    <div class="callout-desc"><strong>Directions → Shortlist.</strong> User is exploring, not navigating. "Shortlist" = soft maybe. Shows as a muted pin variant on the map — distinct from fully added pins. Reduces decision pressure, improves explore flow.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>Reference pin variant.</strong> When tapping a ghost reference pin, the card signals it's a suggestion — "Popular with cultural travelers · 68% include this." Different tone from a user-discovered place. Still same Add + Shortlist CTAs.</div>
+  </div>
+</div>
+
+<div style="margin-top:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:12px;">
+  <div style="font-size:10px;font-weight:700;color:#fbbf24;margin-bottom:5px;">📅 Travel date context requires</div>
+  <div style="font-size:9px;color:#64748b;line-height:1.6;">The travel date must be in app state when the pin card opens. This already exists as <code style="color:#94a3b8;background:#0f172a;padding:1px 4px;border-radius:3px;">tripContext.date</code> in the store. The pin card just needs to receive it as a prop and compare against <code style="color:#94a3b8;background:#0f172a;padding:1px 4px;border-radius:3px;">weekday_text</code> from Google Places — logic already exists in <code style="color:#94a3b8;background:#0f172a;padding:1px 4px;border-radius:3px;">pincard-utils.ts</code>.</div>
+</div>
+
+</body>
+</html>

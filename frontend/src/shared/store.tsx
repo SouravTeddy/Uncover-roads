@@ -20,6 +20,9 @@ import type {
   UserTier,
   TripPack,
   NotifPrefs,
+  ReferencePin,
+  FavouritedPin,
+  CityFootprint,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -67,9 +70,11 @@ export interface AppState {
   route: RouteData | null;
   savedItineraries: SavedItinerary[];
   userRole: 'user' | 'admin';
+  userTier: UserTier;
+  packTripsRemaining: number;
+  autoReplenish: boolean;
   generationCount: number;
   profileLoaded: boolean;
-  userTier: UserTier;
   tripPacks: TripPack[];
   packPurchaseCount: number;
   notifPrefs: NotifPrefs;
@@ -78,6 +83,10 @@ export interface AppState {
   journeyBudgetDays: number | null;
   advisorMessages: AdvisorMessage[];
   pendingActivePlace: Place | null;
+  referencePins: ReferencePin[];
+  favouritedPins: FavouritedPin[];
+  cityFootprints: CityFootprint[];
+  similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -129,7 +138,20 @@ function getStoredPersona(): Persona | null {
 function getStoredItineraries(): SavedItinerary[] {
   try {
     const stored = localStorage.getItem('ur_saved_itineraries');
-    return stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    const items = stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    // Backfill new fields for itineraries saved before this version
+    return items.map(rawItem => {
+      const item = rawItem as unknown as Record<string, unknown>;
+      return {
+        travelDate: null,
+        cityLat: null,
+        cityLon: null,
+        selectedPlaces: [],
+        lastUpdateCheck: null,
+        pendingSwapCards: [],
+        ...item,
+      } as unknown as SavedItinerary;
+    });
   } catch {
     return [];
   }
@@ -155,7 +177,7 @@ function getStoredUserRole(): 'user' | 'admin' {
 function getStoredTier(): UserTier {
   try {
     const v = localStorage.getItem('ur_user_tier');
-    if (v === 'pro' || v === 'unlimited') return v;
+    if (v === 'pack' || v === 'pro') return v;
     return 'free';
   } catch { return 'free'; }
 }
@@ -217,9 +239,11 @@ export const initialState: AppState = {
   route: null,
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
+  userTier: getStoredTier(),
+  packTripsRemaining: (ssGet<number>('ur_ss_pack_trips') ?? 0),
+  autoReplenish: (ssGet<boolean>('ur_ss_auto_replenish') ?? false),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
-  userTier: getStoredTier(),
   tripPacks: getStoredTripPacks(),
   packPurchaseCount: getStoredPackPurchaseCount(),
   notifPrefs: getStoredNotifPrefs(),
@@ -228,6 +252,10 @@ export const initialState: AppState = {
   journeyBudgetDays: null,
   advisorMessages: [],
   pendingActivePlace: null,
+  referencePins: [],
+  favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
+  cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
+  similarPinsState: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -253,7 +281,12 @@ export type Action =
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
   | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
+  | { type: 'UPDATE_SAVED_ITINERARY'; id: string; patch: Partial<SavedItinerary> }
   | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
+  | { type: 'SET_TIER'; tier: UserTier }
+  | { type: 'SET_PACK_TRIPS'; count: number }
+  | { type: 'CONSUME_PACK_TRIP' }
+  | { type: 'SET_AUTO_REPLENISH'; enabled: boolean }
   | { type: 'SET_GENERATION_COUNT'; count: number }
   | { type: 'INCREMENT_GENERATION_COUNT' }
   | { type: 'PROFILE_LOADED' }
@@ -273,7 +306,11 @@ export type Action =
   | { type: 'ADD_TRIP_PACK'; pack: TripPack }
   | { type: 'USE_PACK_TRIP'; packId: string }
   | { type: 'SET_NOTIF_PREFS'; prefs: Partial<NotifPrefs> }
-  | { type: 'SET_UNITS'; units: 'km' | 'miles' };
+  | { type: 'SET_UNITS'; units: 'km' | 'miles' }
+  | { type: 'SET_REFERENCE_PINS'; pins: ReferencePin[] }
+  | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
+  | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
+  | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -381,12 +418,40 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, savedItineraries: updated };
     }
 
+    case 'UPDATE_SAVED_ITINERARY': {
+      const updated = state.savedItineraries.map(s =>
+        s.id === action.id ? { ...s, ...action.patch } : s
+      );
+      try {
+        localStorage.setItem('ur_saved_itineraries', JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return { ...state, savedItineraries: updated };
+    }
+
     case 'SET_SAVED_ITINERARIES':
       return { ...state, savedItineraries: action.items };
 
     case 'SET_USER_ROLE':
       try { localStorage.setItem('ur_user_role', action.role); } catch { /* ignore */ }
       return { ...state, userRole: action.role };
+
+    case 'SET_TIER':
+      ssSave('ur_ss_tier', action.tier);
+      return { ...state, userTier: action.tier };
+
+    case 'SET_PACK_TRIPS':
+      ssSave('ur_ss_pack_trips', action.count);
+      return { ...state, packTripsRemaining: action.count };
+
+    case 'CONSUME_PACK_TRIP': {
+      const updated = Math.max(0, state.packTripsRemaining - 1);
+      ssSave('ur_ss_pack_trips', updated);
+      return { ...state, packTripsRemaining: updated };
+    }
+
+    case 'SET_AUTO_REPLENISH':
+      ssSave('ur_ss_auto_replenish', action.enabled);
+      return { ...state, autoReplenish: action.enabled };
 
     case 'SET_GENERATION_COUNT':
       try { localStorage.setItem('ur_gen_count', String(action.count)); } catch { /* ignore */ }
@@ -500,6 +565,32 @@ export function reducer(state: AppState, action: Action): AppState {
       try { localStorage.setItem('ur_units', action.units); } catch { /* ignore */ }
       return { ...state, units: action.units };
 
+    case 'SET_REFERENCE_PINS':
+      return { ...state, referencePins: action.pins };
+
+    case 'TOGGLE_FAVOURITE': {
+      const exists = state.favouritedPins.some(f => f.placeId === action.pin.placeId);
+      const updated = exists
+        ? state.favouritedPins.filter(f => f.placeId !== action.pin.placeId)
+        : [...state.favouritedPins, action.pin];
+      ssSave('ur_ss_favs', updated);
+      return { ...state, favouritedPins: updated };
+    }
+
+    case 'ADD_CITY_FOOTPRINT': {
+      const exists = state.cityFootprints.some(f => f.city === action.footprint.city);
+      const updated = exists
+        ? state.cityFootprints.map(f =>
+            f.city === action.footprint.city ? action.footprint : f
+          )
+        : [...state.cityFootprints, action.footprint];
+      ssSave('ur_ss_footprints', updated);
+      return { ...state, cityFootprints: updated };
+    }
+
+    case 'SET_SIMILAR_PINS':
+      return { ...state, similarPinsState: action.state };
+
     default:
       return state;
   }
@@ -523,4 +614,25 @@ export function useAppStore() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useAppStore must be used within AppProvider');
   return ctx;
+}
+
+/**
+ * Pure function — determines whether a generation attempt is allowed
+ * and whether it should be degraded (no Our Picks / Live Events).
+ *
+ * @param tier       Current user tier
+ * @param genCount   Number of itineraries generated so far (free tier)
+ * @param packTrips  Current pack trip balance (pack tier)
+ */
+export function getGenerationAccess(
+  tier: UserTier,
+  genCount: number,
+  packTrips: number,
+): { allowed: boolean; degraded: boolean } {
+  if (tier === 'pro') return { allowed: true, degraded: false };
+  if (tier === 'pack') return { allowed: packTrips > 0, degraded: false };
+  // Free tier
+  if (genCount < 2) return { allowed: true, degraded: false };
+  if (genCount === 2) return { allowed: true, degraded: true };
+  return { allowed: false, degraded: false };
 }

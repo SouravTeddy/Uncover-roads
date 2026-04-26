@@ -30,8 +30,8 @@ describe('isCurationLocked', () => {
     expect(isCurationLocked(state({ userTier: 'pro', generationCount: 10 }))).toBe(false);
   });
 
-  it('is false for unlimited tier', () => {
-    expect(isCurationLocked(state({ userTier: 'unlimited', generationCount: 100 }))).toBe(false);
+  it('is false for pro tier with high generation count', () => {
+    expect(isCurationLocked(state({ userTier: 'pro', generationCount: 100 }))).toBe(false);
   });
 
   it('is false for free tier using an active pack trip', () => {
@@ -58,8 +58,8 @@ describe('shouldShowPaywall', () => {
     expect(shouldShowPaywall(state({ userTier: 'pro', generationCount: 4 }))).toBe(false);
   });
 
-  it('is false for unlimited', () => {
-    expect(shouldShowPaywall(state({ userTier: 'unlimited', generationCount: 100 }))).toBe(false);
+  it('is false for pro with high generation count', () => {
+    expect(shouldShowPaywall(state({ userTier: 'pro', generationCount: 100 }))).toBe(false);
   });
 });
 

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pin Card Redesign</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #070c14; color: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; padding: 20px 16px 40px; }
+  h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #64748b; font-size: 12px; margin-bottom: 24px; line-height: 1.5; }
+
+  .row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+
+  .phone { width: 200px; flex-shrink: 0; }
+  .phone-label { font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; text-align: center; letter-spacing: .5px; text-transform: uppercase; }
+
+  /* The card sheet itself — shown at 75% height from bottom */
+  .sheet { background: #141921; border-radius: 20px 20px 0 0; overflow: hidden; box-shadow: 0 -8px 48px rgba(0,0,0,.7); }
+
+  .drag-handle { display: flex; justify-content: center; padding: 10px 0 4px; }
+  .drag-handle div { width: 32px; height: 3px; background: rgba(255,255,255,.12); border-radius: 2px; }
+
+  /* Hero */
+  .hero { position: relative; height: 120px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.65) 100%); }
+  .hero-badge { position: absolute; bottom: 8px; left: 10px; display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 8px; font-weight: 700; letter-spacing: .5px; backdrop-filter: blur(10px); }
+  .hero-badge.open { background: rgba(22,163,74,.3); border: 1px solid rgba(74,222,128,.3); color: #4ade80; }
+  .hero-badge.closed { background: rgba(220,38,38,.2); border: 1px solid rgba(248,113,113,.25); color: #f87171; }
+
+  /* Body */
+  .body { padding: 12px 14px 16px; }
+
+  .place-name { font-size: 15px; font-weight: 800; color: #f9f9ff; line-height: 1.2; }
+  .place-cat { font-size: 9px; color: rgba(193,198,215,.4); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .meta-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .rating { font-size: 11px; color: #fbbf24; font-weight: 700; }
+  .rating-count { font-size: 9px; color: #475569; }
+  .price { font-size: 10px; color: #475569; }
+  .hours { font-size: 10px; font-weight: 600; }
+  .hours.open { color: #4ade80; }
+  .hours.closed { color: #f87171; }
+
+  .divider { height: 1px; background: rgba(255,255,255,.06); margin: 10px 0; }
+
+  /* Why rec — the key addition */
+  .why-rec { background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(99,102,241,.06)); border: 1px solid rgba(59,130,246,.18); border-radius: 8px; padding: 7px 9px; margin-bottom: 8px; }
+  .why-rec-label { font-size: 7px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .why-rec-text { font-size: 9px; color: #93c5fd; line-height: 1.4; }
+
+  /* Intel pill row — max 2, critical only */
+  .intel-row { display: flex; gap: 5px; margin-bottom: 8px; }
+  .intel-pill { background: #1e293b; border: 1px solid #273548; border-radius: 6px; padding: 4px 7px; font-size: 8px; color: #94a3b8; display: flex; align-items: center; gap: 3px; }
+  .intel-pill.warn { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.2); color: #fbbf24; }
+  .intel-pill.good { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.2); color: #34d399; }
+  .intel-pill.crowd { background: rgba(99,102,241,.08); border-color: rgba(99,102,241,.2); color: #a78bfa; }
+
+  /* Local tip — one liner */
+  .tip { border-left: 2px solid #6366f1; padding: 4px 8px; margin-bottom: 10px; }
+  .tip-label { font-size: 7px; color: #818cf8; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+  .tip-text { font-size: 8.5px; color: #94a3b8; line-height: 1.4; }
+
+  /* Action row */
+  .action-row { display: flex; gap: 6px; }
+  .btn-add { flex: 1; background: #6366f1; border: none; border-radius: 10px; padding: 10px 0; font-size: 11px; font-weight: 700; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .btn-add.added { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.4); color: #a5b4fc; }
+  .btn-dir { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; font-size: 10px; color: #94a3b8; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+  /* Annotation callouts */
+  .callout-box { background: #1e293b; border-radius: 10px; padding: 14px; margin-top: 4px; }
+  .callout-title { font-size: 11px; font-weight: 700; color: #f1f5f9; margin-bottom: 10px; }
+  .callout-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+  .callout-tag { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+  .tag-keep { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.2); }
+  .tag-cut { background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.2); }
+  .tag-new { background: rgba(99,102,241,.15); color: #a78bfa; border: 1px solid rgba(99,102,241,.2); }
+  .callout-desc { font-size: 9px; color: #64748b; line-height: 1.5; }
+  .callout-desc strong { color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<h2>Pin Card: Current vs Enhanced</h2>
+<p class="subtitle">Left = current (pure Google data). Right = enhanced (Google data + our intelligence layer). Same structure, different signal quality.</p>
+
+<div class="row">
+
+  <!-- CURRENT card -->
+  <div class="phone">
+    <div class="phone-label">Current</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background:rgba(139,92,246,.12);">
+        <div style="font-size:40px;opacity:.3;">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="hero-badge open">● Open now</div>
+      </div>
+      <div class="body">
+        <div class="place-name">Jama Masjid</div>
+        <div class="place-cat">Historic · Tourism</div>
+        <div class="meta-row">
+          <span class="rating">★ 4.6</span>
+          <span class="rating-count">(42,318)</span>
+          <span class="hours open">Open now · Closes 5:30 PM</span>
+        </div>
+        <div class="divider"></div>
+        <!-- Google editorial -->
+        <div style="font-size:9px;color:rgba(193,198,215,.6);line-height:1.5;margin-bottom:10px;">India's largest mosque, built in 1656 by Mughal emperor Shah Jahan, with capacity for 25,000 worshippers.</div>
+        <!-- Type chips -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">
+          <span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:3px 8px;font-size:8px;color:rgba(193,198,215,.7);">Place Of Worship</span>
+          <span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:3px 8px;font-size:8px;color:rgba(193,198,215,.7);">Tourist Attraction</span>
+        </div>
+        <!-- Links row -->
+        <div style="display:flex;gap:5px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;">
+          <span style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:999px;padding:4px 8px;font-size:8px;color:#93c5fd;white-space:nowrap;">🗺 Google Maps</span>
+          <span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:4px 8px;font-size:8px;color:#94a3b8;white-space:nowrap;">Directions</span>
+          <span style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:4px 8px;font-size:8px;color:#94a3b8;white-space:nowrap;">Wikipedia</span>
+        </div>
+        <button class="btn-add">＋ Add to trip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENHANCED card -->
+  <div class="phone">
+    <div class="phone-label">Enhanced</div>
+    <div class="sheet">
+      <div class="drag-handle"><div></div></div>
+      <div class="hero" style="background:rgba(139,92,246,.12);">
+        <div style="font-size:40px;opacity:.3;">🕌</div>
+        <div class="hero-gradient"></div>
+        <div class="hero-badge open">● Open now · Closes 5:30 PM</div>
+      </div>
+      <div class="body">
+        <!-- Title + rating inline -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="place-name">Jama Masjid</div>
+            <div class="place-cat">Historic Mosque · Old Delhi</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:8px;">
+            <div class="rating" style="font-size:12px;">★ 4.6</div>
+            <div class="rating-count">42K reviews</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- WHY PICKED — new -->
+        <div class="why-rec">
+          <div class="why-rec-label">✦ Why this for you</div>
+          <div class="why-rec-text">Matches your <strong>cultural + slow pace</strong> profile. Sequenced before Red Fort — same walk, same Mughal era. Free entry.</div>
+        </div>
+
+        <!-- Max 2 critical intel pills -->
+        <div class="intel-row">
+          <div class="intel-pill warn">⏰ Fri closes 12:30 PM</div>
+          <div class="intel-pill crowd">👥 Low crowd now</div>
+        </div>
+
+        <!-- Local tip — one line -->
+        <div class="tip">
+          <div class="tip-label">Local tip</div>
+          <div class="tip-text">Climb the south minaret — ₹100 extra, panoramic rooftop view of Old Delhi.</div>
+        </div>
+
+        <!-- Actions: Add primary, Directions secondary -->
+        <div class="action-row">
+          <button class="btn-add">＋ Add to itinerary</button>
+          <button class="btn-dir">↗ Directions</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- What changed callout -->
+<div class="callout-box">
+  <div class="callout-title">What changed and why</div>
+
+  <div class="callout-row">
+    <span class="callout-tag tag-keep">KEEP</span>
+    <div class="callout-desc"><strong>Hero image, title, rating, open/closed</strong> — core decision signals. Rating earns trust. Open/closed is time-critical. Moved closing time into the hero badge so it's impossible to miss.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-cut">CUT</span>
+    <div class="callout-desc"><strong>Google editorial summary</strong> — generic copy ("built in 1656 by Shah Jahan") that says nothing about why *this user* should go. Replaced by "Why this for you."</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-cut">CUT</span>
+    <div class="callout-desc"><strong>Type chips + Wikipedia link</strong> — zero decision value at this stage. User is choosing whether to add, not researching. Wikipedia sends them out of the app.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-cut">CUT</span>
+    <div class="callout-desc"><strong>Google Maps link</strong> — we are the map. Linking out to Google from a map app is a trust leak. Directions (deep link) is kept because it's genuinely useful.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>"Why this for you"</strong> — persona-matched reason. Cultural fit, sequence logic, budget signal. This is the moat. One sentence that Google can never show.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>Max 2 intel pills</strong> — only the most critical live signal. Time alert (closing early) + crowd level. Never more than 2 — any more becomes noise at this card size.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>Local tip</strong> — one curated insider line from the LLM. Specific, actionable, not in any guide. This is what a friend who's been there says.</div>
+  </div>
+  <div class="callout-row">
+    <span class="callout-tag tag-new">NEW</span>
+    <div class="callout-desc"><strong>Area label under name</strong> — "Old Delhi" instead of just category. Adds location context without a separate address line.</div>
+  </div>
+</div>
+
+<div style="margin-top:16px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:12px;">
+  <div style="font-size:10px;font-weight:700;color:#818cf8;margin-bottom:6px;">📦 Data sources per field</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+    <div style="font-size:8.5px;color:#64748b;"><span style="color:#34d399;">●</span> Hero image — Google Photos / Wikipedia fallback (existing)</div>
+    <div style="font-size:8.5px;color:#64748b;"><span style="color:#34d399;">●</span> Rating + count — Google Places (existing)</div>
+    <div style="font-size:8.5px;color:#34d399;"><span style="color:#a78bfa;">●</span> Why this for you — LLM, generated with reference pin set</div>
+    <div style="font-size:8.5px;color:#34d399;"><span style="color:#a78bfa;">●</span> Local tip — LLM, generated with reference pin set</div>
+    <div style="font-size:8.5px;color:#34d399;"><span style="color:#a78bfa;">●</span> Crowd level — LLM estimate (can upgrade to live later)</div>
+    <div style="font-size:8.5px;color:#64748b;"><span style="color:#34d399;">●</span> Closing time alert — Google Places weekday_text (existing)</div>
+  </div>
+</div>
+
+</body>
+</html>

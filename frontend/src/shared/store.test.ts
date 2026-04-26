@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { reducer, initialState } from './store';
+import { reducer, initialState, getGenerationAccess } from './store';
 import type { AppState } from './store';
 import type { Itinerary } from './types';
 
@@ -141,5 +141,70 @@ describe('tier state', () => {
   it('SET_UNITS persists units preference', () => {
     const next = reducer(initialState, { type: 'SET_UNITS', units: 'miles' });
     expect(next.units).toBe('miles');
+  });
+
+  it('defaults packTripsRemaining to 0', () => {
+    expect(initialState.packTripsRemaining).toBe(0);
+  });
+
+  it('defaults autoReplenish to false', () => {
+    expect(initialState.autoReplenish).toBe(false);
+  });
+
+  it('SET_TIER updates userTier', () => {
+    const next = reducer(initialState, { type: 'SET_TIER', tier: 'pro' });
+    expect(next.userTier).toBe('pro');
+  });
+
+  it('SET_PACK_TRIPS sets trip balance', () => {
+    const next = reducer(initialState, { type: 'SET_PACK_TRIPS', count: 5 });
+    expect(next.packTripsRemaining).toBe(5);
+  });
+
+  it('CONSUME_PACK_TRIP decrements by 1', () => {
+    const state = { ...initialState, packTripsRemaining: 3 };
+    const next = reducer(state, { type: 'CONSUME_PACK_TRIP' });
+    expect(next.packTripsRemaining).toBe(2);
+  });
+
+  it('CONSUME_PACK_TRIP does not go below 0', () => {
+    const state = { ...initialState, packTripsRemaining: 0 };
+    const next = reducer(state, { type: 'CONSUME_PACK_TRIP' });
+    expect(next.packTripsRemaining).toBe(0);
+  });
+
+  it('SET_AUTO_REPLENISH toggles the flag', () => {
+    const next = reducer(initialState, { type: 'SET_AUTO_REPLENISH', enabled: true });
+    expect(next.autoReplenish).toBe(true);
+  });
+});
+
+describe('getGenerationAccess', () => {
+  it('free tier, 0 generations: full access', () => {
+    expect(getGenerationAccess('free', 0, 0)).toEqual({ allowed: true, degraded: false });
+  });
+
+  it('free tier, 1 generation used: full access', () => {
+    expect(getGenerationAccess('free', 1, 0)).toEqual({ allowed: true, degraded: false });
+  });
+
+  it('free tier, 2 generations used: degraded access', () => {
+    expect(getGenerationAccess('free', 2, 0)).toEqual({ allowed: true, degraded: true });
+  });
+
+  it('free tier, 3+ generations used: blocked', () => {
+    expect(getGenerationAccess('free', 3, 0)).toEqual({ allowed: false, degraded: false });
+  });
+
+  it('pack tier, 1 trip remaining: full access', () => {
+    expect(getGenerationAccess('pack', 99, 1)).toEqual({ allowed: true, degraded: false });
+  });
+
+  it('pack tier, 0 trips remaining: blocked', () => {
+    expect(getGenerationAccess('pack', 99, 0)).toEqual({ allowed: false, degraded: false });
+  });
+
+  it('pro tier: always full access', () => {
+    expect(getGenerationAccess('pro', 999, 0)).toEqual({ allowed: true, degraded: false });
   });
 });

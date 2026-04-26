@@ -17,8 +17,6 @@ export type Screen =
   | 'profile'
   | 'subscription';
 
-export type UserTier = 'free' | 'pro' | 'unlimited';
-
 export interface TripPack {
   id: string;
   trips: number;
@@ -260,9 +258,15 @@ export interface RouteData {
 export interface SavedItinerary {
   id: string;
   city: string;
-  date: string;
+  date: string;              // ISO datetime the trip was saved
+  travelDate: string | null; // ISO date of actual travel (YYYY-MM-DD)
+  cityLat: number | null;
+  cityLon: number | null;
+  selectedPlaces: Place[];   // places user added — needed for hours re-check
   itinerary: Itinerary;
   persona: Persona;
+  lastUpdateCheck: string | null; // ISO datetime of last update check
+  pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
 }
 
 // ── City search ───────────────────────────────────────────────
@@ -356,4 +360,77 @@ export interface AdvisorMessage {
   message: string;
   trigger: string;
   timestamp: number;
+}
+
+// ── Itinerary screen redesign ─────────────────────────────────
+
+/** A LLM-generated reference pin — shown as a ghost on the map. */
+export interface ReferencePin {
+  id: string;
+  title: string;
+  lat: number;
+  lon: number;
+  category: Category;
+  whyRec: string;    // "Why this for you" — one persona-matched sentence
+  localTip: string;  // one insider tip line
+}
+
+/** A city the user has explored, shown in the footprint chip bar. */
+export interface CityFootprint {
+  city: string;
+  emoji: string;       // e.g. "🗼"
+  pinCount: number;    // number of places explored (not added), shown in chip
+  lat: number;
+  lon: number;
+}
+
+/** A story card shown during city-hop loading transition. */
+export interface StoryCard {
+  imageUrl: string;
+  headline: string;
+  body: string;
+  cityContext: string;  // e.g. "Tokyo → Kyoto"
+}
+
+/** A place the user has saved to favourites (heart icon), not yet added. */
+export interface FavouritedPin {
+  placeId: string;  // matches Place.id
+  title: string;
+  lat: number;
+  lon: number;
+  city: string;
+}
+
+/** Visual state of a pin on the explore map. */
+export type PinState = 'added' | 'reference' | 'similar' | 'favourited';
+
+// ── Pricing / subscription ────────────────────────────────────
+
+export type UserTier = 'free' | 'pack' | 'pro';
+
+// ── Trip intelligence ─────────────────────────────────────────
+
+export type UpdateCardKind = 'event' | 'hours_change' | 'weather';
+
+export interface TripUpdateCard {
+  id: string;
+  kind: UpdateCardKind;
+  tripId: string;
+  title: string;
+  detail: string;
+  affectedStop?: string;
+  actionLabel?: string;
+  severity: 'info' | 'warning';
+}
+
+export interface SwapCard {
+  id: string;
+  stopName: string;
+  stopIdx: number;
+  currentSummary: string;
+  currentNote?: string;
+  suggestedSummary: string;
+  suggestedNote: string;
+  resolved: boolean;
+  choice: 'new' | 'original' | null;
 }

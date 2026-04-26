@@ -1,0 +1,129 @@
+<h2>Map Visual Language</h2>
+<p class="subtitle">How pins, routes, detours, and multi-city hops are styled. This is the core visual identity of the map half.</p>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;">
+
+  <!-- Option A: Numbered pins + solid route -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)" style="max-width:220px;">
+    <div class="card-image" style="background:#0a0e14;padding:12px;border-radius:8px;">
+      <div style="background:#0f2d4a;border-radius:10px;padding:12px;min-height:160px;position:relative;">
+        <!-- SVG route lines -->
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;" viewBox="0 0 200 160" preserveAspectRatio="none">
+          <!-- Normal route -->
+          <path d="M 40 130 Q 70 80 110 70" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- Detour route -->
+          <path d="M 110 70 Q 140 55 160 40" stroke="#f59e0b" stroke-width="2.5" fill="none" stroke-dasharray="5,3" stroke-linecap="round"/>
+          <!-- Back to normal -->
+          <path d="M 160 40 Q 175 60 170 90" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.4"/>
+        </svg>
+        <!-- Pin 1 -->
+        <div style="position:absolute;left:22px;top:110px;width:22px;height:22px;border-radius:50%;background:#3b82f6;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(59,130,246,.5);">1</div>
+        <!-- Pin 2 active -->
+        <div style="position:absolute;left:95px;top:52px;width:26px;height:26px;border-radius:50%;background:#10b981;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:white;box-shadow:0 0 12px rgba(16,185,129,.7);">2</div>
+        <!-- Detour pin -->
+        <div style="position:absolute;left:143px;top:26px;width:22px;height:22px;border-radius:50%;background:#f59e0b;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;box-shadow:0 2px 8px rgba(245,158,11,.5);">D</div>
+        <!-- Pin 3 -->
+        <div style="position:absolute;left:152px;top:74px;width:20px;height:20px;border-radius:50%;background:#3b82f6;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:white;opacity:.5;">3</div>
+        <!-- Legend -->
+        <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(0,0,0,.5);border-radius:4px;padding:4px 6px;font-size:7px;color:#94a3b8;display:flex;gap:8px;">
+          <span>🔵 stop</span><span style="color:#10b981;">🟢 active</span><span style="color:#f59e0b;">🟡 detour</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Numbered pins + color-coded</h3>
+      <p>Blue numbered circles for stops. Green pulse for active. Amber dashed line + amber pin for detours. Clean and readable.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Teardrop pins + gradient route -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)" style="max-width:220px;">
+    <div class="card-image" style="background:#0a0e14;padding:12px;border-radius:8px;">
+      <div style="background:#0f2d4a;border-radius:10px;padding:12px;min-height:160px;position:relative;">
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;" viewBox="0 0 200 160" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="routeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <path d="M 40 130 Q 70 80 110 70" stroke="url(#routeGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <!-- Detour: orange glow -->
+          <path d="M 110 70 Q 140 55 160 40" stroke="#f97316" stroke-width="3" fill="none" stroke-dasharray="4,3" stroke-linecap="round" filter="url(#glow)"/>
+          <path d="M 160 40 Q 175 60 170 90" stroke="url(#routeGrad)" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.3"/>
+        </svg>
+        <!-- Teardrop pin 1 -->
+        <div style="position:absolute;left:22px;top:105px;">
+          <div style="width:18px;height:22px;background:#6366f1;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:1.5px solid white;box-shadow:0 2px 6px rgba(99,102,241,.6);"></div>
+        </div>
+        <!-- Active pin 2 — glowing -->
+        <div style="position:absolute;left:94px;top:47px;">
+          <div style="width:22px;height:26px;background:#3b82f6;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid white;box-shadow:0 0 14px rgba(59,130,246,.8);"></div>
+        </div>
+        <!-- Detour teardrop -->
+        <div style="position:absolute;left:144px;top:20px;">
+          <div style="width:18px;height:22px;background:#f97316;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:1.5px solid white;box-shadow:0 2px 6px rgba(249,115,22,.6);"></div>
+        </div>
+        <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(0,0,0,.5);border-radius:4px;padding:4px 6px;font-size:7px;color:#94a3b8;display:flex;gap:8px;">
+          <span style="color:#6366f1;">◆ stop</span><span style="color:#3b82f6;">◆ active</span><span style="color:#f97316;">◆ detour</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Teardrop pins + gradient route</h3>
+      <p>Classic map teardrops. Indigo→blue gradient route line. Orange detour. More of a traditional maps aesthetic.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Icon pins + dual-layer route -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)" style="max-width:220px;">
+    <div class="card-image" style="background:#0a0e14;padding:12px;border-radius:8px;">
+      <div style="background:#0f2d4a;border-radius:10px;padding:12px;min-height:160px;position:relative;">
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;" viewBox="0 0 200 160" preserveAspectRatio="none">
+          <!-- Route glow layer -->
+          <path d="M 40 130 Q 70 80 110 70" stroke="#3b82f6" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.15"/>
+          <path d="M 40 130 Q 70 80 110 70" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- Detour -->
+          <path d="M 110 70 Q 140 55 160 40" stroke="#ef4444" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.2"/>
+          <path d="M 110 70 Q 140 55 160 40" stroke="#ef4444" stroke-width="2" fill="none" stroke-dasharray="5,3" stroke-linecap="round"/>
+        </svg>
+        <!-- Icon pins with emoji -->
+        <div style="position:absolute;left:18px;top:104px;background:#1e3a5f;border:1.5px solid #3b82f6;border-radius:8px;padding:3px 5px;font-size:10px;">🏛️</div>
+        <!-- Active pin -->
+        <div style="position:absolute;left:92px;top:47px;background:#3b82f6;border:2px solid white;border-radius:10px;padding:4px 6px;font-size:11px;box-shadow:0 0 14px rgba(59,130,246,.7);">🕌</div>
+        <!-- Detour pin - red -->
+        <div style="position:absolute;left:142px;top:20px;background:#1a1a2e;border:1.5px solid #ef4444;border-radius:8px;padding:3px 5px;font-size:10px;">🍜</div>
+        <!-- Detour label -->
+        <div style="position:absolute;left:130px;top:10px;background:#ef4444;border-radius:3px;padding:1px 4px;font-size:7px;color:white;font-weight:700;">DETOUR</div>
+        <div style="position:absolute;bottom:6px;left:6px;right:6px;background:rgba(0,0,0,.5);border-radius:4px;padding:4px 6px;font-size:7px;color:#94a3b8;display:flex;gap:8px;">
+          <span>🔷 stop</span><span style="color:#ef4444;">🔴 detour</span><span style="color:#60a5fa;">✨ active</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Category icon pins + glow route</h3>
+      <p>Pins show category emoji (🏛️ museum, 🍜 food, etc). Route has a soft glow layer. Detour in red with a "DETOUR" label badge. Most expressive.</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="background:#1e293b;border-radius:10px;padding:14px;margin-top:8px;">
+  <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:8px;">✈️ Multi-city hop animation (all options)</div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:140px;background:#0f172a;border-radius:8px;padding:10px;">
+      <div style="font-size:10px;color:#60a5fa;font-weight:600;margin-bottom:4px;">Option i — Plane arc</div>
+      <div style="font-size:9px;color:#94a3b8;line-height:1.4;">Map zooms out → dashed arc line draws from City A to City B → small ✈️ icon flies along the arc → map zooms into City B.</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#0f172a;border-radius:8px;padding:10px;">
+      <div style="font-size:10px;color:#a78bfa;font-weight:600;margin-bottom:4px;">Option ii — Morph zoom</div>
+      <div style="font-size:9px;color:#94a3b8;line-height:1.4;">Map smoothly zooms out to show both cities, a connection line pulses between them, then re-zooms into next city. No plane icon — pure map motion.</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:#0f172a;border-radius:8px;padding:10px;">
+      <div style="font-size:10px;color:#34d399;font-weight:600;margin-bottom:4px;">Option iii — Overlay card</div>
+      <div style="font-size:9px;color:#94a3b8;line-height:1.4;">A "Flying to Mumbai →" card slides up over the map briefly, map cross-fades to new city. Simpler but less dramatic.</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;font-size:12px;">💡 My recommendation: <strong>Pin style A</strong> (numbered + color-coded — unambiguous, scannable at small map sizes) + <strong>animation i</strong> (plane arc — tells the story clearly, earns the delight moment).</p>

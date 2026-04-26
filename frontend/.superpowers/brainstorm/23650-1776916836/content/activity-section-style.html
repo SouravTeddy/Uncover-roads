@@ -1,0 +1,101 @@
+<h2>Recent Activity Section</h2>
+<p class="subtitle">Unsaved places + recent searches are merged. How should this "pick up where you left off" section feel?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:14px;background:#0d0d1a;border-radius:10px;">
+        <div style="font-size:10px;color:#888;letter-spacing:1px;margin-bottom:8px">CONTINUE EXPLORING</div>
+        <!-- City card -->
+        <div style="border-radius:12px;overflow:hidden;position:relative;height:90px;background:linear-gradient(135deg,#1a3a5c,#2d6a4f);display:flex;align-items:flex-end;padding:10px;margin-bottom:8px">
+          <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&q=60') center/cover no-repeat;opacity:0.4"></div>
+          <div style="position:relative;z-index:1">
+            <div style="font-size:14px;font-weight:700;color:#fff">Paris</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.6)">3 places selected · not saved</div>
+          </div>
+          <div style="margin-left:auto;position:relative;z-index:1;background:rgba(255,255,255,0.15);border-radius:20px;padding:4px 10px;font-size:10px;color:#fff;backdrop-filter:blur(4px)">Resume →</div>
+        </div>
+        <!-- Place chips -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <div style="background:#1e3a5f;border-radius:20px;padding:4px 10px;font-size:10px;color:#7eb8ff;display:flex;align-items:center;gap:4px"><span>📍</span>Eiffel Tower</div>
+          <div style="background:#1e3a5f;border-radius:20px;padding:4px 10px;font-size:10px;color:#7eb8ff;display:flex;align-items:center;gap:4px"><span>📍</span>Le Marais</div>
+          <div style="background:#1e3a5f;border-radius:20px;padding:4px 10px;font-size:10px;color:#7eb8ff;display:flex;align-items:center;gap:4px"><span>+1 more</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — City hero card + chips</h3>
+      <p>One big city card with a blurred photo backdrop, "3 places selected" summary, and place chips below. Tapping the card resumes the map in that city. Clean, contextual.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:14px;background:#0d0d1a;border-radius:10px;">
+        <div style="font-size:10px;color:#888;letter-spacing:1px;margin-bottom:8px">RECENT ACTIVITY</div>
+        <!-- Horizontal scroll of place cards -->
+        <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">
+          <div style="flex:0 0 80px;border-radius:10px;overflow:hidden;position:relative;height:100px;background:linear-gradient(160deg,#1a3a2e,#2d6a4f)">
+            <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1431274172761-fca41d930114?w=200&q=60') center/cover no-repeat;opacity:0.5"></div>
+            <div style="position:absolute;bottom:6px;left:6px;right:6px;font-size:9px;font-weight:600;color:#fff;line-height:1.2">Eiffel Tower</div>
+            <div style="position:absolute;top:6px;right:6px;width:14px;height:14px;background:#4ade80;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px">✓</div>
+          </div>
+          <div style="flex:0 0 80px;border-radius:10px;overflow:hidden;position:relative;height:100px;background:linear-gradient(160deg,#3a1a2e,#6a2d4f)">
+            <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=200&q=60') center/cover no-repeat;opacity:0.5"></div>
+            <div style="position:absolute;bottom:6px;left:6px;right:6px;font-size:9px;font-weight:600;color:#fff;line-height:1.2">Le Marais</div>
+            <div style="position:absolute;top:6px;right:6px;width:14px;height:14px;background:#4ade80;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px">✓</div>
+          </div>
+          <div style="flex:0 0 80px;border-radius:10px;overflow:hidden;position:relative;height:100px;background:linear-gradient(160deg,#1a2a3a,#2d4f6a)">
+            <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=200&q=60') center/cover no-repeat;opacity:0.5"></div>
+            <div style="position:absolute;bottom:6px;left:6px;right:6px;font-size:9px;font-weight:600;color:#fff;line-height:1.2">Musée d'Orsay</div>
+          </div>
+          <div style="flex:0 0 60px;border-radius:10px;background:#1a1a2e;height:100px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#444">+</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Horizontal place card scroll</h3>
+      <p>Individual photo cards for each place, scrollable horizontally. Green checkmark on selected ones. City context is implicit from the places. More visual but loses the "city" framing.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding:14px;background:#0d0d1a;border-radius:10px;">
+        <div style="font-size:10px;color:#888;letter-spacing:1px;margin-bottom:8px">IN PROGRESS</div>
+        <!-- Compact banner style -->
+        <div style="background:linear-gradient(90deg,#1a2a4a,#2a1a4a);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px;border:1px solid rgba(108,143,255,0.2)">
+          <div style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#222">
+            <div style="width:100%;height:100%;background:url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=100&q=60') center/cover no-repeat;opacity:0.8"></div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;color:#fff">Paris trip draft</div>
+            <div style="font-size:10px;color:#888;margin-top:2px">3 places · no dates yet</div>
+            <div style="display:flex;gap:3px;margin-top:4px">
+              <div style="width:6px;height:6px;border-radius:50%;background:#6c8fff"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#6c8fff"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#6c8fff"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#333"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#333"></div>
+            </div>
+          </div>
+          <div style="font-size:18px;color:#6c8fff">›</div>
+        </div>
+        <div style="margin-top:6px;background:#1a1a2a;border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px;opacity:0.5">
+          <div style="width:36px;height:36px;border-radius:6px;background:#222"></div>
+          <div>
+            <div style="font-size:11px;color:#666">Rome · viewed yesterday</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Trip draft banner + history list</h3>
+      <p>Active draft shown as a prominent compact row (like a "continue" card in Spotify/Maps). Below it, a subtle list of recently viewed cities. Most functional, least visual.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px">These can also be combined — e.g., A's city card + B's place scroll below it.</p>
