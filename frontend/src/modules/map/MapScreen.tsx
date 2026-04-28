@@ -50,6 +50,10 @@ export function MapScreen() {
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
+  const personaProfile = state.personaProfile ?? null;
+
+  // Session cache for PinCard persona insights
+  const insightCacheRef = useRef(new Map<string, string>());
 
   // Guard: if city was lost (fresh tab, cleared session), kick back to destination
   useEffect(() => {
@@ -741,6 +745,9 @@ export function MapScreen() {
             });
           }}
           travelDate={state.tripContext.date}
+          persona={state.persona ?? null}
+          personaProfile={personaProfile}
+          insightCache={insightCacheRef}
         />
       )}
 
