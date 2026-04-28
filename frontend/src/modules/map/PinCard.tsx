@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, MutableRefObject } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { MutableRefObject } from 'react';
 import type { Place, PlaceDetails, ReferencePin } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { getPlacePhotoUrl, api } from '../../shared/api';
