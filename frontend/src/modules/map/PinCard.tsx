@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, MutableRefObject } from 'react';
 import type { Place, PlaceDetails, ReferencePin } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { getPlacePhotoUrl, api } from '../../shared/api';
@@ -21,7 +21,7 @@ interface Props {
   travelDate?: string | null;
   persona?: Persona | null;
   personaProfile?: PersonaProfile | null;
-  insightCache?: React.MutableRefObject<Map<string, string>>;
+  insightCache?: MutableRefObject<Map<string, string>>;
 }
 
 const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
@@ -152,7 +152,6 @@ export function PinCard({
     });
   }
 
-  const whyRec = referencePin?.whyRec ?? place.reason ?? null;
   const localTip = referencePin?.localTip ?? null;
   const reasonSignal = place.reasonSignal ?? null;
 
@@ -319,8 +318,8 @@ export function PinCard({
           {/* Persona badges */}
           {personaBadges.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {personaBadges.map((badge, i) => (
-                <div key={i} style={{
+              {personaBadges.map((badge) => (
+                <div key={badge.text} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '3px 9px', borderRadius: 999,
                   fontSize: '0.68rem', fontWeight: 700,
