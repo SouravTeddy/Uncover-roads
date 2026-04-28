@@ -20,7 +20,7 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { useSimilarPins, SimilarPinsBanner } from './SimilarPins';
+import { useSimilarPins } from './SimilarPins';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
@@ -82,7 +82,7 @@ export function MapScreen() {
     [state.favouritedPins],
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
-  const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
+  const { triggerSimilar } = useSimilarPins();
   const handlePinClick = useCallback((p: Place) => {
     setClusterGroup(null);
     setActivePlace(p);
@@ -483,6 +483,17 @@ export function MapScreen() {
             <span className="ms text-text-2 text-base">arrow_back</span>
           </button>
 
+          {state.favouritedPins.length > 0 && (
+            <button
+              onClick={() => setShowFavoritesSheet(true)}
+              className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
+              style={{ background: 'rgba(15,20,30,.82)', fontSize: 16, lineHeight: 1 }}
+              aria-label="View saved places"
+            >
+              ❤️
+            </button>
+          )}
+
           {/* Search input */}
           <div className="flex-1 relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
@@ -561,15 +572,6 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <JourneyStrip />
         </div>
-
-        {similarPinsState && (
-          <div style={{ pointerEvents: 'auto' }}>
-            <SimilarPinsBanner
-              category={activePlace?.category ?? 'places'}
-              onClear={clearSimilar}
-            />
-          </div>
-        )}
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
@@ -730,6 +732,7 @@ export function MapScreen() {
               lon: activePlace.lon,
               category: activePlace.category,
             });
+            dispatch({ type: 'GO_TO', screen: 'route' });
           }}
           onFavourite={() => {
             if (!activePlace) return;
