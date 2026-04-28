@@ -55,8 +55,6 @@ interface Props {
   city?: string;
   onRemove: (idx: number) => void;
   onSceneChange: (src: string) => void;
-  onSave: () => void;
-  saved: boolean;
   onGoBack: () => void;
   onGoToNav: () => void;
   onViewSaved: () => void;
@@ -88,8 +86,6 @@ export function ItineraryCards({
   city,
   onRemove,
   onSceneChange,
-  onSave,
-  saved,
   onGoBack,
   onGoToNav,
   onViewSaved,
@@ -268,8 +264,6 @@ export function ItineraryCards({
               <FinaleCard
                 city={city}
                 stops={stopsArr}
-                onSave={onSave}
-                saved={saved}
                 onGoToNav={onGoToNav}
                 onViewSaved={onViewSaved}
               />
@@ -790,12 +784,10 @@ function ExpandPanel({
 // ── FinaleCard ───────────────────────────────────────────────────
 
 function FinaleCard({
-  city, stops, onSave, saved, onGoToNav, onViewSaved,
+  city, stops, onGoToNav, onViewSaved,
 }: {
   city?: string;
   stops: ItineraryStop[];
-  onSave: () => void;
-  saved: boolean;
   onGoToNav: () => void;
   onViewSaved: () => void;
 }) {
@@ -845,52 +837,27 @@ function FinaleCard({
           Start navigating
         </button>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={onSave}
-            style={{
-              flex: 1,
-              padding: '13px 0',
-              borderRadius: 16,
-              border: `1px solid ${saved ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.12)'}`,
-              background: saved ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.06)',
-              color: saved ? '#4ade80' : 'rgba(255,255,255,0.75)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              transition: 'all 0.3s',
-            }}
-          >
-            <span className="ms fill" style={{ fontSize: 16 }}>{saved ? 'check_circle' : 'bookmark_add'}</span>
-            {saved ? 'Saved!' : 'Save trip'}
-          </button>
-
-          <button
-            onClick={onViewSaved}
-            style={{
-              flex: 1,
-              padding: '13px 0',
-              borderRadius: 16,
-              border: '1px solid rgba(255,255,255,0.12)',
-              background: 'rgba(255,255,255,0.06)',
-              color: 'rgba(255,255,255,0.55)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <span className="ms fill" style={{ fontSize: 16 }}>folder_open</span>
-            Saved trips
-          </button>
-        </div>
+        <button
+          onClick={onViewSaved}
+          style={{
+            width: '100%',
+            padding: '13px 0',
+            borderRadius: 16,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.06)',
+            color: 'rgba(255,255,255,0.75)',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          <span className="ms fill" style={{ fontSize: 16 }}>folder_open</span>
+          Saved trips
+        </button>
       </div>
     </div>
   );
