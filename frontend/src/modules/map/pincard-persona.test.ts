@@ -75,7 +75,7 @@ describe('computePersonaBadges', () => {
     expect(badges.some(b => b.text.includes('slow exploration'))).toBe(true);
   });
 
-  it('returns empty array when null profile', () => {
+  it('still returns category-match badge when profile is null', () => {
     const badges = computePersonaBadges(basePlace, basePersona, null);
     expect(badges.some(b => b.text.includes('Matches your taste'))).toBe(true);
   });
