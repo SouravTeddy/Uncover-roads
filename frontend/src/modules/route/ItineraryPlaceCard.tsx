@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
+import type { MutableRefObject } from 'react';
 import type { ItineraryStop, Place, WeatherData, ReferencePin } from '../../shared/types';
 import { WeatherCanvas } from './WeatherCanvas';
+import { ShimmerBlock } from '../../shared/Shimmer';
+import { computePersonaBadges, usePersonaInsight } from '../map/pincard-persona';
+import type { Persona, PersonaProfile } from '../../shared/types';
 
 interface Props {
   stops: ItineraryStop[];
@@ -9,12 +13,16 @@ interface Props {
   referencePins: ReferencePin[];
   travelDate: string;
   onStopChange: (idx: number) => void;
+  persona?: Persona | null;
+  personaProfile?: PersonaProfile | null;
+  insightCache?: MutableRefObject<Map<string, string>>;
 }
 
 const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
 export function ItineraryPlaceCard({
   stops, selectedPlaces, weather, referencePins, onStopChange,
+  persona, personaProfile, insightCache,
 }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const touchStartX = useRef(0);
@@ -48,6 +56,19 @@ export function ItineraryPlaceCard({
   const matchedPlace = selectedPlaces.find(p =>
     p.title.toLowerCase() === (stop?.place ?? '').toLowerCase()
   ) ?? null;
+
+  const personaBadges = (matchedPlace && persona && personaProfile != null)
+    ? computePersonaBadges(matchedPlace, persona, personaProfile, 'itinerary')
+    : [];
+
+  const fallbackCache = useRef(new Map<string, string>());
+  const activeCache = insightCache ?? fallbackCache;
+  const { insight, loading: insightLoading } = usePersonaInsight(
+    matchedPlace ?? { id: `stop-${activeIdx}`, title: stop?.place ?? '', category: 'place', lat: 0, lon: 0 },
+    persona ?? null,
+    'itinerary',
+    activeCache,
+  );
 
   if (!stop) {
     return (
@@ -151,8 +172,26 @@ export function ItineraryPlaceCard({
           </div>
         )}
 
-        {/* Why this for you */}
-        {(refPin?.whyRec || matchedPlace?.reason) && (
+        {/* Persona badges */}
+        {personaBadges.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            {personaBadges.map((badge) => (
+              <div key={badge.text} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 9px', borderRadius: 999,
+                fontSize: '0.68rem', fontWeight: 700,
+                color: badge.color,
+                background: badge.bg,
+                border: `1px solid ${badge.border}`,
+              }}>
+                {badge.text}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Why this for you — itinerary mode: 2-3 sentences */}
+        {(insightLoading || insight || refPin?.whyRec || matchedPlace?.reason) && (
           <div style={{ marginBottom: 14 }}>
             <div style={{
               fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.8px',
@@ -160,12 +199,16 @@ export function ItineraryPlaceCard({
             }}>
               Why this for you
             </div>
-            <div style={{
-              fontSize: '0.82rem', color: 'rgba(193,198,215,.8)',
-              lineHeight: 1.55, fontStyle: 'italic',
-            }}>
-              {refPin?.whyRec ?? matchedPlace?.reason}
-            </div>
+            {insightLoading ? (
+              <ShimmerBlock lines={2} />
+            ) : (
+              <div style={{
+                fontSize: '0.82rem', color: 'rgba(193,198,215,.8)',
+                lineHeight: 1.55, fontStyle: 'italic',
+              }}>
+                {insight ?? refPin?.whyRec ?? matchedPlace?.reason}
+              </div>
+            )}
           </div>
         )}
 

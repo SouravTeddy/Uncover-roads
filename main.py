@@ -1198,6 +1198,97 @@ Rules:
         return {"picks": []}
 
 
+@app.post("/persona-insight")
+def persona_insight_endpoint(body: dict):
+    """
+    Generate a short persona-matched insight for a single place.
+    mode='map'       → 1 sentence, ≤20 words
+    mode='itinerary' → 2-3 sentences with a practical tip
+    Returns: { insight: str | null }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"insight": None}
+
+    place_title       = body.get("place_title", "")
+    place_category    = body.get("place_category", "place")
+    city              = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Traveller")
+    persona_desc      = body.get("persona_desc", "")
+    mode              = body.get("mode", "map")
+    tags              = body.get("tags") or {}
+    if not isinstance(tags, dict):
+        tags = {}
+    price_level       = body.get("price_level")
+
+    # Validate mode
+    if mode not in ("map", "itinerary"):
+        mode = "map"
+
+    if not place_title:
+        return {"insight": None}
+
+    # Sanitise string fields to prevent prompt injection
+    MAX_TITLE = 200
+    MAX_DESC = 500
+    MAX_CITY = 100
+    if not isinstance(place_title, str): place_title = str(place_title)
+    if not isinstance(place_category, str): place_category = "place"
+    if not isinstance(city, str): city = ""
+    if not isinstance(persona_archetype, str): persona_archetype = "Traveller"
+    if not isinstance(persona_desc, str): persona_desc = ""
+    place_title       = place_title[:MAX_TITLE].replace('"', "'")
+    place_category    = place_category[:50].replace('"', "'")
+    city              = city[:MAX_CITY].replace('"', "'")
+    persona_archetype = persona_archetype[:100].replace('"', "'")
+    persona_desc      = persona_desc[:MAX_DESC].replace('"', "'")
+
+    # Build context string from tags
+    tag_parts = []
+    opening_hours = tags.get("opening_hours", "")
+    cuisine = tags.get("cuisine", "")
+    if isinstance(opening_hours, str) and opening_hours:
+        tag_parts.append(f"opening hours: {opening_hours[:100].replace(chr(34), chr(39))}")
+    if isinstance(cuisine, str) and cuisine:
+        tag_parts.append(f"cuisine: {cuisine[:50].replace(chr(34), chr(39))}")
+    tag_str = "; ".join(tag_parts) if tag_parts else "no extra info"
+
+    price_str = f"price level {price_level}/4" if isinstance(price_level, int) and price_level is not None else "unknown price"
+
+    if mode == "map":
+        system = (
+            "You are a travel assistant. In exactly one sentence of 20 words or fewer, "
+            "explain why this specific place suits this traveler. Be concrete and specific — "
+            "mention something about the place itself, not just the archetype."
+        )
+    else:
+        system = (
+            "You are a travel assistant. In 2-3 sentences, explain why this specific place "
+            "suits this traveler. Include one practical tip: best time to visit, what to order, "
+            "or a heads-up if something may not suit them."
+        )
+
+    user_msg = (
+        f'Place: "{place_title}" ({place_category}) in {city}. '
+        f'{price_str}. {tag_str}.\n'
+        f'Traveler: "{persona_archetype}" — {persona_desc}.\n'
+        f'Write the insight now.'
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        insight = response.content[0].text.strip()
+        return {"insight": insight if insight else None}
+    except Exception as e:
+        print(f"PERSONA INSIGHT ERROR: {e}")
+        return {"insight": None}
+
+
 
 @app.post("/recalibrate")
 def recalibrate_endpoint(body: dict):

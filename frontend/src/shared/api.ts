@@ -225,6 +225,27 @@ export const api = {
       viewed_categories: params.viewedCategories,
     }),
 
+  personaInsight: (params: {
+    placeTitle: string;
+    placeCategory: string;
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    mode: 'map' | 'itinerary';
+    tags?: Record<string, string>;
+    priceLevel?: number;
+  }) =>
+    post<{ insight: string | null }>('/persona-insight', {
+      place_title:       params.placeTitle,
+      place_category:    params.placeCategory,
+      city:              params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc:      params.personaDesc,
+      mode:              params.mode,
+      tags:              params.tags ?? {},
+      price_level:       params.priceLevel ?? null,
+    }),
+
   citySearch: (q: string) =>
     get<CityResult[]>(`/city-search?q=${encodeURIComponent(q)}`),
 
