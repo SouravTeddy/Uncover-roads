@@ -1215,11 +1215,27 @@ def persona_insight_endpoint(body: dict):
     persona_archetype = body.get("persona_archetype", "Traveller")
     persona_desc      = body.get("persona_desc", "")
     mode              = body.get("mode", "map")
-    tags              = body.get("tags", {})
+    tags              = body.get("tags") or {}
+    if not isinstance(tags, dict):
+        tags = {}
     price_level       = body.get("price_level")
+
+    # Validate mode
+    if mode not in ("map", "itinerary"):
+        mode = "map"
 
     if not place_title:
         return {"insight": None}
+
+    # Sanitise string fields to prevent prompt injection
+    MAX_TITLE = 200
+    MAX_DESC = 500
+    MAX_CITY = 100
+    place_title       = place_title[:MAX_TITLE].replace('"', "'")
+    place_category    = place_category[:50].replace('"', "'")
+    city              = city[:MAX_CITY].replace('"', "'")
+    persona_archetype = persona_archetype[:100].replace('"', "'")
+    persona_desc      = persona_desc[:MAX_DESC].replace('"', "'")
 
     # Build context string from tags
     tag_parts = []
@@ -1229,7 +1245,7 @@ def persona_insight_endpoint(body: dict):
         tag_parts.append(f"cuisine: {tags['cuisine']}")
     tag_str = "; ".join(tag_parts) if tag_parts else "no extra info"
 
-    price_str = f"price level {price_level}/4" if price_level else "unknown price"
+    price_str = f"price level {price_level}/4" if price_level is not None else "unknown price"
 
     if mode == "map":
         system = (
