@@ -208,10 +208,43 @@ export const api = {
     return get<Place[]>(`/map-data?city=${encodeURIComponent(city)}`);
   },
 
-  recommended: (city: string, persona: Persona) =>
-    get<Place[]>(
-      `/recommended-places?city=${encodeURIComponent(city)}&persona=${encodeURIComponent(JSON.stringify(persona))}`
-    ),
+  recommendedPlaces: (params: {
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    venueFilters: string[];
+    itineraryBias: string[];
+    viewedCategories: string[];
+  }) =>
+    post<{ picks: Place[] }>('/recommended-places', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc: params.personaDesc,
+      venue_filters: params.venueFilters,
+      itinerary_bias: params.itineraryBias,
+      viewed_categories: params.viewedCategories,
+    }),
+
+  personaInsight: (params: {
+    placeTitle: string;
+    placeCategory: string;
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    mode: 'map' | 'itinerary';
+    tags?: Record<string, string>;
+    priceLevel?: number;
+  }) =>
+    post<{ insight: string | null }>('/persona-insight', {
+      place_title:       params.placeTitle,
+      place_category:    params.placeCategory,
+      city:              params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc:      params.personaDesc,
+      mode:              params.mode,
+      tags:              params.tags ?? {},
+      price_level:       params.priceLevel ?? null,
+    }),
 
   citySearch: (q: string) =>
     get<CityResult[]>(`/city-search?q=${encodeURIComponent(q)}`),
@@ -253,6 +286,81 @@ export const api = {
     if (lat !== undefined) params.set('lat', String(lat));
     if (lon !== undefined) params.set('lon', String(lon));
     return get<Place[]>(`/events?${params}`);
+  },
+
+  referencePins: async (params: {
+    city: string;
+    personaArchetype: string;
+    days: number;
+    prevCity?: string;
+    prevPicks?: string[];
+  }): Promise<{ pins: import('./types').ReferencePin[]; storyCards: import('./types').StoryCard[] }> => {
+    return post('/reference-pins', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      days: params.days,
+      prev_city: params.prevCity ?? '',
+      prev_picks: params.prevPicks ?? [],
+    });
+  },
+
+  similarPlaces: async (params: {
+    placeName: string;
+    city: string;
+    personaArchetype: string;
+    category: string;
+  }): Promise<{ places: import('./types').ReferencePin[] }> => {
+    return post('/similar-places', {
+      place_name: params.placeName,
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      category: params.category,
+    });
+  },
+
+  recalibrate: async (params: {
+    stops: import('./types').ItineraryStop[];
+    currentTime: string;
+    persona: string;
+    pace: string;
+    city: string;
+    lat: number;
+    lon: number;
+    travelDate: string;
+  }): Promise<{ swap_cards: import('./types').SwapCard[] }> => {
+    const raw = await post<{ swap_cards: Array<{
+      id: string;
+      stop_name: string;
+      stop_idx: number;
+      current_summary: string;
+      current_note?: string;
+      suggested_summary: string;
+      suggested_note: string;
+      resolved: boolean;
+      choice: 'new' | 'original' | null;
+    }> }>('/recalibrate', {
+      stops:        params.stops,
+      current_time: params.currentTime,
+      persona:      params.persona,
+      pace:         params.pace,
+      city:         params.city,
+      lat:          params.lat,
+      lon:          params.lon,
+      travel_date:  params.travelDate,
+    });
+    return {
+      swap_cards: (raw.swap_cards ?? []).map(c => ({
+        id:               c.id,
+        stopName:         c.stop_name,
+        stopIdx:          c.stop_idx,
+        currentSummary:   c.current_summary,
+        currentNote:      c.current_note,
+        suggestedSummary: c.suggested_summary,
+        suggestedNote:    c.suggested_note,
+        resolved:         c.resolved,
+        choice:           c.choice,
+      })),
+    };
   },
 };
 

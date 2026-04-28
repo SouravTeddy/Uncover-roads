@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../shared/store';
+import { useAppStore, getGenerationAccess } from '../../shared/store';
 import { api, aiItineraryStream } from '../../shared/api';
+import { shouldShowPaywall } from '../../shared/tier';
 import type { ItineraryRequest } from '../../shared/api';
 import type { Itinerary, SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
@@ -30,7 +31,20 @@ export function useRoute() {
   }, []);
 
   async function buildItinerary(overridePlaces?: typeof state.selectedPlaces) {
+    if (shouldShowPaywall(state)) {
+      dispatch({ type: 'GO_TO', screen: 'subscription' });
+      return;
+    }
+
     if (!persona || !state.cityGeo) return;
+
+    const access = getGenerationAccess(state.userTier, state.generationCount, state.packTripsRemaining);
+    if (!access.allowed) {
+      // Navigate to subscription screen for free users who've hit limit
+      // or pack users with zero balance
+      dispatch({ type: 'GO_TO', screen: 'subscription' });
+      return;
+    }
 
     const days = totalDays > 0 ? totalDays : (state.tripContext.days ?? 1);
     const startDate = state.travelStartDate ?? state.tripContext.date;
@@ -143,8 +157,14 @@ export function useRoute() {
       id: Date.now().toString(),
       city,
       date: new Date().toISOString(),
+      travelDate: state.tripContext.date ?? null,
+      cityLat: state.cityGeo?.lat ?? null,
+      cityLon: state.cityGeo?.lon ?? null,
+      selectedPlaces: state.selectedPlaces,
       itinerary,
       persona,
+      lastUpdateCheck: null,
+      pendingSwapCards: [],
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
     const { data: { user } } = await supabase.auth.getUser();
