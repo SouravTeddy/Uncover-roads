@@ -1198,6 +1198,73 @@ Rules:
         return {"picks": []}
 
 
+@app.post("/persona-insight")
+def persona_insight_endpoint(body: dict):
+    """
+    Generate a short persona-matched insight for a single place.
+    mode='map'       → 1 sentence, ≤20 words
+    mode='itinerary' → 2-3 sentences with a practical tip
+    Returns: { insight: str | null }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"insight": None}
+
+    place_title       = body.get("place_title", "")
+    place_category    = body.get("place_category", "place")
+    city              = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Traveller")
+    persona_desc      = body.get("persona_desc", "")
+    mode              = body.get("mode", "map")
+    tags              = body.get("tags", {})
+    price_level       = body.get("price_level")
+
+    if not place_title:
+        return {"insight": None}
+
+    # Build context string from tags
+    tag_parts = []
+    if tags.get("opening_hours"):
+        tag_parts.append(f"opening hours: {tags['opening_hours']}")
+    if tags.get("cuisine"):
+        tag_parts.append(f"cuisine: {tags['cuisine']}")
+    tag_str = "; ".join(tag_parts) if tag_parts else "no extra info"
+
+    price_str = f"price level {price_level}/4" if price_level else "unknown price"
+
+    if mode == "map":
+        system = (
+            "You are a travel assistant. In exactly one sentence of 20 words or fewer, "
+            "explain why this specific place suits this traveler. Be concrete and specific — "
+            "mention something about the place itself, not just the archetype."
+        )
+    else:
+        system = (
+            "You are a travel assistant. In 2-3 sentences, explain why this specific place "
+            "suits this traveler. Include one practical tip: best time to visit, what to order, "
+            "or a heads-up if something may not suit them."
+        )
+
+    user_msg = (
+        f'Place: "{place_title}" ({place_category}) in {city}. '
+        f'{price_str}. {tag_str}.\n'
+        f'Traveler: "{persona_archetype}" — {persona_desc}.\n'
+        f'Write the insight now.'
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        insight = response.content[0].text.strip()
+        return {"insight": insight if insight else None}
+    except Exception as e:
+        print(f"PERSONA INSIGHT ERROR: {e}")
+        return {"insight": None}
+
 
 @app.post("/recalibrate")
 def recalibrate_endpoint(body: dict):
