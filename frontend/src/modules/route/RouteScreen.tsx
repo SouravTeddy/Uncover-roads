@@ -19,7 +19,7 @@ type RouteMode = 'explore' | 'itinerary';
 export function RouteScreen() {
   const { state, dispatch } = useAppStore();
   const {
-    city, cityGeo, persona, selectedPlaces,
+    city, cityGeo, persona, personaProfile, selectedPlaces,
     referencePins, favouritedPins, cityFootprints,
     tripContext, itinerary, weather,
   } = state;
@@ -32,6 +32,7 @@ export function RouteScreen() {
   const [sequencingNote, setSequencingNote] = useState<string | null>(null);
   const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
   const mapRef = useRef<MapHandle>(null);
+  const insightCacheRef = useRef(new Map<string, string>());
   const { details, fetchDetails } = usePlaceDetails();
   const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
 
@@ -177,6 +178,9 @@ export function RouteScreen() {
               referencePins={referencePins}
               travelDate={tripContext.date ?? ''}
               onStopChange={setItineraryActiveStop}
+              persona={persona ?? null}
+              personaProfile={personaProfile ?? null}
+              insightCache={insightCacheRef}
             />
           ) : (
             <div style={{
