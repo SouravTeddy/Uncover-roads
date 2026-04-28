@@ -1,5 +1,5 @@
 // frontend/src/shared/Shimmer.tsx
-import React from 'react';
+import type { CSSProperties, ReactElement } from 'react';
 
 const shimmerKeyframes = `
 @keyframes shimmer-sweep {
@@ -17,7 +17,7 @@ function injectKeyframes() {
   document.head.appendChild(style);
 }
 
-const baseStyle: React.CSSProperties = {
+const baseStyle: CSSProperties = {
   borderRadius: 6,
   background: 'linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.05) 75%)',
   backgroundSize: '800px 100%',
@@ -30,14 +30,14 @@ export function ShimmerLine({
 }: {
   width?: string | number;
   height?: number;
-}): React.ReactElement {
+}): ReactElement {
   injectKeyframes();
   return (
     <div style={{ ...baseStyle, width, height, flexShrink: 0 }} />
   );
 }
 
-export function ShimmerBlock({ lines = 2 }: { lines?: number }): React.ReactElement {
+export function ShimmerBlock({ lines = 2 }: { lines?: number }): ReactElement {
   injectKeyframes();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
