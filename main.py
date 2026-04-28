@@ -938,6 +938,443 @@ def place_image(name: str = Query(...), city: str = Query(...)):
 
 
 # =========================================
+# REFERENCE PINS — LLM-generated ghost pins
+# =========================================
+@app.post("/reference-pins")
+def reference_pins_endpoint(body: dict):
+    """
+    Generate 8-10 reference pins for a city, persona-filtered.
+    Optionally takes prev_city_context to chain multi-city recommendations.
+    Returns: { pins: [...], storyCards: [...] }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"error": "No Anthropic API key configured"}
+
+    city = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Explorer")
+    days = body.get("days", 1)
+    prev_city = body.get("prev_city", "")
+    prev_picks = body.get("prev_picks", [])  # list of place title strings
+
+    if not city:
+        return {"error": "city is required"}
+
+    context_clause = ""
+    if prev_city and prev_picks:
+        picks_str = ", ".join(prev_picks[:5])
+        context_clause = (
+            f" The traveler is arriving from {prev_city} where they visited: {picks_str}."
+            " Tailor recommendations to complement, not duplicate, their prior city."
+        )
+
+    prompt = f"""You are a travel intelligence engine. Generate exactly 8-10 reference pins for a {persona_archetype} traveler visiting {city} for {days} day(s).{context_clause}
+
+Return a JSON object with this exact structure:
+{{
+  "pins": [
+    {{
+      "id": "ref-<short_slug>",
+      "title": "Place Name",
+      "lat": 35.1234,
+      "lon": 139.5678,
+      "category": "museum|historic|park|restaurant|cafe|tourism|place",
+      "whyRec": "One sentence matching this persona's interests",
+      "localTip": "One insider tip a local would share"
+    }}
+  ],
+  "storyCards": [
+    {{
+      "imageUrl": "",
+      "headline": "Short evocative headline about {city}",
+      "body": "One fascinating fact about {city} relevant to a {persona_archetype}",
+      "cityContext": "{prev_city + ' → ' + city if prev_city else city}"
+    }}
+  ]
+}}
+
+Rules:
+- Coordinates must be accurate real-world lat/lon for {city}
+- Pins must be real, well-known places
+- whyRec must be persona-specific (persona: {persona_archetype})
+- localTip must be practical and specific (e.g. "Enter from the east gate — shorter queue")
+- Generate 2-3 story cards
+- Return only valid JSON, no markdown fences"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+        result = json.loads(raw)
+        return result
+    except json.JSONDecodeError as e:
+        print(f"REFERENCE PINS JSON ERROR: {e}")
+        return {"pins": [], "storyCards": []}
+    except Exception as e:
+        print(f"REFERENCE PINS ERROR: {e}")
+        return {"error": str(e)}
+
+
+# =========================================
+# SIMILAR PLACES — LLM-generated similar pin set
+# =========================================
+@app.post("/similar-places")
+def similar_places_endpoint(body: dict):
+    """
+    Generate 4 places similar to a given place in the same city.
+    Returns: { places: [...] }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"error": "No Anthropic API key configured"}
+
+    place_name = body.get("place_name", "")
+    city = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Explorer")
+    category = body.get("category", "place")
+
+    if not place_name or not city:
+        return {"error": "place_name and city are required"}
+
+    prompt = f"""You are a travel intelligence engine. A {persona_archetype} traveler just viewed {place_name} in {city} (category: {category}).
+
+Generate exactly 4 nearby places that are similar — same category, close proximity, complementary vibe.
+
+Return a JSON object:
+{{
+  "places": [
+    {{
+      "id": "ref-<short_slug>",
+      "title": "Place Name",
+      "lat": 35.1234,
+      "lon": 139.5678,
+      "category": "museum|historic|park|restaurant|cafe|tourism|place",
+      "whyRec": "One sentence on why this is similar to {place_name}",
+      "localTip": "One practical insider tip"
+    }}
+  ]
+}}
+
+Rules:
+- Coordinates must be accurate real-world lat/lon in {city}, within 2km of {place_name} if possible
+- All 4 places must be real, well-known locations
+- Return only valid JSON, no markdown fences"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+        result = json.loads(raw)
+        return result
+    except json.JSONDecodeError as e:
+        print(f"SIMILAR PLACES JSON ERROR: {e}")
+        return {"places": []}
+    except Exception as e:
+        print(f"SIMILAR PLACES ERROR: {e}")
+        return {"error": str(e)}
+
+
+# =========================================
+# RECOMMENDED PLACES — LLM picks with persona + behaviour signals
+# =========================================
+@app.post("/recommended-places")
+def recommended_places_endpoint(body: dict):
+    """
+    Generate 6-8 persona-matched place picks for the Our Picks filter.
+    Uses both persona profile and browsing behaviour as signals.
+    Returns: { picks: [{ title, category, lat, lon, whyRec, signal }] }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"picks": []}
+
+    city              = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Explorer")
+    persona_desc      = body.get("persona_desc", "")
+    venue_filters     = body.get("venue_filters", [])
+    itinerary_bias    = body.get("itinerary_bias", [])
+    viewed_categories = body.get("viewed_categories", [])
+
+    if not city:
+        return {"picks": []}
+
+    interests_str = ", ".join(set(venue_filters + itinerary_bias)) or "general sightseeing"
+    browsing_str  = ", ".join(set(viewed_categories)) if viewed_categories else "nothing yet"
+
+    prompt = f"""You are a travel recommendation engine for the app Uncover Roads.
+
+A "{persona_archetype}" traveler ({persona_desc}) is visiting {city}.
+Their interests: {interests_str}.
+They have been browsing these place types on the map: {browsing_str}.
+
+Recommend exactly 6-8 real, specific, named places in {city} that are worth visiting.
+For each place return a JSON object with:
+- "title": exact place name (must be a real place)
+- "category": one of [restaurant, cafe, park, museum, historic, tourism, place]
+- "lat": latitude as a float (accurate real-world coordinates for {city})
+- "lon": longitude as a float
+- "whyRec": one sentence explaining why this specific place suits this traveler. Be direct and transparent.
+- "signal": "persona" if this pick is primarily driven by their travel profile/interests, "behaviour" if driven by what they have been browsing
+
+Rules:
+- Never include events or temporary exhibitions
+- Coordinates must be accurate for {city}
+- whyRec must mention something specific about the place, not a generic statement
+- Return only a valid JSON array of 6-8 objects. No markdown. No explanation.
+"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+
+        picks = json.loads(raw)
+        if not isinstance(picks, list):
+            return {"picks": []}
+
+        # Filter events, validate required fields
+        valid = []
+        for p in picks:
+            if not isinstance(p, dict):
+                continue
+            if p.get("category") == "event":
+                continue
+            if not p.get("title") or not p.get("lat") or not p.get("lon"):
+                continue
+            # Geocode if coords are 0 or missing
+            lat = float(p.get("lat", 0))
+            lon = float(p.get("lon", 0))
+            if (lat == 0 and lon == 0) and GOOGLE_PLACES_API_KEY:
+                try:
+                    geo_res = requests.get(
+                        f"{GOOGLE_PLACES_BASE}/textsearch/json",
+                        params={"query": f"{p['title']} {city}", "key": GOOGLE_PLACES_API_KEY},
+                        timeout=5,
+                    )
+                    geo_data = geo_res.json()
+                    if geo_data.get("results"):
+                        loc = geo_data["results"][0]["geometry"]["location"]
+                        lat, lon = loc["lat"], loc["lng"]
+                except Exception:
+                    pass  # skip geocode failure, keep original coords
+
+            valid.append({
+                "id":       f"rec-{p['title'].lower()[:20]}",
+                "title":    p["title"],
+                "category": p.get("category", "place"),
+                "lat":      lat,
+                "lon":      lon,
+                "whyRec":   p.get("whyRec", ""),
+                "signal":   p.get("signal", "persona"),
+            })
+
+        return {"picks": valid}
+
+    except json.JSONDecodeError as e:
+        print(f"RECOMMENDED PLACES JSON ERROR: {e}")
+        return {"picks": []}
+    except Exception as e:
+        print(f"RECOMMENDED PLACES ERROR: {e}")
+        return {"picks": []}
+
+
+@app.post("/persona-insight")
+def persona_insight_endpoint(body: dict):
+    """
+    Generate a short persona-matched insight for a single place.
+    mode='map'       → 1 sentence, ≤20 words
+    mode='itinerary' → 2-3 sentences with a practical tip
+    Returns: { insight: str | null }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"insight": None}
+
+    place_title       = body.get("place_title", "")
+    place_category    = body.get("place_category", "place")
+    city              = body.get("city", "")
+    persona_archetype = body.get("persona_archetype", "Traveller")
+    persona_desc      = body.get("persona_desc", "")
+    mode              = body.get("mode", "map")
+    tags              = body.get("tags") or {}
+    if not isinstance(tags, dict):
+        tags = {}
+    price_level       = body.get("price_level")
+
+    # Validate mode
+    if mode not in ("map", "itinerary"):
+        mode = "map"
+
+    if not place_title:
+        return {"insight": None}
+
+    # Sanitise string fields to prevent prompt injection
+    MAX_TITLE = 200
+    MAX_DESC = 500
+    MAX_CITY = 100
+    if not isinstance(place_title, str): place_title = str(place_title)
+    if not isinstance(place_category, str): place_category = "place"
+    if not isinstance(city, str): city = ""
+    if not isinstance(persona_archetype, str): persona_archetype = "Traveller"
+    if not isinstance(persona_desc, str): persona_desc = ""
+    place_title       = place_title[:MAX_TITLE].replace('"', "'")
+    place_category    = place_category[:50].replace('"', "'")
+    city              = city[:MAX_CITY].replace('"', "'")
+    persona_archetype = persona_archetype[:100].replace('"', "'")
+    persona_desc      = persona_desc[:MAX_DESC].replace('"', "'")
+
+    # Build context string from tags
+    tag_parts = []
+    opening_hours = tags.get("opening_hours", "")
+    cuisine = tags.get("cuisine", "")
+    if isinstance(opening_hours, str) and opening_hours:
+        tag_parts.append(f"opening hours: {opening_hours[:100].replace(chr(34), chr(39))}")
+    if isinstance(cuisine, str) and cuisine:
+        tag_parts.append(f"cuisine: {cuisine[:50].replace(chr(34), chr(39))}")
+    tag_str = "; ".join(tag_parts) if tag_parts else "no extra info"
+
+    price_str = f"price level {price_level}/4" if isinstance(price_level, int) and price_level is not None else "unknown price"
+
+    if mode == "map":
+        system = (
+            "You are a travel assistant. In exactly one sentence of 20 words or fewer, "
+            "explain why this specific place suits this traveler. Be concrete and specific — "
+            "mention something about the place itself, not just the archetype."
+        )
+    else:
+        system = (
+            "You are a travel assistant. In 2-3 sentences, explain why this specific place "
+            "suits this traveler. Include one practical tip: best time to visit, what to order, "
+            "or a heads-up if something may not suit them."
+        )
+
+    user_msg = (
+        f'Place: "{place_title}" ({place_category}) in {city}. '
+        f'{price_str}. {tag_str}.\n'
+        f'Traveler: "{persona_archetype}" — {persona_desc}.\n'
+        f'Write the insight now.'
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        insight = response.content[0].text.strip()
+        return {"insight": insight if insight else None}
+    except Exception as e:
+        print(f"PERSONA INSIGHT ERROR: {e}")
+        return {"insight": None}
+
+
+
+@app.post("/recalibrate")
+def recalibrate_endpoint(body: dict):
+    """
+    Day-of recalibration: given current stops, time, and live conditions,
+    return only stops that benefit from a timing/routing adjustment.
+    Returns: { swap_cards: [...] }
+    """
+    if not ANTHROPIC_API_KEY:
+        return {"swap_cards": []}
+
+    stops         = body.get("stops", [])
+    current_time  = body.get("current_time", "09:00")
+    persona       = body.get("persona", "explorer")
+    pace          = body.get("pace", "balanced")
+    city          = body.get("city", "")
+    travel_date   = body.get("travel_date", "")
+
+    if not stops or not city:
+        return {"swap_cards": []}
+
+    stops_text = "\n".join(
+        f"{i+1}. {s.get('place','?')} | time: {s.get('time','?')} | duration: {s.get('duration','?')}"
+        for i, s in enumerate(stops)
+    )
+
+    prompt = f"""You are a real-time travel advisor. A {persona} traveler with a {pace} pace
+is currently in {city} on {travel_date}. The current local time is {current_time}.
+
+Their planned itinerary:
+{stops_text}
+
+Identify ONLY stops that genuinely benefit from a change given the current time and typical
+day-of conditions (opening times, crowds, sequencing efficiency). Do not suggest changes just
+to change things.
+
+For each stop that needs adjustment, return a swap card. Return an empty array if no changes
+are needed.
+
+Return JSON only:
+{{
+  "swap_cards": [
+    {{
+      "id": "swap-<stop_slug>",
+      "stop_name": "Place Name",
+      "stop_idx": 0,
+      "current_summary": "2:00 PM · 2 hrs",
+      "current_note": "optional note about current plan",
+      "suggested_summary": "Move to 11:00 AM",
+      "suggested_note": "Reason in 1-2 sentences. Be specific about why now is better."
+    }}
+  ]
+}}
+
+Rules:
+- stop_idx is zero-based
+- Return only valid JSON, no markdown fences
+- Maximum 3 swap cards — prioritise the highest-impact changes only"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        # Strip markdown fences if present
+        if "```" in raw:
+            import re
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+        result = json.loads(raw)
+        # Normalise: ensure resolved/choice fields exist
+        for card in result.get("swap_cards", []):
+            card.setdefault("resolved", False)
+            card.setdefault("choice", None)
+        return result
+    except json.JSONDecodeError as e:
+        print(f"RECALIBRATE JSON ERROR: {e}")
+        return {"swap_cards": []}
+    except Exception as e:
+        print(f"RECALIBRATE ERROR: {e}")
+        return {"swap_cards": []}
+
+
+# =========================================
 # PERSONA ENGINE (protected — logic in ip_engine.py)
 # =========================================
 @app.post("/persona")

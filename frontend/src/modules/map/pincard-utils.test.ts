@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl } from './pincard-utils';
+import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl, getTravelDateBadge } from './pincard-utils';
 
 const WEEKDAYS = [
   'Monday: 9:00 AM – 11:00 PM',
@@ -72,5 +72,43 @@ describe('getDirectionsUrl', () => {
   it('returns Google Maps URL for Android user agent', () => {
     const url = getDirectionsUrl(12.9, 77.6, 'Mozilla/5.0 (Linux; Android 12)');
     expect(url).toBe('https://maps.google.com/maps?q=12.9,77.6');
+  });
+});
+
+const HOURS = [
+  'Monday: 9:00 AM – 6:00 PM',
+  'Tuesday: 9:00 AM – 6:00 PM',
+  'Wednesday: 9:00 AM – 6:00 PM',
+  'Thursday: 9:00 AM – 6:00 PM',
+  'Friday: Closed',
+  'Saturday: 10:00 AM – 5:00 PM',
+  'Sunday: 11:00 AM – 4:00 PM',
+];
+
+describe('getTravelDateBadge', () => {
+  it('returns open badge when travel day has hours', () => {
+    // 2026-06-13 is a Saturday
+    const result = getTravelDateBadge(HOURS, '2026-06-13');
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe('open');
+    expect(result!.text).toContain('Sat');
+    expect(result!.text).toContain('5:00 PM');
+  });
+
+  it('returns closed badge when travel day is closed', () => {
+    // 2026-06-12 is a Friday
+    const result = getTravelDateBadge(HOURS, '2026-06-12');
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe('closed');
+    expect(result!.text).toContain('Fri');
+    expect(result!.text).toContain('Closed');
+  });
+
+  it('returns null for empty weekday_text', () => {
+    expect(getTravelDateBadge([], '2026-06-12')).toBeNull();
+  });
+
+  it('returns null for invalid date string', () => {
+    expect(getTravelDateBadge(HOURS, 'not-a-date')).toBeNull();
   });
 });

@@ -6,12 +6,18 @@ interface Props {
   active: MapFilter;
   counts: Partial<Record<string, number>>;
   onSelect: (filter: MapFilter) => void;
+  lockedFilters?: string[];
+  onLockedTap?: () => void;
 }
 
-export function FilterBar({ active, counts, onSelect }: Props) {
+export function FilterBar({ active, counts, onSelect, lockedFilters = [], onLockedTap }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   function handleSelect(key: MapFilter) {
+    if (lockedFilters.includes(key)) {
+      onLockedTap?.();
+      return;
+    }
     onSelect(key);
     setExpanded(false);
   }
@@ -49,11 +55,15 @@ export function FilterBar({ active, counts, onSelect }: Props) {
           {FILTER_CHIPS.map(chip => {
             const isActive = active === chip.key;
             const count = counts[chip.key];
+            const isLocked = lockedFilters.includes(chip.key);
 
-            let cls = 'flex-shrink-0 flex items-center gap-1 px-2.5 h-7 rounded-full text-[11px] font-medium transition-all whitespace-nowrap ';
+            let cls = 'flex-shrink-0 flex items-center gap-1 px-2.5 h-7 rounded-full text-[11px] font-medium transition-all whitespace-nowrap relative ';
             let style: React.CSSProperties = {};
 
-            if (isActive) {
+            if (isLocked) {
+              cls += 'text-text-3 opacity-50';
+              style = { background: 'rgba(15,20,30,.8)', border: '1px solid rgba(255,255,255,.1)' };
+            } else if (isActive) {
               cls += 'bg-primary text-white';
             } else if (chip.key === 'recommended') {
               cls += 'text-amber-400';
@@ -74,8 +84,11 @@ export function FilterBar({ active, counts, onSelect }: Props) {
                 style={style}
               >
                 {chip.label}
-                {count !== undefined && (
+                {!isLocked && count !== undefined && (
                   <span className="text-[10px] opacity-55">{count}</span>
+                )}
+                {isLocked && (
+                  <span className="ms text-xs">lock</span>
                 )}
               </button>
             );

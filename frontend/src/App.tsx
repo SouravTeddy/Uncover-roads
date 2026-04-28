@@ -19,6 +19,7 @@ import { RouteScreen } from './modules/route';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen } from './modules/trips';
+import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
 
 const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 
@@ -112,7 +113,7 @@ function ScreenRouter() {
     // already on one of these, a spurious SIGNED_IN event (e.g. token refresh
     // on Android app resume) must NOT kick them back to the welcome screen.
     const activeMidSessionScreens = new Set([
-      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'profile',
+      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'profile', 'subscription',
     ]);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -166,6 +167,7 @@ function ScreenRouter() {
       {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
+      {currentScreen === 'subscription' && <SubscriptionScreen />}
 
       <BottomNav />
     </div>
