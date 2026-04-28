@@ -1231,6 +1231,11 @@ def persona_insight_endpoint(body: dict):
     MAX_TITLE = 200
     MAX_DESC = 500
     MAX_CITY = 100
+    if not isinstance(place_title, str): place_title = str(place_title)
+    if not isinstance(place_category, str): place_category = "place"
+    if not isinstance(city, str): city = ""
+    if not isinstance(persona_archetype, str): persona_archetype = "Traveller"
+    if not isinstance(persona_desc, str): persona_desc = ""
     place_title       = place_title[:MAX_TITLE].replace('"', "'")
     place_category    = place_category[:50].replace('"', "'")
     city              = city[:MAX_CITY].replace('"', "'")
@@ -1239,13 +1244,15 @@ def persona_insight_endpoint(body: dict):
 
     # Build context string from tags
     tag_parts = []
-    if tags.get("opening_hours"):
-        tag_parts.append(f"opening hours: {tags['opening_hours']}")
-    if tags.get("cuisine"):
-        tag_parts.append(f"cuisine: {tags['cuisine']}")
+    opening_hours = tags.get("opening_hours", "")
+    cuisine = tags.get("cuisine", "")
+    if isinstance(opening_hours, str) and opening_hours:
+        tag_parts.append(f"opening hours: {opening_hours[:100].replace(chr(34), chr(39))}")
+    if isinstance(cuisine, str) and cuisine:
+        tag_parts.append(f"cuisine: {cuisine[:50].replace(chr(34), chr(39))}")
     tag_str = "; ".join(tag_parts) if tag_parts else "no extra info"
 
-    price_str = f"price level {price_level}/4" if price_level is not None else "unknown price"
+    price_str = f"price level {price_level}/4" if isinstance(price_level, int) and price_level is not None else "unknown price"
 
     if mode == "map":
         system = (
