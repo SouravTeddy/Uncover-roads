@@ -226,7 +226,7 @@ export function TripsScreen() {
             </div>
             <div className="text-center">
               <p className="text-white/50 font-semibold text-sm">No trips saved yet</p>
-              <p className="text-white/25 text-xs mt-1">Explore a city, build your itinerary,<br />and tap Save to record your journey.</p>
+              <p className="text-white/25 text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
             </div>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
