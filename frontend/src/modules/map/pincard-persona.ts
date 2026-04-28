@@ -106,27 +106,25 @@ export function usePersonaInsight(
     let cancelled = false;
     setLoading(true);
 
-    // api.personaInsight will be added in Task 3; cast is temporary
-    (api as unknown as Record<string, (args: unknown) => Promise<{ insight?: string | null }>>)
-      .personaInsight?.({
-        placeTitle: place.title,
-        placeCategory: place.category,
-        city: (place as Place & { _city?: string })._city ?? '',
-        personaArchetype: persona.archetype_name ?? persona.archetype,
-        personaDesc: persona.archetype_desc ?? '',
-        mode,
-        tags: place.tags ?? {},
-        priceLevel: place.price_level,
-      }).then((res: { insight?: string | null }) => {
-        if (cancelled) return;
-        const text = res.insight ?? null;
-        if (text) insightCache.current.set(cacheKey, text);
-        setInsight(text);
-      }).catch(() => {
-        if (!cancelled) setInsight(null);
-      }).finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    api.personaInsight({
+      placeTitle: place.title,
+      placeCategory: place.category,
+      city: place._city ?? '',
+      personaArchetype: persona.archetype_name ?? persona.archetype,
+      personaDesc: persona.archetype_desc ?? '',
+      mode,
+      tags: place.tags ?? {},
+      priceLevel: place.price_level,
+    }).then(res => {
+      if (cancelled) return;
+      const text = res.insight ?? null;
+      if (text) insightCache.current.set(cacheKey, text);
+      setInsight(text);
+    }).catch(() => {
+      if (!cancelled) setInsight(null);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
