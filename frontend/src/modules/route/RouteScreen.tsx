@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { api } from '../../shared/api';
+import { useRoute } from './useRoute';
 import { MapLibreMap } from '../map/MapLibreMap';
 import type { MapHandle } from '../map/MapLibreMap';
 import { ExploreMapMarkers } from '../map/ExploreMapMarkers';
@@ -24,7 +25,8 @@ export function RouteScreen() {
     tripContext, itinerary, weather,
   } = state;
 
-  const [mode, setMode] = useState<RouteMode>('explore');
+  // Start in itinerary mode when places are already selected (e.g. coming from "Build Itinerary")
+  const [mode, setMode] = useState<RouteMode>(() => selectedPlaces.length > 0 ? 'itinerary' : 'explore');
   const [activeMarker, setActiveMarker] = useState<MarkerData | null>(null);
   const [referencePinsLoading, setReferencePinsLoading] = useState(false);
   const [itineraryActiveStop, setItineraryActiveStop] = useState(0);
@@ -33,6 +35,7 @@ export function RouteScreen() {
   const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
   const mapRef = useRef<MapHandle>(null);
   const insightCacheRef = useRef(new Map<string, string>());
+  const { loading: itineraryLoading, error: itineraryError, buildItinerary } = useRoute();
   const { details, fetchDetails } = usePlaceDetails();
   const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
 
@@ -182,6 +185,33 @@ export function RouteScreen() {
               personaProfile={personaProfile ?? null}
               insightCache={insightCacheRef}
             />
+          ) : itineraryLoading ? (
+            <div style={{
+              height: '100%',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 12, color: '#94a3b8', fontSize: '0.85rem',
+            }}>
+              <span className="ms fill" style={{ fontSize: 32, color: '#6366f1', animation: 'spin 1s linear infinite' }}>route</span>
+              Building your itinerary…
+            </div>
+          ) : itineraryError ? (
+            <div style={{
+              height: '100%',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 10, color: '#f87171', fontSize: '0.82rem', padding: '0 24px', textAlign: 'center',
+            }}>
+              <span>{itineraryError}</span>
+              <button
+                onClick={() => buildItinerary()}
+                style={{
+                  marginTop: 4, padding: '8px 20px', borderRadius: 10,
+                  background: '#6366f1', color: '#fff', border: 'none',
+                  fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <div style={{
               height: '100%',

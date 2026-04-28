@@ -1,7 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../shared/store';
-import { generateDateStrip } from './trip-utils';
 import {
   getTripCapacityStatus,
   computeTotalDays,
@@ -17,10 +16,25 @@ const TEXT3          = '#8e9099';
 const BORDER         = 'rgba(255,255,255,.08)';
 const SURFACE        = '#141921';
 
+const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function toIso(y: number, m: number, d: number): string {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function todayIso(): string {
+  const t = new Date();
+  return toIso(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
 function formatDateShort(iso: string): string {
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {
     month: 'short', day: 'numeric',
-  }); // "Apr 10"
+  });
 }
 
 function statusConfig(status: CapacityStatus): { label: string; color: string } | null {
@@ -130,9 +144,28 @@ export interface SheetProps {
 }
 
 export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: SheetProps) {
-  const dates = useMemo(() => generateDateStrip(21), []); // 3 weeks
-  const [localStart, setLocalStart] = useState(initialStart ?? dates[0].isoDate);
-  const [localEnd,   setLocalEnd]   = useState(initialEnd   ?? dates[0].isoDate);
+  const today = new Date();
+  const todayStr = todayIso();
+
+  // Default to tomorrow for start if none set
+  const defaultStart = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return toIso(d.getFullYear(), d.getMonth(), d.getDate());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [localStart, setLocalStart] = useState(initialStart ?? defaultStart);
+  const [localEnd,   setLocalEnd]   = useState(initialEnd   ?? defaultStart);
+
+  // Calendar view state — which month is currently shown (for departure vs return)
+  const parseMonth = (iso: string) => {
+    const d = new Date(iso + 'T12:00:00');
+    return { year: d.getFullYear(), month: d.getMonth() };
+  };
+
+  const [startView, setStartView] = useState(() => parseMonth(initialStart ?? defaultStart));
+  const [endView,   setEndView]   = useState(() => parseMonth(initialEnd   ?? defaultStart));
 
   // Entrance animation
   const [mounted, setMounted] = useState(false);
@@ -143,12 +176,13 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
 
   function handleStartPick(iso: string) {
     setLocalStart(iso);
-    // If new start is after end, move end to match
-    if (iso > localEnd) setLocalEnd(iso);
+    if (iso > localEnd) {
+      setLocalEnd(iso);
+      setEndView(parseMonth(iso));
+    }
   }
 
   function handleEndPick(iso: string) {
-    // Ignore dates before start
     if (iso < localStart) return;
     setLocalEnd(iso);
   }
@@ -176,6 +210,8 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
           position: 'fixed',
           left: 16, right: 16,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px)`,
+          maxHeight: 'calc(100dvh - 80px)',
+          overflowY: 'auto',
           zIndex: 56,
           background: SURFACE,
           border: `1px solid ${BORDER}`,
@@ -184,15 +220,15 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
           transform: mounted ? 'translateY(0)' : 'translateY(32px)',
           opacity: mounted ? 1 : 0,
           transition: 'transform .38s cubic-bezier(.32,.72,0,1), opacity .3s ease',
-          overflow: 'hidden',
         }}
       >
         {/* Header */}
         <div style={{
-          position: 'relative',
+          position: 'sticky', top: 0, zIndex: 2,
           padding: '20px 20px 16px',
           borderBottom: `1px solid ${BORDER}`,
           background: 'linear-gradient(135deg, rgba(59,130,246,.08) 0%, rgba(15,23,42,0) 60%)',
+          backgroundColor: SURFACE,
         }}>
           <button
             aria-label="Close"
@@ -230,7 +266,7 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ padding: '20px 20px 0', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
           {/* Departure */}
           <div>
@@ -241,11 +277,21 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
             }}>
               Departure
             </div>
-            <DateStrip
-              dates={dates}
+            <MonthCalendar
+              year={startView.year}
+              month={startView.month}
               selected={localStart}
-              disabledBefore={null}
+              disabledBefore={todayStr}
               onSelect={handleStartPick}
+              onPrev={() => {
+                const d = new Date(startView.year, startView.month - 1, 1);
+                setStartView({ year: d.getFullYear(), month: d.getMonth() });
+              }}
+              onNext={() => {
+                const d = new Date(startView.year, startView.month + 1, 1);
+                setStartView({ year: d.getFullYear(), month: d.getMonth() });
+              }}
+              onMonthSelect={(y, m) => setStartView({ year: y, month: m })}
             />
           </div>
 
@@ -258,11 +304,21 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
             }}>
               Return
             </div>
-            <DateStrip
-              dates={dates}
+            <MonthCalendar
+              year={endView.year}
+              month={endView.month}
               selected={localEnd}
               disabledBefore={localStart}
               onSelect={handleEndPick}
+              onPrev={() => {
+                const d = new Date(endView.year, endView.month - 1, 1);
+                setEndView({ year: d.getFullYear(), month: d.getMonth() });
+              }}
+              onNext={() => {
+                const d = new Date(endView.year, endView.month + 1, 1);
+                setEndView({ year: d.getFullYear(), month: d.getMonth() });
+              }}
+              onMonthSelect={(y, m) => setEndView({ year: y, month: m })}
             />
           </div>
         </div>
@@ -291,60 +347,240 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
   );
 }
 
-// ── DateStrip sub-component ────────────────────────────────────
+// ── MonthCalendar ─────────────────────────────────────────────
 
-interface DateStripProps {
-  dates:          ReturnType<typeof generateDateStrip>;
-  selected:       string;
+interface MonthCalendarProps {
+  year: number;
+  month: number;       // 0-indexed
+  selected: string;    // ISO "YYYY-MM-DD"
   disabledBefore: string | null;
-  onSelect:       (iso: string) => void;
+  onSelect: (iso: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onMonthSelect: (year: number, month: number) => void;
 }
 
-function DateStrip({ dates, selected, disabledBefore, onSelect }: DateStripProps) {
+function MonthCalendar({
+  year, month, selected, disabledBefore,
+  onSelect, onPrev, onNext, onMonthSelect,
+}: MonthCalendarProps) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
+
+  // Build calendar grid
+  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = todayIso();
+
+  // Build cells: nulls for empty leading slots, then day numbers
+  const cells: (number | null)[] = [
+    ...Array(firstDayOfMonth).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  // Pad to complete last row
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  // Build dropdown months: current month up to 18 months ahead
+  const today = new Date();
+  const dropdownOptions: { year: number; month: number; label: string }[] = [];
+  for (let i = 0; i < 18; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    dropdownOptions.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`,
+    });
+  }
+
+  const isPrevDisabled = (() => {
+    const prevMonth = new Date(year, month - 1, 1);
+    return prevMonth < new Date(today.getFullYear(), today.getMonth(), 1);
+  })();
+
   return (
-    <div style={{
-      display: 'flex', gap: 6,
-      overflowX: 'auto', paddingBottom: 4,
-      scrollbarWidth: 'none',
-      WebkitOverflowScrolling: 'touch',
-    } as React.CSSProperties}>
-      {dates.map((d) => {
-        const active   = d.isoDate === selected;
-        const disabled = disabledBefore !== null && d.isoDate < disabledBefore;
-        return (
+    <div>
+      {/* Month navigation header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 12, position: 'relative',
+      }}>
+        {/* Prev arrow */}
+        <button
+          onClick={onPrev}
+          disabled={isPrevDisabled}
+          style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'rgba(255,255,255,.05)',
+            border: `1px solid ${BORDER}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: isPrevDisabled ? 'default' : 'pointer',
+            opacity: isPrevDisabled ? 0.3 : 1,
+          }}
+        >
+          <span className="ms" style={{ fontSize: 18, color: TEXT3 }}>chevron_left</span>
+        </button>
+
+        {/* Month/year label — clickable to open dropdown */}
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
           <button
-            key={d.isoDate}
-            onClick={() => !disabled && onSelect(d.isoDate)}
-            aria-label={`Select ${d.dayAbbr} ${d.dayNum}`}
-            aria-pressed={active}
-            disabled={disabled}
+            onClick={() => setDropdownOpen(v => !v)}
             style={{
-              flexShrink: 0, width: 52,
-              padding: '10px 4px 8px',
-              background: active ? PRIMARY_BG : 'rgba(255,255,255,.04)',
-              border: `1.5px solid ${active ? PRIMARY_BORDER : BORDER}`,
-              borderRadius: 14, textAlign: 'center', cursor: disabled ? 'default' : 'pointer',
-              opacity: disabled ? 0.3 : 1,
-              transition: 'all .15s ease',
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: dropdownOpen ? PRIMARY_BG : 'rgba(255,255,255,.05)',
+              border: `1px solid ${dropdownOpen ? PRIMARY_BORDER : BORDER}`,
+              borderRadius: 10, padding: '6px 12px',
+              cursor: 'pointer',
             }}
           >
-            <div style={{
-              fontSize: 10, fontWeight: 700,
-              color: active ? '#93c5fd' : TEXT3,
-              fontFamily: 'Inter, sans-serif', marginBottom: 4,
-            }}>
-              {d.dayAbbr.toUpperCase()}
-            </div>
-            <div style={{
-              fontSize: 18, fontWeight: 800, lineHeight: 1,
+            <span style={{
               fontFamily: '"Plus Jakarta Sans", sans-serif',
-              color: active ? TEXT1 : 'rgba(255,255,255,.45)',
+              fontSize: 14, fontWeight: 700, color: TEXT1,
             }}>
-              {d.dayNum}
-            </div>
+              {MONTH_NAMES[month]} {year}
+            </span>
+            <span className="ms" style={{
+              fontSize: 16, color: TEXT3,
+              transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform .2s ease',
+            }}>
+              expand_more
+            </span>
           </button>
-        );
-      })}
+
+          {/* Dropdown */}
+          {dropdownOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10,
+              background: '#1a2133',
+              border: `1px solid ${BORDER}`,
+              borderRadius: 14,
+              boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+              minWidth: 180,
+              maxHeight: 220,
+              overflowY: 'auto',
+              padding: '6px 0',
+            }}>
+              {dropdownOptions.map(opt => {
+                const isActive = opt.year === year && opt.month === month;
+                return (
+                  <button
+                    key={`${opt.year}-${opt.month}`}
+                    onClick={() => {
+                      onMonthSelect(opt.year, opt.month);
+                      setDropdownOpen(false);
+                    }}
+                    style={{
+                      width: '100%', padding: '9px 16px',
+                      textAlign: 'left',
+                      background: isActive ? PRIMARY_BG : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 13, fontWeight: isActive ? 700 : 500,
+                      color: isActive ? '#93c5fd' : TEXT1,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Next arrow */}
+        <button
+          onClick={onNext}
+          style={{
+            width: 32, height: 32, borderRadius: 10,
+            background: 'rgba(255,255,255,.05)',
+            border: `1px solid ${BORDER}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <span className="ms" style={{ fontSize: 18, color: TEXT3 }}>chevron_right</span>
+        </button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        marginBottom: 6,
+      }}>
+        {DAY_HEADERS.map(d => (
+          <div key={d} style={{
+            textAlign: 'center',
+            fontSize: 11, fontWeight: 700, color: TEXT3,
+            fontFamily: 'Inter, sans-serif',
+            padding: '4px 0',
+          }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3,
+      }}>
+        {cells.map((day, idx) => {
+          if (day === null) {
+            return <div key={`empty-${idx}`} />;
+          }
+
+          const iso = toIso(year, month, day);
+          const isSelected = iso === selected;
+          const isToday = iso === todayStr;
+          const isDisabled = disabledBefore !== null && iso < disabledBefore;
+
+          return (
+            <button
+              key={iso}
+              onClick={() => !isDisabled && onSelect(iso)}
+              disabled={isDisabled}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 10,
+                background: isSelected ? PRIMARY_BG : 'transparent',
+                border: isSelected
+                  ? `1.5px solid ${PRIMARY_BORDER}`
+                  : isToday
+                    ? `1px dashed rgba(255,255,255,.2)`
+                    : '1.5px solid transparent',
+                cursor: isDisabled ? 'default' : 'pointer',
+                opacity: isDisabled ? 0.25 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all .12s ease',
+              }}
+            >
+              <span style={{
+                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                fontSize: 14, fontWeight: isSelected ? 800 : 500,
+                color: isSelected ? TEXT1 : isToday ? '#93c5fd' : 'rgba(255,255,255,.6)',
+                lineHeight: 1,
+              }}>
+                {day}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
