@@ -20,7 +20,7 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { useSimilarPins, SimilarPinsBanner } from './SimilarPins';
+import { useSimilarPins } from './SimilarPins';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
@@ -82,7 +82,7 @@ export function MapScreen() {
     [state.favouritedPins],
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
-  const { triggerSimilar, clearSimilar, similarPinsState } = useSimilarPins();
+  const { triggerSimilar } = useSimilarPins();
   const handlePinClick = useCallback((p: Place) => {
     setClusterGroup(null);
     setActivePlace(p);
