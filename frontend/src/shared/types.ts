@@ -93,6 +93,8 @@ export interface PersonaProfile {
   kid_focus?:       OBKidFocus;
   budget_protect?:  OBBudgetProtect;
   food_scene?:      OBFoodScene;
+  // Pace override (optional — derived from OB answers)
+  pace?:            OBPace;
   // Archetype
   archetype:        string;
   // Resolution metadata

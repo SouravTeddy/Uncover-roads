@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import type { MutableRefObject } from 'react';
 import type { Place, PlaceDetails, ReferencePin } from '../../shared/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { getPlacePhotoUrl, api } from '../../shared/api';
 import { getTravelDateBadge } from './pincard-utils';
+import { ShimmerLine } from '../../shared/Shimmer';
+import { computePersonaBadges, usePersonaInsight } from './pincard-persona';
+import type { Persona, PersonaProfile } from '../../shared/types';
 
 interface Props {
   place: Place;
@@ -16,6 +20,9 @@ interface Props {
   details?: PlaceDetails | null;
   referencePin?: ReferencePin | null;
   travelDate?: string | null;
+  persona?: Persona | null;
+  personaProfile?: PersonaProfile | null;
+  insightCache?: MutableRefObject<Map<string, string>>;
 }
 
 const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
@@ -45,6 +52,7 @@ export function PinCard({
   place, city, isSelected, isFavourited,
   onAdd, onClose, onSimilar, onFavourite,
   details, referencePin, travelDate,
+  persona, personaProfile, insightCache,
 }: Props) {
   const [visible, setVisible]   = useState(false);
   const [imgSrc, setImgSrc]     = useState<string | null>(null);
@@ -145,9 +153,20 @@ export function PinCard({
     });
   }
 
-  const whyRec = referencePin?.whyRec ?? place.reason ?? null;
   const localTip = referencePin?.localTip ?? null;
   const reasonSignal = place.reasonSignal ?? null;
+
+  // Persona badges — computed synchronously
+  const personaBadges = (persona && personaProfile != null)
+    ? computePersonaBadges(place, persona, personaProfile, 'map')
+    : [];
+
+  // Lazy LLM insight — uses session cache passed from parent
+  const fallbackCache = useRef(new Map<string, string>());
+  const activeCache = insightCache ?? fallbackCache;
+  const { insight, loading: insightLoading } = usePersonaInsight(
+    place, persona ?? null, 'map', activeCache,
+  );
 
   const googleMapsUrl = details?.place_id
     ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
@@ -297,7 +316,26 @@ export function PinCard({
             </div>
           )}
 
-          {whyRec && (
+          {/* Persona badges */}
+          {personaBadges.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {personaBadges.map((badge) => (
+                <div key={badge.text} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 9px', borderRadius: 999,
+                  fontSize: '0.68rem', fontWeight: 700,
+                  color: badge.color,
+                  background: badge.bg,
+                  border: `1px solid ${badge.border}`,
+                }}>
+                  {badge.text}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Persona insight — lazy LLM sentence */}
+          {(insightLoading || insight) && (
             <div style={{ marginBottom: 14 }}>
               <div style={{
                 fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.8px',
@@ -305,13 +343,17 @@ export function PinCard({
               }}>
                 Why this for you
               </div>
-              <div style={{
-                fontSize: '0.85rem', color: 'rgba(193,198,215,.85)',
-                lineHeight: 1.55, fontStyle: 'italic',
-              }}>
-                {whyRec}
-              </div>
-              {reasonSignal && (
+              {insightLoading ? (
+                <ShimmerLine width={180} height={12} />
+              ) : (
+                <div style={{
+                  fontSize: '0.85rem', color: 'rgba(193,198,215,.85)',
+                  lineHeight: 1.55, fontStyle: 'italic',
+                }}>
+                  {insight}
+                </div>
+              )}
+              {!insightLoading && reasonSignal && (
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 5,
                   marginTop: 6, padding: '3px 9px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700,
