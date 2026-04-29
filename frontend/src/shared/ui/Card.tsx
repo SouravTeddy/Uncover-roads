@@ -1,13 +1,21 @@
-import type { ReactNode } from 'react';
+import React from 'react';
 
-interface Props {
-  children: ReactNode;
+interface CardProps {
+  children: React.ReactNode;
   className?: string;
 }
 
-export function Card({ children, className = '' }: Props) {
+export function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`bg-surface rounded-2xl p-5 border border-white/6 ${className}`}>
+    <div
+      className={[
+        'bg-[var(--color-surface)]',
+        'border border-[var(--color-border)]',
+        'rounded-[20px]',
+        '[box-shadow:var(--shadow-md)]',
+        className,
+      ].join(' ')}
+    >
       {children}
     </div>
   );
