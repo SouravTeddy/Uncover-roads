@@ -53,7 +53,6 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const coverImage = item.selectedPlaces?.find(p => p.imageUrl)?.imageUrl ?? null;
 
   const cityName = item.city;
-  const country  = item.persona?.archetype_name ?? archetypeKey;
   const date     = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
 
   function handleToggle() {

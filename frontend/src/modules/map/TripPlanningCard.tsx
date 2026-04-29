@@ -11,7 +11,6 @@ interface Props {
   onClose: () => void;
 }
 
-const SURFACE  = '#141921';
 const PRIMARY  = '#3b82f6';
 const PRIMARY_BG = 'rgba(59,130,246,.12)';
 const PRIMARY_BORDER = 'rgba(59,130,246,.25)';
