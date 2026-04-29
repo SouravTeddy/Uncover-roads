@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
@@ -236,6 +236,14 @@ function DesktopGate() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    const saved = localStorage.getItem('ur_theme') as 'dark' | 'light' | null;
+    if (saved) {
+      document.documentElement.dataset.theme = saved;
+      useAppStore.getState().dispatch({ type: 'SET_THEME', theme: saved });
+    }
+  }, []);
+
   return (
     <AppProvider>
       <ScreenRouter />

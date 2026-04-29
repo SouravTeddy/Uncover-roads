@@ -50,6 +50,7 @@ const defaultObAnswers: OnboardingAnswers = {
 };
 
 export interface AppState {
+  theme: 'dark' | 'light';
   currentScreen: Screen;
   obAnswers: OnboardingAnswers;
   rawOBAnswers: RawOBAnswers | null;
@@ -219,6 +220,7 @@ function getStoredUnits(): 'km' | 'miles' {
 }
 
 export const initialState: AppState = {
+  theme: 'dark',
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
   rawOBAnswers: null,
@@ -310,7 +312,8 @@ export type Action =
   | { type: 'SET_REFERENCE_PINS'; pins: ReferencePin[] }
   | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
-  | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null };
+  | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
+  | { type: 'SET_THEME'; theme: 'dark' | 'light' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -591,10 +594,28 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_SIMILAR_PINS':
       return { ...state, similarPinsState: action.state };
 
+    case 'SET_THEME': {
+      localStorage.setItem('ur_theme', action.theme);
+      document.documentElement.dataset.theme = action.theme;
+      return { ...state, theme: action.theme };
+    }
+
     default:
       return state;
   }
 }
+
+// ── Module-level store reference (for getState() outside React) ──────────────
+
+interface StoreSnapshot {
+  theme: AppState['theme'];
+  dispatch: React.Dispatch<Action>;
+}
+
+let _currentState: AppState = initialState;
+let _dispatch: React.Dispatch<Action> = (action: Action) => {
+  _currentState = reducer(_currentState, action);
+};
 
 // ── Context ───────────────────────────────────────────────────
 
@@ -607,6 +628,11 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // Keep module-level references in sync with React state
+  _currentState = state;
+  _dispatch = dispatch;
+
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
 
@@ -615,6 +641,11 @@ export function useAppStore() {
   if (!ctx) throw new Error('useAppStore must be used within AppProvider');
   return ctx;
 }
+
+useAppStore.getState = (): StoreSnapshot & Pick<AppState, 'theme'> => ({
+  theme: _currentState.theme,
+  dispatch: _dispatch,
+});
 
 /**
  * Pure function — determines whether a generation attempt is allowed
