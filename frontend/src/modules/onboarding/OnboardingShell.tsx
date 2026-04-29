@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ObStep } from './types';
 import { BASE_OB_STEPS, STEP_TITLES } from './types';
 import { useOnboarding } from './useOnboarding';
+import { Button } from '../../shared/ui/Button';
 
 interface Props {
   step:       ObStep;
@@ -84,21 +85,18 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
         </div>
 
         {/* Next / Finish */}
-        <button
+        <Button
+          variant="primary"
           disabled={!canAdvance}
           onClick={isLast ? finish : goNext}
-          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-heading font-bold text-sm transition-all ${
-            canAdvance
-              ? 'bg-primary text-white cursor-pointer'
-              : 'bg-surface text-text-3 cursor-not-allowed'
-          }`}
+          className="flex items-center gap-2"
         >
           {isLast ? (
             <><span>Finish</span><span className="ms">auto_fix</span></>
           ) : (
             <><span>Next</span><span className="ms">chevron_right</span></>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

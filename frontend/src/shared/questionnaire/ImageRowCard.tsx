@@ -21,14 +21,14 @@ export function ImageRowCard({
       aria-pressed={selected}
       className={[
         'w-full flex items-center gap-3 p-3 rounded-2xl border text-left',
-        'transition-all duration-200',
+        'transition-all duration-200 active:scale-[.98]',
         selected
-          ? 'bg-primary/8 border-primary'
+          ? 'border-[var(--color-primary)] bg-[var(--color-primary-bg)]'
           : dimmed
-          ? 'bg-surface border-white/10 opacity-65'
+          ? 'bg-[var(--color-surface)] border-[var(--color-border)] opacity-65'
           : hidden
-          ? 'bg-surface/50 border-white/10'
-          : 'bg-surface border-surf-hst',
+          ? 'bg-[var(--color-surface)] border-[var(--color-border)] opacity-80'
+          : 'bg-[var(--color-surface)] border-[var(--color-border)]',
         !disabled && !dimmed && 'hover:translate-x-0.5 cursor-pointer',
       ].filter(Boolean).join(' ')}
       style={selected ? { animation: 'glow-pulse 0.45s ease-out' } : undefined}
@@ -55,8 +55,8 @@ export function ImageRowCard({
           </span>
         )}
         <span className={[
-          'block font-heading font-bold text-[15px]',
-          hidden ? 'text-text-2' : 'text-text-1',
+          'block font-heading font-bold text-[14px] font-medium',
+          'text-[var(--color-text-1)]',
         ].join(' ')}>
           {label}
         </span>
@@ -70,8 +70,8 @@ export function ImageRowCard({
           'w-[22px] h-[22px] rounded-md border flex-shrink-0 flex items-center justify-center',
           'transition-all duration-200',
           selected
-            ? 'bg-primary border-primary scale-110'
-            : 'border-surf-hst',
+            ? 'bg-[var(--color-primary)] border-[var(--color-primary)] scale-110'
+            : 'border-[var(--color-border)]',
         ].join(' ')}
       >
         {selected && (
