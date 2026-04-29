@@ -65,7 +65,7 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
     <div style={{ height: '100%', background: cfg.bgGradient, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px 20px' }}>
       {/* Mode badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="ms fill" style={{ fontSize: 18, color: cfg.accentColor }}>{cfg.icon}</span>
+        <span className="ms text-[var(--color-sky)] text-[22px]">{cfg.icon}</span>
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: cfg.accentColor }}>{cfg.label}</span>
       </div>
 
@@ -75,7 +75,7 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
         <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 26, fontWeight: 800, color: TEXT1 }}>{from}</div>
         <div style={{ margin: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
-          <span className="ms fill" style={{ fontSize: 22, color: cfg.accentColor }}>{cfg.icon}</span>
+          <span className="ms fill text-[var(--color-sky)] text-[22px]">{cfg.icon}</span>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
         </div>
         <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>to</div>
@@ -86,8 +86,10 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
           <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 16 }}>
             {durationMinutes !== undefined && (
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 18, fontWeight: 800, color: cfg.accentColor }}>{formatDuration(durationMinutes)}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>duration</div>
+                <span className="text-[11px] bg-[var(--color-sky-bg)] text-[var(--color-sky)] border border-[var(--color-sky-bdr)] px-2 py-0.5 rounded-full">
+                  {formatDuration(durationMinutes)}
+                </span>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>duration</div>
               </div>
             )}
             {distanceKm !== undefined && (
@@ -103,8 +105,8 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
       {/* Bottom section */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {advisorMessage && (
-          <div style={{ background: 'rgba(0,0,0,.3)', borderRadius: 14, padding: '12px 14px' }}>
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: cfg.accentColor, lineHeight: 1.5, margin: 0 }}>{advisorMessage}</p>
+          <div className="bg-[var(--color-amber-bg)] border border-[var(--color-amber-bdr)] rounded-2xl p-3 text-[12px] text-[var(--color-amber)] mt-2">
+            {advisorMessage}
           </div>
         )}
         <a

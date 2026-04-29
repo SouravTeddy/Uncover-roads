@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from '../map/MapLibreMap';
 import { JourneyOriginCard } from './JourneyOriginCard';
@@ -23,6 +24,7 @@ export function JourneyScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const deckRef = useRef<HTMLDivElement>(null);
   const [legs, setLegs] = useState<JourneyLeg[]>(journey ?? []);
+  const [building, setBuilding] = React.useState(false);
 
   const stopsPerDay = personaProfile?.stops_per_day ?? 3;
   const originLeg = journey?.find(l => l.type === 'origin') as Extract<JourneyLeg, { type: 'origin' }> | undefined;
@@ -196,10 +198,32 @@ export function JourneyScreen() {
     dispatch({ type: 'GO_TO', screen: 'route' });
   }
 
+  const handleBuild = () => {
+    setBuilding(true);
+    setTimeout(() => {
+      setBuilding(false);
+      handleBuildItinerary();
+    }, 800);
+  };
+
   return (
     <div className="fixed inset-0" style={{ display: 'flex', flexDirection: 'column', zIndex: 10 }}>
-      {/* Top 60% — map or transit background */}
-      <div style={{ flex: '0 0 60%', position: 'relative', overflow: 'hidden', background: '#0c1445' }}>
+      {/* Top 58% — map or transit background */}
+      <div
+        className="relative overflow-hidden"
+        style={{ height: '58%', background: 'radial-gradient(ellipse at center, #0c1020 0%, #060c1a 100%)' }}
+      >
+        {/* SVG grid overlay */}
+        <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path d="M 32 0 L 0 0 0 32" fill="none" stroke="white" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+
+        {/* Keep existing city dots + route SVG — do NOT remove them */}
         {renderTopPanel()}
 
         {/* Back button */}
@@ -216,10 +240,16 @@ export function JourneyScreen() {
         >
           <span className="ms text-text-2 text-base">arrow_back</span>
         </button>
+
+        {/* Bottom fade */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-[60px] pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--color-bg))' }}
+        />
       </div>
 
-      {/* Bottom 40% — card deck */}
-      <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', background: '#0d1117', overflow: 'hidden' }}>
+      {/* Bottom 42% — card deck */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117', overflow: 'hidden' }}>
         {/* Progress strip */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 16px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {legs.map((leg, i) => {
@@ -229,15 +259,11 @@ export function JourneyScreen() {
               <button
                 key={i}
                 onClick={() => scrollToCard(i)}
-                style={{
-                  flexShrink: 0, height: 28, padding: '0 10px',
-                  borderRadius: 999, cursor: 'pointer',
-                  background: active ? 'rgba(59,130,246,.2)' : 'rgba(255,255,255,.05)',
-                  border: `1px solid ${active ? 'rgba(59,130,246,.4)' : 'rgba(255,255,255,.08)'}`,
-                  fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700,
-                  color: active ? '#93c5fd' : '#8e9099',
-                  whiteSpace: 'nowrap',
-                }}
+                className={`h-[28px] px-4 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
+                  active
+                    ? 'bg-[var(--color-primary-bg)] border border-[var(--color-primary)] text-[var(--color-primary)] scale-[1.05]'
+                    : 'text-[var(--color-text-3)] bg-white/5 border border-white/[0.08]'
+                }`}
               >
                 {label}
               </button>
@@ -246,13 +272,7 @@ export function JourneyScreen() {
           {/* Add city */}
           <button
             onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
-            style={{
-              flexShrink: 0, height: 28, padding: '0 10px',
-              borderRadius: 999, cursor: 'pointer',
-              background: 'rgba(255,255,255,.03)',
-              border: '1px solid rgba(255,255,255,.08)',
-              fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8e9099',
-            }}
+            className="flex-shrink-0 h-[28px] px-3 rounded-full text-[12px] text-[var(--color-text-3)] border border-dashed border-[var(--color-border)] bg-white/[0.03]"
           >
             + city
           </button>
@@ -308,20 +328,17 @@ export function JourneyScreen() {
           <JourneyStrip />
           <JourneyAdvisorThread />
           <button
-            onClick={handleBuildItinerary}
-            style={{
-              width: '100%', height: 50,
-              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              border: 'none', borderRadius: 16, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
-              fontSize: 15, fontWeight: 800, color: '#fff',
-              boxShadow: '0 4px 24px rgba(59,130,246,.35)',
-              flexShrink: 0,
-            }}
+            onClick={handleBuild}
+            className={`w-full h-[50px] rounded-2xl font-bold text-[15px] text-white transition-all active:scale-[.97] ${
+              building
+                ? 'bg-green-600'
+                : 'bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)]'
+            }`}
           >
-            <span className="ms fill" style={{ fontSize: 20 }}>auto_fix</span>
-            Build my itinerary
+            {building
+              ? <span className="ms text-[20px]" style={{ animation: 'spin 0.8s linear infinite' }}>autorenew</span>
+              : 'Build My Trip'
+            }
           </button>
         </div>
       </div>
