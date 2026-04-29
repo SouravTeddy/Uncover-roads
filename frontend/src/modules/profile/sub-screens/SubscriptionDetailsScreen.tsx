@@ -19,16 +19,21 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
-        <button onClick={onBack} className="flex items-center gap-1 text-white/70">
-          <span className="ms text-xl text-text-3">arrow_back</span>
-          <span className="text-sm">Profile</span>
+    <div className="fixed inset-0 bg-[var(--color-bg)] flex flex-col" style={{ zIndex: 20 }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+        <button
+          className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+          onClick={onBack}
+        >
+          <span className="ms text-[var(--color-text-2)]">arrow_back</span>
         </button>
-        <span className="font-heading font-bold text-text-1 text-lg">{tierLabel}</span>
+        <h2 className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)]">
+          {tierLabel}
+        </h2>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pt-5"
+
+      <div className="flex-1 overflow-y-auto px-4 pt-4"
         style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}>
 
         {/* Plan badge */}
@@ -39,16 +44,16 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Details */}
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden mb-4">
           {[
             { label: 'Billing cycle', value: 'Monthly' },
             { label: 'Next billing date', value: nextBilling },
             { label: 'Amount', value: '—' },
             { label: 'Status', value: 'Active', valueClass: 'text-amber-400' },
-          ].map((row, i) => (
-            <div key={row.label} className={`flex items-center justify-between px-4 py-3.5 ${i > 0 ? 'border-t border-white/6' : ''}`}>
-              <span className="text-white/40 text-sm">{row.label}</span>
-              <span className={`flex items-center gap-1 text-sm font-medium ${row.valueClass ?? 'text-white'}`}>
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between px-4 py-4 border-b border-[var(--color-divider)] last:border-0">
+              <span className="text-[14px] text-[var(--color-text-2)]">{row.label}</span>
+              <span className={`flex items-center gap-1 text-[14px] font-medium ${row.valueClass ?? 'text-[var(--color-text-1)]'}`}>
                 {row.value}
                 {row.label === 'Status' && <span className="ms fill text-amber-400 text-sm">check_circle</span>}
               </span>
@@ -57,10 +62,10 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Downgrade */}
-        <div className="rounded-2xl overflow-hidden border border-white/8" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden">
           <button
             onClick={() => setShowDowngrade(true)}
-            className="w-full px-4 py-3.5 text-sm text-white/30 text-center"
+            className="w-full px-4 py-4 text-[14px] text-[var(--color-text-3)] text-center"
           >
             Downgrade to Free
           </button>
