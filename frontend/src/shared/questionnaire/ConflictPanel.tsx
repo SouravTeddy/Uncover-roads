@@ -19,10 +19,12 @@ export function ConflictPanel({ visible, suggestion, onUseSuggestion, onAutoBlen
       aria-live="polite"
       className={[
         'rounded-2xl overflow-hidden transition-all duration-400',
-        'bg-blue-900/10 border border-primary/12',
-        visible ? 'max-h-80 opacity-100 mb-2 p-3' : 'max-h-0 opacity-0 mb-0 p-0',
+        visible ? 'max-h-80 opacity-100 mb-2' : 'max-h-0 opacity-0 mb-0',
       ].join(' ')}
     >
+      <div className="bg-[var(--color-amber-bg)] border border-[var(--color-amber-bdr)] rounded-2xl p-4 flex gap-3 items-start">
+        <span className="ms text-[var(--color-amber)] text-[20px] flex-shrink-0">lightbulb</span>
+        <div className="text-[13px] text-[var(--color-text-2)]">
       {/* Conflict copy */}
       <p className="text-[13px] text-text-2 leading-relaxed mb-3">
         These two shape your day differently — pick one to lead, or let us blend them.
@@ -69,6 +71,8 @@ export function ConflictPanel({ visible, suggestion, onUseSuggestion, onAutoBlen
           Auto
         </span>
       </button>
+        </div>
+      </div>
     </div>
   );
 }
