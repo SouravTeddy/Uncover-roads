@@ -16,6 +16,7 @@ interface Props {
 
 export function CitySearch({ onSelect }: Props) {
   const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const { results, loading, search, selectResult, clear } = useGoogleCitySearch();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +54,12 @@ export function CitySearch({ onSelect }: Props) {
   return (
     <>
       <div ref={containerRef}>
-        <div className="flex items-center gap-3 bg-surface rounded-2xl px-4 h-14 border border-white/8">
+        <div
+          className={`bg-[var(--color-surface)] h-[50px] rounded-[18px] flex items-center px-4 gap-2 border transition-all ${
+            focused ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)]'
+          }`}
+          style={focused ? { animation: 'wiggleFocus 0.35s ease' } : undefined}
+        >
           <span className="ms text-text-3 text-xl">search</span>
           <input
             type="text"
@@ -64,6 +70,8 @@ export function CitySearch({ onSelect }: Props) {
             autoCapitalize="words"
             onChange={e => handleInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleEnter(); }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             className="flex-1 min-w-0 bg-transparent text-text-1 text-base outline-none placeholder:text-text-3"
           />
           {loading && <span className="ms text-text-3 text-base animate-spin">autorenew</span>}
@@ -102,9 +110,9 @@ export function CitySearch({ onSelect }: Props) {
             >
               <span className="ms text-text-3 text-base">location_on</span>
               <div>
-                <div className="text-text-1 text-sm font-medium">{r.main_text}</div>
+                <div className="font-[family-name:var(--font-heading)] text-white text-[22px] font-bold">{r.main_text}</div>
                 {r.secondary_text && (
-                  <div className="text-text-3 text-xs">{r.secondary_text}</div>
+                  <div className="text-[11px] text-white/70">{r.secondary_text}</div>
                 )}
               </div>
             </button>

@@ -38,10 +38,7 @@ export function InProgressSection({
         className="px-3.5 py-2.5"
         style={{ borderBottom: '1px solid rgba(176,108,255,0.08)' }}
       >
-        <p
-          className="text-[9px] font-bold tracking-widest uppercase"
-          style={{ color: '#b06cff' }}
-        >
+        <p className="font-[family-name:var(--font-heading)] text-[16px] font-bold text-[var(--color-text-1)]">
           In Progress
         </p>
       </div>
