@@ -18,7 +18,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
   const displaySubtitle = subtitle ?? '';
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-bg" style={{ zIndex: 20 }}>
+    <div className="fixed inset-0 flex flex-col bg-[var(--color-bg)]" style={{ zIndex: 20 }}>
       {/* Header */}
       <div
         className="flex-shrink-0 flex items-center justify-between px-5 border-b border-white/6"
@@ -33,7 +33,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
       >
         <button
           onClick={goBack}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-none cursor-pointer"
+          className="w-9 h-9 rounded-full border border-[var(--color-border)] text-[var(--color-text-2)] flex items-center justify-center"
         >
           <span className="ms text-primary text-xl">arrow_back</span>
         </button>
@@ -42,8 +42,8 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
       </div>
 
       {/* Progress bar */}
-      <div className="flex-shrink-0 h-1 bg-surface">
-        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+      <div className="flex-shrink-0 w-full h-[2px] bg-[var(--color-surface2)]">
+        <div className="bg-[var(--color-primary)] h-full transition-all" style={{ width: `${progress}%` }} />
       </div>
 
       {/* Body */}
@@ -52,7 +52,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
           <span className="text-text-3 text-xs font-medium tracking-wide uppercase">
             Step {String(currentIndex + 1).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
           </span>
-          <h1 className="font-heading font-extrabold text-text-1 text-2xl mt-2 mb-1 tracking-tight">
+          <h1 className="font-[family-name:var(--font-heading)] text-[22px] font-bold text-[var(--color-text-1)] mt-2 mb-1">
             {displayTitle}
           </h1>
           {displaySubtitle && (
