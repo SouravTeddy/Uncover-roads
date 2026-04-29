@@ -899,37 +899,23 @@ function FloatingHeader({
         pointerEvents: 'none',
       }}
     >
+      {/* Back button */}
       <button
         onClick={onGoBack}
-        style={{
-          pointerEvents: 'auto',
-          width: 38, height: 38, borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.15)',
-          background: 'rgba(0,0,0,0.38)',
-          backdropFilter: 'blur(10px)',
-          color: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', flexShrink: 0,
-        }}
+        style={{ pointerEvents: 'auto', cursor: 'pointer', flexShrink: 0 }}
+        className="w-10 h-10 rounded-full bg-black/30 [backdrop-filter:blur(8px)] flex items-center justify-center"
       >
-        <span className="ms" style={{ fontSize: 18 }}>arrow_back</span>
+        <span className="ms text-white">arrow_back</span>
       </button>
 
+      {/* Weather pill */}
       {weather && (
         <div
-          style={{
-            pointerEvents: 'auto',
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '5px 12px',
-            borderRadius: 99,
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: 'rgba(0,0,0,0.35)',
-            backdropFilter: 'blur(10px)',
-          }}
+          style={{ pointerEvents: 'auto' }}
+          className="px-3 py-1.5 rounded-full bg-black/30 [backdrop-filter:blur(8px)] flex items-center gap-1.5"
         >
           <span className="ms fill" style={{ color: '#7dd3fc', fontSize: 14 }}>{getWeatherIcon(weather.condition)}</span>
-          <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12 }}>{weather.condition}</span>
-          <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{weather.temp}°</span>
+          <span className="text-white text-[13px]">{weather.condition} {weather.temp}°</span>
         </div>
       )}
     </div>
@@ -943,31 +929,17 @@ function ProgressDots({ total, active }: { total: number; active: number }) {
   const clipped = Math.min(total, maxDots);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        right: 14,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        zIndex: 30,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 5,
-        pointerEvents: 'none',
-      }}
-    >
+    <div className="fixed right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-50 pointer-events-none">
       {Array.from({ length: clipped }).map((_, i) => {
         const isActive = i === Math.min(active, clipped - 1);
         return (
           <div
             key={i}
-            style={{
-              width: isActive ? 6 : 4,
-              height: isActive ? 18 : 4,
-              borderRadius: 99,
-              background: isActive ? '#fff' : 'rgba(255,255,255,0.3)',
-              transition: 'all 0.3s ease',
-            }}
+            className={`rounded-full transition-all duration-300 ${
+              isActive
+                ? 'w-[5px] h-[18px] bg-white'
+                : 'w-[4px] h-[4px] bg-white/30'
+            }`}
           />
         );
       })}

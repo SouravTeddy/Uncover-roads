@@ -26,7 +26,10 @@ export function ItineraryMapCard({ mapRef, center, selectedPlaces, activeStopIdx
       : null;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div
+      style={{ position: 'relative', width: '100%', height: '100%' }}
+      className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden [box-shadow:var(--shadow-md)]"
+    >
       <MapLibreMap
         ref={mapRef}
         center={center}
@@ -99,12 +102,11 @@ export function ItineraryMapCard({ mapRef, center, selectedPlaces, activeStopIdx
           background: 'rgba(15,20,30,.8)', backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255,255,255,.1)', borderRadius: 999,
           padding: '5px 12px',
-          fontSize: '0.7rem', fontWeight: 600, color: '#94a3b8',
           display: 'flex', alignItems: 'center', gap: 6,
           whiteSpace: 'nowrap',
         }}>
-          <span className="ms" style={{ fontSize: 13 }}>directions_walk</span>
-          Next: {selectedPlaces[activeStopIdx + 1].title}
+          <span className="ms text-[var(--color-sky)] text-[18px]">directions_walk</span>
+          <span className="text-[var(--color-sky)] text-[13px] font-medium">Next: {selectedPlaces[activeStopIdx + 1].title}</span>
         </div>
       )}
     </div>
