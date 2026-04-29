@@ -72,11 +72,11 @@ export function OriginInputSheet({ onDone, onClose }: Props) {
           </button>
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase',
-            color: PRIMARY, marginBottom: 6, fontFamily: 'Inter, sans-serif',
+            color: PRIMARY, marginBottom: 6, fontFamily: 'var(--font-sans)',
           }}>
             Starting point
           </div>
-          <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 20, fontWeight: 800, color: TEXT1 }}>
+          <div style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: TEXT1 }}>
             {ORIGIN_STRINGS.cardHeading}
           </div>
         </div>

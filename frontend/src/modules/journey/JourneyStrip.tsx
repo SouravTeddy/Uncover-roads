@@ -71,10 +71,10 @@ export function JourneyStrip({ onDurationChange }: Props) {
               padding: 24,
             }}
           >
-            <p style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 18, fontWeight: 800, color: TEXT1, marginBottom: 4 }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, color: TEXT1, marginBottom: 4 }}>
               How many days?
             </p>
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: TEXT3, marginBottom: 24 }}>
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: TEXT3, marginBottom: 24 }}>
               We'll fit your cities and flag when you're running short.
             </p>
 
@@ -84,7 +84,7 @@ export function JourneyStrip({ onDurationChange }: Props) {
                 onClick={() => setDraftDays(d => Math.max(1, d - 1))}
                 style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
               >−</button>
-              <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 40, fontWeight: 800, color: TEXT1, minWidth: 60, textAlign: 'center' }}>{draftDays}</span>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 800, color: TEXT1, minWidth: 60, textAlign: 'center' }}>{draftDays}</span>
               <button
                 onClick={() => setDraftDays(d => d + 1)}
                 style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}

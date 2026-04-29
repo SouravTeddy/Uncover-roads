@@ -80,7 +80,7 @@ export function OriginSearchCard({ onDone }: Props) {
             </span>
             <span style={{
               fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
               background: badgeStyle.bg, color: badgeStyle.color,
             }}>
               {PLACE_TYPE_LABELS[selectedOrigin.originType] ?? 'Place'}
@@ -128,7 +128,7 @@ export function OriginSearchCard({ onDone }: Props) {
                 style={{
                   flex: 1, background: 'none', border: 'none', outline: 'none',
                   fontSize: 14, fontWeight: 600, color: TEXT1,
-                  fontFamily: '"Plus Jakarta Sans", sans-serif',
+                  fontFamily: 'var(--font-heading)',
                   caretColor: PRIMARY,
                 }}
               />
@@ -147,7 +147,7 @@ export function OriginSearchCard({ onDone }: Props) {
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span className="ms" style={{ fontSize: 15, color: '#f87171', flexShrink: 0 }}>info</span>
-                <span style={{ fontSize: 12, color: '#fca5a5', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+                <span style={{ fontSize: 12, color: '#fca5a5', fontFamily: 'var(--font-sans)', lineHeight: 1.4 }}>
                   {searchError}
                 </span>
               </div>
@@ -193,7 +193,7 @@ export function OriginSearchCard({ onDone }: Props) {
                         <div className="font-[family-name:var(--font-heading)]" style={{ fontSize: 13, fontWeight: 700, color: TEXT1 }}>
                           {r.main_text}
                         </div>
-                        <div style={{ fontSize: 11, color: TEXT3, marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
+                        <div style={{ fontSize: 11, color: TEXT3, marginTop: 2, fontFamily: 'var(--font-sans)' }}>
                           {r.secondary_text}
                         </div>
                       </div>
@@ -203,7 +203,7 @@ export function OriginSearchCard({ onDone }: Props) {
                         return (
                           <span style={{
                             fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 600,
-                            fontFamily: 'Inter, sans-serif', flexShrink: 0,
+                            fontFamily: 'var(--font-sans)', flexShrink: 0,
                             background: badge.bg, color: badge.color,
                           }}>
                             {PLACE_TYPE_LABELS[type] ?? 'Place'}
@@ -225,7 +225,7 @@ export function OriginSearchCard({ onDone }: Props) {
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
               textTransform: 'uppercase', color: TEXT3, marginBottom: 8,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}>
               {timeFieldLabel} <span style={{ color: '#475569', fontWeight: 400 }}>— optional</span>
             </div>
@@ -237,12 +237,12 @@ export function OriginSearchCard({ onDone }: Props) {
                 width: '100%', height: 52, background: SURFACE2,
                 border: `1.5px solid rgba(59,130,246,.35)`, borderRadius: 14,
                 fontSize: 24, fontWeight: 800, color: TEXT1,
-                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                fontFamily: 'var(--font-heading)',
                 textAlign: 'center', outline: 'none', cursor: 'pointer',
                 colorScheme: 'dark',
               }}
             />
-            <div style={{ fontSize: 11, color: PRIMARY, marginTop: 8, fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 11, color: PRIMARY, marginTop: 8, fontFamily: 'var(--font-sans)', lineHeight: 1.5 }}>
               {ORIGIN_STRINGS.optionalNudge}
             </div>
           </div>
@@ -284,10 +284,10 @@ export function OriginSearchCard({ onDone }: Props) {
             border: `1px solid rgba(59,130,246,.12)`,
             borderRadius: 12,
           }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, fontFamily: '"Plus Jakarta Sans", sans-serif', marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, fontFamily: 'var(--font-heading)', marginBottom: 4 }}>
               {ORIGIN_STRINGS.notDecidedHeading}
             </div>
-            <div style={{ fontSize: 12, color: TEXT3, fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 12, color: TEXT3, fontFamily: 'var(--font-sans)', lineHeight: 1.6 }}>
               {ORIGIN_STRINGS.notDecidedSub}
             </div>
           </div>
@@ -302,7 +302,7 @@ export function OriginSearchCard({ onDone }: Props) {
             border: `1.5px dashed ${notDecidedDisabled ? 'rgba(59,130,246,.12)' : PRIMARY_BORDER}`,
             borderRadius: 14,
             cursor: notDecidedDisabled ? 'default' : 'pointer',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
             fontSize: 13, fontWeight: 600,
             color: notDecidedDisabled ? 'rgba(147,197,253,.3)' : '#93c5fd',
             opacity: notDecidedDisabled ? 0.5 : 1,
@@ -321,7 +321,7 @@ export function OriginSearchCard({ onDone }: Props) {
             width: '100%', height: 48,
             background: `linear-gradient(135deg, ${PRIMARY}, #2563eb)`,
             border: 'none', borderRadius: 14, cursor: 'pointer',
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontFamily: 'var(--font-heading)',
             fontSize: 14, fontWeight: 700, color: '#fff',
             boxShadow: '0 4px 20px rgba(59,130,246,.3)',
           }}

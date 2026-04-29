@@ -24,7 +24,7 @@ export function JourneyAdvisorThread() {
         }}
       >
         <span className="ms fill" style={{ fontSize: 15, color: TEXT3 }}>psychology</span>
-        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: TEXT3, flex: 1, textAlign: 'left' }}>
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: TEXT3, flex: 1, textAlign: 'left' }}>
           Why is my trip shaped this way?
         </span>
         <span className="ms" style={{ fontSize: 14, color: TEXT3, transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }}>expand_more</span>
@@ -48,7 +48,7 @@ export function JourneyAdvisorThread() {
                 borderTop: i > 0 ? `1px solid ${BORDER}` : 'none',
               }}
             >
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: 'var(--color-text-1)', lineHeight: 1.55, margin: 0 }}>
+              <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--color-text-1)', lineHeight: 1.55, margin: 0 }}>
                 {msg.message}
               </p>
             </div>

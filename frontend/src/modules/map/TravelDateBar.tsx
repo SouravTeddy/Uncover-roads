@@ -83,21 +83,21 @@ export function TravelDateBar() {
         {isSet ? (
           <>
             <span style={{
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 13, fontWeight: 700, color: TEXT1, flex: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
               {formatDateShort(travelStartDate!)} → {formatDateShort(travelEndDate!)}
             </span>
             <span style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
               fontSize: 12, fontWeight: 600, color: '#93c5fd', flexShrink: 0,
             }}>
               · {totalDays} day{totalDays !== 1 ? 's' : ''}
             </span>
             {indicator && (
               <span style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-sans)',
                 fontSize: 11, fontWeight: 600, color: indicator.color,
                 flexShrink: 0, marginLeft: 4,
               }}>
@@ -107,7 +107,7 @@ export function TravelDateBar() {
           </>
         ) : (
           <span style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
             fontSize: 13, fontWeight: 500, color: TEXT3, flex: 1,
           }}>
             Set travel dates
@@ -247,18 +247,18 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: 2,
             textTransform: 'uppercase', color: PRIMARY, marginBottom: 4,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
           }}>
             Travel dates
           </div>
           <div style={{
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
+            fontFamily: 'var(--font-heading)',
             fontSize: 18, fontWeight: 800, color: TEXT1,
           }}>
             {formatDateShort(localStart)} → {formatDateShort(localEnd)}
             <span style={{
               fontSize: 13, fontWeight: 600, color: '#93c5fd', marginLeft: 8,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}>
               {computeTotalDays(localStart, localEnd)} day{computeTotalDays(localStart, localEnd) !== 1 ? 's' : ''}
             </span>
@@ -273,7 +273,7 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
               textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}>
               Departure
             </div>
@@ -300,7 +300,7 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
             <div style={{
               fontSize: 10, fontWeight: 700, letterSpacing: 1.8,
               textTransform: 'uppercase', color: TEXT3, marginBottom: 12,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}>
               Return
             </div>
@@ -332,7 +332,7 @@ export function DateRangeSheet({ initialStart, initialEnd, onDone, onClose }: Sh
               background: `linear-gradient(135deg, ${PRIMARY}, #2563eb)`,
               border: 'none', borderRadius: 16, cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: 0.2,
               boxShadow: '0 4px 24px rgba(59,130,246,.35)',
             }}
@@ -446,7 +446,7 @@ function MonthCalendar({
             }}
           >
             <span style={{
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 14, fontWeight: 700, color: TEXT1,
             }}>
               {MONTH_NAMES[month]} {year}
@@ -490,7 +490,7 @@ function MonthCalendar({
                       background: isActive ? PRIMARY_BG : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-sans)',
                       fontSize: 13, fontWeight: isActive ? 700 : 500,
                       color: isActive ? '#93c5fd' : TEXT1,
                     }}
@@ -527,7 +527,7 @@ function MonthCalendar({
           <div key={d} style={{
             textAlign: 'center',
             fontSize: 11, fontWeight: 700, color: TEXT3,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
             padding: '4px 0',
           }}>
             {d}
@@ -570,7 +570,7 @@ function MonthCalendar({
               }}
             >
               <span style={{
-                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                fontFamily: 'var(--font-heading)',
                 fontSize: 14, fontWeight: isSelected ? 800 : 500,
                 color: isSelected ? TEXT1 : isToday ? '#93c5fd' : 'rgba(255,255,255,.6)',
                 lineHeight: 1,
