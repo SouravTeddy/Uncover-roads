@@ -75,7 +75,7 @@ export function OriginSearchCard({ onDone }: Props) {
             borderRadius: 14,
           }}>
             <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+            <span className="font-[family-name:var(--font-heading)]" style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1 }}>
               {selectedOrigin.name}
             </span>
             <span style={{
@@ -190,7 +190,7 @@ export function OriginSearchCard({ onDone }: Props) {
                         <span className="ms" style={{ fontSize: 16, color: PRIMARY }}>location_on</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: TEXT1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+                        <div className="font-[family-name:var(--font-heading)]" style={{ fontSize: 13, fontWeight: 700, color: TEXT1 }}>
                           {r.main_text}
                         </div>
                         <div style={{ fontSize: 11, color: TEXT3, marginTop: 2, fontFamily: 'Inter, sans-serif' }}>
@@ -261,7 +261,7 @@ export function OriginSearchCard({ onDone }: Props) {
             borderRadius: 14,
           }}>
             <span className="ms" style={{ fontSize: 18, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1, fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
+            <span className="font-[family-name:var(--font-heading)]" style={{ fontSize: 13, fontWeight: 600, color: TEXT1, flex: 1 }}>
               {ORIGIN_STRINGS.notDecidedLabel}
             </span>
             <button
