@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useAppStore } from '../../shared/store';
+import { Button } from '../../shared/ui/Button';
 
 const CARDS = [
   {
@@ -84,8 +85,7 @@ export function WalkthroughScreen() {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col"
-      style={{ background: '#0a0e14' }}
+      className="fixed inset-0 flex flex-col bg-[var(--color-bg)]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -107,7 +107,10 @@ export function WalkthroughScreen() {
 
       {/* Card area */}
       <div className="flex-1 flex items-center justify-center px-6 overflow-hidden">
-        <div className="w-full max-w-sm">
+        <div
+          className="w-full max-w-sm"
+          style={{ animation: 'springUp 0.4s ease both' }}
+        >
 
           {/* Glow backdrop */}
           <div
@@ -156,7 +159,7 @@ export function WalkthroughScreen() {
 
           {/* Title */}
           <h2
-            className="font-heading font-bold text-white text-2xl text-center leading-snug mb-4"
+            className="font-[family-name:var(--font-heading)] font-bold text-white text-2xl text-center leading-snug mb-4"
             style={{ transition: 'opacity 0.3s ease' }}
           >
             {card.title}
@@ -194,41 +197,26 @@ export function WalkthroughScreen() {
             <button
               key={i}
               onClick={() => setIndex(i)}
-              className="rounded-full transition-all duration-300"
-              style={{
-                width: i === index ? 20 : 6,
-                height: 6,
-                background: i === index ? card.color.primary : 'rgba(255,255,255,.2)',
-              }}
+              className={`rounded-full transition-all duration-300 ${
+                i === index
+                  ? 'bg-[var(--color-primary)] w-5 h-2'
+                  : 'bg-[var(--color-surface2)] w-2 h-2'
+              }`}
             />
           ))}
         </div>
 
         {/* CTA */}
         {isLast ? (
-          <button
-            onClick={finish}
-            className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
-            style={{
-              background: `linear-gradient(135deg, ${card.color.primary}, ${card.color.primary}cc)`,
-              boxShadow: `0 8px 32px ${card.color.glow}`,
-            }}
-          >
+          <Button variant="primary" className="w-full" onClick={finish}>
             Get started
             <span className="ms fill text-white" style={{ fontSize: 20 }}>arrow_forward</span>
-          </button>
+          </Button>
         ) : (
-          <button
-            onClick={next}
-            className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
-            style={{
-              background: 'rgba(255,255,255,.07)',
-              border: '1px solid rgba(255,255,255,.1)',
-            }}
-          >
+          <Button variant="primary" className="w-full" onClick={next}>
             Next
-            <span className="ms text-white/60" style={{ fontSize: 18 }}>arrow_forward</span>
-          </button>
+            <span className="ms text-white/80" style={{ fontSize: 18 }}>arrow_forward</span>
+          </Button>
         )}
       </div>
     </div>

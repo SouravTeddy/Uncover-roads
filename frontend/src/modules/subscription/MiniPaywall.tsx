@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { PackPurchaseConfirm } from './PackPurchaseConfirm';
+import { Button } from '../../shared/ui/Button';
 
 interface Props {
   onClose: () => void;
@@ -38,6 +39,9 @@ export function MiniPaywall({ onClose, context }: Props) {
     );
   }
 
+  const title = 'Unlock this trip';
+  const body = context ?? 'Full itinerary · Our Picks · Live Events';
+
   return (
     <>
       {/* Backdrop */}
@@ -52,48 +56,33 @@ export function MiniPaywall({ onClose, context }: Props) {
       {/* Sheet */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60,
-        background: '#111827',
-        borderTopLeftRadius: 24, borderTopRightRadius: 24,
-        border: '1px solid rgba(255,255,255,.08)',
-        padding: '20px 20px',
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
       }}>
-        {/* Handle */}
-        <div style={{
-          width: 36, height: 4, borderRadius: 2,
-          background: 'rgba(255,255,255,.15)',
-          margin: '0 auto 20px',
-        }} />
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[24px] p-6 [box-shadow:var(--shadow-md)] mx-4 mb-4">
+          {/* Handle */}
+          <div className="w-9 h-1 rounded-full bg-[var(--color-border)] mx-auto mb-5" />
 
-        <p className="font-heading font-bold text-white text-base mb-1">Unlock this trip</p>
-        {context ? (
-          <p className="text-white/40 text-sm mb-5">{context}</p>
-        ) : (
-          <p className="text-white/40 text-sm mb-5">Full itinerary · Our Picks · Live Events</p>
-        )}
+          <h3 className="font-[family-name:var(--font-heading)] text-[20px] font-bold text-[var(--color-text-1)] mb-2">
+            {title}
+          </h3>
+          <p className="text-[13px] text-[var(--color-text-2)] mb-5">{body}</p>
 
-        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
+            <Button variant="primary" className="w-full" onClick={() => handlePackPurchase(1)}>
+              Get 1 Trip · $0.99
+            </Button>
+            <Button variant="outline" className="w-full" onClick={() => handlePackPurchase(5)}>
+              Get 5 Trips · $3.99
+            </Button>
+          </div>
+
           <button
-            onClick={() => handlePackPurchase(1)}
-            className="w-full py-3.5 rounded-2xl font-bold text-white text-sm bg-primary"
+            onClick={handleViewAllPlans}
+            className="w-full mt-4 text-[var(--color-text-3)] text-sm text-center"
           >
-            Get 1 Trip · $0.99
-          </button>
-          <button
-            onClick={() => handlePackPurchase(5)}
-            className="w-full py-3.5 rounded-2xl font-bold text-sm border border-primary/40"
-            style={{ background: 'rgba(249,115,22,.08)', color: '#f97316' }}
-          >
-            Get 5 Trips · $3.99
+            Or go Pro for $9.99/mo →
           </button>
         </div>
-
-        <button
-          onClick={handleViewAllPlans}
-          className="w-full mt-4 text-white/35 text-sm text-center"
-        >
-          Or go Pro for $9.99/mo →
-        </button>
       </div>
     </>
   );

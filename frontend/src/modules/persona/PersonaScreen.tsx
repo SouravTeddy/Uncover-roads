@@ -155,7 +155,7 @@ export function PersonaScreen() {
   }
 
   return (
-    <div className="fixed inset-0 bg-bg overflow-y-auto" style={{ zIndex: 20 }}>
+    <div className="fixed inset-0 bg-bg overflow-y-auto" style={{ zIndex: 20, animation: 'springUp 0.45s ease both' }}>
 
       {/* Top bar */}
       <div className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
@@ -165,32 +165,33 @@ export function PersonaScreen() {
 
       {/* Hero card */}
       <div
-        className="relative mx-4 mt-5 rounded-3xl overflow-hidden text-center"
+        className="rounded-[20px] p-5 relative overflow-hidden mx-4 mt-5"
         style={{
-          background: `linear-gradient(160deg, ${color.glow}, rgba(255,255,255,.02))`,
+          background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
           border: `1px solid ${color.primary}28`,
         }}
       >
+        {/* Radial glow — left edge */}
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `radial-gradient(ellipse 80% 55% at 50% 0%, ${color.glow} 0%, transparent 70%)`,
-          }}
+          className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
+          style={{ background: `radial-gradient(ellipse at left, ${color.primary}18, transparent 70%)` }}
         />
-        <div className="relative px-6 pt-8 pb-7">
-          <div
-            className="text-7xl leading-none mb-4"
-            style={{ filter: `drop-shadow(0 0 28px ${color.primary}80)` }}
-          >
-            {meta.emoji}
-          </div>
-          <h1 className="font-heading font-extrabold text-2xl text-white tracking-tight mb-2">
-            {meta.name}
-          </h1>
-          <p className="text-white/60 text-sm leading-relaxed max-w-[260px] mx-auto">
-            {meta.tagline}
-          </p>
+
+        {/* Emoji */}
+        <span
+          className="text-[42px] relative"
+          style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}
+        >
+          {meta.emoji}
+        </span>
+
+        {/* Name */}
+        <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+          {meta.name}
         </div>
+
+        {/* Tagline */}
+        <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{meta.tagline}</div>
       </div>
 
       {/* Stats row */}

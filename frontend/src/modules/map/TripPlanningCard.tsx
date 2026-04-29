@@ -11,7 +11,6 @@ interface Props {
   onClose: () => void;
 }
 
-const SURFACE  = '#141921';
 const PRIMARY  = '#3b82f6';
 const PRIMARY_BG = 'rgba(59,130,246,.12)';
 const PRIMARY_BORDER = 'rgba(59,130,246,.25)';
@@ -59,14 +58,12 @@ export function TripPlanningCard({ onClose }: Props) {
       />
       <div
         onClick={e => e.stopPropagation()}
+        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px]"
         style={{
           position: 'fixed',
           left: 16, right: 16,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px)`,
           zIndex: 51,
-          background: SURFACE,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 24,
           boxShadow: '0 -8px 60px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.04)',
           transform: mounted ? 'translateY(0)' : 'translateY(32px)',
           opacity: mounted ? 1 : 0,
@@ -102,14 +99,16 @@ export function TripPlanningCard({ onClose }: Props) {
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: 2,
             textTransform: 'uppercase', color: PRIMARY, marginBottom: 6,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
           }}>
             Plan your day
           </div>
-          <div style={{
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
-            fontSize: 22, fontWeight: 800, color: TEXT1, lineHeight: 1.1,
-          }}>
+          <div
+            className="font-[family-name:var(--font-heading)]"
+            style={{
+              fontSize: 22, fontWeight: 800, color: TEXT1, lineHeight: 1.1,
+            }}
+          >
             {city || 'Your City'}
           </div>
           <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -121,7 +120,7 @@ export function TripPlanningCard({ onClose }: Props) {
                 borderRadius: 999,
               }}>
                 <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>calendar_month</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'var(--font-sans)' }}>
                   {formatDateShort(travelStartDate)} – {formatDateShort(travelEndDate)} · {totalDays} day{totalDays !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -133,7 +132,7 @@ export function TripPlanningCard({ onClose }: Props) {
                 borderRadius: 999,
               }}>
                 <span className="ms" style={{ fontSize: 12, color: TEXT3 }}>calendar_month</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT3, fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT3, fontFamily: 'var(--font-sans)' }}>
                   Set dates in explore
                 </span>
               </div>
@@ -145,7 +144,7 @@ export function TripPlanningCard({ onClose }: Props) {
               borderRadius: 999,
             }}>
               <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>place</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'var(--font-sans)' }}>
                 {placesCount} place{placesCount !== 1 ? 's' : ''} selected
               </span>
             </div>
@@ -154,11 +153,13 @@ export function TripPlanningCard({ onClose }: Props) {
 
         {/* Body */}
         <div style={{ padding: '20px 20px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          <div style={{
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
-            fontSize: 17, fontWeight: 700, color: '#f1f5f9',
-            lineHeight: 1.3, marginBottom: 16,
-          }}>
+          <div
+            className="font-[family-name:var(--font-heading)]"
+            style={{
+              fontSize: 17, fontWeight: 700, color: '#f1f5f9',
+              lineHeight: 1.3, marginBottom: 16,
+            }}
+          >
             {ORIGIN_STRINGS.cardHeading}
           </div>
           <OriginSearchCard onDone={handleOriginDone} />

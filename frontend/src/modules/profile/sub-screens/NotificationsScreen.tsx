@@ -24,26 +24,35 @@ export function NotificationsScreen({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
-        <button onClick={onBack}><span className="ms text-xl text-text-3">arrow_back</span></button>
-        <span className="font-heading font-bold text-text-1 text-lg">Notifications</span>
+    <div className="fixed inset-0 bg-[var(--color-bg)] flex flex-col" style={{ zIndex: 20 }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+        <button
+          className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+          onClick={onBack}
+        >
+          <span className="ms text-[var(--color-text-2)]">arrow_back</span>
+        </button>
+        <h2 className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)]">
+          Notifications
+        </h2>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pt-5"
+
+      <div className="flex-1 overflow-y-auto px-4 pt-4"
         style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}>
-        <div className="rounded-2xl overflow-hidden border border-white/8" style={{ background: 'rgba(255,255,255,.03)' }}>
-          {rows.map((row, i) => (
+        {/* Settings card */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden">
+          {rows.map((row) => (
             <div
               key={row.key}
-              className={`flex items-center gap-3 px-4 py-3.5 ${i > 0 ? 'border-t border-white/6' : ''}`}
+              className="flex items-center gap-3 px-4 py-4 border-b border-[var(--color-divider)] last:border-0"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-white/70 text-sm font-medium">{row.label}</p>
-                  {row.locked && <span className="ms fill text-white/30 text-sm">lock</span>}
+                  <p className="text-[14px] text-[var(--color-text-1)] font-medium">{row.label}</p>
+                  {row.locked && <span className="ms fill text-[var(--color-text-3)] text-sm">lock</span>}
                 </div>
-                <p className="text-white/25 text-xs mt-0.5">{row.sublabel}</p>
+                <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">{row.sublabel}</p>
               </div>
               <button
                 onClick={() => toggle(row.key)}

@@ -54,6 +54,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     favouritedPins: [],
     cityFootprints: [],
     similarPinsState: null,
+    theme: 'dark',
     ...overrides,
   };
 }

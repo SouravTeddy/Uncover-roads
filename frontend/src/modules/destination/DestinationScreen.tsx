@@ -55,23 +55,24 @@ export function DestinationScreen() {
 
       {/* Header */}
       <header
-        className="px-5 flex-shrink-0"
+        className="px-5 flex-shrink-0 flex items-center justify-between"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
           paddingBottom: '0.75rem',
         }}
       >
-        <p className="text-white/30 text-[10px]">{today}</p>
-        <h1
-          className="font-heading font-bold text-lg leading-tight"
-          style={{
-            background: 'linear-gradient(90deg, #6c8fff, #b06cff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          uncover roads
-        </h1>
+        <div>
+          <p className="text-[11px] text-[var(--color-text-3)] uppercase tracking-wide">{today}</p>
+          <h1
+            className="font-[family-name:var(--font-heading)] text-[28px] font-bold"
+            style={{ background: 'linear-gradient(135deg, #f5f0ea, #e07854)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+          >
+            uncover roads
+          </h1>
+        </div>
+        <div className="w-9 h-9 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center text-[var(--color-primary)] font-bold text-[14px]">
+          U
+        </div>
       </header>
 
       {/* Search bar */}

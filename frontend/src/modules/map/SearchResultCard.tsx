@@ -53,8 +53,8 @@ export function SearchResultCard({
       onTouchEnd={handleTouchEnd}
     >
       <div
-        className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
-        style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)' }}
+        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden shadow-2xl"
+        style={{ backdropFilter: 'blur(16px)' }}
       >
         {/* Card header row */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/8">
@@ -65,7 +65,7 @@ export function SearchResultCard({
             <span className="ms fill text-primary" style={{ fontSize: 14 }}>{icon}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-text-1 font-semibold text-sm truncate">
+            <p className="font-[family-name:var(--font-heading)] text-text-1 font-semibold text-sm truncate">
               <span className="text-text-3 mr-1">({activeIndex + 1})</span>
               {place.title}
             </p>
