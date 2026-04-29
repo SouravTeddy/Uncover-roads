@@ -228,11 +228,11 @@ export function NavScreen() {
   const hasMap = coords.length >= 2;
 
   return (
-    <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
+    <div className="fixed inset-0 bg-[var(--color-bg)] flex flex-col" style={{ zIndex: 20 }}>
 
       {/* ── Header ── */}
       <div
-        className="flex-shrink-0 flex items-center justify-between px-4 border-b border-white/6"
+        className="flex-shrink-0 flex items-center justify-between px-4 border-b border-[var(--color-divider)]"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
           paddingBottom: '1rem',
@@ -241,25 +241,23 @@ export function NavScreen() {
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => dispatch({ type: 'GO_TO', screen: 'route' })}
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,.07)' }}
+            className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
           >
-            <span className="ms text-text-2 text-base">arrow_back</span>
+            <span className="ms text-[var(--color-text-2)] text-base">arrow_back</span>
           </button>
           <div className="min-w-0">
-            <h1 className="font-heading font-bold text-text-1 text-base truncate">
+            <h1 className="font-[family-name:var(--font-heading)] font-bold text-[var(--color-text-1)] text-base truncate">
               {city ? `${city} Journey` : 'Your Journey'}
             </h1>
-            <p className="text-text-3 text-xs">{timed.length} stops · starts {parseTimeLabel(startMins)}</p>
+            <p className="text-[var(--color-text-3)] text-xs">{timed.length} stops · starts {parseTimeLabel(startMins)}</p>
           </div>
         </div>
         {weather && (
           <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-white/10 flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,.07)' }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--color-border)] flex-shrink-0 bg-[var(--color-surface)]"
           >
-            <span className="text-text-1 text-xs font-bold">{weather.temp}°</span>
-            <span className="text-text-3 text-xs">{weather.condition}</span>
+            <span className="text-[var(--color-text-1)] text-xs font-bold">{weather.temp}°</span>
+            <span className="text-[var(--color-text-3)] text-xs">{weather.condition}</span>
           </div>
         )}
       </div>
@@ -269,7 +267,7 @@ export function NavScreen() {
 
         {/* Mini map */}
         {hasMap && (
-          <div className="mx-4 mt-4 rounded-2xl overflow-hidden border border-white/8" style={{ height: 180 }}>
+          <div className="mx-4 mt-4 rounded-[20px] overflow-hidden border border-[var(--color-border)] [box-shadow:var(--shadow-md)]" style={{ height: 180 }}>
             <MiniMap coords={coords} />
           </div>
         )}
@@ -305,7 +303,7 @@ export function NavScreen() {
 
       {/* ── Footer ── */}
       <div
-        className="absolute inset-x-0 bottom-0 px-4 py-3 border-t border-white/6"
+        className="absolute inset-x-0 bottom-0 px-4 py-3 border-t border-[var(--color-divider)]"
         style={{
           background: 'rgba(10,14,20,.95)',
           backdropFilter: 'blur(12px)',
@@ -314,8 +312,7 @@ export function NavScreen() {
       >
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-          className="w-full h-12 rounded-2xl font-bold text-sm border border-white/10 text-text-2"
-          style={{ background: 'rgba(255,255,255,.05)' }}
+          className="w-full h-12 rounded-2xl font-bold text-sm border border-[var(--color-border)] text-[var(--color-text-2)] bg-[var(--color-surface)]"
         >
           End Journey
         </button>
@@ -352,23 +349,24 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
 
   return (
     <div
-      className="rounded-2xl border border-white/8 overflow-hidden"
-      style={{ background: 'rgba(255,255,255,.03)' }}
+      className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-4 [box-shadow:var(--shadow-md)] overflow-hidden"
     >
       {/* Card header */}
       <div
-        className="flex items-center justify-between px-4 py-3 border-b border-white/6"
-        style={{ background: 'rgba(255,255,255,.02)' }}
+        className="flex items-center justify-between px-0 py-0 pb-3 border-b border-[var(--color-divider)]"
       >
         <div className="flex items-center gap-2.5">
           {/* Stop number */}
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: catStyle.bg, border: `1px solid ${catStyle.text}30` }}
-          >
-            <span style={{ color: catStyle.text, fontSize: 10, fontWeight: 700, fontFamily: 'system-ui,sans-serif' }}>
-              {String(index + 1).padStart(2, '0')}
-            </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <div className="w-2 h-2 rounded-full bg-[var(--color-primary)]" />
+            <div
+              className="w-6 h-6 rounded-full flex items-center justify-center"
+              style={{ background: catStyle.bg, border: `1px solid ${catStyle.text}30` }}
+            >
+              <span style={{ color: catStyle.text, fontSize: 10, fontWeight: 700, fontFamily: 'system-ui,sans-serif' }}>
+                {String(index + 1).padStart(2, '0')}
+              </span>
+            </div>
           </div>
           {/* Category */}
           <div className="flex items-center gap-1.5">
@@ -380,19 +378,19 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
         </div>
         {/* Time */}
         <div className="flex items-center gap-1.5">
-          <span className="ms text-text-3 text-xs">schedule</span>
-          <span className="text-text-2 text-xs font-semibold">{parseTimeLabel(startMins)}</span>
+          <span className="ms text-[var(--color-text-3)] text-xs">schedule</span>
+          <span className="text-[var(--color-text-2)] text-xs font-semibold">{parseTimeLabel(startMins)}</span>
         </div>
       </div>
 
       {/* Card body */}
-      <div className="px-4 py-3.5 flex flex-col gap-3">
+      <div className="px-0 py-3.5 flex flex-col gap-3">
         {/* Place name */}
-        <h2 className="font-heading font-bold text-text-1 text-lg leading-tight">{stop.place}</h2>
+        <h2 className="font-[family-name:var(--font-heading)] text-[15px] font-semibold text-[var(--color-text-1)] leading-tight">{stop.place}</h2>
 
         {/* Tip / what to expect */}
         {stop.tip && (
-          <p className="text-text-2 text-sm leading-relaxed">{stop.tip}</p>
+          <p className="text-[var(--color-text-2)] text-sm leading-relaxed">{stop.tip}</p>
         )}
 
         {/* Persona match */}
@@ -415,15 +413,14 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
         {/* Duration + Open in Maps row */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">
-            <span className="ms text-text-3 text-xs">timer</span>
-            <span className="text-text-3 text-xs">~{durationLabel}</span>
+            <span className="ms text-[var(--color-text-3)] text-xs">timer</span>
+            <span className="text-[var(--color-text-3)] text-xs">~{durationLabel}</span>
           </div>
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.7)' }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-2)] border border-[var(--color-border)]"
           >
             <span className="ms text-xs">open_in_new</span>
             Open in Maps
@@ -434,11 +431,10 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
       {/* Transit connector to next stop */}
       {stop.transit_to_next && (
         <div
-          className="flex items-center gap-2 px-4 py-2.5 border-t border-white/6"
-          style={{ background: 'rgba(255,255,255,.015)' }}
+          className="flex items-center gap-2 px-0 py-2.5 border-t border-[var(--color-divider)]"
         >
-          <span className="ms fill text-text-3 text-sm">arrow_downward</span>
-          <span className="text-text-3 text-xs leading-relaxed flex-1">{stop.transit_to_next}</span>
+          <span className="ms fill text-[var(--color-text-3)] text-sm">arrow_downward</span>
+          <span className="text-[var(--color-text-3)] text-xs leading-relaxed flex-1">{stop.transit_to_next}</span>
         </div>
       )}
     </div>
