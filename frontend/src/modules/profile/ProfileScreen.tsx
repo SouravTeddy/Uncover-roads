@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
-import type { UserTier } from '../../shared/types';
 import { NotificationsScreen } from './sub-screens/NotificationsScreen';
 import { UnitsSheet } from './sub-screens/UnitsSheet';
 import { PrivacyScreen } from './sub-screens/PrivacyScreen';

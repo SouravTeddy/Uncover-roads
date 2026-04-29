@@ -1,6 +1,5 @@
 import type { Place } from '../../shared/types';
 
-const TEXT1    = '#f1f5f9';
 const TEXT3    = '#8e9099';
 const BORDER   = 'rgba(255,255,255,.08)';
 const SURFACE2 = '#1A1F2B';
