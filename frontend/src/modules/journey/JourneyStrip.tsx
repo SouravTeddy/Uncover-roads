@@ -5,7 +5,6 @@ import { computeTotalDays } from '../map/trip-capacity-utils';
 import { calculateTravelDays } from '../map/journey-legs';
 import { isJourneyMode, getJourneyCities } from '../map/journey-utils';
 
-const PRIMARY  = '#3b82f6';
 const TEXT1    = '#f1f5f9';
 const TEXT3    = '#8e9099';
 const BORDER   = 'rgba(255,255,255,.08)';
@@ -42,17 +41,11 @@ export function JourneyStrip({ onDurationChange }: Props) {
     <>
       <button
         onClick={() => setPickerOpen(true)}
-        style={{
-          width: '100%', height: 40,
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'rgba(59,130,246,.08)',
-          border: `1px solid rgba(59,130,246,.25)`,
-          borderRadius: 12, padding: '0 14px', cursor: 'pointer', textAlign: 'left',
-        }}
+        className="w-full h-[40px] flex items-center gap-[10px] bg-[var(--color-primary-bg)] border border-[var(--color-primary)] rounded-full px-[14px] cursor-pointer text-left"
       >
-        <span className="ms" style={{ fontSize: 15, color: PRIMARY, flexShrink: 0 }}>flight_takeoff</span>
+        <span className="ms text-[var(--color-primary)] text-[15px] flex-shrink-0">flight_takeoff</span>
 
-        <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 12, fontWeight: 700, color: TEXT1, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span className="font-[family-name:var(--font-heading)] text-[12px] font-bold text-[var(--color-text-1)] flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
           {travelStartDate && travelEndDate
             ? `${fmt(travelStartDate)} – ${fmt(travelEndDate)}`
             : totalDays ? `~${totalDays} day${totalDays !== 1 ? 's' : ''}` : 'Set trip duration'}
@@ -61,7 +54,7 @@ export function JourneyStrip({ onDurationChange }: Props) {
           {` · ${cities.length} cit${cities.length === 1 ? 'y' : 'ies'}`}
         </span>
 
-        <span className="ms" style={{ fontSize: 14, color: TEXT3, flexShrink: 0 }}>chevron_right</span>
+        <span className="ms text-[var(--color-text-3)] text-[14px] flex-shrink-0">chevron_right</span>
       </button>
 
       {pickerOpen && typeof document !== 'undefined' && createPortal(
@@ -78,10 +71,10 @@ export function JourneyStrip({ onDurationChange }: Props) {
               padding: 24,
             }}
           >
-            <p style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 18, fontWeight: 800, color: TEXT1, marginBottom: 4 }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, color: TEXT1, marginBottom: 4 }}>
               How many days?
             </p>
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: TEXT3, marginBottom: 24 }}>
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: TEXT3, marginBottom: 24 }}>
               We'll fit your cities and flag when you're running short.
             </p>
 
@@ -91,7 +84,7 @@ export function JourneyStrip({ onDurationChange }: Props) {
                 onClick={() => setDraftDays(d => Math.max(1, d - 1))}
                 style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
               >−</button>
-              <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 40, fontWeight: 800, color: TEXT1, minWidth: 60, textAlign: 'center' }}>{draftDays}</span>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 800, color: TEXT1, minWidth: 60, textAlign: 'center' }}>{draftDays}</span>
               <button
                 onClick={() => setDraftDays(d => d + 1)}
                 style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
@@ -104,12 +97,7 @@ export function JourneyStrip({ onDurationChange }: Props) {
                 onDurationChange?.(draftDays);
                 setPickerOpen(false);
               }}
-              style={{
-                width: '100%', height: 54,
-                background: `linear-gradient(135deg, ${PRIMARY}, #2563eb)`,
-                border: 'none', borderRadius: 16, cursor: 'pointer',
-                fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 15, fontWeight: 800, color: '#fff',
-              }}
+              className="w-full h-[54px] bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)] border-none rounded-2xl cursor-pointer font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white"
             >
               Set {draftDays} days
             </button>

@@ -138,6 +138,82 @@ export function RouteScreen() {
 
   // ── Itinerary mode ──────────────────────────────────────────────────────
   if (mode === 'itinerary') {
+    const isMultiDay = (tripContext.days ?? 1) > 1;
+
+    // Multi-day scrollable timeline view
+    if (isMultiDay && itinerary) {
+      const stops = itinerary.itinerary;
+      // Group stops by day
+      const dayMap = new Map<number, typeof stops>();
+      for (const s of stops) {
+        const d = s.day ?? 1;
+        if (!dayMap.has(d)) dayMap.set(d, []);
+        dayMap.get(d)!.push(s);
+      }
+      const days = Array.from(dayMap.entries()).sort(([a], [b]) => a - b);
+
+      return (
+        <div style={{ position: 'fixed', inset: 0 }} className="bg-[var(--color-bg)] flex flex-col overflow-hidden">
+          {/* Multi-day sticky header */}
+          <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+            <button
+              onClick={() => setMode('explore')}
+              className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+            >
+              <span className="ms text-[var(--color-text-2)]">arrow_back</span>
+            </button>
+            <div>
+              <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)]">{city}</div>
+              <div className="text-[11px] text-[var(--color-text-3)]">{tripContext.days} days</div>
+            </div>
+          </div>
+
+          {/* Timeline scroll area */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 32px' }}>
+            {days.map(([dayNum, dayStops]) => {
+              const dayLabel = `Day ${dayNum}`;
+              return (
+                <div key={dayNum}>
+                  {/* Day divider */}
+                  <div className="flex items-center gap-3 my-[22px]">
+                    <div className="flex-1 h-px bg-[var(--color-divider)]" />
+                    <span className="font-[family-name:var(--font-heading)] text-[13px] font-bold text-[var(--color-text-2)]">
+                      {dayLabel}
+                    </span>
+                    <div className="flex-1 h-px bg-[var(--color-divider)]" />
+                  </div>
+
+                  {/* Timeline stops */}
+                  {dayStops.map((stop, stopIdx) => {
+                    const isLast = stopIdx === dayStops.length - 1;
+                    return (
+                      <div
+                        key={`${dayNum}-${stopIdx}`}
+                        className="flex gap-3 items-start"
+                        style={{ opacity: 0, animation: `cardEntry 0.4s ease ${stopIdx * 0.1}s forwards` }}
+                      >
+                        <div className="relative flex flex-col items-center">
+                          <div className="w-8 h-8 rounded-[10px] bg-[var(--color-primary-bg)] flex items-center justify-center flex-shrink-0">
+                            <span className="ms text-[var(--color-primary)] text-[18px]">{stop.category ?? 'location_on'}</span>
+                          </div>
+                          {!isLast && <div className="w-px flex-1 min-h-[20px] bg-[var(--color-divider)] mt-1" />}
+                        </div>
+                        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[14px] px-[14px] py-3 flex-1 mb-2">
+                          <div className="text-[11px] text-[var(--color-primary)] font-semibold mb-1">{stop.time}</div>
+                          <div className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--color-text-1)]">{stop.place}</div>
+                          <div className="text-[11px] text-[var(--color-text-3)] mt-1">{stop.tip}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0d1117' }}>
         {/* Back to explore */}
@@ -146,15 +222,11 @@ export function RouteScreen() {
           style={{
             position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 12px)', left: 12,
             zIndex: 30,
-            background: 'rgba(15,20,30,.85)', backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,.12)', borderRadius: 12,
-            padding: '8px 14px', color: '#94a3b8',
-            fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
+            cursor: 'pointer',
           }}
+          className="w-10 h-10 rounded-full bg-black/30 [backdrop-filter:blur(8px)] flex items-center justify-center"
         >
-          <span className="ms" style={{ fontSize: 16 }}>arrow_back</span>
-          Explore
+          <span className="ms text-white">arrow_back</span>
         </button>
 
         {/* Top 50%: map with numbered pins + route line */}
@@ -377,14 +449,11 @@ export function RouteScreen() {
           left: cityFootprints.length > 0 ? undefined : 12,
           right: cityFootprints.length > 0 ? 12 : undefined,
           zIndex: 20,
-          background: 'rgba(15,20,30,.75)', backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255,255,255,.12)', borderRadius: '50%',
-          width: 40, height: 40,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
         }}
+        className="w-10 h-10 rounded-full bg-black/30 [backdrop-filter:blur(8px)] flex items-center justify-center"
       >
-        <span className="ms" style={{ fontSize: 20, color: '#94a3b8' }}>arrow_back</span>
+        <span className="ms text-white">arrow_back</span>
       </button>
 
       {/* PinCard */}

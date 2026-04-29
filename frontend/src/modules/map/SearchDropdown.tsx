@@ -87,7 +87,7 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
     textAlign: 'left',
   };
 
-  const labelStyle: React.CSSProperties = { color: 'rgba(255,255,255,.88)', fontSize: 13 };
+  const labelStyle: React.CSSProperties = { color: 'var(--color-text-1)', fontSize: 13 };
   const sectionStyle: React.CSSProperties = {
     padding: '5px 14px 3px',
     fontSize: 10,
@@ -104,11 +104,9 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
 
   return (
     <div
-      className="mx-12 rounded-2xl overflow-hidden"
+      className="mx-12 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] [box-shadow:var(--shadow-md)] overflow-hidden"
       style={{
-        background: 'rgba(15,20,30,.96)',
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,.1)',
         pointerEvents: 'auto',
       }}
     >
@@ -119,6 +117,7 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
             <button
               key={i}
               onMouseDown={() => onSelect(row.query)}
+              className="hover:bg-[var(--color-surface2)]"
               style={{ ...rowStyle, borderBottom: i < placeRows.length - 1 ? rowStyle.borderBottom : 'none' }}
             >
               <span style={labelStyle}>{row.label}</span>
@@ -134,6 +133,7 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
             <button
               key={i}
               onMouseDown={() => onSelect(row.query)}
+              className="hover:bg-[var(--color-surface2)]"
               style={{ ...rowStyle, borderBottom: 'none' }}
             >
               <span style={labelStyle}>{row.label}</span>
@@ -150,6 +150,7 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
             <button
               key={i}
               onMouseDown={() => onSelect(row.query)}
+              className="hover:bg-[var(--color-surface2)]"
               style={{ ...rowStyle, borderBottom: i < areaRows.length - 1 ? rowStyle.borderBottom : 'none' }}
             >
               <span style={labelStyle}>{row.label}</span>

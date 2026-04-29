@@ -30,46 +30,54 @@ export function PrivacyScreen({ onBack, onSignOut }: { onBack: () => void; onSig
   }
 
   return (
-    <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
-        <button onClick={onBack}><span className="ms text-xl text-text-3">arrow_back</span></button>
-        <span className="font-heading font-bold text-text-1 text-lg">Privacy & Data</span>
+    <div className="fixed inset-0 bg-[var(--color-bg)] flex flex-col" style={{ zIndex: 20 }}>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+        <button
+          className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+          onClick={onBack}
+        >
+          <span className="ms text-[var(--color-text-2)]">arrow_back</span>
+        </button>
+        <h2 className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)]">
+          Privacy &amp; Data
+        </h2>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pt-5"
+
+      <div className="flex-1 overflow-y-auto px-4 pt-4"
         style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}>
 
         {/* What we collect */}
-        <div className="rounded-2xl border border-white/8 px-4 py-4 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
-          <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-3">What we collect</p>
-          <p className="text-white/50 text-xs leading-relaxed">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden mb-4 px-4 py-4">
+          <p className="text-[var(--color-text-3)] text-[10px] uppercase tracking-widest font-bold mb-3">What we collect</p>
+          <p className="text-[var(--color-text-2)] text-xs leading-relaxed">
             We collect your email address for authentication, travel persona answers to personalise itineraries, and itinerary generation counts to manage plan limits. We do not sell your data. Map and place data is fetched in real-time and not stored against your profile.
           </p>
         </div>
 
         {/* Actions */}
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] overflow-hidden mb-4">
           <button
             onClick={handleExportData}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+            className="w-full flex items-center gap-3 px-4 py-4 text-left border-b border-[var(--color-divider)]"
           >
-            <span className="ms text-white/30 text-lg">download</span>
+            <span className="ms text-[var(--color-text-3)] text-lg">download</span>
             <div className="flex-1">
-              <p className="text-white/70 text-sm font-medium">Export my data</p>
-              <p className="text-white/25 text-xs">Sent to your registered email</p>
+              <p className="text-[14px] text-[var(--color-text-1)] font-medium">Export my data</p>
+              <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">Sent to your registered email</p>
             </div>
-            <span className="ms text-white/20 text-base">chevron_right</span>
+            <span className="ms text-[var(--color-text-3)]">chevron_right</span>
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-t border-white/6"
+            className="w-full flex items-center gap-3 px-4 py-4 text-left"
           >
             <span className="ms text-red-400/60 text-lg">delete_forever</span>
             <div className="flex-1">
-              <p className="text-red-400 text-sm font-medium">Delete my account</p>
-              <p className="text-white/25 text-xs">Permanently removes all data</p>
+              <p className="text-red-400 text-[14px] font-medium">Delete my account</p>
+              <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">Permanently removes all data</p>
             </div>
-            <span className="ms text-white/20 text-base">chevron_right</span>
+            <span className="ms text-[var(--color-text-3)]">chevron_right</span>
           </button>
         </div>
 

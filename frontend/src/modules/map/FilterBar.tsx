@@ -57,14 +57,13 @@ export function FilterBar({ active, counts, onSelect, lockedFilters = [], onLock
             const count = counts[chip.key];
             const isLocked = lockedFilters.includes(chip.key);
 
-            let cls = 'flex-shrink-0 flex items-center gap-1 px-2.5 h-7 rounded-full text-[11px] font-medium transition-all whitespace-nowrap relative ';
+            let cls = `flex-shrink-0 flex items-center gap-1 px-2.5 h-7 rounded-full text-[12px] font-medium border transition-all whitespace-nowrap relative `;
             let style: React.CSSProperties = {};
 
             if (isLocked) {
-              cls += 'text-text-3 opacity-50';
-              style = { background: 'rgba(15,20,30,.8)', border: '1px solid rgba(255,255,255,.1)' };
+              cls += 'bg-[var(--color-surface2)] border-[var(--color-border)] text-[var(--color-text-2)] opacity-50';
             } else if (isActive) {
-              cls += 'bg-primary text-white';
+              cls += 'bg-[var(--color-primary-bg)] border-[var(--color-primary)] text-[var(--color-primary)]';
             } else if (chip.key === 'recommended') {
               cls += 'text-amber-400';
               style = { background: 'rgba(35,22,4,.88)', border: '1px solid rgba(245,158,11,.35)' };
@@ -72,8 +71,7 @@ export function FilterBar({ active, counts, onSelect, lockedFilters = [], onLock
               cls += 'text-violet-400';
               style = { background: 'rgba(22,14,38,.88)', border: '1px solid rgba(167,139,250,.35)' };
             } else {
-              cls += 'text-text-2';
-              style = { background: 'rgba(15,20,30,.8)', border: '1px solid rgba(255,255,255,.1)' };
+              cls += 'bg-[var(--color-surface2)] border-[var(--color-border)] text-[var(--color-text-2)]';
             }
 
             return (

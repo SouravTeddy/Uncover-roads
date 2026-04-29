@@ -5,6 +5,7 @@ import { WeatherCanvas } from './WeatherCanvas';
 import { ShimmerBlock } from '../../shared/Shimmer';
 import { computePersonaBadges, usePersonaInsight } from '../map/pincard-persona';
 import type { Persona, PersonaProfile } from '../../shared/types';
+import { Button } from '../../shared/ui/Button';
 
 interface Props {
   stops: ItineraryStop[];
@@ -86,10 +87,8 @@ export function ItineraryPlaceCard({
     <div
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      style={{
-        position: 'relative', height: '100%', overflow: 'hidden',
-        background: '#0d1117',
-      }}
+      style={{ position: 'relative', height: '100%', overflow: 'hidden' }}
+      className="bg-[var(--color-bg)]"
     >
       {weather && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
@@ -97,12 +96,19 @@ export function ItineraryPlaceCard({
         </div>
       )}
 
-      <div style={{
-        position: 'relative', zIndex: 1,
-        height: '100%', overflowY: 'auto',
-        padding: '16px 20px',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
-      }}>
+      <div
+        style={{
+          position: 'relative', zIndex: 1,
+          height: '100%', overflowY: 'auto',
+          padding: '16px 20px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+        }}
+      >
+        {/* Card container with entry animation */}
+        <div
+          className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-4 [box-shadow:var(--shadow-md)]"
+          style={{ animation: 'springUp 0.4s ease both' }}
+        >
         {/* Pagination dots */}
         <div style={{
           display: 'flex', justifyContent: 'center', gap: 5, marginBottom: 14,
@@ -114,7 +120,7 @@ export function ItineraryPlaceCard({
               style={{
                 width: i === activeIdx ? 20 : 6,
                 height: 6, borderRadius: 3,
-                background: i === activeIdx ? '#6366f1' : 'rgba(255,255,255,.2)',
+                background: i === activeIdx ? 'var(--color-primary)' : 'rgba(255,255,255,.2)',
                 border: 'none', padding: 0, cursor: 'pointer',
                 transition: 'width 0.2s ease, background 0.2s ease',
               }}
@@ -122,38 +128,37 @@ export function ItineraryPlaceCard({
           ))}
         </div>
 
-        {/* Stop number + time */}
-        <div style={{
-          fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px',
-          textTransform: 'uppercase', color: '#6366f1', marginBottom: 6,
-        }}>
-          Stop {activeIdx + 1} of {stops.length}
-          {stop.time && (
-            <span style={{ color: '#64748b', marginLeft: 8 }}>· {stop.time}</span>
-          )}
+        {/* Stop number + time badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <span className="text-[11px] text-[var(--color-primary)] font-semibold bg-[var(--color-primary-bg)] px-2 py-0.5 rounded-full">
+            Stop {activeIdx + 1} of {stops.length}{stop.time ? ` · ${stop.time}` : ''}
+          </span>
         </div>
 
         {/* Place name */}
-        <div style={{
-          fontSize: '1.25rem', fontWeight: 800,
-          color: '#f1f5f9', lineHeight: 1.2, marginBottom: 6,
-        }}>
+        <h3 className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] text-[17px] font-semibold mt-2">
           {stop.place}
-        </div>
+        </h3>
 
-        {/* Duration + price */}
+        {/* Category + duration chips row */}
         <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14,
-          fontSize: '0.75rem', color: '#64748b',
+          display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, marginTop: 8,
         }}>
+          {matchedPlace?.category && (
+            <span className="text-[11px] bg-[var(--color-surface2)] text-[var(--color-text-2)] px-2 py-0.5 rounded-full">
+              {matchedPlace.category}
+            </span>
+          )}
           {stop.duration && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <span className="ms" style={{ fontSize: 14 }}>schedule</span>
+            <span className="text-[11px] bg-[var(--color-surface2)] text-[var(--color-text-2)] px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="ms" style={{ fontSize: 12 }}>schedule</span>
               {stop.duration}
             </span>
           )}
           {matchedPlace?.price_level != null && matchedPlace.price_level > 0 && (
-            <span>{PRICE[matchedPlace.price_level]}</span>
+            <span className="text-[11px] bg-[var(--color-surface2)] text-[var(--color-text-2)] px-2 py-0.5 rounded-full">
+              {PRICE[matchedPlace.price_level]}
+            </span>
           )}
         </div>
 
@@ -231,22 +236,22 @@ export function ItineraryPlaceCard({
 
         {/* Transit to next */}
         {stop.transit_to_next && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 12px', borderRadius: 10,
-            background: 'rgba(59,130,246,.08)',
-            border: '1px solid rgba(59,130,246,.15)',
-            marginBottom: 14,
-            fontSize: '0.75rem', color: '#93c5fd',
-          }}>
-            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>directions_transit</span>
-            {stop.transit_to_next}
+          <div style={{ marginBottom: 14 }}>
+            <span className="text-[11px] bg-[var(--color-sky-bg)] text-[var(--color-sky)] border border-[var(--color-sky-bdr)] px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <span className="ms" style={{ fontSize: 12 }}>directions_transit</span>
+              {stop.transit_to_next}
+            </span>
           </div>
         )}
 
+        {/* CTA */}
+        <Button variant="primary" className="w-full mt-4">Start navigating</Button>
+
+        </div>{/* end card container */}
+
         {/* Nav arrows */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 8,
+          display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 12,
         }}>
           <button
             onClick={() => goTo(activeIdx - 1)}

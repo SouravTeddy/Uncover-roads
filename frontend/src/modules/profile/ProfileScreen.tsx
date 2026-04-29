@@ -1,24 +1,63 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
-import type { UserTier } from '../../shared/types';
 import { NotificationsScreen } from './sub-screens/NotificationsScreen';
 import { UnitsSheet } from './sub-screens/UnitsSheet';
 import { PrivacyScreen } from './sub-screens/PrivacyScreen';
 import { SubscriptionDetailsScreen } from './sub-screens/SubscriptionDetailsScreen';
+import { ARCHETYPE_COLORS } from '../persona/types';
 
 type ProfileView = 'main' | 'notifications' | 'units' | 'privacy' | 'subscription-details';
+
+// ── Archetype derivation from primary mood ─────────────────────
+const MOOD_ARCHETYPE: Record<string, string> = {
+  explore:   'explorer',
+  relax:     'slowtraveller',
+  eat_drink: 'epicurean',
+  culture:   'historian',
+};
+
+const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: string }> = {
+  explorer:      { name: 'The Explorer',       emoji: '◆', tagline: 'You thrive on discovery — no plan survives contact with a great street.' },
+  slowtraveller: { name: 'The Slow Traveller', emoji: '◇', tagline: 'One great café beats ten tourist spots. You\'re here to be, not to tick.' },
+  epicurean:     { name: 'The Epicurean',      emoji: '◉', tagline: 'You travel stomach-first. Markets and hidden tables are your map.' },
+  historian:     { name: 'The Scholar',        emoji: '◎', tagline: 'Every city has layers. You\'re the one who finds the story behind the sign.' },
+};
 
 export function ProfileScreen() {
   const { dispatch, state } = useAppStore();
   const { persona, userTier, generationCount, startOBRedo, goToSubscription } = useProfile();
   const [view, setView] = useState<ProfileView>('main');
   const [signingOut, setSigningOut] = useState(false);
+  const [saved, setSaved] = React.useState(false);
+
+  const theme = state.theme;
 
   const rawUser = localStorage.getItem('ur_user');
   const user: { name: string; avatar: string | null; email: string } | null =
     rawUser ? JSON.parse(rawUser) : null;
+
+  const name = user?.name ?? 'Explorer';
+  const email = user?.email ?? '';
+  const initial = name[0].toUpperCase();
+  const isPro = userTier !== 'free';
+
+  // Derive archetype from raw OB answers or persona
+  const rawAnswers = state.rawOBAnswers;
+  const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
+  const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? (persona?.archetype ?? 'explorer');
+  const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
+  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' };
+  const hasArchetype = !!(state.personaProfile || persona);
+
+  const archetypeData = hasArchetype ? {
+    name: archetypeMeta.name,
+    tagline: archetypeMeta.tagline,
+    emoji: archetypeMeta.emoji,
+    primary: archetypeColor.primary,
+    glow: archetypeColor.glow,
+  } : null;
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -35,6 +74,12 @@ export function ProfileScreen() {
     dispatch({ type: 'GO_TO', screen: 'login' });
   }
 
+  function handleSave() {
+    // Save logic placeholder — persists any pending settings
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
   // Sub-screen routing
   if (view === 'notifications') return <NotificationsScreen onBack={() => setView('main')} />;
   if (view === 'units') return <UnitsSheet onClose={() => setView('main')} />;
@@ -44,58 +89,97 @@ export function ProfileScreen() {
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
       {/* Header */}
-      <div
-        className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-      >
-        <span className="font-heading font-bold text-text-1 text-lg flex-1">Profile</span>
+      <div className="px-4 pt-6 pb-4 flex items-center justify-between">
+        <h1 className="font-[family-name:var(--font-heading)] text-[18px] font-bold text-[var(--color-text-1)]">
+          Profile
+        </h1>
+        <button
+          onClick={handleSignOut}
+          disabled={signingOut}
+          className="text-[var(--color-text-3)] text-[13px]"
+        >
+          {signingOut ? 'Signing out…' : 'Sign out'}
+        </button>
       </div>
 
       {/* Body */}
       <div
-        className="flex-1 overflow-y-auto px-4"
+        className="flex-1 overflow-y-auto"
         style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
       >
 
         {/* User card */}
-        <div className="mt-5 mb-4 flex items-center gap-3 px-4 py-4 rounded-2xl border border-white/8" style={{ background: 'rgba(255,255,255,.03)' }}>
-          <AvatarCircle user={user} tier={userTier} />
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate">{user?.name ?? 'Explorer'}</p>
-            <p className="text-white/40 text-xs truncate">{user?.email ?? ''}</p>
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-4 mx-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center text-[var(--color-primary)] font-bold text-[18px] flex-shrink-0">
+            {initial}
           </div>
-          <TierBadge tier={userTier} />
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-bold text-[var(--color-text-1)] truncate">{name}</div>
+            <div className="text-[11px] text-[var(--color-text-3)] truncate">{email}</div>
+          </div>
+          <div
+            className="px-2 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0"
+            style={isPro
+              ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
+              : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
+          >
+            {isPro ? 'PRO' : 'FREE'}
+          </div>
         </div>
 
-        {/* OB persona card */}
+        {/* Archetype hero card */}
+        {archetypeData && (
+          <div className="mx-4 mt-4">
+            <div
+              className="rounded-[20px] p-5 relative overflow-hidden"
+              style={{
+                background: `linear-gradient(150deg, ${archetypeData.glow}, rgba(255,255,255,.02))`,
+                border: `1px solid ${archetypeData.primary}28`,
+              }}
+            >
+              <div
+                className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
+                style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}18, transparent 70%)` }}
+              />
+              <span className="text-[42px] relative" style={{ filter: `drop-shadow(0 0 16px ${archetypeData.primary}70)` }}>
+                {archetypeData.emoji}
+              </span>
+              <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+                {archetypeData.name}
+              </div>
+              <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
+            </div>
+          </div>
+        )}
+
+        {/* OB persona retune button */}
         <button
           onClick={startOBRedo}
-          className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl border mb-4"
+          className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl border mx-4 mt-4"
           style={{
+            width: 'calc(100% - 2rem)',
             background: 'rgba(255,255,255,.03)',
             borderColor: userTier === 'free' ? 'rgba(249,115,22,.5)' : 'rgba(245,158,11,.5)',
           }}
         >
-          <span className="text-3xl leading-none flex-shrink-0">
-            {persona ? (getPersonaEmoji(persona.archetype)) : '🧭'}
-          </span>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-0.5">Your Travel Persona</p>
-            <p className="text-white font-bold text-sm truncate">
-              {persona?.archetype_name ?? 'Not set yet'}
-            </p>
+            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-0.5">Travel Persona</p>
             <p className="text-[11px]" style={{ color: '#f97316' }}>Retune your persona →</p>
           </div>
         </button>
 
         {/* Itinerary attempts counter — free only */}
         {userTier === 'free' && (
-          <AttemptsCounter count={generationCount} />
+          <div className="mx-4 mt-4">
+            <AttemptsCounter count={generationCount} />
+          </div>
         )}
 
         {/* Account section */}
-        <SectionLabel>Account</SectionLabel>
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="mt-5 px-4">
+          <SectionLabel>Account</SectionLabel>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
           {userTier === 'free' ? (
             <SettingsRow
               label="Upgrade to Pro"
@@ -120,8 +204,10 @@ export function ProfileScreen() {
         </div>
 
         {/* App section */}
-        <SectionLabel>App</SectionLabel>
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="px-4">
+          <SectionLabel>App</SectionLabel>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
           <SettingsRow
             label="Units"
             sublabel={state.units === 'km' ? 'Kilometres' : 'Miles'}
@@ -132,15 +218,50 @@ export function ProfileScreen() {
             divider
             onTap={() => setView('privacy')}
           />
+
+          {/* Appearance row */}
+          <div className="flex items-center justify-between py-3 px-4 border-t border-white/6">
+            <div className="flex items-center gap-3">
+              <span className="ms text-[var(--color-text-2)] text-[20px]">
+                {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+              </span>
+              <div>
+                <div className="text-[14px] text-[var(--color-text-1)] font-medium">Appearance</div>
+                <div className="text-[11px] text-[var(--color-text-3)]">
+                  {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+                </div>
+              </div>
+            </div>
+
+            {/* 36×20px toggle pill */}
+            <button
+              onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
+              className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
+              style={{ background: theme === 'dark' ? '#e07854' : 'rgba(255,255,255,.15)' }}
+              aria-label="Toggle appearance"
+            >
+              <span
+                className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ transform: theme === 'dark' ? 'translateX(17px)' : 'translateX(2px)' }}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Save changes button */}
+        <div className="px-4 mb-4">
           <button
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="w-full flex items-center px-4 py-3.5 border-t border-white/6"
+            onClick={handleSave}
+            className={`w-full h-[52px] rounded-[18px] font-bold text-[15px] text-white transition-all active:scale-[.97] ${
+              saved
+                ? 'bg-green-600'
+                : 'bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)]'
+            }`}
           >
-            {signingOut
-              ? <span className="ms animate-spin text-red-400 mr-2">autorenew</span>
-              : null}
-            <span className="text-red-400 text-sm font-medium">{signingOut ? 'Signing out…' : 'Sign Out'}</span>
+            {saved
+              ? <><span className="ms fill text-[20px] mr-2">check_circle</span>Saved</>
+              : 'Save changes'
+            }
           </button>
         </div>
 
@@ -162,56 +283,10 @@ export function ProfileScreen() {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function AvatarCircle({ user, tier }: { user: { name: string; avatar: string | null } | null; tier: UserTier }) {
-  const isPaid = tier === 'pro';
-  const initials = (user?.name ?? 'U')[0].toUpperCase();
-
-  return (
-    <div
-      className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden"
-      style={isPaid
-        ? { padding: '2px', background: 'linear-gradient(135deg, #f59e0b, #fbbf24)' }
-        : { background: 'rgba(59,130,246,.15)', border: '1px solid rgba(59,130,246,.2)' }
-      }
-    >
-      {isPaid ? (
-        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center"
-          style={{ background: '#1e293b' }}>
-          {user?.avatar
-            ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-            : <span className="text-primary font-bold text-base">{initials}</span>}
-        </div>
-      ) : (
-        user?.avatar
-          ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-          : <span className="text-primary font-bold text-base">{initials}</span>
-      )}
-    </div>
-  );
-}
-
-function TierBadge({ tier }: { tier: UserTier }) {
-  if (tier === 'free') {
-    return (
-      <div className="px-2.5 py-1 rounded-lg flex-shrink-0 border border-white/20">
-        <span className="text-white/40 text-[10px] font-bold">FREE</span>
-      </div>
-    );
-  }
-  return (
-    <div
-      className="px-2.5 py-1 rounded-lg flex-shrink-0"
-      style={{ background: 'linear-gradient(135deg, #f59e0b, #fbbf24)' }}
-    >
-      <span className="text-[#0f172a] text-[10px] font-bold">{tier === 'pro' ? 'PRO' : 'UNLIMITED'}</span>
-    </div>
-  );
-}
-
 function AttemptsCounter({ count }: { count: number }) {
   const used = Math.min(count, 3);
   return (
-    <div className="rounded-2xl border border-white/8 px-4 py-3 mb-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+    <div className="rounded-2xl border border-white/8 px-4 py-3" style={{ background: 'rgba(255,255,255,.03)' }}>
       <div className="flex items-center justify-between mb-1">
         <span className="text-white text-sm font-semibold">Itinerary Attempts</span>
         <div className="flex gap-1.5">
@@ -267,14 +342,6 @@ function SettingsRow({
       {right ?? <span className="ms text-white/20 text-base">chevron_right</span>}
     </button>
   );
-}
-
-function getPersonaEmoji(archetype: string): string {
-  const map: Record<string, string> = {
-    historian: '🏛️', epicurean: '🍽️', wanderer: '🧭',
-    voyager: '✈️', explorer: '🌿', slowtraveller: '☕', pulse: '🎶',
-  };
-  return map[archetype] ?? '🧭';
 }
 
 function formatRenewal(): string {

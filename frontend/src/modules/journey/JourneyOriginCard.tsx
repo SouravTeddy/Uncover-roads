@@ -1,8 +1,6 @@
 import type { OriginPlace } from '../../shared/types';
 
 const SURFACE2 = '#1A1F2B';
-const PRIMARY  = '#3b82f6';
-const TEXT1    = '#f1f5f9';
 const TEXT3    = '#8e9099';
 const BORDER   = 'rgba(255,255,255,.08)';
 
@@ -22,9 +20,9 @@ export function JourneyOriginCard({ place, advisorMessage, onEdit }: Props) {
   function timeRow(label: string, time: string) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-        <span className="ms" style={{ fontSize: 14, color: PRIMARY }}>{label === 'Landing' ? 'flight_land' : 'schedule'}</span>
-        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: TEXT3 }}>{label}</span>
-        <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 13, fontWeight: 700, color: TEXT1, marginLeft: 'auto' }}>{time}</span>
+        <span className="ms text-[var(--color-sky)] text-[22px]">{label === 'Landing' ? 'flight_land' : 'schedule'}</span>
+        <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: TEXT3 }}>{label}</span>
+        <span className="font-[family-name:var(--font-heading)] text-[13px] font-bold text-[var(--color-text-1)]" style={{ marginLeft: 'auto' }}>{time}</span>
       </div>
     );
   }
@@ -34,16 +32,16 @@ export function JourneyOriginCard({ place, advisorMessage, onEdit }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(59,130,246,.12)', border: `1px solid rgba(59,130,246,.25)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <span className="ms fill" style={{ fontSize: 22, color: PRIMARY }}>{icon}</span>
+          <span className="ms text-[var(--color-sky)] text-[22px]">{icon}</span>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: PRIMARY, marginBottom: 4 }}>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--color-sky)', marginBottom: 4 }}>
             Starting point
           </div>
-          <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 18, fontWeight: 800, color: TEXT1, lineHeight: 1.2 }}>
+          <div className="font-[family-name:var(--font-heading)] text-[18px] font-semibold text-[var(--color-text-1)]" style={{ lineHeight: 1.2 }}>
             {place.name}
           </div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: TEXT3, marginTop: 2 }}>{place.address}</div>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: TEXT3, marginTop: 2 }}>{place.address}</div>
         </div>
       </div>
 
@@ -54,21 +52,21 @@ export function JourneyOriginCard({ place, advisorMessage, onEdit }: Props) {
         {place.originType === 'hotel' && place.checkInTime && timeRow('Check-in', place.checkInTime)}
         {place.originType === 'hotel' && place.checkOutTime && timeRow('Check-out', place.checkOutTime)}
         {(place.originType === 'custom' || (!place.departureTime && !place.checkInTime)) && (
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: TEXT3 }}>No time constraints — start whenever you're ready.</span>
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: TEXT3 }}>No time constraints — start whenever you're ready.</span>
         )}
       </div>
 
       {/* Advisor message */}
       {advisorMessage && (
         <div style={{ background: 'rgba(59,130,246,.06)', border: `1px solid rgba(59,130,246,.18)`, borderRadius: 14, padding: '12px 14px' }}>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#93c5fd', lineHeight: 1.5, margin: 0 }}>{advisorMessage}</p>
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: '#93c5fd', lineHeight: 1.5, margin: 0 }}>{advisorMessage}</p>
         </div>
       )}
 
       {/* Edit */}
       <button
         onClick={onEdit}
-        style={{ marginTop: 'auto', height: 44, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: TEXT3 }}
+        style={{ marginTop: 'auto', height: 44, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
       >
         Change starting point
       </button>

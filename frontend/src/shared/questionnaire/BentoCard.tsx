@@ -10,7 +10,7 @@ export function BentoCard({ label, sub, imageUrl, selected, onSelect }: Props) {
   return (
     <div
       onClick={onSelect}
-      className={`relative overflow-hidden rounded-2xl cursor-pointer aspect-square transition-all bg-surface ${
+      className={`relative overflow-hidden rounded-[14px] cursor-pointer aspect-square transition-all bg-[var(--color-surface2)] ${
         selected ? 'ring-2 ring-primary' : 'ring-1 ring-white/8'
       }`}
     >
@@ -19,7 +19,7 @@ export function BentoCard({ label, sub, imageUrl, selected, onSelect }: Props) {
         alt={label}
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[rgba(20,16,12,.75)]" />
 
       {/* Check */}
       {selected && (
@@ -30,7 +30,7 @@ export function BentoCard({ label, sub, imageUrl, selected, onSelect }: Props) {
 
       {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 p-3">
-        <div className="text-white font-heading font-semibold text-sm">{label}</div>
+        <div className="font-[family-name:var(--font-heading)] text-white text-[15px] font-semibold">{label}</div>
         <div className="text-white/60 text-xs">{sub}</div>
       </div>
     </div>

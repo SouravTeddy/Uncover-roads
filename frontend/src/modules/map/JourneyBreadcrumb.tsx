@@ -55,7 +55,7 @@ export function JourneyBreadcrumb({ cities }: Props) {
               color: '#93c5fd',
               display: 'inline-flex',
               alignItems: 'center',
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: 'var(--font-heading)',
               letterSpacing: 0.3,
               whiteSpace: 'nowrap',
             }}

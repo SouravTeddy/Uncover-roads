@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 
+const FLOATING_ICONS = [
+  'flight','place','map','luggage','camera_alt',
+  'restaurant','hotel','explore','directions_walk',
+];
+
 export function LoginScreen() {
   const { dispatch } = useAppStore();
   const [checking, setChecking]     = useState(true);
@@ -71,20 +76,46 @@ export function LoginScreen() {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center px-6 py-8"
+      className="relative min-h-screen w-full flex items-center justify-center px-6 py-8"
       style={{
         background:
-          "linear-gradient(rgba(15,23,42,.65),rgba(10,14,20,.95)), url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80') center/cover no-repeat",
+          "url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80') center/cover no-repeat",
       }}
     >
-      <div className="w-full max-w-[380px]">
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(rgba(15,12,10,.55), rgba(15,12,10,.96))' }}
+      />
+
+      {/* Floating icons */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {FLOATING_ICONS.map((icon, i) => (
+          <span
+            key={icon}
+            className="ms absolute text-white/25 text-[28px]"
+            style={{
+              left: `${10 + (i * 10) % 80}%`,
+              bottom: '-10%',
+              animation: `floatUp ${8 + (i % 3) * 2}s ${i * 0.8}s ease-in-out infinite`,
+            }}
+          >
+            {icon}
+          </span>
+        ))}
+      </div>
+
+      <div
+        className="relative w-full max-w-[380px]"
+        style={{ animation: 'cardEntry 0.6s ease 0.2s both' }}
+      >
 
         {/* Brand mark */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white/5 border border-white/10 mb-4">
+          <div className="w-[68px] h-[68px] rounded-[22px] bg-white/10 [backdrop-filter:blur(8px)] flex items-center justify-center mx-auto mb-4">
             <span className="ms text-primary text-3xl">explore</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-1 font-heading">
+          <h1 className="font-[family-name:var(--font-heading)] text-white text-4xl font-bold tracking-tight mb-1">
             Uncover Roads
           </h1>
           <p className="text-white/50 text-base">Your AI travel companion</p>
@@ -130,7 +161,7 @@ export function LoginScreen() {
               <button
                 onClick={signInWithGoogle}
                 disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-white/6 text-white font-heading font-semibold text-[0.95rem] border border-white/12 disabled:opacity-60 mb-4"
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-heading font-semibold text-[0.95rem] disabled:opacity-60 mb-4 active:border-[var(--color-primary)] focus:border-[var(--color-primary)]"
               >
                 {authLoading ? (
                   <span className="ms text-white animate-spin text-lg">autorenew</span>

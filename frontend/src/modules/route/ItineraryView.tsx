@@ -1058,11 +1058,11 @@ export function ItineraryView({
                     {transitBefore.mode === 'flight' ? 'flight' : transitBefore.mode === 'train' ? 'train' : 'directions_car'}
                   </span>
                   <div>
-                    <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
                       {transitBefore.mode === 'flight' ? 'Fly' : transitBefore.mode === 'train' ? 'Train' : 'Drive'} to {transitBefore.to}
                     </div>
                     {transitBefore.durationMinutes && (
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
+                      <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
                         {Math.round(transitBefore.durationMinutes / 60)}h {Math.round(transitBefore.durationMinutes % 60)}m
                       </div>
                     )}
@@ -1072,11 +1072,11 @@ export function ItineraryView({
 
               {/* City heading */}
               <div style={{ padding: '16px 20px 8px' }}>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#3b82f6', marginBottom: 4 }}>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#3b82f6', marginBottom: 4 }}>
                   {cityLeg.arrivalDate ? new Date(cityLeg.arrivalDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `City ${cityIdx + 1}`}
                 </div>
-                <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 20, fontWeight: 800, color: '#f1f5f9' }}>{cityLeg.city}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, color: '#f1f5f9' }}>{cityLeg.city}</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: '#8e9099', marginTop: 2 }}>
                   Day {dayStart}–{dayEnd} · {cityLeg.estimatedDays} day{cityLeg.estimatedDays !== 1 ? 's' : ''}
                 </div>
               </div>
