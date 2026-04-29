@@ -32,13 +32,11 @@ export function BottomNav() {
   return (
     <>
       <nav
-        className="fixed inset-x-0 bottom-0 border-t border-white/8 flex items-center justify-around"
+        className="fixed inset-x-0 bottom-0 bg-[var(--nav-bg)] [backdrop-filter:blur(12px)] border-t border-[var(--color-divider)] flex items-center justify-around"
         style={{
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.25rem)',
           height: 'calc(60px + env(safe-area-inset-bottom, 0px))',
           zIndex: 30,
-          background: 'rgba(10,14,20,.95)',
-          backdropFilter: 'blur(12px)',
         }}
       >
         {NAV_ITEMS.map(item => {
@@ -50,11 +48,11 @@ export function BottomNav() {
               onClick={() => handleTap(item.screen)}
               disabled={muted}
               className={`flex flex-col items-center gap-0.5 px-4 py-2 transition-colors ${
-                muted ? 'text-text-3 opacity-35' : active ? 'text-primary' : 'text-text-3'
+                muted ? 'text-[var(--color-text-3)] opacity-35' : ''
               }`}
             >
-              <span className={`ms ${active && !muted ? 'fill' : ''} text-2xl`}>{item.icon}</span>
-              <span className="text-[0.65rem] font-semibold">{item.label}</span>
+              <span className={`ms ${active && !muted ? 'fill text-[var(--color-primary)]' : 'text-[var(--color-text-3)]'} text-2xl`}>{item.icon}</span>
+              <span className={`text-[10px] mt-0.5 font-semibold ${active && !muted ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-3)]'}`}>{item.label}</span>
             </button>
           );
         })}
