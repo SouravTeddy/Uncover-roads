@@ -1,6 +1,7 @@
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import type { Persona } from '../../shared/types';
+import { Button } from '../../shared/ui/Button';
 
 const ARCHETYPE_ICONS: Record<string, string> = {
   historian:     'account_balance',
@@ -52,34 +53,39 @@ export function WelcomeBackScreen() {
 
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-between px-6 pt-12 pb-8"
+      className="relative min-h-screen w-full flex flex-col items-center justify-between px-6 pt-12 pb-8"
       style={{
         background:
-          "linear-gradient(rgba(10,14,20,.6) 0%, rgba(10,14,20,.85) 50%, rgba(10,14,20,1) 100%), url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80') center/cover no-repeat",
+          "url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80') center/cover no-repeat",
       }}
     >
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(rgba(15,12,10,.55), rgba(15,12,10,.96))' }}
+      />
+
       {/* Top: logo */}
-      <div className="flex items-center gap-2 self-start">
+      <div className="relative flex items-center gap-2 self-start">
         <span className="ms text-primary text-xl">explore</span>
         <span className="text-white/40 text-sm font-semibold tracking-wide">Uncover Roads</span>
       </div>
 
       {/* Center content */}
-      <div className="flex flex-col items-center gap-6 w-full max-w-[340px]">
+      <div className="relative flex flex-col items-center gap-6 w-full max-w-[340px]">
 
         {/* Avatar */}
         <div className="relative">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden"
+            className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden bg-[var(--color-primary-bg)] text-[var(--color-primary)]"
             style={{
-              background: 'linear-gradient(135deg, rgba(59,130,246,.3), rgba(99,102,241,.3))',
               boxShadow: '0 0 0 2px rgba(99,130,246,.25), 0 0 0 4px rgba(59,130,246,.1)',
             }}
           >
             {user?.avatar ? (
               <img src={user.avatar} alt={firstName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-white font-bold text-2xl">
+              <span className="font-bold text-2xl">
                 {firstName[0]?.toUpperCase()}
               </span>
             )}
@@ -96,7 +102,7 @@ export function WelcomeBackScreen() {
         {/* Greeting */}
         <div className="text-center">
           <p className="text-white/50 text-sm mb-1">Welcome back</p>
-          <h1 className="text-white font-heading font-extrabold text-3xl tracking-tight">
+          <h1 className="font-[family-name:var(--font-heading)] text-white font-extrabold text-3xl tracking-tight">
             {firstName}
           </h1>
         </div>
@@ -125,23 +131,16 @@ export function WelcomeBackScreen() {
         </div>
 
         {/* CTA */}
-        <button
-          onClick={continueJourney}
-          className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
-          style={{
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-            boxShadow: '0 8px 32px rgba(99,102,241,.35)',
-          }}
-        >
+        <Button variant="primary" className="w-full" onClick={continueJourney}>
           <span>Continue your journey</span>
           <span className="ms fill text-white" style={{ fontSize: 20 }}>arrow_forward</span>
-        </button>
+        </Button>
       </div>
 
       {/* Bottom: sign out */}
       <button
         onClick={signOut}
-        className="text-white/30 text-sm hover:text-white/50 transition-colors text-center px-6 leading-relaxed"
+        className="relative text-white/30 text-sm hover:text-white/50 transition-colors text-center px-6 leading-relaxed"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         Not {firstName}?{' '}
