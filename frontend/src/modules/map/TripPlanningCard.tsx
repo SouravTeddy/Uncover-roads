@@ -59,14 +59,12 @@ export function TripPlanningCard({ onClose }: Props) {
       />
       <div
         onClick={e => e.stopPropagation()}
+        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px]"
         style={{
           position: 'fixed',
           left: 16, right: 16,
           bottom: `calc(env(safe-area-inset-bottom, 0px) + 16px)`,
           zIndex: 51,
-          background: SURFACE,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 24,
           boxShadow: '0 -8px 60px rgba(0,0,0,.85), 0 0 0 1px rgba(255,255,255,.04)',
           transform: mounted ? 'translateY(0)' : 'translateY(32px)',
           opacity: mounted ? 1 : 0,
@@ -106,10 +104,12 @@ export function TripPlanningCard({ onClose }: Props) {
           }}>
             Plan your day
           </div>
-          <div style={{
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
-            fontSize: 22, fontWeight: 800, color: TEXT1, lineHeight: 1.1,
-          }}>
+          <div
+            className="font-[family-name:var(--font-heading)]"
+            style={{
+              fontSize: 22, fontWeight: 800, color: TEXT1, lineHeight: 1.1,
+            }}
+          >
             {city || 'Your City'}
           </div>
           <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -154,11 +154,13 @@ export function TripPlanningCard({ onClose }: Props) {
 
         {/* Body */}
         <div style={{ padding: '20px 20px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          <div style={{
-            fontFamily: '"Plus Jakarta Sans", sans-serif',
-            fontSize: 17, fontWeight: 700, color: '#f1f5f9',
-            lineHeight: 1.3, marginBottom: 16,
-          }}>
+          <div
+            className="font-[family-name:var(--font-heading)]"
+            style={{
+              fontSize: 17, fontWeight: 700, color: '#f1f5f9',
+              lineHeight: 1.3, marginBottom: 16,
+            }}
+          >
             {ORIGIN_STRINGS.cardHeading}
           </div>
           <OriginSearchCard onDone={handleOriginDone} />

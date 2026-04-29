@@ -193,15 +193,15 @@ export function PinCard({
 
       <div
         ref={sheetRef}
+        className="bg-[var(--color-surface)] border border-[var(--color-border)] [box-shadow:var(--shadow-md)]"
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#141921', borderRadius: '20px 20px 0 0',
+          borderRadius: '20px 20px 0 0',
           zIndex: 40,
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform .38s cubic-bezier(.32,.72,0,1)',
           maxHeight: '80dvh', overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 -8px 48px rgba(0,0,0,.7)',
           willChange: 'transform',
         }}
       >
@@ -274,10 +274,16 @@ export function PinCard({
           flex: 1, minHeight: 0,
         }}>
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#F9F9FF', lineHeight: 1.25 }}>
+            <div
+              className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] text-[17px] font-semibold"
+              style={{ lineHeight: 1.25 }}
+            >
               {place.title}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'rgba(193,198,215,.45)', marginTop: 3 }}>
+            <div
+              className="text-[var(--color-primary)] text-[12px]"
+              style={{ marginTop: 3 }}
+            >
               {catLabel}
             </div>
           </div>
