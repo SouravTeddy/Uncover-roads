@@ -24,7 +24,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
     <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
       {/* Header */}
       <div>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--color-sky)', marginBottom: 6 }}>
+        <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--color-sky)', marginBottom: 6 }}>
           {arrivalDate ? fmtDate(arrivalDate) : 'City'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -55,7 +55,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
         ))}
         {places.length > 4 && (
           <div style={{ padding: '8px 14px', borderTop: `1px solid ${BORDER}` }}>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: TEXT3 }}>+{places.length - 4} more</span>
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: TEXT3 }}>+{places.length - 4} more</span>
           </div>
         )}
       </div>
@@ -63,7 +63,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
       {/* Advisor message */}
       {advisorMessage && (
         <div style={{ background: 'rgba(59,130,246,.06)', border: `1px solid rgba(59,130,246,.18)`, borderRadius: 14, padding: '12px 14px' }}>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#93c5fd', lineHeight: 1.5, margin: 0 }}>{advisorMessage}</p>
+          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: '#93c5fd', lineHeight: 1.5, margin: 0 }}>{advisorMessage}</p>
         </div>
       )}
 
@@ -71,7 +71,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={onAddPlaces}
-          style={{ height: 44, flex: 1, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: TEXT3 }}
+          style={{ height: 44, flex: 1, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
         >
           Add more places
         </button>
@@ -90,7 +90,7 @@ function Pill({ icon, label }: { icon: string; label: string }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 10px', background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.22)', borderRadius: 999 }}>
       <span className="ms" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
-      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: '#93c5fd' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, fontWeight: 600, color: '#93c5fd' }}>{label}</span>
     </div>
   );
 }

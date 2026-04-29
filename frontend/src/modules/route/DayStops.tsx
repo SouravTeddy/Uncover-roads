@@ -29,14 +29,14 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
                 {stop.time && (
                   <span style={{
                     fontSize: 11, fontWeight: 700, color: '#93c5fd',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                   }}>
                     {stop.time}
                   </span>
                 )}
               </div>
               <div style={{
-                fontFamily: '"Plus Jakarta Sans", sans-serif',
+                fontFamily: 'var(--font-heading)',
                 fontSize: 15, fontWeight: 700, color: '#f1f5f9',
                 marginBottom: stop.tip ? 4 : 0,
               }}>
@@ -45,7 +45,7 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
               {stop.tip && (
                 <div style={{
                   fontSize: 12, color: '#8e9099',
-                  fontFamily: 'Inter, sans-serif', lineHeight: 1.5,
+                  fontFamily: 'var(--font-sans)', lineHeight: 1.5,
                 }}>
                   {stop.tip}
                 </div>

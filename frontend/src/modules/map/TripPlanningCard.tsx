@@ -100,7 +100,7 @@ export function TripPlanningCard({ onClose }: Props) {
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: 2,
             textTransform: 'uppercase', color: PRIMARY, marginBottom: 6,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
           }}>
             Plan your day
           </div>
@@ -121,7 +121,7 @@ export function TripPlanningCard({ onClose }: Props) {
                 borderRadius: 999,
               }}>
                 <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>calendar_month</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'var(--font-sans)' }}>
                   {formatDateShort(travelStartDate)} – {formatDateShort(travelEndDate)} · {totalDays} day{totalDays !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -133,7 +133,7 @@ export function TripPlanningCard({ onClose }: Props) {
                 borderRadius: 999,
               }}>
                 <span className="ms" style={{ fontSize: 12, color: TEXT3 }}>calendar_month</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT3, fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: TEXT3, fontFamily: 'var(--font-sans)' }}>
                   Set dates in explore
                 </span>
               </div>
@@ -145,7 +145,7 @@ export function TripPlanningCard({ onClose }: Props) {
               borderRadius: 999,
             }}>
               <span className="ms" style={{ fontSize: 12, color: PRIMARY }}>place</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'Inter, sans-serif' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', fontFamily: 'var(--font-sans)' }}>
                 {placesCount} place{placesCount !== 1 ? 's' : ''} selected
               </span>
             </div>

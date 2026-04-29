@@ -89,7 +89,7 @@ export function CitySearch({ onSelect }: Props) {
             left: rect.left,
             width: rect.width,
             zIndex: 9999,
-            background: 'var(--color-surface, #1e293b)',
+            background: 'var(--color-surface)',
             borderRadius: 16,
             overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0,0,0,.6)',
