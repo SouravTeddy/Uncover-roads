@@ -4,3 +4,4 @@ requests
 anthropic
 python-dotenv
 supabase
+posthog>=3.0.0
