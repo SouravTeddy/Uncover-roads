@@ -1,0 +1,2 @@
+-- See full SQL in Supabase dashboard — applied 2026-04-30
+-- Tables: user_subscriptions, user_events
