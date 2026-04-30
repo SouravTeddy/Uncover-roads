@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Query, HTTPException, Request, Response
+from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header
+from typing import Optional
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import re
@@ -49,6 +50,23 @@ PLACE_CACHE_TTL_DAYS = int(os.getenv("PLACE_CACHE_TTL_DAYS", "30"))
 _supabase: SupabaseClient | None = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Extract and validate Supabase JWT. Raises 401 if missing or invalid."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="missing_token")
+    if not _supabase:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    token = authorization.split(" ")[1]
+    try:
+        response = _supabase.auth.get_user(token)
+        if not response.user:
+            raise HTTPException(status_code=401, detail="invalid_token")
+        return response.user
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid_token")
 
 # Session token store: maps session_id -> google_session_token
 # Session tokens make autocomplete keystrokes FREE — only Place Details is billed
