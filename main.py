@@ -71,6 +71,103 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="invalid_token")
     return response.user
 
+
+async def require_pro(user=Depends(get_current_user)):
+    """Raises 403 if user does not have pro or unlimited subscription."""
+    if not _supabase:
+        raise HTTPException(status_code=503, detail="auth_unavailable")
+    result = (
+        _supabase.table("user_subscriptions")
+        .select("status, expires_at")
+        .eq("user_id", str(user.id))
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=403, detail="subscription_required")
+    sub = result.data
+    if sub["status"] not in ("pro", "unlimited"):
+        raise HTTPException(status_code=403, detail="subscription_required")
+    if sub.get("expires_at") and sub["expires_at"] < datetime.now(timezone.utc).isoformat():
+        raise HTTPException(status_code=403, detail="subscription_expired")
+    return user
+
+
+async def require_auth_or_pack(user=Depends(get_current_user)):
+    """Requires login + either pro/unlimited or remaining pack trips."""
+    if not _supabase:
+        raise HTTPException(status_code=503, detail="auth_unavailable")
+    result = (
+        _supabase.table("user_subscriptions")
+        .select("status, pack_trips_remaining, expires_at")
+        .eq("user_id", str(user.id))
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=403, detail="subscription_required")
+    sub = result.data
+    if sub["status"] in ("pro", "unlimited"):
+        if sub.get("expires_at") and sub["expires_at"] < datetime.now(timezone.utc).isoformat():
+            raise HTTPException(status_code=403, detail="subscription_expired")
+        return user
+    if sub["status"] == "pack" and sub.get("pack_trips_remaining", 0) > 0:
+        return user
+    raise HTTPException(status_code=403, detail="subscription_required")
+
+
+# ── Per-user rate limiting ────────────────────────────────────────────────────
+
+_user_rate_buckets: dict[str, list[float]] = defaultdict(list)
+
+RATE_LIMITS: dict[str, tuple[int, int]] = {
+    # route_group: (max_requests, window_seconds)
+    "auth":      (10,  60),
+    "search":    (30,  60),
+    "itinerary": (20,  60),
+    "events":    (100, 60),
+    "default":   (60,  60),
+}
+
+
+def check_user_rate_limit(user_id: str, route_group: str) -> None:
+    """Raises 429 if user exceeds the rate limit for this route group."""
+    max_req, window = RATE_LIMITS.get(route_group, RATE_LIMITS["default"])
+    key = f"{user_id}:{route_group}"
+    now = _time()
+    _user_rate_buckets[key] = [t for t in _user_rate_buckets[key] if now - t < window]
+    if len(_user_rate_buckets[key]) >= max_req:
+        raise HTTPException(
+            status_code=429,
+            detail="rate_limit_exceeded",
+            headers={"Retry-After": str(window)},
+        )
+    _user_rate_buckets[key].append(now)
+
+
+# ── PostHog ───────────────────────────────────────────────────────────────────
+
+import posthog as _posthog
+
+_POSTHOG_KEY  = os.getenv("POSTHOG_API_KEY", "")
+_POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://app.posthog.com")
+
+if _POSTHOG_KEY:
+    _posthog.api_key = _POSTHOG_KEY
+    _posthog.host    = _POSTHOG_HOST
+    _posthog.on_error = lambda error, items: None  # fail silently
+
+
+def _ph_capture(user_id: str, event: str, props: dict) -> None:
+    """Fire-and-forget PostHog event. Never raises."""
+    if not _POSTHOG_KEY:
+        return
+    try:
+        _posthog.capture(distinct_id=user_id, event=event, properties=props)
+    except Exception:
+        pass
+
+
 # Session token store: maps session_id -> google_session_token
 # Session tokens make autocomplete keystrokes FREE — only Place Details is billed
 _session_tokens: dict[str, str] = {}
@@ -469,7 +566,7 @@ def route(body: dict):
 # AI ITINERARY
 # =========================================
 @app.post("/ai-itinerary")
-def ai_itinerary(body: dict):
+def ai_itinerary(body: dict, user=Depends(require_auth_or_pack)):
     try:
         places   = body.get("selected_places", [])
         city     = body.get("city", "the city")
@@ -686,7 +783,7 @@ Return ONLY a valid JSON object, no markdown, no explanation:
 # AI ITINERARY STREAM
 # =========================================
 @app.post("/ai-itinerary-stream")
-def ai_itinerary_stream(body: dict):
+def ai_itinerary_stream(body: dict, user=Depends(require_auth_or_pack)):
     places    = body.get("selected_places", [])
     city      = body.get("city", "the city")
     days      = int(body.get("days", 1))
@@ -1589,6 +1686,41 @@ def events(
     except Exception as e:
         print("EVENTS ERROR:", e)
         return {"error": str(e)}
+
+
+# =========================================
+# BEHAVIOR CAPTURE
+# =========================================
+@app.post("/api/events", status_code=204)
+async def track_event(request: Request, user=Depends(get_current_user)):
+    """Receive behavioral events from frontend. Writes to Supabase + PostHog."""
+    check_user_rate_limit(str(user.id), "events")
+    try:
+        body = await request.json()
+    except Exception:
+        return Response(status_code=204)
+
+    event_type = str(body.get("event_type", ""))[:64]
+    session_id = str(body.get("session_id", ""))[:64]
+    payload    = body.get("payload", {})
+
+    if not event_type:
+        return Response(status_code=204)
+
+    if _supabase:
+        try:
+            _supabase.table("user_events").insert({
+                "user_id":    str(user.id),
+                "session_id": session_id,
+                "event_type": event_type,
+                "payload":    payload,
+            }).execute()
+        except Exception:
+            pass
+
+    _ph_capture(str(user.id), event_type, payload)
+
+    return Response(status_code=204)
 
 
 # =========================================
