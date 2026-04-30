@@ -25,7 +25,7 @@ export function useTrack() {
             payload,
           }),
         }).catch(() => {}) // fire and forget — never block the UI
-      })
+      }).catch(() => {}) // guard against getSession() itself rejecting
     },
     []
   )
