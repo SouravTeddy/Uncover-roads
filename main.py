@@ -58,15 +58,18 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="missing_token")
     if not _supabase:
-        raise HTTPException(status_code=503, detail="database_unavailable")
+        raise HTTPException(status_code=503, detail="auth_unavailable")
     token = authorization.split(" ")[1]
     try:
-        response = _supabase.auth.get_user(token)
-        if not response.user:
-            raise HTTPException(status_code=401, detail="invalid_token")
-        return response.user
+        response = _supabase.auth.get_user(token)  # TODO: blocking call — move to executor when supabase-py async client stabilises
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="invalid_token")
+
+    if not response.user:
+        raise HTTPException(status_code=401, detail="invalid_token")
+    return response.user
 
 # Session token store: maps session_id -> google_session_token
 # Session tokens make autocomplete keystrokes FREE — only Place Details is billed
