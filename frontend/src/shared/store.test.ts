@@ -351,3 +351,112 @@ describe('Phase 3 types — CityContext', () => {
     expect(ctx.endDate).toBeNull()
   })
 })
+
+describe('Phase 3 types — EngineItinerary', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('EngineItineraryStop has all required fields', () => {
+    const stop: import('./types').EngineItineraryStop = {
+      id: 'stop-001',
+      placeId: 'ChIJ123',
+      title: 'Senso-ji',
+      area: 'Asakusa',
+      day: 1,
+      time: '09:00',
+      durationMin: 90,
+      category: 'historic',
+      lat: 35.7148,
+      lon: 139.7967,
+      priceLevel: 0,
+      rating: 4.6,
+      weekdayText: ['Monday: 6:00 AM – 5:00 PM'],
+      whyForYou: 'Perfect for your love of ancient spaces.',
+      localTip: 'The incense smoke is believed to bring good health.',
+      googleMapsUrl: null,
+      website: null,
+      photoRef: null,
+    }
+    expect(stop.day).toBe(1)
+    expect(stop.time).toBe('09:00')
+    expect(stop.durationMin).toBe(90)
+  })
+
+  it('EngineItineraryStop allows null optional fields', () => {
+    const stop: import('./types').EngineItineraryStop = {
+      id: 'stop-002',
+      placeId: 'ChIJ456',
+      title: 'Coffee Stop',
+      area: 'Shinjuku',
+      day: 1,
+      time: '11:00',
+      durationMin: 30,
+      category: 'cafe',
+      lat: 35.6896,
+      lon: 139.7006,
+      priceLevel: null,
+      rating: null,
+      weekdayText: [],
+      whyForYou: 'A calm moment mid-morning.',
+      localTip: null,
+      googleMapsUrl: null,
+      website: null,
+      photoRef: null,
+    }
+    expect(stop.priceLevel).toBeNull()
+    expect(stop.localTip).toBeNull()
+  })
+
+  it('EngineItineraryDay has required fields', () => {
+    const day: import('./types').EngineItineraryDay = {
+      day: 1,
+      date: '2026-06-01',
+      city: 'Tokyo',
+      isTravel: false,
+      stops: [],
+      messages: [],
+    }
+    expect(day.day).toBe(1)
+    expect(day.isTravel).toBe(false)
+  })
+
+  it('EngineItineraryDay isTravel true has no stops', () => {
+    const travelDay: import('./types').EngineItineraryDay = {
+      day: 3,
+      date: '2026-06-03',
+      city: 'Tokyo',
+      isTravel: true,
+      stops: [],
+      messages: [],
+    }
+    expect(travelDay.isTravel).toBe(true)
+    expect(travelDay.stops).toHaveLength(0)
+  })
+
+  it('EngineItinerary has all required fields', () => {
+    const weights: import('./types').EngineWeights = {
+      w_walk_affinity: 0.9, w_scenic: 0.8, w_efficiency: 0.3,
+      w_food_density: 0.5, w_culture_depth: 0.7, w_nightlife: 0.2,
+      w_budget_sensitivity: 0.4, w_crowd_aversion: 0.6,
+      w_spontaneity: 0.7, w_rest_need: 0.5,
+    }
+    const itin: import('./types').EngineItinerary = {
+      id: 'itin-001',
+      generatedAt: '2026-06-01T08:00:00Z',
+      cities: ['Tokyo'],
+      days: [],
+      personaSnapshot: weights,
+      archetypeSnapshot: 'wanderer',
+    }
+    expect(itin.cities).toEqual(['Tokyo'])
+    expect(itin.archetypeSnapshot).toBe('wanderer')
+  })
+})

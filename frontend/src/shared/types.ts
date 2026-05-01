@@ -536,3 +536,59 @@ export interface CityContext {
   endDate: string | null     // ISO date "YYYY-MM-DD"
   days: number               // computed from date range or 1 if no dates set
 }
+
+// ── Engine itinerary types (Phase 3) ─────────────────────────
+
+/**
+ * A single stop in an engine-built itinerary.
+ * All factual fields (rating, priceLevel, weekdayText) come from Google Places.
+ * whyForYou and localTip are LLM-generated (marked ✦ in UI — no factual claims).
+ */
+export interface EngineItineraryStop {
+  id: string               // unique stop ID (UUID)
+  placeId: string          // Google place_id
+  title: string
+  area: string             // neighbourhood name (from city data model)
+  day: number              // 1-indexed
+  time: string             // "09:00" — engine-assigned start time
+  durationMin: number      // engine-assigned visit duration
+  category: Category
+  lat: number
+  lon: number
+  priceLevel: number | null   // 0–4 from Google Places (0 = free)
+  rating: number | null       // from Google Places
+  weekdayText: string[]       // from Google Places opening hours
+  whyForYou: string           // LLM ✦ — persona tone only, no hours/prices/facts
+  localTip: string | null     // LLM ✦ — atmosphere only
+  googleMapsUrl: string | null
+  website: string | null
+  photoRef: string | null     // Google Places photo reference
+}
+
+/**
+ * One day in an engine itinerary.
+ * Travel days (isTravel: true) have no stops — the engine does not schedule
+ * sightseeing during transit days.
+ */
+export interface EngineItineraryDay {
+  day: number
+  date: string               // ISO date "YYYY-MM-DD"
+  city: string
+  isTravel: boolean          // ✈️ travel day — no stops
+  stops: EngineItineraryStop[]
+  messages: EngineMessage[]  // engine decision banners for this day
+}
+
+/**
+ * A complete itinerary produced by the intelligence engine.
+ * personaSnapshot and archetypeSnapshot capture the weights used at
+ * generation time — needed to regenerate consistently.
+ */
+export interface EngineItinerary {
+  id: string                   // UUID
+  generatedAt: string          // ISO datetime
+  cities: string[]             // ordered list of cities
+  days: EngineItineraryDay[]
+  personaSnapshot: EngineWeights   // weights at generation time
+  archetypeSnapshot: ArchetypeId
+}
