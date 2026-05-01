@@ -710,3 +710,48 @@ describe('Phase 3 — engine itinerary reducer actions', () => {
     expect(stubStorage.setItem).toHaveBeenCalledWith('ur_ss_itin_history', JSON.stringify([itin1]))
   })
 })
+
+describe('Phase 3 — map UI reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('SET_ACTIVE_PIN_ID sets the pin id', () => {
+    const next = reducer(initialState, { type: 'SET_ACTIVE_PIN_ID', id: 'pin-001' })
+    expect(next.activePinId).toBe('pin-001')
+  })
+
+  it('SET_ACTIVE_PIN_ID null closes the card', () => {
+    const state = { ...initialState, activePinId: 'pin-001' }
+    const next = reducer(state, { type: 'SET_ACTIVE_PIN_ID', id: null })
+    expect(next.activePinId).toBeNull()
+  })
+
+  it('SET_MAP_FILTER updates the filter', () => {
+    const next = reducer(initialState, { type: 'SET_MAP_FILTER', filter: 'culture' })
+    expect(next.mapFilter).toBe('culture')
+  })
+
+  it('SET_MAP_FILTER accepts all valid values', () => {
+    const filters: import('./types').MapFilterChip[] = [
+      'all', 'famous', 'for_you', 'culture', 'food', 'parks', 'nightlife',
+    ]
+    for (const filter of filters) {
+      const next = reducer(initialState, { type: 'SET_MAP_FILTER', filter })
+      expect(next.mapFilter).toBe(filter)
+    }
+  })
+
+  it('SET_MAP_FILTER back to all', () => {
+    const state = { ...initialState, mapFilter: 'culture' as import('./types').MapFilterChip }
+    const next = reducer(state, { type: 'SET_MAP_FILTER', filter: 'all' })
+    expect(next.mapFilter).toBe('all')
+  })
+})

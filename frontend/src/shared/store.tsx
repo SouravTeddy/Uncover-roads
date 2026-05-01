@@ -352,7 +352,10 @@ export type Action =
   | { type: 'CLEAR_ENGINE_MESSAGES' }
   // ── Phase 3: engine itinerary actions ────────────────────────
   | { type: 'SET_ENGINE_ITINERARY'; itinerary: EngineItinerary | null }
-  | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary };
+  | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary }
+  // ── Phase 3: map UI actions ───────────────────────────────────
+  | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
+  | { type: 'SET_MAP_FILTER'; filter: MapFilterChip };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -687,6 +690,14 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_itin_history', history)
       return { ...state, engineItinerary: action.itinerary, itineraryHistory: history }
     }
+
+    // ── Phase 3: map UI cases ───────────────────────────────────
+
+    case 'SET_ACTIVE_PIN_ID':
+      return { ...state, activePinId: action.id }
+
+    case 'SET_MAP_FILTER':
+      return { ...state, mapFilter: action.filter }
 
     default:
       return state;
