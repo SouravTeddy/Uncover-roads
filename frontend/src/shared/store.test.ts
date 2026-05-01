@@ -501,3 +501,70 @@ describe('Phase 3 — initialState new fields', () => {
     expect(initialState.mapFilter).toBe('all')
   })
 })
+
+describe('Phase 3 — city context reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const tokyoCtx: import('./types').CityContext = {
+    city: 'Tokyo', countryCode: 'JP', lat: 35.67, lon: 139.65,
+    discoveryMode: 'anchor', startDate: '2026-06-01', endDate: '2026-06-05', days: 5,
+  }
+  const kyotoCtx: import('./types').CityContext = {
+    city: 'Kyoto', countryCode: 'JP', lat: 35.01, lon: 135.76,
+    discoveryMode: 'deep', startDate: '2026-06-06', endDate: '2026-06-08', days: 3,
+  }
+
+  it('SET_CITY_CONTEXTS replaces all contexts', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'SET_CITY_CONTEXTS', contexts: [kyotoCtx] })
+    expect(next.cityContexts).toEqual([kyotoCtx])
+  })
+
+  it('ADD_CITY_CONTEXT appends a new city', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'ADD_CITY_CONTEXT', context: kyotoCtx })
+    expect(next.cityContexts).toHaveLength(2)
+    expect(next.cityContexts[1].city).toBe('Kyoto')
+  })
+
+  it('ADD_CITY_CONTEXT is a no-op if city already exists', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'ADD_CITY_CONTEXT', context: tokyoCtx })
+    expect(next.cityContexts).toHaveLength(1)
+  })
+
+  it('SET_ACTIVE_CITY_INDEX updates the index', () => {
+    const state = { ...initialState, activeCityIndex: 0 }
+    const next = reducer(state, { type: 'SET_ACTIVE_CITY_INDEX', index: 1 })
+    expect(next.activeCityIndex).toBe(1)
+  })
+
+  it('SET_DISCOVERY_MODE updates discovery mode for the correct city', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx, kyotoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 0, mode: 'deep' })
+    expect(next.cityContexts[0].discoveryMode).toBe('deep')
+    expect(next.cityContexts[1].discoveryMode).toBe('deep') // kyoto unchanged
+  })
+
+  it('SET_DISCOVERY_MODE does not mutate other cities', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx, kyotoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 0, mode: 'deep' })
+    expect(next.cityContexts[1].city).toBe('Kyoto')
+    expect(next.cityContexts[1].discoveryMode).toBe('deep') // kyoto was already 'deep'
+  })
+
+  it('SET_DISCOVERY_MODE returns state unchanged if index out of range', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 5, mode: 'deep' })
+    expect(next.cityContexts).toEqual([tokyoCtx])
+  })
+})

@@ -340,7 +340,12 @@ export type Action =
   | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
-  | { type: 'SET_THEME'; theme: 'dark' | 'light' };
+  | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+  // ── Phase 3: city context actions ────────────────────────────
+  | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
+  | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
+  | { type: 'SET_ACTIVE_CITY_INDEX'; index: number }
+  | { type: 'SET_DISCOVERY_MODE'; cityIndex: number; mode: DiscoveryMode };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -625,6 +630,28 @@ export function reducer(state: AppState, action: Action): AppState {
       localStorage.setItem('ur_theme', action.theme);
       document.documentElement.dataset.theme = action.theme;
       return { ...state, theme: action.theme };
+    }
+
+    // ── Phase 3: city context cases ────────────────────────────
+
+    case 'SET_CITY_CONTEXTS':
+      return { ...state, cityContexts: action.contexts }
+
+    case 'ADD_CITY_CONTEXT': {
+      const exists = state.cityContexts.some(c => c.city === action.context.city)
+      if (exists) return state
+      return { ...state, cityContexts: [...state.cityContexts, action.context] }
+    }
+
+    case 'SET_ACTIVE_CITY_INDEX':
+      return { ...state, activeCityIndex: action.index }
+
+    case 'SET_DISCOVERY_MODE': {
+      if (action.cityIndex < 0 || action.cityIndex >= state.cityContexts.length) return state
+      const contexts = state.cityContexts.map((c, i) =>
+        i === action.cityIndex ? { ...c, discoveryMode: action.mode } : c
+      )
+      return { ...state, cityContexts: contexts }
     }
 
     default:
