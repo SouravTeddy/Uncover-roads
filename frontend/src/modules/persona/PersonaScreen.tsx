@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { syncPersonaProfile } from '../../shared/userSync';
@@ -17,6 +19,55 @@ const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: str
   epicurean:     { name: 'The Epicurean',      emoji: '◉', tagline: 'You travel stomach-first. Markets and hidden tables are your map.' },
   historian:     { name: 'The Scholar',        emoji: '◎', tagline: 'Every city has layers. You\'re the one who finds the story behind the sign.' },
 };
+
+// ── 3-beat reveal constants ────────────────────────────────────
+const ARCHETYPE_TRAITS: Record<string, [string, string, string]> = {
+  wanderer: [
+    "You leave before the crowds arrive.",
+    "You find the place they haven't named yet.",
+    "You don't take photos of everything.",
+  ],
+  historian: [
+    "You read the plaques everyone else walks past.",
+    "A place means more when you know what stood here before.",
+    "You leave with context, not just memories.",
+  ],
+  epicurean: [
+    "The best meal of your trip won't be in a guidebook.",
+    "You know the difference between a good market and a great one.",
+    "You travel through your stomach, always.",
+  ],
+  pulse: [
+    "You want to feel the city's heartbeat, not observe it.",
+    "Sleep is negotiable. Energy isn't.",
+    "The best nights are the ones with no plan.",
+  ],
+  slowtraveller: [
+    "You've sat at the same café table twice.",
+    "The neighbourhood matters more than the sights.",
+    "A good trip feels like you almost lived there.",
+  ],
+  voyager: [
+    "You know exactly how long it takes to get from A to B.",
+    "You've seen more cities than most people dream of.",
+    "Efficiency is how you fit more life in.",
+  ],
+  explorer: [
+    "The map is a starting point, not a plan.",
+    "You take the wrong turn on purpose sometimes.",
+    "Familiar and surprising — you want both.",
+  ],
+}
+
+const ARCHETYPE_BG: Record<string, string> = {
+  wanderer:      'bg-gradient-to-b from-stone-800 via-stone-700 to-amber-900',
+  historian:     'bg-gradient-to-b from-slate-800 via-slate-700 to-stone-700',
+  epicurean:     'bg-gradient-to-b from-amber-900 via-orange-800 to-amber-700',
+  pulse:         'bg-gradient-to-b from-violet-950 via-violet-800 to-indigo-700',
+  slowtraveller: 'bg-gradient-to-b from-teal-900 via-teal-800 to-stone-700',
+  voyager:       'bg-gradient-to-b from-sky-900 via-sky-800 to-slate-700',
+  explorer:      'bg-gradient-to-b from-emerald-900 via-emerald-800 to-stone-700',
+}
 
 // ── Day open / evening labels ──────────────────────────────────
 const DAY_OPEN_LABELS: Record<string, string> = {
@@ -94,6 +145,17 @@ export function PersonaScreen() {
   const profile = state.personaProfile;
   const rawAnswers = state.rawOBAnswers;
 
+  // Beat 1: atmosphere (0–1500ms) — just the bg, no text
+  // Beat 2: traits appear (1500ms, 800ms each = 1500–3900ms)
+  // Beat 3: name appears (3900ms+)
+  const [beat, setBeat] = useState<1 | 2 | 3>(1)
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setBeat(2), 1500)
+    const t2 = setTimeout(() => setBeat(3), 3900)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [])
+
   if (!profile) {
     return (
       <div className="fixed inset-0 bg-bg flex flex-col items-center justify-center gap-5 px-8" style={{ zIndex: 20 }}>
@@ -114,6 +176,11 @@ export function PersonaScreen() {
   const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? 'explorer';
   const meta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
   const color = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' };
+
+  // 3-beat reveal data
+  const archetypeId = archetypeKey;
+  const traits = ARCHETYPE_TRAITS[archetypeId] ?? ARCHETYPE_TRAITS.explorer;
+  const bg = ARCHETYPE_BG[archetypeId] ?? ARCHETYPE_BG.explorer;
 
   // Top venues: sort by weight, take top 5, filter weight > 0.1
   const topVenues = Object.entries(profile.venue_weights)
@@ -155,167 +222,212 @@ export function PersonaScreen() {
   }
 
   return (
-    <div className="fixed inset-0 bg-bg overflow-y-auto" style={{ zIndex: 20, animation: 'springUp 0.45s ease both' }}>
+    <div className={`fixed inset-0 overflow-y-auto ${bg}`} style={{ zIndex: 20, animation: 'springUp 0.45s ease both' }}>
 
-      {/* Top bar */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
-        <span className="ms text-text-2 text-xl">explore</span>
-        <span className="font-heading font-semibold text-text-1 text-sm">Uncover Roads</span>
-      </div>
+      {/* ── 3-beat reveal overlay (Beats 1–3) ──────────────────── */}
+      {beat < 3 && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ zIndex: 30 }}>
+          {/* Beat 2 — Trait lines */}
+          {beat >= 2 && (
+            <div className="flex flex-col items-center justify-center gap-6">
+              {traits.map((line, i) => (
+                <motion.p
+                  key={i}
+                  className="text-white/90 text-lg text-center font-light tracking-wide"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.8, duration: 0.6 }}
+                >
+                  {line}
+                </motion.p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Hero card */}
-      <div
-        className="rounded-[20px] p-5 relative overflow-hidden mx-4 mt-5"
-        style={{
-          background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
-          border: `1px solid ${color.primary}28`,
-        }}
-      >
-        {/* Radial glow — left edge */}
-        <div
-          className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse at left, ${color.primary}18, transparent 70%)` }}
-        />
-
-        {/* Emoji */}
-        <span
-          className="text-[42px] relative"
-          style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}
+      {/* Beat 3 — Archetype name reveal (absolute, bottom of screen) */}
+      {beat >= 3 && (
+        <motion.div
+          className="fixed left-0 right-0 flex flex-col items-center gap-3 pointer-events-none"
+          style={{ bottom: '6rem', zIndex: 30 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
         >
-          {meta.emoji}
-        </span>
+          <p className="text-white/50 text-sm tracking-widest uppercase">You are</p>
+          <h1 className="text-white text-5xl font-serif tracking-wide capitalize">
+            {archetypeId}
+          </h1>
+        </motion.div>
+      )}
 
-        {/* Name */}
-        <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
-          {meta.name}
+      {/* ── Main screen content (visible after Beat 3) ─────────── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: beat >= 3 ? 1 : 0 }}
+        transition={{ duration: 0.6, delay: 1.0 }}
+      >
+        {/* Top bar */}
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
+          <span className="ms text-text-2 text-xl">explore</span>
+          <span className="font-heading font-semibold text-text-1 text-sm">Uncover Roads</span>
         </div>
 
-        {/* Tagline */}
-        <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{meta.tagline}</div>
-      </div>
-
-      {/* Stats row */}
-      <div className="px-4 mt-5 grid grid-cols-3 gap-2">
-        {[
-          { icon: 'place', label: 'Stops / day', value: String(profile.stops_per_day) },
-          { icon: 'payments', label: 'Budget range', value: priceRange(profile.price_min, profile.price_max) },
-          { icon: 'tune', label: 'Pacing', value: flexLabel(profile.flexibility) },
-        ].map(stat => (
+        {/* Hero card */}
+        <div
+          className="rounded-[20px] p-5 relative overflow-hidden mx-4 mt-5"
+          style={{
+            background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
+            border: `1px solid ${color.primary}28`,
+          }}
+        >
+          {/* Radial glow — left edge */}
           <div
-            key={stat.label}
-            className="flex flex-col items-center gap-1 py-3 rounded-2xl"
-            style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}
-          >
-            <span className="ms text-text-3 text-lg">{stat.icon}</span>
-            <span className="text-white font-heading font-bold text-base leading-none">{stat.value}</span>
-            <span className="text-text-3 text-[10px]">{stat.label}</span>
-          </div>
-        ))}
-      </div>
+            className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
+            style={{ background: `radial-gradient(ellipse at left, ${color.primary}18, transparent 70%)` }}
+          />
 
-      {/* Day preview */}
-      <div className="px-5 mt-6">
-        <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Your Day</p>
-        <div className="flex items-center gap-2">
-          {/* Morning */}
-          <div
-            className="flex items-center gap-1.5 px-3 h-9 rounded-full flex-shrink-0"
-            style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
+          {/* Emoji */}
+          <span
+            className="text-[42px] relative"
+            style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}
           >
-            <span className="ms fill text-xs" style={{ color: color.primary }}>
-              {DAY_OPEN_ICONS[profile.day_open] ?? 'wb_sunny'}
-            </span>
-            <span className="text-white text-xs font-semibold">
-              {DAY_OPEN_LABELS[profile.day_open] ?? profile.day_open}
-            </span>
+            {meta.emoji}
+          </span>
+
+          {/* Name */}
+          <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+            {meta.name}
           </div>
 
-          {/* Arrow + stops */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <span className="ms text-text-3 text-sm">arrow_forward</span>
-            <span className="text-text-3 text-xs whitespace-nowrap">
-              {profile.stops_per_day} stops ~{profile.time_per_stop}min each
-            </span>
-            <span className="ms text-text-3 text-sm">arrow_forward</span>
-          </div>
+          {/* Tagline */}
+          <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{meta.tagline}</div>
+        </div>
 
-          {/* Evening */}
-          <div
-            className="flex items-center gap-1.5 px-3 h-9 rounded-full flex-shrink-0"
-            style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
-          >
-            <span className="ms fill text-xs" style={{ color: color.primary }}>
-              {EVENING_ICONS[profile.evening_type] ?? 'nightlife'}
-            </span>
-            <span className="text-white text-xs font-semibold">
-              {EVENING_LABELS[profile.evening_type] ?? profile.evening_type}
-            </span>
+        {/* Stats row */}
+        <div className="px-4 mt-5 grid grid-cols-3 gap-2">
+          {[
+            { icon: 'place', label: 'Stops / day', value: String(profile.stops_per_day) },
+            { icon: 'payments', label: 'Budget range', value: priceRange(profile.price_min, profile.price_max) },
+            { icon: 'tune', label: 'Pacing', value: flexLabel(profile.flexibility) },
+          ].map(stat => (
+            <div
+              key={stat.label}
+              className="flex flex-col items-center gap-1 py-3 rounded-2xl"
+              style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}
+            >
+              <span className="ms text-text-3 text-lg">{stat.icon}</span>
+              <span className="text-white font-heading font-bold text-base leading-none">{stat.value}</span>
+              <span className="text-text-3 text-[10px]">{stat.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day preview */}
+        <div className="px-5 mt-6">
+          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Your Day</p>
+          <div className="flex items-center gap-2">
+            {/* Morning */}
+            <div
+              className="flex items-center gap-1.5 px-3 h-9 rounded-full flex-shrink-0"
+              style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
+            >
+              <span className="ms fill text-xs" style={{ color: color.primary }}>
+                {DAY_OPEN_ICONS[profile.day_open] ?? 'wb_sunny'}
+              </span>
+              <span className="text-white text-xs font-semibold">
+                {DAY_OPEN_LABELS[profile.day_open] ?? profile.day_open}
+              </span>
+            </div>
+
+            {/* Arrow + stops */}
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="ms text-text-3 text-sm">arrow_forward</span>
+              <span className="text-text-3 text-xs whitespace-nowrap">
+                {profile.stops_per_day} stops ~{profile.time_per_stop}min each
+              </span>
+              <span className="ms text-text-3 text-sm">arrow_forward</span>
+            </div>
+
+            {/* Evening */}
+            <div
+              className="flex items-center gap-1.5 px-3 h-9 rounded-full flex-shrink-0"
+              style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
+            >
+              <span className="ms fill text-xs" style={{ color: color.primary }}>
+                {EVENING_ICONS[profile.evening_type] ?? 'nightlife'}
+              </span>
+              <span className="text-white text-xs font-semibold">
+                {EVENING_LABELS[profile.evening_type] ?? profile.evening_type}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Top venues */}
-      {topVenues.length > 0 && (
-        <div className="px-5 mt-5">
-          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">
-            Places we'll surface
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {topVenues.map(v => (
+        {/* Top venues */}
+        {topVenues.length > 0 && (
+          <div className="px-5 mt-5">
+            <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">
+              Places we'll surface
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {topVenues.map(v => (
+                <div
+                  key={v}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-surface border border-white/10"
+                >
+                  <span className="ms text-xs text-text-3">{VENUE_ICONS[v] ?? 'place'}</span>
+                  <span className="text-text-2 text-xs font-medium">{VENUE_LABELS[v] ?? v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Social flags */}
+        {profile.social_flags.length > 0 && (
+          <div className="px-5 mt-5 flex flex-wrap gap-2">
+            {profile.social_flags.map(f => (
               <div
-                key={v}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-surface border border-white/10"
+                key={f}
+                className="flex items-center gap-1.5 px-3 h-7 rounded-full bg-surface border border-white/8"
               >
-                <span className="ms text-xs text-text-3">{VENUE_ICONS[v] ?? 'place'}</span>
-                <span className="text-text-2 text-xs font-medium">{VENUE_LABELS[v] ?? v}</span>
+                <span className="ms fill text-xs text-text-3">{SOCIAL_ICONS[f] ?? 'person'}</span>
+                <span className="text-text-2 text-xs">{SOCIAL_LABELS[f] ?? f}</span>
+              </div>
+            ))}
+            {profile.dietary.map(f => (
+              <div
+                key={f}
+                className="flex items-center gap-1.5 px-3 h-7 rounded-full bg-surface border border-white/8"
+              >
+                <span className="ms fill text-xs text-text-3">{DIETARY_ICONS[f] ?? 'info'}</span>
+                <span className="text-text-2 text-xs">{DIETARY_LABELS[f] ?? f}</span>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Social flags */}
-      {profile.social_flags.length > 0 && (
-        <div className="px-5 mt-5 flex flex-wrap gap-2">
-          {profile.social_flags.map(f => (
-            <div
-              key={f}
-              className="flex items-center gap-1.5 px-3 h-7 rounded-full bg-surface border border-white/8"
-            >
-              <span className="ms fill text-xs text-text-3">{SOCIAL_ICONS[f] ?? 'person'}</span>
-              <span className="text-text-2 text-xs">{SOCIAL_LABELS[f] ?? f}</span>
-            </div>
-          ))}
-          {profile.dietary.map(f => (
-            <div
-              key={f}
-              className="flex items-center gap-1.5 px-3 h-7 rounded-full bg-surface border border-white/8"
-            >
-              <span className="ms fill text-xs text-text-3">{DIETARY_ICONS[f] ?? 'info'}</span>
-              <span className="text-text-2 text-xs">{DIETARY_LABELS[f] ?? f}</span>
-            </div>
-          ))}
+        {/* CTAs */}
+        <div className="px-5 mt-8 pb-14">
+          <button
+            onClick={startPlanning}
+            className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mb-3"
+            style={{ background: `linear-gradient(135deg, ${color.primary}, ${color.primary}bb)` }}
+          >
+            Start Planning
+            <span className="ms text-sm">arrow_forward</span>
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'GO_TO', screen: 'ob1' })}
+            className="w-full h-11 rounded-2xl bg-transparent text-text-3 text-sm flex items-center justify-center gap-1.5 border border-white/8"
+          >
+            <span className="ms text-sm">refresh</span>
+            Retake Assessment
+          </button>
         </div>
-      )}
-
-      {/* CTAs */}
-      <div className="px-5 mt-8 pb-14">
-        <button
-          onClick={startPlanning}
-          className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mb-3"
-          style={{ background: `linear-gradient(135deg, ${color.primary}, ${color.primary}bb)` }}
-        >
-          Start Planning
-          <span className="ms text-sm">arrow_forward</span>
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'GO_TO', screen: 'ob1' })}
-          className="w-full h-11 rounded-2xl bg-transparent text-text-3 text-sm flex items-center justify-center gap-1.5 border border-white/8"
-        >
-          <span className="ms text-sm">refresh</span>
-          Retake Assessment
-        </button>
-      </div>
+      </motion.div>
     </div>
   );
 }
