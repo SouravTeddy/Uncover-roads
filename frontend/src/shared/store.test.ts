@@ -634,3 +634,79 @@ describe('Phase 3 — engine message reducer actions', () => {
     expect(next.engineMessages).toEqual([])
   })
 })
+
+describe('Phase 3 — engine itinerary reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+    stubStorage.setItem.mockClear()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const weights: import('./types').EngineWeights = {
+    w_walk_affinity: 0.9, w_scenic: 0.8, w_efficiency: 0.3,
+    w_food_density: 0.5, w_culture_depth: 0.7, w_nightlife: 0.2,
+    w_budget_sensitivity: 0.4, w_crowd_aversion: 0.6,
+    w_spontaneity: 0.7, w_rest_need: 0.5,
+  }
+  const itin1: import('./types').EngineItinerary = {
+    id: 'itin-001', generatedAt: '2026-06-01T08:00:00Z',
+    cities: ['Tokyo'], days: [], personaSnapshot: weights, archetypeSnapshot: 'wanderer',
+  }
+  const itin2: import('./types').EngineItinerary = {
+    id: 'itin-002', generatedAt: '2026-06-02T09:00:00Z',
+    cities: ['Tokyo'], days: [], personaSnapshot: weights, archetypeSnapshot: 'wanderer',
+  }
+
+  it('SET_ENGINE_ITINERARY sets the itinerary', () => {
+    const next = reducer(initialState, { type: 'SET_ENGINE_ITINERARY', itinerary: itin1 })
+    expect(next.engineItinerary).toEqual(itin1)
+  })
+
+  it('SET_ENGINE_ITINERARY null clears the itinerary', () => {
+    const state = { ...initialState, engineItinerary: itin1 }
+    const next = reducer(state, { type: 'SET_ENGINE_ITINERARY', itinerary: null })
+    expect(next.engineItinerary).toBeNull()
+  })
+
+  it('SET_ENGINE_ITINERARY persists to localStorage', () => {
+    reducer(initialState, { type: 'SET_ENGINE_ITINERARY', itinerary: itin1 })
+    expect(stubStorage.setItem).toHaveBeenCalledWith(
+      'ur_ss_engine_itin',
+      JSON.stringify(itin1),
+    )
+  })
+
+  it('PUSH_ITINERARY_HISTORY sets new itinerary as current', () => {
+    const next = reducer(initialState, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin1 })
+    expect(next.engineItinerary).toEqual(itin1)
+  })
+
+  it('PUSH_ITINERARY_HISTORY adds to history', () => {
+    const state = { ...initialState, engineItinerary: itin1, itineraryHistory: [] }
+    const next = reducer(state, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin2 })
+    expect(next.itineraryHistory[0]).toEqual(itin2)
+    expect(next.engineItinerary).toEqual(itin2)
+  })
+
+  it('PUSH_ITINERARY_HISTORY caps history at 10', () => {
+    const manyItins: import('./types').EngineItinerary[] = Array.from({ length: 10 }, (_, i) => ({
+      ...itin1, id: `itin-old-${i}`,
+    }))
+    const state = { ...initialState, itineraryHistory: manyItins }
+    const next = reducer(state, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin2 })
+    expect(next.itineraryHistory).toHaveLength(10)
+    expect(next.itineraryHistory[0].id).toBe('itin-002')
+  })
+
+  it('PUSH_ITINERARY_HISTORY persists to localStorage', () => {
+    reducer(initialState, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin1 })
+    expect(stubStorage.setItem).toHaveBeenCalledWith('ur_ss_engine_itin', JSON.stringify(itin1))
+    expect(stubStorage.setItem).toHaveBeenCalledWith('ur_ss_itin_history', JSON.stringify([itin1]))
+  })
+})

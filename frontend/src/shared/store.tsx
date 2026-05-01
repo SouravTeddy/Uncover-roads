@@ -349,7 +349,10 @@ export type Action =
   // ── Phase 3: engine message actions ──────────────────────────
   | { type: 'ADD_ENGINE_MESSAGE'; message: EngineMessage }
   | { type: 'DISMISS_ENGINE_MESSAGE'; id: string }
-  | { type: 'CLEAR_ENGINE_MESSAGES' };
+  | { type: 'CLEAR_ENGINE_MESSAGES' }
+  // ── Phase 3: engine itinerary actions ────────────────────────
+  | { type: 'SET_ENGINE_ITINERARY'; itinerary: EngineItinerary | null }
+  | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -671,6 +674,19 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'CLEAR_ENGINE_MESSAGES':
       return { ...state, engineMessages: [] }
+
+    // ── Phase 3: engine itinerary cases ────────────────────────
+
+    case 'SET_ENGINE_ITINERARY':
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      return { ...state, engineItinerary: action.itinerary }
+
+    case 'PUSH_ITINERARY_HISTORY': {
+      const history = [action.itinerary, ...state.itineraryHistory].slice(0, 10)
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      ssSave('ur_ss_itin_history', history)
+      return { ...state, engineItinerary: action.itinerary, itineraryHistory: history }
+    }
 
     default:
       return state;
