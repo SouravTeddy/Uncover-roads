@@ -834,3 +834,579 @@ Navigate through the OB flow. Verify:
 git add src/modules/persona/PersonaScreen.tsx
 git commit -m "feat(ob): implement 3-beat persona reveal — atmosphere, traits, name"
 ```
+
+---
+
+## Task 7: Redesign WalkthroughScreen — 5-slide animated feature tour
+
+**Spec:** `docs/superpowers/specs/2026-04-30-walkthrough-redesign.md`
+
+**Files:**
+- Modify: `frontend/src/modules/login/WalkthroughScreen.tsx`
+- Create: `frontend/src/modules/login/anim/WTPersonaAnim.tsx`
+- Create: `frontend/src/modules/login/anim/WTCityAnim.tsx`
+- Create: `frontend/src/modules/login/anim/WTRecsAnim.tsx`
+- Create: `frontend/src/modules/login/anim/WTMultiCityAnim.tsx`
+- Create: `frontend/src/modules/login/anim/WTPricingAnim.tsx`
+
+**Depends on:** Task 1 (framer-motion installed).
+
+Replace the current static icon-card walkthrough with a 5-slide animated feature tour using the app design system (dark warm palette, Playfair Display, terracotta/sky/amber/sage accents).
+
+- [ ] **Step 1: Read current WalkthroughScreen**
+
+```bash
+cat /Users/souravbiswas/uncover-roads/frontend/src/modules/login/WalkthroughScreen.tsx
+```
+
+Note the current CARDS array shape, touch handlers, and `finish()` dispatch.
+
+- [ ] **Step 2: Create animation sub-components**
+
+Create `frontend/src/modules/login/anim/` directory and implement each animation component. Each is a self-contained `motion.div` scene using Framer Motion + Tailwind.
+
+**WTPersonaAnim.tsx** — Silhouette materialises, archetype badge pops, three trait lines reveal:
+
+```typescript
+import { motion } from 'framer-motion'
+
+export function WTPersonaAnim() {
+  return (
+    <div className="relative flex flex-col items-center gap-3">
+      {/* Ambient glow */}
+      <motion.div
+        className="absolute w-28 h-28 rounded-full"
+        style={{ background: 'rgba(224,120,84,.18)', filter: 'blur(32px)', top: '-10%' }}
+        animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.12, 1] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Silhouette */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, filter: 'blur(8px)' }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+        transition={{ delay: 0.2, duration: 0.6 }}
+      >
+        <div className="relative w-12">
+          <div className="w-6 h-6 rounded-full mx-auto" style={{ background: 'linear-gradient(160deg,#e07854,#c4613d)', boxShadow: '0 4px 16px rgba(224,120,84,.4)' }} />
+          <div className="w-11 h-12 rounded-[14px_14px_10px_10px] mt-0.5 mx-auto" style={{ background: 'linear-gradient(160deg,#c4613d,#8b3d22)', boxShadow: '0 6px 20px rgba(196,97,61,.35)' }}>
+            <motion.div
+              className="absolute top-2.5 -right-2.5 w-3 h-2.5 rounded bg-[var(--color-surface2)] border border-white/10"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
+            />
+          </div>
+        </div>
+      </motion.div>
+      {/* Archetype badge */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ delay: 0.8, type: 'spring', stiffness: 300, damping: 18 }}
+        className="px-4 py-1.5 rounded-full border"
+        style={{ background: 'var(--color-surface)', borderColor: 'rgba(224,120,84,.3)', boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}
+      >
+        <span className="font-[family-name:var(--font-heading)] text-sm font-bold" style={{ color: 'var(--color-primary)' }}>The Wanderer</span>
+      </motion.div>
+      {/* Trait lines */}
+      <div className="flex flex-col gap-1 w-28">
+        {[1, 0.8, 0.6].map((w, i) => (
+          <motion.div key={i}
+            className="h-1 rounded-full"
+            style={{ background: `rgba(224,120,84,${0.25 - i * 0.06})`, width: `${w * 100}%` }}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.1 + i * 0.2 }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+**WTCityAnim.tsx** — Map grid + pins drop + pulse rings + search bar:
+
+```typescript
+import { motion } from 'framer-motion'
+
+const PINS = [
+  { top: '28%', left: '32%', color: 'var(--color-primary)', shadow: 'rgba(224,120,84,.6)', delay: 0.2 },
+  { top: '45%', left: '58%', color: 'var(--color-sky)',     shadow: 'rgba(79,143,171,.6)',  delay: 0.5 },
+  { top: '60%', left: '26%', color: 'var(--color-sage)',    shadow: 'rgba(107,148,112,.6)', delay: 0.8 },
+  { top: '36%', left: '64%', color: 'var(--color-amber)',   shadow: 'rgba(196,152,64,.6)',  delay: 1.1 },
+]
+
+export function WTCityAnim() {
+  return (
+    <div className="absolute inset-0">
+      {/* Map grid */}
+      <div className="absolute inset-0" style={{
+        backgroundImage: 'linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px)',
+        backgroundSize: '18px 18px',
+      }} />
+      {/* Search bar */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="absolute top-4 left-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border"
+        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border-m)', boxShadow: '0 4px 16px rgba(0,0,0,.5)' }}
+      >
+        <span className="ms text-[var(--color-text-3)] text-sm">search</span>
+        <div className="flex-1 h-1 rounded-full bg-[var(--color-surface2)]" />
+        <motion.div
+          className="w-0.5 h-3 rounded-sm bg-[var(--color-primary)]"
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+        />
+      </motion.div>
+      {/* Pins */}
+      {PINS.map((pin, i) => (
+        <motion.div
+          key={i}
+          className="absolute"
+          style={{ top: pin.top, left: pin.left }}
+          initial={{ opacity: 0, y: -20, scale: 0.6 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: pin.delay, type: 'spring', stiffness: 300, damping: 14 }}
+        >
+          <div className="relative">
+            <div className="w-3 h-3 rounded-full border-2 border-white/80" style={{ background: pin.color, boxShadow: `0 0 8px ${pin.shadow}` }} />
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ background: pin.color, opacity: 0.35 }}
+              animate={{ scale: [0.5, 2.6], opacity: [0.7, 0] }}
+              transition={{ delay: pin.delay + 0.3, duration: 1.4, repeat: Infinity, ease: 'easeOut' }}
+            />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+```
+
+**WTRecsAnim.tsx** — Three signal cards staggered:
+
+```typescript
+import { motion } from 'framer-motion'
+
+const CARDS = [
+  { label: 'Trending now', color: 'var(--color-amber)',   border: 'rgba(196,152,64,.4)',  blink: true,  delay: 0.2 },
+  { label: 'Skip this one', color: '#e57373',             border: 'rgba(192,57,43,.4)',   blink: false, delay: 0.5 },
+  { label: 'Hidden gem',   color: 'var(--color-sage)',    border: 'rgba(107,148,112,.4)', blink: false, delay: 0.8 },
+]
+
+export function WTRecsAnim() {
+  return (
+    <div className="flex flex-col gap-2 w-36">
+      {CARDS.map((card, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: card.delay }}
+          className="rounded-xl p-2.5 border border-white/8 border-l-[3px]"
+          style={{ background: 'var(--color-surface)', borderLeftColor: card.color, boxShadow: '0 2px 12px rgba(0,0,0,.4)' }}
+        >
+          <div className="flex items-center gap-1.5 mb-1">
+            <motion.div
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              style={{ background: card.color }}
+              animate={card.blink ? { opacity: [1, 0.5, 1] } : {}}
+              transition={{ duration: 1.4, repeat: Infinity }}
+            />
+            <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: card.color }}>{card.label}</span>
+          </div>
+          <div className="h-1 rounded-full bg-[var(--color-surface2)] w-4/5 mb-1" />
+          <div className="h-1 rounded-full bg-[var(--color-surface2)] w-3/5 opacity-60" />
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+```
+
+**WTMultiCityAnim.tsx** — City chain with drawing connectors:
+
+```typescript
+import { motion } from 'framer-motion'
+
+const CITIES = [
+  { color: 'var(--color-sage)', bg: 'var(--color-sage-bg)', bdr: 'var(--color-sage-bdr)', delay: 0.2, width: 56 },
+  { color: 'var(--color-sky)',  bg: 'var(--color-sky-bg)',  bdr: 'var(--color-sky-bdr)',  delay: 0.65, width: 48 },
+]
+
+export function WTMultiCityAnim() {
+  return (
+    <div className="flex flex-col items-center w-36">
+      {CITIES.map((city, i) => (
+        <div key={i} className="w-full flex flex-col items-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ delay: city.delay, type: 'spring', stiffness: 280, damping: 18 }}
+            className="w-full flex items-center gap-2 p-2 rounded-xl border"
+            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', boxShadow: '0 2px 12px rgba(0,0,0,.4)' }}
+          >
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 border" style={{ background: city.bg, borderColor: city.bdr }}>
+              <div className="w-2 h-2 rounded-full" style={{ background: city.color, boxShadow: `0 0 5px ${city.color}` }} />
+            </div>
+            <div>
+              <div className="h-1.5 rounded-full bg-white/25 mb-1" style={{ width: city.width }} />
+              <div className="h-1 rounded-full bg-white/10" style={{ width: city.width * 0.65 }} />
+            </div>
+          </motion.div>
+          {i < CITIES.length - 1 && (
+            <motion.div
+              className="w-0.5 rounded-full"
+              style={{ background: 'linear-gradient(to bottom, var(--color-sage), var(--color-sky))' }}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 14, opacity: 1 }}
+              transition={{ delay: city.delay + 0.35, duration: 0.3 }}
+            />
+          )}
+        </div>
+      ))}
+      {/* After last connector */}
+      <motion.div
+        className="w-0.5 rounded-full"
+        style={{ background: 'linear-gradient(to bottom, var(--color-sky), rgba(79,143,171,.2))' }}
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 14, opacity: 1 }}
+        transition={{ delay: 1.0, duration: 0.3 }}
+      />
+      {/* Add city */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 4 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ delay: 1.1, type: 'spring', stiffness: 280, damping: 18 }}
+        className="w-full flex items-center gap-2 p-2 rounded-xl border"
+        style={{ borderColor: 'rgba(79,143,171,.35)', borderStyle: 'dashed', background: 'transparent' }}
+      >
+        <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 border border-dashed border-sky/40 bg-white/4">
+          <span className="text-sky/70 text-sm leading-none font-light">+</span>
+        </div>
+        <span className="text-[9px] font-semibold text-[var(--color-sky)] opacity-70">Add a city</span>
+      </motion.div>
+    </div>
+  )
+}
+```
+
+**WTPricingAnim.tsx** — Confetti dots, FREE bounce, pay card:
+
+```typescript
+import { motion } from 'framer-motion'
+
+const CONFETTI = [
+  { top: '18%', left: '30%', color: 'var(--color-primary)', delay: 0.5, size: 5 },
+  { top: '16%', left: '55%', color: 'var(--color-amber)',   delay: 0.65, size: 4 },
+  { top: '22%', left: '42%', color: 'var(--color-sage)',    delay: 0.8,  size: 3 },
+  { top: '15%', left: '68%', color: 'var(--color-sky)',     delay: 0.55, size: 5 },
+  { top: '24%', left: '20%', color: 'var(--color-primary)', delay: 0.72, size: 4 },
+]
+
+export function WTPricingAnim() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      {/* Confetti */}
+      {CONFETTI.map((c, i) => (
+        <motion.div key={i}
+          className="absolute rounded-full"
+          style={{ top: c.top, left: c.left, width: c.size, height: c.size, background: c.color }}
+          initial={{ opacity: 0, y: 0, rotate: 0 }}
+          animate={{ opacity: [0, 1, 0], y: 40, rotate: 480 }}
+          transition={{ delay: c.delay, duration: 0.8 }}
+        />
+      ))}
+      <div className="flex flex-col gap-2 w-36 z-10">
+        {/* FREE card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.4, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 14 }}
+          className="relative rounded-2xl p-3 border text-center"
+          style={{ background: 'var(--color-surface)', borderColor: 'rgba(224,120,84,.35)', boxShadow: '0 4px 24px rgba(224,120,84,.2)' }}
+        >
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-lg" style={{ background: 'var(--color-primary)', boxShadow: '0 4px 12px rgba(224,120,84,.5)' }}>
+            <span className="text-white text-[9px] font-black tracking-wide">FREE</span>
+          </div>
+          <div className="mt-2 font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--color-text-1)]">First 2 trips</div>
+          <div className="text-[9px] font-semibold mt-0.5" style={{ color: 'var(--color-primary)' }}>No credit card needed</div>
+        </motion.div>
+        {/* Pay per trip */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="rounded-2xl p-3 border text-center"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', boxShadow: '0 2px 12px rgba(0,0,0,.4)' }}
+        >
+          <div className="text-[9px] font-bold text-[var(--color-text-2)] mb-1">After that</div>
+          <div className="text-[9px] text-[var(--color-text-3)] mb-2">Buy only the trips you need</div>
+          <div className="rounded-lg py-1 text-center" style={{ background: 'var(--color-surface2)' }}>
+            <span className="text-[9px] font-bold text-[var(--color-text-1)]">Pay per trip</span>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 3: Rewrite WalkthroughScreen.tsx**
+
+Replace the existing component with:
+
+```typescript
+import { useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAppStore } from '../../shared/store'
+import { Button } from '../../shared/ui/Button'
+import { WTPersonaAnim }   from './anim/WTPersonaAnim'
+import { WTCityAnim }      from './anim/WTCityAnim'
+import { WTRecsAnim }      from './anim/WTRecsAnim'
+import { WTMultiCityAnim } from './anim/WTMultiCityAnim'
+import { WTPricingAnim }   from './anim/WTPricingAnim'
+
+const CARDS = [
+  {
+    id: 'persona',
+    chip: 'Persona',
+    accentVar: 'var(--color-primary)',
+    accentBg: 'var(--color-primary-bg)',
+    accentBdr: 'rgba(224,120,84,.25)',
+    ctaStyle: 'linear-gradient(135deg,#e07854,#c4613d)',
+    title: 'Discover your travel DNA',
+    desc: '9 questions. One archetype. Every recommendation tuned to who you are.',
+    Animation: WTPersonaAnim,
+    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(224,120,84,.12) 0%, transparent 70%)',
+    cta: 'Next',
+  },
+  {
+    id: 'city',
+    chip: 'Explore',
+    accentVar: 'var(--color-sky)',
+    accentBg: 'var(--color-sky-bg)',
+    accentBdr: 'rgba(79,143,171,.25)',
+    ctaStyle: 'linear-gradient(135deg,#4f8fab,#2e6b89)',
+    title: 'Any city, anywhere',
+    desc: 'Search any destination and step straight onto its map — Tokyo to Lisbon.',
+    Animation: WTCityAnim,
+    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(79,143,171,.12) 0%, transparent 70%)',
+    cta: 'Next',
+  },
+  {
+    id: 'recs',
+    chip: 'Smart Picks',
+    accentVar: 'var(--color-amber)',
+    accentBg: 'var(--color-amber-bg)',
+    accentBdr: 'rgba(196,152,64,.25)',
+    ctaStyle: 'linear-gradient(135deg,#c49840,#9c7a1e)',
+    title: "Knows what's worth it",
+    desc: 'Tracks trends, flags what to skip, surfaces hidden gems others miss.',
+    Animation: WTRecsAnim,
+    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(196,152,64,.1) 0%, transparent 70%)',
+    cta: 'Next',
+  },
+  {
+    id: 'multicity',
+    chip: 'Multi-city',
+    accentVar: 'var(--color-sage)',
+    accentBg: 'var(--color-sage-bg)',
+    accentBdr: 'rgba(107,148,112,.25)',
+    ctaStyle: 'linear-gradient(135deg,#6b9470,#3d6642)',
+    title: 'One trip, many cities',
+    desc: 'Paris, Rome, Barcelona — a full itinerary for every stop, in one place.',
+    Animation: WTMultiCityAnim,
+    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(107,148,112,.1) 0%, transparent 70%)',
+    cta: 'Next',
+  },
+  {
+    id: 'pricing',
+    chip: 'Trip Packages',
+    accentVar: 'var(--color-primary)',
+    accentBg: 'var(--color-primary-bg)',
+    accentBdr: 'rgba(224,120,84,.25)',
+    ctaStyle: 'linear-gradient(135deg,#e07854,#c4613d)',
+    title: 'First 2 trips on us',
+    desc: 'Your first two full itineraries are free. After that, pay only for the trips you take.',
+    Animation: WTPricingAnim,
+    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(224,120,84,.08) 0%, transparent 70%)',
+    cta: 'Get started',
+    hideSkip: true,
+  },
+] as const
+
+const textVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } },
+}
+const textItem = {
+  hidden: { opacity: 0, y: 10 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.35 } },
+}
+
+export function WalkthroughScreen() {
+  const { dispatch } = useAppStore()
+  const [index, setIndex] = useState(0)
+  const [direction, setDirection] = useState(1)
+  const touchStartX = useRef<number | null>(null)
+
+  const card = CARDS[index]
+  const isLast = index === CARDS.length - 1
+
+  function finish() {
+    try { localStorage.setItem('ur_walkthrough_seen', '1') } catch { /* ignore */ }
+    dispatch({ type: 'GO_TO', screen: 'ob1' })
+  }
+
+  function advance(dir: 1 | -1) {
+    const next = index + dir
+    if (next < 0 || next >= CARDS.length) return
+    setDirection(dir)
+    setIndex(next)
+  }
+
+  function handleTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX }
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return
+    const delta = touchStartX.current - e.changedTouches[0].clientX
+    if (Math.abs(delta) > 48) advance(delta > 0 ? 1 : -1)
+    touchStartX.current = null
+  }
+
+  const slideVariants = {
+    enter:  (d: number) => ({ x: d > 0 ? '60%' : '-60%', opacity: 0 }),
+    center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: [0.25, 1, 0.5, 1] } },
+    exit:   (d: number) => ({ x: d > 0 ? '-60%' : '60%', opacity: 0, transition: { duration: 0.25 } }),
+  }
+
+  return (
+    <div
+      className="fixed inset-0 flex flex-col bg-[var(--color-bg)]"
+      style={{ zIndex: 20 }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Skip */}
+      <div className="flex-shrink-0 flex justify-end px-5" style={{ paddingTop: 'calc(env(safe-area-inset-top,0px) + 1rem)' }}>
+        {!card.hideSkip ? (
+          <button onClick={finish} className="text-[var(--color-text-3)] text-sm font-medium px-3 py-1.5 rounded-full hover:text-[var(--color-text-2)] transition-colors">
+            Skip
+          </button>
+        ) : <div className="h-8" />}
+      </div>
+
+      {/* Slide area */}
+      <div className="flex-1 relative overflow-hidden">
+        <AnimatePresence custom={direction} mode="wait">
+          <motion.div
+            key={card.id}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="absolute inset-0 flex flex-col"
+          >
+            {/* Animation stage */}
+            <div
+              className="flex-1 relative overflow-hidden flex items-center justify-center"
+              style={{ background: `${card.stageBg}, var(--color-bg)` }}
+            >
+              <card.Animation />
+            </div>
+
+            {/* Text */}
+            <motion.div
+              className="flex-shrink-0 px-6 pt-5 pb-2"
+              variants={textVariants}
+              initial="hidden"
+              animate="show"
+            >
+              <motion.div variants={textItem}>
+                <span
+                  className="inline-block text-[10px] font-bold tracking-widest uppercase rounded-full px-3 py-1 mb-3 border"
+                  style={{ background: card.accentBg, borderColor: card.accentBdr, color: card.accentVar }}
+                >
+                  {card.chip}
+                </span>
+              </motion.div>
+              <motion.h1
+                variants={textItem}
+                className="font-[family-name:var(--font-heading)] text-[22px] font-bold text-[var(--color-text-1)] leading-snug mb-2"
+              >
+                {card.title}
+              </motion.h1>
+              <motion.p variants={textItem} className="text-[var(--color-text-2)] text-sm leading-relaxed">
+                {card.desc}
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Bottom */}
+      <div
+        className="flex-shrink-0 px-6 pb-10 flex flex-col gap-4 items-center"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 2rem)' }}
+      >
+        {/* Step dots */}
+        <div className="flex gap-1.5 items-center">
+          {CARDS.map((_, i) => (
+            <motion.button
+              key={i}
+              onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i) }}
+              animate={{ width: i === index ? 16 : 5, background: i === index ? card.accentVar : 'var(--color-surface2)' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+              className="h-1.5 rounded-full"
+              style={{ minWidth: 5 }}
+            />
+          ))}
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={isLast ? finish : () => advance(1)}
+          className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
+          style={{ background: card.ctaStyle, boxShadow: `0 8px 24px ${card.accentVar}40` }}
+        >
+          {card.cta}
+          <span className="ms fill text-white" style={{ fontSize: 20 }}>arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: Run full test suite**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/frontend
+npx vitest run
+```
+
+Expected: all 329+ tests pass. Fix any import/type errors.
+
+- [ ] **Step 5: Smoke-test in browser**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/frontend
+npm run dev
+```
+
+Navigate to the walkthrough (clear `ur_walkthrough_seen` from localStorage first). Verify:
+- All 5 slides render and swipe correctly
+- Each animation stage plays on entry
+- Step dots morph correctly
+- Last slide has no Skip button
+- "Get started" dispatches to `ob1`
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/modules/login/WalkthroughScreen.tsx src/modules/login/anim/
+git commit -m "feat(walkthrough): 5-slide animated feature tour with app design system"
+```
