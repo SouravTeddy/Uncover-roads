@@ -23,16 +23,10 @@ import type {
   ReferencePin,
   FavouritedPin,
   CityFootprint,
-  EngineWeights,
-  ArchetypeId,
   EngineMessage,
   DiscoveryMode,
-  PinLayer,
-  MapPin,
   MapFilterChip,
   CityContext,
-  EngineItineraryStop,
-  EngineItineraryDay,
   EngineItinerary,
 } from './types';
 
