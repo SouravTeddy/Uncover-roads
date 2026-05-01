@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { resolveLayerState, INITIAL_LAYER_STATE, getLayerUpdatesForAnswer } from './ob-layers'
-import type { LayerState, OBLayerUpdate } from './ob-layers'
+import type { OBLayerUpdate } from './ob-layers'
 
 describe('resolveLayerState', () => {
   it('returns initial state with no updates', () => {

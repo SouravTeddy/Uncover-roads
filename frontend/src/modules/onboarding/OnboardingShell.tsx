@@ -24,14 +24,6 @@ const OB_STEPS = [
   'dietary',      // OB9 — needs (now last)
 ] as const
 
-function getActiveSteps(answers: Partial<RawOBAnswers>): typeof OB_STEPS[number][] {
-  const steps = [...OB_STEPS]
-  if (answers.group === 'family') {
-    const groupIdx = steps.indexOf('group')
-    steps.splice(groupIdx + 1, 0, 'kid_focus' as any)
-  }
-  return steps as any
-}
 
 interface Props {
   step:       ObStep;

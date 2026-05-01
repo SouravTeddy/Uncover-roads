@@ -49,7 +49,7 @@ const ATMOSPHERE_CLASSES: Record<LayerState['atmosphere'], string> = {
   'neon-haze':    'bg-fuchsia-500/15',
 }
 
-const TRANSITION = { duration: 0.6, ease: 'easeInOut' }
+const TRANSITION = { duration: 0.6, ease: 'easeInOut' as const }
 
 export function OBBackground({ layerState }: Props) {
   return (
