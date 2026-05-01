@@ -246,3 +246,39 @@ describe('Phase 3 types — EngineWeights and ArchetypeId', () => {
     expect(ids).toHaveLength(7)
   })
 })
+
+describe('Phase 3 types — EngineMessage', () => {
+  it('EngineMessage has required fields', () => {
+    const msg: import('./types').EngineMessage = {
+      id: 'msg-001',
+      type: 'swap',
+      what: 'Moved Senso-ji to 8am',
+      why: 'It closes at 5pm — you\'d arrive at 4:30',
+      consequence: 'You now reach Ueno with 3 hours to spare',
+      dismissable: true,
+    }
+    expect(msg.type).toBe('swap')
+    expect(msg.dismissable).toBe(true)
+    expect(msg.undo_action).toBeUndefined()
+  })
+
+  it('EngineMessage with undo_action', () => {
+    const msg: import('./types').EngineMessage = {
+      id: 'msg-002',
+      type: 'resequence',
+      what: 'Reordered your afternoon',
+      why: 'Ueno closes at 5pm',
+      consequence: 'You arrive with 2 hours to spare',
+      dismissable: true,
+      undo_action: 'undo_resequence_day2',
+    }
+    expect(msg.undo_action).toBe('undo_resequence_day2')
+  })
+
+  it('EngineMessage accepts all valid type values', () => {
+    const types: import('./types').EngineMessage['type'][] = [
+      'swap', 'insert', 'resequence', 'weather', 'transit', 'advisory', 'event',
+    ]
+    expect(types).toHaveLength(7)
+  })
+})

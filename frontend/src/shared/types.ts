@@ -467,3 +467,18 @@ export type ArchetypeId =
   | 'slowtraveller'
   | 'voyager'
   | 'explorer'
+
+/**
+ * Every engine decision emits one of these messages.
+ * The LLM writes the three sentences from a structured payload — it does not
+ * make decisions, only narrates them.
+ */
+export interface EngineMessage {
+  id: string                   // UUID — React key + dismiss target
+  type: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'event'
+  what: string                 // "Moved Senso-ji to 8am"
+  why: string                  // "It closes at 5pm — you'd arrive at 4:30"
+  consequence: string          // "You now reach Ueno with 3 hours to spare"
+  dismissable: boolean
+  undo_action?: string         // action key to reverse this decision
+}
