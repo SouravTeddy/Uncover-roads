@@ -345,7 +345,11 @@ export type Action =
   | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
   | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
   | { type: 'SET_ACTIVE_CITY_INDEX'; index: number }
-  | { type: 'SET_DISCOVERY_MODE'; cityIndex: number; mode: DiscoveryMode };
+  | { type: 'SET_DISCOVERY_MODE'; cityIndex: number; mode: DiscoveryMode }
+  // ── Phase 3: engine message actions ──────────────────────────
+  | { type: 'ADD_ENGINE_MESSAGE'; message: EngineMessage }
+  | { type: 'DISMISS_ENGINE_MESSAGE'; id: string }
+  | { type: 'CLEAR_ENGINE_MESSAGES' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -653,6 +657,20 @@ export function reducer(state: AppState, action: Action): AppState {
       )
       return { ...state, cityContexts: contexts }
     }
+
+    // ── Phase 3: engine message cases ──────────────────────────
+
+    case 'ADD_ENGINE_MESSAGE':
+      return { ...state, engineMessages: [...state.engineMessages, action.message] }
+
+    case 'DISMISS_ENGINE_MESSAGE':
+      return {
+        ...state,
+        engineMessages: state.engineMessages.filter(m => m.id !== action.id),
+      }
+
+    case 'CLEAR_ENGINE_MESSAGES':
+      return { ...state, engineMessages: [] }
 
     default:
       return state;

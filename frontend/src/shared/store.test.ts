@@ -568,3 +568,69 @@ describe('Phase 3 — city context reducer actions', () => {
     expect(next.cityContexts).toEqual([tokyoCtx])
   })
 })
+
+describe('Phase 3 — engine message reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const msg1: import('./types').EngineMessage = {
+    id: 'msg-001',
+    type: 'swap',
+    what: 'Moved Senso-ji to 8am',
+    why: 'It closes at 5pm',
+    consequence: 'You arrive at Ueno with 3 hours to spare',
+    dismissable: true,
+  }
+  const msg2: import('./types').EngineMessage = {
+    id: 'msg-002',
+    type: 'weather',
+    what: 'Moved outdoor stops indoors',
+    why: 'Rain forecast from 2pm',
+    consequence: 'Your afternoon stays on schedule',
+    dismissable: true,
+  }
+
+  it('ADD_ENGINE_MESSAGE appends to empty list', () => {
+    const next = reducer(initialState, { type: 'ADD_ENGINE_MESSAGE', message: msg1 })
+    expect(next.engineMessages).toEqual([msg1])
+  })
+
+  it('ADD_ENGINE_MESSAGE appends to existing list', () => {
+    const state = { ...initialState, engineMessages: [msg1] }
+    const next = reducer(state, { type: 'ADD_ENGINE_MESSAGE', message: msg2 })
+    expect(next.engineMessages).toHaveLength(2)
+    expect(next.engineMessages[1].id).toBe('msg-002')
+  })
+
+  it('DISMISS_ENGINE_MESSAGE removes by id', () => {
+    const state = { ...initialState, engineMessages: [msg1, msg2] }
+    const next = reducer(state, { type: 'DISMISS_ENGINE_MESSAGE', id: 'msg-001' })
+    expect(next.engineMessages).toHaveLength(1)
+    expect(next.engineMessages[0].id).toBe('msg-002')
+  })
+
+  it('DISMISS_ENGINE_MESSAGE is a no-op for unknown id', () => {
+    const state = { ...initialState, engineMessages: [msg1] }
+    const next = reducer(state, { type: 'DISMISS_ENGINE_MESSAGE', id: 'does-not-exist' })
+    expect(next.engineMessages).toEqual([msg1])
+  })
+
+  it('CLEAR_ENGINE_MESSAGES empties the list', () => {
+    const state = { ...initialState, engineMessages: [msg1, msg2] }
+    const next = reducer(state, { type: 'CLEAR_ENGINE_MESSAGES' })
+    expect(next.engineMessages).toEqual([])
+  })
+
+  it('CLEAR_ENGINE_MESSAGES is a no-op on empty list', () => {
+    const next = reducer(initialState, { type: 'CLEAR_ENGINE_MESSAGES' })
+    expect(next.engineMessages).toEqual([])
+  })
+})
