@@ -437,3 +437,158 @@ export interface SwapCard {
   resolved: boolean;
   choice: 'new' | 'original' | null;
 }
+
+// ── Engine architecture types (Phase 3) ──────────────────────
+
+/**
+ * 10-dimension weight vector produced by the OB resolver.
+ * Used for cosine similarity archetype resolution and as engine
+ * input for every sequencing/insert/swap decision.
+ */
+export interface EngineWeights {
+  w_walk_affinity: number       // 0–1: enjoyment of walking
+  w_scenic: number              // 0–1: scenic routes vs efficient
+  w_efficiency: number          // 0–1: tight schedule preference
+  w_food_density: number        // 0–1: frequency of food/cafe inserts
+  w_culture_depth: number       // 0–1: depth at cultural sites
+  w_nightlife: number           // 0–1: evening/night weighting
+  w_budget_sensitivity: number  // 0–1: penalise expensive inserts
+  w_crowd_aversion: number      // 0–1: avoid high-crowd times
+  w_spontaneity: number         // 0–1: openness to detours
+  w_rest_need: number           // 0–1: frequency of rest breaks
+}
+
+/** The 7 traveller archetypes resolved via cosine similarity against EngineWeights. */
+export type ArchetypeId =
+  | 'wanderer'
+  | 'historian'
+  | 'epicurean'
+  | 'pulse'
+  | 'slowtraveller'
+  | 'voyager'
+  | 'explorer'
+
+/**
+ * Every engine decision emits one of these messages.
+ * The LLM writes the three sentences from a structured payload — it does not
+ * make decisions, only narrates them.
+ */
+export interface EngineMessage {
+  id: string                   // UUID — React key + dismiss target
+  type: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'event'
+  what: string                 // "Moved Senso-ji to 8am"
+  why: string                  // "It closes at 5pm — you'd arrive at 4:30"
+  consequence: string          // "You now reach Ueno with 3 hours to spare"
+  dismissable: boolean
+  undo_action?: string         // action key to reverse this decision
+}
+
+// ── Map exploration types (Phase 3) ──────────────────────────
+
+/**
+ * discovery_mode is set per city.
+ *   anchor → full famous layer shown (essentials)
+ *   deep   → famous layer de-emphasised, hidden gem pins boosted
+ */
+export type DiscoveryMode = 'anchor' | 'deep'
+
+/** Which of the three simultaneous pin layers a pin belongs to. */
+export type PinLayer = 'famous' | 'reference' | 'user'
+
+/**
+ * Unified pin type for the rebuilt map screen.
+ * Replaces the split between Place (famous) and ReferencePin (reference)
+ * and selectedPlaces (user-added).
+ */
+export interface MapPin {
+  id: string           // unique pin ID (may be place_id for famous, uuid for reference)
+  placeId: string      // Google place_id
+  title: string
+  lat: number
+  lon: number
+  layer: PinLayer
+  category: Category
+  saved: boolean       // ❤️ bookmarked — NOT in itinerary
+  inItinerary: boolean // blue ring — user explicitly added to trip
+}
+
+/**
+ * Filter chips in the map filter bar.
+ *   all       → show all pins
+ *   famous    → ★ Famous layer only
+ *   for_you   → ✦ Reference ghost layer only
+ *   culture/food/parks/nightlife → filter by category
+ */
+export type MapFilterChip = 'all' | 'famous' | 'for_you' | 'culture' | 'food' | 'parks' | 'nightlife'
+
+/**
+ * Context for a single city in the current trip session.
+ * One CityContext per city — multi-city trips have an array of these.
+ * discovery_mode is set per city when the city first loads.
+ */
+export interface CityContext {
+  city: string
+  countryCode: string
+  lat: number
+  lon: number
+  discoveryMode: DiscoveryMode
+  startDate: string | null   // ISO date "YYYY-MM-DD"
+  endDate: string | null     // ISO date "YYYY-MM-DD"
+  days: number               // computed from date range or 1 if no dates set
+}
+
+// ── Engine itinerary types (Phase 3) ─────────────────────────
+
+/**
+ * A single stop in an engine-built itinerary.
+ * All factual fields (rating, priceLevel, weekdayText) come from Google Places.
+ * whyForYou and localTip are LLM-generated (marked ✦ in UI — no factual claims).
+ */
+export interface EngineItineraryStop {
+  id: string               // unique stop ID (UUID)
+  placeId: string          // Google place_id
+  title: string
+  area: string             // neighbourhood name (from city data model)
+  day: number              // 1-indexed
+  time: string             // "09:00" — engine-assigned start time
+  durationMin: number      // engine-assigned visit duration
+  category: Category
+  lat: number
+  lon: number
+  priceLevel: number | null   // 0–4 from Google Places (0 = free)
+  rating: number | null       // from Google Places
+  weekdayText: string[]       // from Google Places opening hours
+  whyForYou: string           // LLM ✦ — persona tone only, no hours/prices/facts
+  localTip: string | null     // LLM ✦ — atmosphere only
+  googleMapsUrl: string | null
+  website: string | null
+  photoRef: string | null     // Google Places photo reference
+}
+
+/**
+ * One day in an engine itinerary.
+ * Travel days (isTravel: true) have no stops — the engine does not schedule
+ * sightseeing during transit days.
+ */
+export interface EngineItineraryDay {
+  day: number
+  date: string               // ISO date "YYYY-MM-DD"
+  city: string
+  isTravel: boolean          // ✈️ travel day — no stops
+  stops: EngineItineraryStop[]
+  messages: EngineMessage[]  // engine decision banners for this day
+}
+
+/**
+ * A complete itinerary produced by the intelligence engine.
+ * personaSnapshot and archetypeSnapshot capture the weights used at
+ * generation time — needed to regenerate consistently.
+ */
+export interface EngineItinerary {
+  id: string                   // UUID
+  generatedAt: string          // ISO datetime
+  cities: string[]             // ordered list of cities
+  days: EngineItineraryDay[]
+  personaSnapshot: EngineWeights   // weights at generation time
+  archetypeSnapshot: ArchetypeId
+}

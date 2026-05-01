@@ -23,6 +23,11 @@ import type {
   ReferencePin,
   FavouritedPin,
   CityFootprint,
+  EngineMessage,
+  DiscoveryMode,
+  MapFilterChip,
+  CityContext,
+  EngineItinerary,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -88,6 +93,14 @@ export interface AppState {
   favouritedPins: FavouritedPin[];
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: CityContext[]          // one per city in current multi-city trip
+  activeCityIndex: number              // index into cityContexts — which city is active
+  engineMessages: EngineMessage[]      // current session engine decision banners (transient)
+  engineItinerary: EngineItinerary | null  // current engine-built itinerary
+  itineraryHistory: EngineItinerary[]  // previous generations — max 10
+  activePinId: string | null           // which pin card is currently shown
+  mapFilter: MapFilterChip             // active filter chip in the map filter bar
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -258,6 +271,14 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: [],
+  activeCityIndex: 0,
+  engineMessages: [],
+  engineItinerary: ssGet<EngineItinerary>('ur_ss_engine_itin') ?? null,
+  itineraryHistory: ssGet<EngineItinerary[]>('ur_ss_itin_history') ?? [],
+  activePinId: null,
+  mapFilter: 'all' as MapFilterChip,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -313,7 +334,22 @@ export type Action =
   | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
-  | { type: 'SET_THEME'; theme: 'dark' | 'light' };
+  | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+  // ── Phase 3: city context actions ────────────────────────────
+  | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
+  | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
+  | { type: 'SET_ACTIVE_CITY_INDEX'; index: number }
+  | { type: 'SET_DISCOVERY_MODE'; cityIndex: number; mode: DiscoveryMode }
+  // ── Phase 3: engine message actions ──────────────────────────
+  | { type: 'ADD_ENGINE_MESSAGE'; message: EngineMessage }
+  | { type: 'DISMISS_ENGINE_MESSAGE'; id: string }
+  | { type: 'CLEAR_ENGINE_MESSAGES' }
+  // ── Phase 3: engine itinerary actions ────────────────────────
+  | { type: 'SET_ENGINE_ITINERARY'; itinerary: EngineItinerary | null }
+  | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary }
+  // ── Phase 3: map UI actions ───────────────────────────────────
+  | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
+  | { type: 'SET_MAP_FILTER'; filter: MapFilterChip };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -599,6 +635,63 @@ export function reducer(state: AppState, action: Action): AppState {
       document.documentElement.dataset.theme = action.theme;
       return { ...state, theme: action.theme };
     }
+
+    // ── Phase 3: city context cases ────────────────────────────
+
+    case 'SET_CITY_CONTEXTS':
+      return { ...state, cityContexts: action.contexts }
+
+    case 'ADD_CITY_CONTEXT': {
+      const exists = state.cityContexts.some(c => c.city === action.context.city)
+      if (exists) return state
+      return { ...state, cityContexts: [...state.cityContexts, action.context] }
+    }
+
+    case 'SET_ACTIVE_CITY_INDEX':
+      return { ...state, activeCityIndex: action.index }
+
+    case 'SET_DISCOVERY_MODE': {
+      if (action.cityIndex < 0 || action.cityIndex >= state.cityContexts.length) return state
+      const contexts = state.cityContexts.map((c, i) =>
+        i === action.cityIndex ? { ...c, discoveryMode: action.mode } : c
+      )
+      return { ...state, cityContexts: contexts }
+    }
+
+    // ── Phase 3: engine message cases ──────────────────────────
+
+    case 'ADD_ENGINE_MESSAGE':
+      return { ...state, engineMessages: [...state.engineMessages, action.message] }
+
+    case 'DISMISS_ENGINE_MESSAGE':
+      return {
+        ...state,
+        engineMessages: state.engineMessages.filter(m => m.id !== action.id),
+      }
+
+    case 'CLEAR_ENGINE_MESSAGES':
+      return { ...state, engineMessages: [] }
+
+    // ── Phase 3: engine itinerary cases ────────────────────────
+
+    case 'SET_ENGINE_ITINERARY':
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      return { ...state, engineItinerary: action.itinerary }
+
+    case 'PUSH_ITINERARY_HISTORY': {
+      const history = [action.itinerary, ...state.itineraryHistory].slice(0, 10)
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      ssSave('ur_ss_itin_history', history)
+      return { ...state, engineItinerary: action.itinerary, itineraryHistory: history }
+    }
+
+    // ── Phase 3: map UI cases ───────────────────────────────────
+
+    case 'SET_ACTIVE_PIN_ID':
+      return { ...state, activePinId: action.id }
+
+    case 'SET_MAP_FILTER':
+      return { ...state, mapFilter: action.filter }
 
     default:
       return state;

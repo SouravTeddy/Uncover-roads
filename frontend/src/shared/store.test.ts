@@ -208,3 +208,550 @@ describe('getGenerationAccess', () => {
     expect(getGenerationAccess('pro', 999, 0)).toEqual({ allowed: true, degraded: false });
   });
 });
+
+describe('Phase 3 types — EngineWeights and ArchetypeId', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('EngineWeights has all 10 dimensions', () => {
+    const w: import('./types').EngineWeights = {
+      w_walk_affinity: 0.9,
+      w_scenic: 0.8,
+      w_efficiency: 0.3,
+      w_food_density: 0.5,
+      w_culture_depth: 0.7,
+      w_nightlife: 0.2,
+      w_budget_sensitivity: 0.4,
+      w_crowd_aversion: 0.6,
+      w_spontaneity: 0.7,
+      w_rest_need: 0.5,
+    }
+    expect(Object.keys(w)).toHaveLength(10)
+    expect(w.w_walk_affinity).toBe(0.9)
+  })
+
+  it('ArchetypeId accepts all 7 valid values', () => {
+    const ids: import('./types').ArchetypeId[] = [
+      'wanderer', 'historian', 'epicurean',
+      'pulse', 'slowtraveller', 'voyager', 'explorer',
+    ]
+    expect(ids).toHaveLength(7)
+  })
+})
+
+describe('Phase 3 types — EngineMessage', () => {
+  it('EngineMessage has required fields', () => {
+    const msg: import('./types').EngineMessage = {
+      id: 'msg-001',
+      type: 'swap',
+      what: 'Moved Senso-ji to 8am',
+      why: 'It closes at 5pm — you\'d arrive at 4:30',
+      consequence: 'You now reach Ueno with 3 hours to spare',
+      dismissable: true,
+    }
+    expect(msg.type).toBe('swap')
+    expect(msg.dismissable).toBe(true)
+    expect(msg.undo_action).toBeUndefined()
+  })
+
+  it('EngineMessage with undo_action', () => {
+    const msg: import('./types').EngineMessage = {
+      id: 'msg-002',
+      type: 'resequence',
+      what: 'Reordered your afternoon',
+      why: 'Ueno closes at 5pm',
+      consequence: 'You arrive with 2 hours to spare',
+      dismissable: true,
+      undo_action: 'undo_resequence_day2',
+    }
+    expect(msg.undo_action).toBe('undo_resequence_day2')
+  })
+
+  it('EngineMessage accepts all valid type values', () => {
+    const types: import('./types').EngineMessage['type'][] = [
+      'swap', 'insert', 'resequence', 'weather', 'transit', 'advisory', 'event',
+    ]
+    expect(types).toHaveLength(7)
+  })
+})
+
+describe('Phase 3 types — map exploration', () => {
+  it('MapPin has all required fields', () => {
+    const pin: import('./types').MapPin = {
+      id: 'pin-001',
+      placeId: 'ChIJ123',
+      title: 'Senso-ji Temple',
+      lat: 35.7148,
+      lon: 139.7967,
+      layer: 'famous',
+      category: 'historic',
+      saved: false,
+      inItinerary: false,
+    }
+    expect(pin.layer).toBe('famous')
+    expect(pin.saved).toBe(false)
+    expect(pin.inItinerary).toBe(false)
+  })
+
+  it('MapPin layer accepts all 3 values', () => {
+    const layers: import('./types').PinLayer[] = ['famous', 'reference', 'user']
+    expect(layers).toHaveLength(3)
+  })
+
+  it('DiscoveryMode accepts anchor and deep', () => {
+    const modes: import('./types').DiscoveryMode[] = ['anchor', 'deep']
+    expect(modes).toHaveLength(2)
+  })
+
+  it('MapFilterChip accepts all valid values', () => {
+    const chips: import('./types').MapFilterChip[] = [
+      'all', 'famous', 'for_you', 'culture', 'food', 'parks', 'nightlife',
+    ]
+    expect(chips).toHaveLength(7)
+  })
+})
+
+describe('Phase 3 types — CityContext', () => {
+  it('CityContext has all required fields', () => {
+    const ctx: import('./types').CityContext = {
+      city: 'Tokyo',
+      countryCode: 'JP',
+      lat: 35.6762,
+      lon: 139.6503,
+      discoveryMode: 'deep',
+      startDate: '2026-06-01',
+      endDate: '2026-06-05',
+      days: 5,
+    }
+    expect(ctx.city).toBe('Tokyo')
+    expect(ctx.discoveryMode).toBe('deep')
+    expect(ctx.days).toBe(5)
+  })
+
+  it('CityContext allows null dates', () => {
+    const ctx: import('./types').CityContext = {
+      city: 'Kyoto',
+      countryCode: 'JP',
+      lat: 35.0116,
+      lon: 135.7681,
+      discoveryMode: 'anchor',
+      startDate: null,
+      endDate: null,
+      days: 0,
+    }
+    expect(ctx.startDate).toBeNull()
+    expect(ctx.endDate).toBeNull()
+  })
+})
+
+describe('Phase 3 types — EngineItinerary', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('EngineItineraryStop has all required fields', () => {
+    const stop: import('./types').EngineItineraryStop = {
+      id: 'stop-001',
+      placeId: 'ChIJ123',
+      title: 'Senso-ji',
+      area: 'Asakusa',
+      day: 1,
+      time: '09:00',
+      durationMin: 90,
+      category: 'historic',
+      lat: 35.7148,
+      lon: 139.7967,
+      priceLevel: 0,
+      rating: 4.6,
+      weekdayText: ['Monday: 6:00 AM – 5:00 PM'],
+      whyForYou: 'Perfect for your love of ancient spaces.',
+      localTip: 'The incense smoke is believed to bring good health.',
+      googleMapsUrl: null,
+      website: null,
+      photoRef: null,
+    }
+    expect(stop.day).toBe(1)
+    expect(stop.time).toBe('09:00')
+    expect(stop.durationMin).toBe(90)
+  })
+
+  it('EngineItineraryStop allows null optional fields', () => {
+    const stop: import('./types').EngineItineraryStop = {
+      id: 'stop-002',
+      placeId: 'ChIJ456',
+      title: 'Coffee Stop',
+      area: 'Shinjuku',
+      day: 1,
+      time: '11:00',
+      durationMin: 30,
+      category: 'cafe',
+      lat: 35.6896,
+      lon: 139.7006,
+      priceLevel: null,
+      rating: null,
+      weekdayText: [],
+      whyForYou: 'A calm moment mid-morning.',
+      localTip: null,
+      googleMapsUrl: null,
+      website: null,
+      photoRef: null,
+    }
+    expect(stop.priceLevel).toBeNull()
+    expect(stop.localTip).toBeNull()
+  })
+
+  it('EngineItineraryDay has required fields', () => {
+    const day: import('./types').EngineItineraryDay = {
+      day: 1,
+      date: '2026-06-01',
+      city: 'Tokyo',
+      isTravel: false,
+      stops: [],
+      messages: [],
+    }
+    expect(day.day).toBe(1)
+    expect(day.isTravel).toBe(false)
+  })
+
+  it('EngineItineraryDay isTravel true has no stops', () => {
+    const travelDay: import('./types').EngineItineraryDay = {
+      day: 3,
+      date: '2026-06-03',
+      city: 'Tokyo',
+      isTravel: true,
+      stops: [],
+      messages: [],
+    }
+    expect(travelDay.isTravel).toBe(true)
+    expect(travelDay.stops).toHaveLength(0)
+  })
+
+  it('EngineItinerary has all required fields', () => {
+    const weights: import('./types').EngineWeights = {
+      w_walk_affinity: 0.9, w_scenic: 0.8, w_efficiency: 0.3,
+      w_food_density: 0.5, w_culture_depth: 0.7, w_nightlife: 0.2,
+      w_budget_sensitivity: 0.4, w_crowd_aversion: 0.6,
+      w_spontaneity: 0.7, w_rest_need: 0.5,
+    }
+    const itin: import('./types').EngineItinerary = {
+      id: 'itin-001',
+      generatedAt: '2026-06-01T08:00:00Z',
+      cities: ['Tokyo'],
+      days: [],
+      personaSnapshot: weights,
+      archetypeSnapshot: 'wanderer',
+    }
+    expect(itin.cities).toEqual(['Tokyo'])
+    expect(itin.archetypeSnapshot).toBe('wanderer')
+  })
+})
+
+describe('Phase 3 — initialState new fields', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('initialState has cityContexts as empty array', () => {
+    expect(initialState.cityContexts).toEqual([])
+  })
+
+  it('initialState has activeCityIndex as 0', () => {
+    expect(initialState.activeCityIndex).toBe(0)
+  })
+
+  it('initialState has engineMessages as empty array', () => {
+    expect(initialState.engineMessages).toEqual([])
+  })
+
+  it('initialState has engineItinerary as null', () => {
+    expect(initialState.engineItinerary).toBeNull()
+  })
+
+  it('initialState has itineraryHistory as empty array', () => {
+    expect(initialState.itineraryHistory).toEqual([])
+  })
+
+  it('initialState has activePinId as null', () => {
+    expect(initialState.activePinId).toBeNull()
+  })
+
+  it('initialState has mapFilter as "all"', () => {
+    expect(initialState.mapFilter).toBe('all')
+  })
+})
+
+describe('Phase 3 — city context reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const tokyoCtx: import('./types').CityContext = {
+    city: 'Tokyo', countryCode: 'JP', lat: 35.67, lon: 139.65,
+    discoveryMode: 'anchor', startDate: '2026-06-01', endDate: '2026-06-05', days: 5,
+  }
+  const kyotoCtx: import('./types').CityContext = {
+    city: 'Kyoto', countryCode: 'JP', lat: 35.01, lon: 135.76,
+    discoveryMode: 'deep', startDate: '2026-06-06', endDate: '2026-06-08', days: 3,
+  }
+
+  it('SET_CITY_CONTEXTS replaces all contexts', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'SET_CITY_CONTEXTS', contexts: [kyotoCtx] })
+    expect(next.cityContexts).toEqual([kyotoCtx])
+  })
+
+  it('ADD_CITY_CONTEXT appends a new city', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'ADD_CITY_CONTEXT', context: kyotoCtx })
+    expect(next.cityContexts).toHaveLength(2)
+    expect(next.cityContexts[1].city).toBe('Kyoto')
+  })
+
+  it('ADD_CITY_CONTEXT is a no-op if city already exists', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'ADD_CITY_CONTEXT', context: tokyoCtx })
+    expect(next.cityContexts).toHaveLength(1)
+  })
+
+  it('SET_ACTIVE_CITY_INDEX updates the index', () => {
+    const state = { ...initialState, activeCityIndex: 0 }
+    const next = reducer(state, { type: 'SET_ACTIVE_CITY_INDEX', index: 1 })
+    expect(next.activeCityIndex).toBe(1)
+  })
+
+  it('SET_DISCOVERY_MODE updates discovery mode for the correct city', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx, kyotoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 0, mode: 'deep' })
+    expect(next.cityContexts[0].discoveryMode).toBe('deep')
+    expect(next.cityContexts[1].discoveryMode).toBe('deep') // kyoto unchanged
+  })
+
+  it('SET_DISCOVERY_MODE does not mutate other cities', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx, kyotoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 0, mode: 'deep' })
+    expect(next.cityContexts[1].city).toBe('Kyoto')
+    expect(next.cityContexts[1].discoveryMode).toBe('deep') // kyoto was already 'deep'
+  })
+
+  it('SET_DISCOVERY_MODE returns state unchanged if index out of range', () => {
+    const state = { ...initialState, cityContexts: [tokyoCtx] }
+    const next = reducer(state, { type: 'SET_DISCOVERY_MODE', cityIndex: 5, mode: 'deep' })
+    expect(next.cityContexts).toEqual([tokyoCtx])
+  })
+})
+
+describe('Phase 3 — engine message reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const msg1: import('./types').EngineMessage = {
+    id: 'msg-001',
+    type: 'swap',
+    what: 'Moved Senso-ji to 8am',
+    why: 'It closes at 5pm',
+    consequence: 'You arrive at Ueno with 3 hours to spare',
+    dismissable: true,
+  }
+  const msg2: import('./types').EngineMessage = {
+    id: 'msg-002',
+    type: 'weather',
+    what: 'Moved outdoor stops indoors',
+    why: 'Rain forecast from 2pm',
+    consequence: 'Your afternoon stays on schedule',
+    dismissable: true,
+  }
+
+  it('ADD_ENGINE_MESSAGE appends to empty list', () => {
+    const next = reducer(initialState, { type: 'ADD_ENGINE_MESSAGE', message: msg1 })
+    expect(next.engineMessages).toEqual([msg1])
+  })
+
+  it('ADD_ENGINE_MESSAGE appends to existing list', () => {
+    const state = { ...initialState, engineMessages: [msg1] }
+    const next = reducer(state, { type: 'ADD_ENGINE_MESSAGE', message: msg2 })
+    expect(next.engineMessages).toHaveLength(2)
+    expect(next.engineMessages[1].id).toBe('msg-002')
+  })
+
+  it('DISMISS_ENGINE_MESSAGE removes by id', () => {
+    const state = { ...initialState, engineMessages: [msg1, msg2] }
+    const next = reducer(state, { type: 'DISMISS_ENGINE_MESSAGE', id: 'msg-001' })
+    expect(next.engineMessages).toHaveLength(1)
+    expect(next.engineMessages[0].id).toBe('msg-002')
+  })
+
+  it('DISMISS_ENGINE_MESSAGE is a no-op for unknown id', () => {
+    const state = { ...initialState, engineMessages: [msg1] }
+    const next = reducer(state, { type: 'DISMISS_ENGINE_MESSAGE', id: 'does-not-exist' })
+    expect(next.engineMessages).toEqual([msg1])
+  })
+
+  it('CLEAR_ENGINE_MESSAGES empties the list', () => {
+    const state = { ...initialState, engineMessages: [msg1, msg2] }
+    const next = reducer(state, { type: 'CLEAR_ENGINE_MESSAGES' })
+    expect(next.engineMessages).toEqual([])
+  })
+
+  it('CLEAR_ENGINE_MESSAGES is a no-op on empty list', () => {
+    const next = reducer(initialState, { type: 'CLEAR_ENGINE_MESSAGES' })
+    expect(next.engineMessages).toEqual([])
+  })
+})
+
+describe('Phase 3 — engine itinerary reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+    stubStorage.setItem.mockClear()
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  const weights: import('./types').EngineWeights = {
+    w_walk_affinity: 0.9, w_scenic: 0.8, w_efficiency: 0.3,
+    w_food_density: 0.5, w_culture_depth: 0.7, w_nightlife: 0.2,
+    w_budget_sensitivity: 0.4, w_crowd_aversion: 0.6,
+    w_spontaneity: 0.7, w_rest_need: 0.5,
+  }
+  const itin1: import('./types').EngineItinerary = {
+    id: 'itin-001', generatedAt: '2026-06-01T08:00:00Z',
+    cities: ['Tokyo'], days: [], personaSnapshot: weights, archetypeSnapshot: 'wanderer',
+  }
+  const itin2: import('./types').EngineItinerary = {
+    id: 'itin-002', generatedAt: '2026-06-02T09:00:00Z',
+    cities: ['Tokyo'], days: [], personaSnapshot: weights, archetypeSnapshot: 'wanderer',
+  }
+
+  it('SET_ENGINE_ITINERARY sets the itinerary', () => {
+    const next = reducer(initialState, { type: 'SET_ENGINE_ITINERARY', itinerary: itin1 })
+    expect(next.engineItinerary).toEqual(itin1)
+  })
+
+  it('SET_ENGINE_ITINERARY null clears the itinerary', () => {
+    const state = { ...initialState, engineItinerary: itin1 }
+    const next = reducer(state, { type: 'SET_ENGINE_ITINERARY', itinerary: null })
+    expect(next.engineItinerary).toBeNull()
+  })
+
+  it('SET_ENGINE_ITINERARY persists to localStorage', () => {
+    reducer(initialState, { type: 'SET_ENGINE_ITINERARY', itinerary: itin1 })
+    expect(stubStorage.setItem).toHaveBeenCalledWith(
+      'ur_ss_engine_itin',
+      JSON.stringify(itin1),
+    )
+  })
+
+  it('PUSH_ITINERARY_HISTORY sets new itinerary as current', () => {
+    const next = reducer(initialState, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin1 })
+    expect(next.engineItinerary).toEqual(itin1)
+  })
+
+  it('PUSH_ITINERARY_HISTORY adds to history', () => {
+    const state = { ...initialState, engineItinerary: itin1, itineraryHistory: [] }
+    const next = reducer(state, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin2 })
+    expect(next.itineraryHistory[0]).toEqual(itin2)
+    expect(next.engineItinerary).toEqual(itin2)
+  })
+
+  it('PUSH_ITINERARY_HISTORY caps history at 10', () => {
+    const manyItins: import('./types').EngineItinerary[] = Array.from({ length: 10 }, (_, i) => ({
+      ...itin1, id: `itin-old-${i}`,
+    }))
+    const state = { ...initialState, itineraryHistory: manyItins }
+    const next = reducer(state, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin2 })
+    expect(next.itineraryHistory).toHaveLength(10)
+    expect(next.itineraryHistory[0].id).toBe('itin-002')
+  })
+
+  it('PUSH_ITINERARY_HISTORY persists to localStorage', () => {
+    reducer(initialState, { type: 'PUSH_ITINERARY_HISTORY', itinerary: itin1 })
+    expect(stubStorage.setItem).toHaveBeenCalledWith('ur_ss_engine_itin', JSON.stringify(itin1))
+    expect(stubStorage.setItem).toHaveBeenCalledWith('ur_ss_itin_history', JSON.stringify([itin1]))
+  })
+})
+
+describe('Phase 3 — map UI reducer actions', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('SET_ACTIVE_PIN_ID sets the pin id', () => {
+    const next = reducer(initialState, { type: 'SET_ACTIVE_PIN_ID', id: 'pin-001' })
+    expect(next.activePinId).toBe('pin-001')
+  })
+
+  it('SET_ACTIVE_PIN_ID null closes the card', () => {
+    const state = { ...initialState, activePinId: 'pin-001' }
+    const next = reducer(state, { type: 'SET_ACTIVE_PIN_ID', id: null })
+    expect(next.activePinId).toBeNull()
+  })
+
+  it('SET_MAP_FILTER updates the filter', () => {
+    const next = reducer(initialState, { type: 'SET_MAP_FILTER', filter: 'culture' })
+    expect(next.mapFilter).toBe('culture')
+  })
+
+  it('SET_MAP_FILTER accepts all valid values', () => {
+    const filters: import('./types').MapFilterChip[] = [
+      'all', 'famous', 'for_you', 'culture', 'food', 'parks', 'nightlife',
+    ]
+    for (const filter of filters) {
+      const next = reducer(initialState, { type: 'SET_MAP_FILTER', filter })
+      expect(next.mapFilter).toBe(filter)
+    }
+  })
+
+  it('SET_MAP_FILTER back to all', () => {
+    const state = { ...initialState, mapFilter: 'culture' as import('./types').MapFilterChip }
+    const next = reducer(state, { type: 'SET_MAP_FILTER', filter: 'all' })
+    expect(next.mapFilter).toBe('all')
+  })
+})
