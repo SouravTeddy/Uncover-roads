@@ -437,3 +437,33 @@ export interface SwapCard {
   resolved: boolean;
   choice: 'new' | 'original' | null;
 }
+
+// ── Engine architecture types (Phase 3) ──────────────────────
+
+/**
+ * 10-dimension weight vector produced by the OB resolver.
+ * Used for cosine similarity archetype resolution and as engine
+ * input for every sequencing/insert/swap decision.
+ */
+export interface EngineWeights {
+  w_walk_affinity: number       // 0–1: enjoyment of walking
+  w_scenic: number              // 0–1: scenic routes vs efficient
+  w_efficiency: number          // 0–1: tight schedule preference
+  w_food_density: number        // 0–1: frequency of food/cafe inserts
+  w_culture_depth: number       // 0–1: depth at cultural sites
+  w_nightlife: number           // 0–1: evening/night weighting
+  w_budget_sensitivity: number  // 0–1: penalise expensive inserts
+  w_crowd_aversion: number      // 0–1: avoid high-crowd times
+  w_spontaneity: number         // 0–1: openness to detours
+  w_rest_need: number           // 0–1: frequency of rest breaks
+}
+
+/** The 7 traveller archetypes resolved via cosine similarity against EngineWeights. */
+export type ArchetypeId =
+  | 'wanderer'
+  | 'historian'
+  | 'epicurean'
+  | 'pulse'
+  | 'slowtraveller'
+  | 'voyager'
+  | 'explorer'

@@ -208,3 +208,41 @@ describe('getGenerationAccess', () => {
     expect(getGenerationAccess('pro', 999, 0)).toEqual({ allowed: true, degraded: false });
   });
 });
+
+describe('Phase 3 types — EngineWeights and ArchetypeId', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('EngineWeights has all 10 dimensions', () => {
+    const w: import('./types').EngineWeights = {
+      w_walk_affinity: 0.9,
+      w_scenic: 0.8,
+      w_efficiency: 0.3,
+      w_food_density: 0.5,
+      w_culture_depth: 0.7,
+      w_nightlife: 0.2,
+      w_budget_sensitivity: 0.4,
+      w_crowd_aversion: 0.6,
+      w_spontaneity: 0.7,
+      w_rest_need: 0.5,
+    }
+    expect(Object.keys(w)).toHaveLength(10)
+    expect(w.w_walk_affinity).toBe(0.9)
+  })
+
+  it('ArchetypeId accepts all 7 valid values', () => {
+    const ids: import('./types').ArchetypeId[] = [
+      'wanderer', 'historian', 'epicurean',
+      'pulse', 'slowtraveller', 'voyager', 'explorer',
+    ]
+    expect(ids).toHaveLength(7)
+  })
+})
