@@ -460,3 +460,44 @@ describe('Phase 3 types — EngineItinerary', () => {
     expect(itin.archetypeSnapshot).toBe('wanderer')
   })
 })
+
+describe('Phase 3 — initialState new fields', () => {
+  const stubStorage = {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+  }
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', stubStorage)
+    vi.stubGlobal('sessionStorage', stubStorage)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('initialState has cityContexts as empty array', () => {
+    expect(initialState.cityContexts).toEqual([])
+  })
+
+  it('initialState has activeCityIndex as 0', () => {
+    expect(initialState.activeCityIndex).toBe(0)
+  })
+
+  it('initialState has engineMessages as empty array', () => {
+    expect(initialState.engineMessages).toEqual([])
+  })
+
+  it('initialState has engineItinerary as null', () => {
+    expect(initialState.engineItinerary).toBeNull()
+  })
+
+  it('initialState has itineraryHistory as empty array', () => {
+    expect(initialState.itineraryHistory).toEqual([])
+  })
+
+  it('initialState has activePinId as null', () => {
+    expect(initialState.activePinId).toBeNull()
+  })
+
+  it('initialState has mapFilter as "all"', () => {
+    expect(initialState.mapFilter).toBe('all')
+  })
+})

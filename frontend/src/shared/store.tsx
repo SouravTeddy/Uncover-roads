@@ -23,6 +23,17 @@ import type {
   ReferencePin,
   FavouritedPin,
   CityFootprint,
+  EngineWeights,
+  ArchetypeId,
+  EngineMessage,
+  DiscoveryMode,
+  PinLayer,
+  MapPin,
+  MapFilterChip,
+  CityContext,
+  EngineItineraryStop,
+  EngineItineraryDay,
+  EngineItinerary,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -88,6 +99,14 @@ export interface AppState {
   favouritedPins: FavouritedPin[];
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: CityContext[]          // one per city in current multi-city trip
+  activeCityIndex: number              // index into cityContexts — which city is active
+  engineMessages: EngineMessage[]      // current session engine decision banners (transient)
+  engineItinerary: EngineItinerary | null  // current engine-built itinerary
+  itineraryHistory: EngineItinerary[]  // previous generations — max 10
+  activePinId: string | null           // which pin card is currently shown
+  mapFilter: MapFilterChip             // active filter chip in the map filter bar
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -258,6 +277,14 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: [],
+  activeCityIndex: 0,
+  engineMessages: [],
+  engineItinerary: ssGet<EngineItinerary>('ur_ss_engine_itin') ?? null,
+  itineraryHistory: ssGet<EngineItinerary[]>('ur_ss_itin_history') ?? [],
+  activePinId: null,
+  mapFilter: 'all' as MapFilterChip,
 };
 
 // ── Actions ───────────────────────────────────────────────────
