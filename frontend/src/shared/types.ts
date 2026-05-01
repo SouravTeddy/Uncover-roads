@@ -482,3 +482,41 @@ export interface EngineMessage {
   dismissable: boolean
   undo_action?: string         // action key to reverse this decision
 }
+
+// ── Map exploration types (Phase 3) ──────────────────────────
+
+/**
+ * discovery_mode is set per city.
+ *   anchor → full famous layer shown (essentials)
+ *   deep   → famous layer de-emphasised, hidden gem pins boosted
+ */
+export type DiscoveryMode = 'anchor' | 'deep'
+
+/** Which of the three simultaneous pin layers a pin belongs to. */
+export type PinLayer = 'famous' | 'reference' | 'user'
+
+/**
+ * Unified pin type for the rebuilt map screen.
+ * Replaces the split between Place (famous) and ReferencePin (reference)
+ * and selectedPlaces (user-added).
+ */
+export interface MapPin {
+  id: string           // unique pin ID (may be place_id for famous, uuid for reference)
+  placeId: string      // Google place_id
+  title: string
+  lat: number
+  lon: number
+  layer: PinLayer
+  category: Category
+  saved: boolean       // ❤️ bookmarked — NOT in itinerary
+  inItinerary: boolean // blue ring — user explicitly added to trip
+}
+
+/**
+ * Filter chips in the map filter bar.
+ *   all       → show all pins
+ *   famous    → ★ Famous layer only
+ *   for_you   → ✦ Reference ghost layer only
+ *   culture/food/parks/nightlife → filter by category
+ */
+export type MapFilterChip = 'all' | 'famous' | 'for_you' | 'culture' | 'food' | 'parks' | 'nightlife'

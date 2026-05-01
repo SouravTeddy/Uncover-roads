@@ -282,3 +282,39 @@ describe('Phase 3 types — EngineMessage', () => {
     expect(types).toHaveLength(7)
   })
 })
+
+describe('Phase 3 types — map exploration', () => {
+  it('MapPin has all required fields', () => {
+    const pin: import('./types').MapPin = {
+      id: 'pin-001',
+      placeId: 'ChIJ123',
+      title: 'Senso-ji Temple',
+      lat: 35.7148,
+      lon: 139.7967,
+      layer: 'famous',
+      category: 'historic',
+      saved: false,
+      inItinerary: false,
+    }
+    expect(pin.layer).toBe('famous')
+    expect(pin.saved).toBe(false)
+    expect(pin.inItinerary).toBe(false)
+  })
+
+  it('MapPin layer accepts all 3 values', () => {
+    const layers: import('./types').PinLayer[] = ['famous', 'reference', 'user']
+    expect(layers).toHaveLength(3)
+  })
+
+  it('DiscoveryMode accepts anchor and deep', () => {
+    const modes: import('./types').DiscoveryMode[] = ['anchor', 'deep']
+    expect(modes).toHaveLength(2)
+  })
+
+  it('MapFilterChip accepts all valid values', () => {
+    const chips: import('./types').MapFilterChip[] = [
+      'all', 'famous', 'for_you', 'culture', 'food', 'parks', 'nightlife',
+    ]
+    expect(chips).toHaveLength(7)
+  })
+})
