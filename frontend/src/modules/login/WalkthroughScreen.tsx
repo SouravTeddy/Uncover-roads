@@ -74,7 +74,7 @@ const CARDS = [
     cta: 'Get started',
     hideSkip: true,
   },
-] as const
+]
 
 const textVariants = {
   hidden: {},
@@ -116,7 +116,7 @@ export function WalkthroughScreen() {
 
   const slideVariants = {
     enter:  (d: number) => ({ x: d > 0 ? '60%' : '-60%', opacity: 0 }),
-    center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: [0.25, 1, 0.5, 1] } },
+    center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: [0.25, 1, 0.5, 1] as [number,number,number,number] } },
     exit:   (d: number) => ({ x: d > 0 ? '-60%' : '60%', opacity: 0, transition: { duration: 0.25 } }),
   }
 
