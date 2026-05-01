@@ -55,6 +55,13 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     cityFootprints: [],
     similarPinsState: null,
     theme: 'dark',
+    cityContexts: [],
+    activeCityIndex: 0,
+    engineMessages: [],
+    engineItinerary: null,
+    itineraryHistory: [],
+    activePinId: null,
+    mapFilter: 'all',
     ...overrides,
   };
 }
