@@ -318,3 +318,36 @@ describe('Phase 3 types — map exploration', () => {
     expect(chips).toHaveLength(7)
   })
 })
+
+describe('Phase 3 types — CityContext', () => {
+  it('CityContext has all required fields', () => {
+    const ctx: import('./types').CityContext = {
+      city: 'Tokyo',
+      countryCode: 'JP',
+      lat: 35.6762,
+      lon: 139.6503,
+      discoveryMode: 'deep',
+      startDate: '2026-06-01',
+      endDate: '2026-06-05',
+      days: 5,
+    }
+    expect(ctx.city).toBe('Tokyo')
+    expect(ctx.discoveryMode).toBe('deep')
+    expect(ctx.days).toBe(5)
+  })
+
+  it('CityContext allows null dates', () => {
+    const ctx: import('./types').CityContext = {
+      city: 'Kyoto',
+      countryCode: 'JP',
+      lat: 35.0116,
+      lon: 135.7681,
+      discoveryMode: 'anchor',
+      startDate: null,
+      endDate: null,
+      days: 0,
+    }
+    expect(ctx.startDate).toBeNull()
+    expect(ctx.endDate).toBeNull()
+  })
+})

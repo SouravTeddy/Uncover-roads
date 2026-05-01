@@ -520,3 +520,19 @@ export interface MapPin {
  *   culture/food/parks/nightlife → filter by category
  */
 export type MapFilterChip = 'all' | 'famous' | 'for_you' | 'culture' | 'food' | 'parks' | 'nightlife'
+
+/**
+ * Context for a single city in the current trip session.
+ * One CityContext per city — multi-city trips have an array of these.
+ * discovery_mode is set per city when the city first loads.
+ */
+export interface CityContext {
+  city: string
+  countryCode: string
+  lat: number
+  lon: number
+  discoveryMode: DiscoveryMode
+  startDate: string | null   // ISO date "YYYY-MM-DD"
+  endDate: string | null     // ISO date "YYYY-MM-DD"
+  days: number               // computed from date range or 1 if no dates set
+}
