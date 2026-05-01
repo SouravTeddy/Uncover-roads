@@ -9,20 +9,6 @@ import { OBBackground } from './OBBackground';
 import { PersonaSilhouette } from './PersonaSilhouette';
 import { getLayerUpdatesForAnswer, resolveLayerState } from './ob-layers';
 import type { OBLayerUpdate } from './ob-layers';
-import type { RawOBAnswers } from '../../shared/types';
-
-// 3-act onboarding sequence
-const OB_STEPS = [
-  'group',        // OB1 — who's coming
-  'mood',         // OB2 — what pulls you to travel (emotional hook)
-  'pace',         // OB3 — pace in a new city
-  'movement',     // OB4 — how you move
-  'crowd',        // OB5 — crowds (was OB2 sub-question, now standalone)
-  'spontaneity',  // OB6 — planning vs winging it
-  'evening',      // OB7 — how your evening ends
-  'budget',       // OB8 — money mindset
-  'dietary',      // OB9 — needs (now last)
-] as const
 
 
 interface Props {
