@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
-import type { Place, MapFilter, Category } from '../../shared/types';
+import type { Place, MapFilter, Category, DiscoveryMode } from '../../shared/types';
 import { isCurationLocked } from '../../shared/tier';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchNudge } from './SearchNudge';
@@ -14,7 +14,6 @@ import {
 } from './useSmartSearch';
 import type { NominatimResult, SuggestedChip } from './useSmartSearch';
 import type { MapHandle } from './MapLibreMap';
-import { TripPlanningCard } from './TripPlanningCard';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
@@ -27,7 +26,12 @@ import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { JourneyStrip } from '../journey';
-import { FavoritesMarker, FavoritesSheet } from './FavoritesLayer';
+import { FamousPinsLayer } from './FamousPinsLayer';
+import { ReferencePinsLayer } from './ReferencePinsLayer';
+import { UserPinsLayer } from './UserPinsLayer';
+import { DiscoveryModeToggle } from './DiscoveryModeToggle';
+import { SurpriseMeButton } from './SurpriseMeButton';
+import { BuildItineraryBar } from './BuildItineraryBar';
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -51,6 +55,11 @@ export function MapScreen() {
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
   const personaProfile = state.personaProfile ?? null;
+
+  // New store state for phase 4
+  const { activePinId, cityContexts, activeCityIndex, favouritedPins } = state;
+  const activeDiscoveryMode: DiscoveryMode = cityContexts[activeCityIndex]?.discoveryMode ?? 'anchor';
+  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
 
   // Session cache for PinCard persona insights
   const insightCacheRef = useRef(new Map<string, string>());
@@ -78,25 +87,18 @@ export function MapScreen() {
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
-    () => new Set(state.favouritedPins.map(f => f.placeId)),
-    [state.favouritedPins],
+    () => new Set(favouritedPins.map(f => f.placeId)),
+    [favouritedPins],
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
   const { triggerSimilar } = useSimilarPins();
-  const handlePinClick = useCallback((p: Place) => {
-    setClusterGroup(null);
-    setActivePlace(p);
-    fetchDetails(p);
-    trackViewedCategory(p.category);
-  }, [setActivePlace, fetchDetails, trackViewedCategory]);
+
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const clusterSheetRef    = useRef<HTMLDivElement>(null);
   const clusterTouchStartY = useRef(0);
   const clusterDragY       = useRef(0);
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [showTripSheet, setShowTripSheet] = useState(false);
-  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
 
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
@@ -418,6 +420,54 @@ export function MapScreen() {
     if (glowTimerRef.current !== null) { clearTimeout(glowTimerRef.current); glowTimerRef.current = null; }
   }
 
+  // ── Phase 4: new pin click handler — updates both local and store state ──
+  const handlePinClick = useCallback((placeId: string) => {
+    setClusterGroup(null);
+    const found =
+      places.find(p => p.id === placeId) ??
+      state.referencePins.find(p => p.id === placeId) ??
+      selectedPlaces.find(p => p.id === placeId) ?? null;
+    if (found) {
+      setActivePlace(found as Place);
+      fetchDetails(found as Place);
+      trackViewedCategory((found as Place).category);
+    }
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: placeId });
+  }, [places, state.referencePins, selectedPlaces, setActivePlace, fetchDetails, trackViewedCategory, dispatch]);
+
+  const handlePinCardClose = useCallback(() => {
+    setActivePlace(null);
+    clearDetails();
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
+  }, [setActivePlace, clearDetails, dispatch]);
+
+  // Discovery mode toggle
+  const handleDiscoveryModeChange = useCallback((mode: DiscoveryMode) => {
+    dispatch({ type: 'SET_DISCOVERY_MODE', cityIndex: activeCityIndex, mode });
+  }, [activeCityIndex, dispatch]);
+
+  // Surprise Me — calls backend, navigates to route screen
+  const handleSurprise = useCallback(async () => {
+    if (!city || !personaProfile) return;
+    dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
+    try {
+      const res = await fetch('/api/itinerary/surprise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city, days: activeCityDays || 1, persona: personaProfile }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result });
+        dispatch({ type: 'GO_TO', screen: 'route' });
+      }
+    } catch { /* silence */ }
+  }, [city, personaProfile, activeCityDays, dispatch]);
+
+  const isFavourited = activePlace
+    ? favouritedIds.has(activePlace.id)
+    : false;
+
   const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
     all:         places.length,
@@ -447,19 +497,30 @@ export function MapScreen() {
         ref={mapHandleRef}
         center={center}
         zoom={cityGeo ? 13 : 2}
-        places={filteredPlaces}
-        selectedPlace={activePlace}
+        places={[]}
+        selectedPlace={null}
         highlightIds={highlightIds}
-        onPlaceClick={handlePinClick}
+        onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
       >
-        {!activePlace && state.favouritedPins.length > 0 && (
-          <FavoritesMarker
-            pins={state.favouritedPins}
-            onClick={() => setShowFavoritesSheet(true)}
-          />
-        )}
+        <FamousPinsLayer
+          places={filteredPlaces}
+          activePlaceId={activePinId}
+          discoveryMode={activeDiscoveryMode}
+          onPinClick={handlePinClick}
+        />
+        <ReferencePinsLayer
+          pins={state.referencePins}
+          activePinId={activePinId}
+          onPinClick={handlePinClick}
+        />
+        <UserPinsLayer
+          itineraryPlaces={selectedPlaces}
+          favouritedPins={favouritedPins}
+          activePinId={activePinId}
+          onPinClick={handlePinClick}
+        />
       </MapLibreMap>
 
       {/* Initial load overlay */}
@@ -482,17 +543,6 @@ export function MapScreen() {
           >
             <span className="ms text-text-2 text-base">arrow_back</span>
           </button>
-
-          {state.favouritedPins.length > 0 && (
-            <button
-              onClick={() => setShowFavoritesSheet(true)}
-              className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
-              style={{ background: 'rgba(15,20,30,.82)', fontSize: 16, lineHeight: 1 }}
-              aria-label="View saved places"
-            >
-              ❤️
-            </button>
-          )}
 
           {/* Search input */}
           <div className="flex-1 relative">
@@ -670,7 +720,7 @@ export function MapScreen() {
               return (
                 <button
                   key={place.id}
-                  onClick={() => { setClusterGroup(null); handlePinClick(place); }}
+                  onClick={() => handlePinClick(place.id)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-white/5"
                   style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,.06)' : undefined }}
                 >
@@ -692,25 +742,18 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Favorites sheet */}
-      {showFavoritesSheet && !activePlace && (
-        <FavoritesSheet
-          pins={state.favouritedPins}
-          onClose={() => setShowFavoritesSheet(false)}
-          onSelect={(pin) => {
-            setShowFavoritesSheet(false);
-            const place: Place = {
-              id: pin.placeId,
-              title: pin.title,
-              lat: pin.lat,
-              lon: pin.lon,
-              category: 'place',
-              _city: pin.city,
-            };
-            mapHandleRef.current?.flyTo(pin.lat, pin.lon);
-            handlePinClick(place);
-          }}
-        />
+      {/* Discovery mode toggle (bottom-left) */}
+      {city && (
+        <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, left: 12, zIndex: 19 }}>
+          <DiscoveryModeToggle mode={activeDiscoveryMode} onChange={handleDiscoveryModeChange} />
+        </div>
+      )}
+
+      {/* Surprise Me (bottom-right) */}
+      {city && (
+        <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, right: 12, zIndex: 19 }}>
+          <SurpriseMeButton onSurprise={handleSurprise} />
+        </div>
       )}
 
       {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
@@ -720,9 +763,9 @@ export function MapScreen() {
           city={city}
           isSelected={selectedIds.has(activePlace.id)}
           onAdd={() => togglePlace(activePlace)}
-          onClose={() => { setActivePlace(null); clearDetails(); }}
+          onClose={handlePinCardClose}
           details={details}
-          isFavourited={activePlace ? favouritedIds.has(activePlace.id) : false}
+          isFavourited={isFavourited}
           onSimilar={() => {
             if (!activePlace) return;
             triggerSimilar({
@@ -754,40 +797,12 @@ export function MapScreen() {
         />
       )}
 
-      {/* Itinerary bar — shown only when no pin sheet is open */}
-      {!activePlace && selectedPlaces.length >= 2 && (
-        <div
-          className="absolute inset-x-4"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
-        >
-          <div
-            className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
-            style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
-          >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex -space-x-1.5">
-                {selectedPlaces.slice(0, 5).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-4 h-4 rounded-full border-2"
-                    style={{ background: '#ffffff', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
-                  />
-                ))}
-              </div>
-              <span className="text-text-1 text-sm font-semibold">{selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}</span>
-              <span className="text-text-3 text-xs">added</span>
-            </div>
-            <button
-              onClick={() => setShowTripSheet(true)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
-              style={{ fontSize: 12 }}
-            >
-              <span className="ms fill" style={{ fontSize: 14 }}>auto_fix</span>
-              Build Itinerary
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Build itinerary bar — uses portal, renders when places added */}
+      <BuildItineraryBar
+        itineraryPlaces={selectedPlaces}
+        days={activeCityDays}
+        onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
+      />
 
       {/* Error state */}
       {!loading && error && (
@@ -806,12 +821,6 @@ export function MapScreen() {
           </div>
           {city && <button onClick={() => handleAreaLoad(cityGeo?.lat ?? 0, cityGeo?.lon ?? 0, 5000, true)} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
-      )}
-
-      {showTripSheet && (
-        <TripPlanningCard
-          onClose={() => setShowTripSheet(false)}
-        />
       )}
     </div>
   );
