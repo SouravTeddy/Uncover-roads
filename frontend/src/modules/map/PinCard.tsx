@@ -220,12 +220,12 @@ export function PinCard({
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '4px 10px', borderRadius: 99, marginBottom: 8,
-              background: dateAlert.type === 'warning' ? 'rgba(234,179,8,.12)' : 'rgba(34,197,94,.1)',
-              border: `1px solid ${dateAlert.type === 'warning' ? 'rgba(234,179,8,.3)' : 'rgba(34,197,94,.3)'}`,
+              background: dateAlert.status === 'closed' ? 'rgba(234,179,8,.12)' : 'rgba(34,197,94,.1)',
+              border: `1px solid ${dateAlert.status === 'closed' ? 'rgba(234,179,8,.3)' : 'rgba(34,197,94,.3)'}`,
               fontSize: '0.7rem', fontWeight: 700,
-              color: dateAlert.type === 'warning' ? '#fbbf24' : '#86efac',
+              color: dateAlert.status === 'closed' ? '#fbbf24' : '#86efac',
             }}>
-              {dateAlert.type === 'warning' ? '⚠️' : '✓'} {dateAlert.label}
+              {dateAlert.status === 'closed' ? '⚠️' : '✓'} {dateAlert.text}
             </div>
           )}
 
