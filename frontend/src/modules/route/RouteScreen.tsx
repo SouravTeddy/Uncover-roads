@@ -10,7 +10,7 @@ import { FootprintChips } from '../map/FootprintChips';
 import { PinCard } from '../map/PinCard';
 import { SimilarPinsBanner, useSimilarPins } from '../map/SimilarPins';
 import { usePlaceDetails } from '../map/usePlaceDetails';
-import { FavoritesMarker, FavoritesSheet } from '../map/FavoritesLayer';
+// FavoritesMarker, FavoritesSheet removed — FavoritesLayer deleted in Phase 4, replaced by per-pin state in Phase 6
 import { ItineraryMapCard } from './ItineraryMapCard';
 import { ItineraryPlaceCard } from './ItineraryPlaceCard';
 import type { Place, ReferencePin, FavouritedPin } from '../../shared/types';
@@ -32,7 +32,7 @@ export function RouteScreen() {
   const [itineraryActiveStop, setItineraryActiveStop] = useState(0);
   const [showSequencingReveal, setShowSequencingReveal] = useState(false);
   const [sequencingNote, setSequencingNote] = useState<string | null>(null);
-  const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
+  // showFavoritesSheet removed — FavoritesSheet deleted in Phase 4
   const mapRef = useRef<MapHandle>(null);
   const insightCacheRef = useRef(new Map<string, string>());
   const { loading: itineraryLoading, error: itineraryError, buildItinerary } = useRoute();
@@ -320,12 +320,7 @@ export function RouteScreen() {
           }
           onMarkerClick={handleMarkerClick}
         />
-        {!activeMarker && favouritedPins.length > 0 && (
-          <FavoritesMarker
-            pins={favouritedPins}
-            onClick={() => setShowFavoritesSheet(true)}
-          />
-        )}
+        {/* FavoritesMarker removed — per-pin saved state shown via UserPinsLayer in Phase 4+ */}
       </MapLibreMap>
 
       <FootprintChips
@@ -359,25 +354,7 @@ export function RouteScreen() {
         </div>
       )}
 
-      {showFavoritesSheet && !activeMarker && (
-        <FavoritesSheet
-          pins={favouritedPins}
-          onClose={() => setShowFavoritesSheet(false)}
-          onSelect={(pin) => {
-            setShowFavoritesSheet(false);
-            const place: Place = {
-              id: pin.placeId,
-              title: pin.title,
-              lat: pin.lat,
-              lon: pin.lon,
-              category: 'place',
-              _city: pin.city,
-            };
-            mapRef.current?.flyTo(pin.lat, pin.lon);
-            setActiveMarker({ kind: 'place', place, state: 'added', isFavourited: true });
-          }}
-        />
-      )}
+      {/* FavoritesSheet removed — will be replaced by SavedPlacesScreen in Phase 8 */}
 
 
       {/* Sequencing reveal overlay */}
