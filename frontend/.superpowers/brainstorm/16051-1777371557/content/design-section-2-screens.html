@@ -1,0 +1,265 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .card {
+    background: #242018; border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .card.has-spec { border-color: rgba(224,120,84,.25); }
+  .card.inferred { border-color: rgba(79,143,171,.25); }
+  .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .screen-name { font-size: 13px; font-weight: 700; color: #f5f0ea; font-family: 'Playfair Display', serif; }
+  .file-path { font-size: 9px; color: #857268; font-family: monospace; margin-top: 2px; }
+  .badge { font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+  .badge-spec { background: rgba(224,120,84,.15); color: #e07854; border: 1px solid rgba(224,120,84,.3); }
+  .badge-inferred { background: rgba(79,143,171,.15); color: #4f8fab; border: 1px solid rgba(79,143,171,.3); }
+  .changes { display: flex; flex-direction: column; gap: 5px; }
+  .change { display: flex; align-items: flex-start; gap: 7px; font-size: 11px; color: #c0b0a4; line-height: 1.4; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .dot-primary { background: #e07854; }
+  .dot-sky { background: #4f8fab; }
+  .dot-sage { background: #6b9470; }
+  .dot-amber { background: #c49840; }
+  .group-label { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #857268; margin: 20px 0 10px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #c0b0a4; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+</style>
+
+<h2>Section 2 — Screen-by-Screen Design Changes</h2>
+<p class="subtitle">Every screen in the app and what the redesign touches</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,84,.4);border:1px solid rgba(224,120,84,.6)"></div> Has design spec (prototype file)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(79,143,171,.4);border:1px solid rgba(79,143,171,.6)"></div> Inferred from design language</div>
+</div>
+
+<!-- AUTH -->
+<div class="group-label">Auth</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Login</div><div class="file-path">modules/login/LoginScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Full-bleed travel photo bg with warm gradient overlay</div>
+      <div class="change"><div class="dot dot-primary"></div>Brand lockup: Playfair "uncover roads" + 68px logo tile</div>
+      <div class="change"><div class="dot dot-sky"></div>Floating icons animation (flight, explore, map…) rising from bottom</div>
+      <div class="change"><div class="dot dot-primary"></div>Google sign-in button: new surface style, primary border on press</div>
+      <div class="change"><div class="dot dot-sage"></div>Light/dark bg adapts to theme (warm light overlay vs dark overlay)</div>
+    </div>
+  </div>
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Walkthrough</div><div class="file-path">modules/login/WalkthroughScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Slide cards: warm dark bg, Playfair headings, DM Sans body</div>
+      <div class="change"><div class="dot dot-primary"></div>Progress dots: primary color active, surface2 inactive</div>
+      <div class="change"><div class="dot dot-primary"></div>CTA button: gradient primary, 52px height, radius 16</div>
+      <div class="change"><div class="dot dot-sage"></div>Entry animation: springUp per slide</div>
+    </div>
+  </div>
+  <div class="card inferred">
+    <div class="card-header">
+      <div><div class="screen-name">Welcome Back</div><div class="file-path">modules/login/WelcomeBackScreen.tsx</div></div>
+      <div class="badge badge-inferred">Inferred</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-sky"></div>Same bg treatment as LoginScreen</div>
+      <div class="change"><div class="dot dot-primary"></div>Avatar circle: primaryBg tint, user initial</div>
+      <div class="change"><div class="dot dot-primary"></div>Tokens + fonts swapped; layout unchanged</div>
+    </div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="group-label">Onboarding</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Onboarding Shell + OB1–OB9</div><div class="file-path">modules/onboarding/</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Shell: warm bg, progress bar in primary color, Playfair question headings</div>
+      <div class="change"><div class="dot dot-primary"></div>OptionCard: surface card, selected = primary border + primaryBg tint + ripple</div>
+      <div class="change"><div class="dot dot-sage"></div>BentoCard, ImageRowCard, AttractionQuestion: warm tokens throughout</div>
+      <div class="change"><div class="dot dot-amber"></div>Conflict panel: amber bg/border + lightbulb icon</div>
+      <div class="change"><div class="dot dot-primary"></div>Next/Back buttons: primary gradient / ghost style</div>
+    </div>
+  </div>
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Persona Screen</div><div class="file-path">modules/persona/PersonaScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Archetype hero card: radial glow, gradient border per archetype color</div>
+      <div class="change"><div class="dot dot-primary"></div>Match bars: animated width on mount, staggered per row</div>
+      <div class="change"><div class="dot dot-sage"></div>springUp reveal animation on card entrance</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="group-label">Main Tabs</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Home / Explore</div><div class="file-path">modules/destination/DestinationScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Header: date label + "uncover roads" Playfair gradient title + avatar</div>
+      <div class="change"><div class="dot dot-primary"></div>Search bar: surface bg, wiggleFocus animation on focus, radius 18</div>
+      <div class="change"><div class="dot dot-primary"></div>City suggestion cards: full-bleed photo, gradient overlay, Playfair city name</div>
+      <div class="change"><div class="dot dot-sky"></div>In-progress trip banner: surface card with photo + continue pill</div>
+    </div>
+  </div>
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Trips (Saved)</div><div class="file-path">modules/trips/TripsScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Trip cards: 145px height, full-bleed photo, gradient overlay, radius 22</div>
+      <div class="change"><div class="dot dot-primary"></div>Archetype badge top-right, "Continue trip" pill bottom-left</div>
+      <div class="change"><div class="dot dot-sage"></div>cardEntry animation staggered by index</div>
+    </div>
+  </div>
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Bottom Nav</div><div class="file-path">shared/ui/BottomNav.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Background: surface/glass warm tint with blur</div>
+      <div class="change"><div class="dot dot-primary"></div>Active icon: primary color + filled variant</div>
+      <div class="change"><div class="dot dot-primary"></div>Border-top: divider token</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div class="group-label">Map</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Map Screen</div><div class="file-path">modules/map/MapScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-sky"></div>Map tiles: dark_matter (dark) / voyager (light) from CARTO</div>
+      <div class="change"><div class="dot dot-primary"></div>Pin cards: surface warm bg, Playfair place name, primary accent</div>
+      <div class="change"><div class="dot dot-primary"></div>Search bar + dropdown: warm surface, primary focus border</div>
+      <div class="change"><div class="dot dot-sage"></div>Filter bar chips: surface2 bg, primary active state</div>
+      <div class="change"><div class="dot dot-primary"></div>Trip planning card: surface card, gradient CTA button</div>
+    </div>
+  </div>
+</div>
+
+<!-- JOURNEY -->
+<div class="group-label">Journey Planner</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Journey Screen</div><div class="file-path">modules/journey/JourneyScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Map panel: dark radial gradient, city dots with pinPulse animation</div>
+      <div class="change"><div class="dot dot-primary"></div>Progress strip: pill tabs, active = primaryBg + border</div>
+      <div class="change"><div class="dot dot-sky"></div>Origin card: sky-tinted flight icon</div>
+      <div class="change"><div class="dot dot-primary"></div>City card: thumbnail, Playfair name, days chip, place preview pills</div>
+      <div class="change"><div class="dot dot-sky"></div>Transit card: sky icon, duration chip, amber tip card</div>
+      <div class="change"><div class="dot dot-sage"></div>Advisor thread: sage bg/border, springUp slide</div>
+      <div class="change"><div class="dot dot-primary"></div>Build CTA: gradient → green on press, spin animation</div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE -->
+<div class="group-label">Route / Itinerary</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Itinerary Reel</div><div class="file-path">modules/route/ItineraryCards.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Full-screen snap-scroll cards: Intro → [Stop → Reco]* → Finale</div>
+      <div class="change"><div class="dot dot-primary"></div>Floating header: blur bg, weather pill, back button</div>
+      <div class="change"><div class="dot dot-primary"></div>Progress dots: right edge, active = tall pill</div>
+      <div class="change"><div class="dot dot-sage"></div>Reco card: indigo-tinted chips, transit strip sky-blue</div>
+      <div class="change"><div class="dot dot-amber"></div>Finale: star glow, confetti animation, save button</div>
+    </div>
+  </div>
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Multi-day View</div><div class="file-path">modules/route/RouteScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>Sticky header: Playfair city + days, back button circle</div>
+      <div class="change"><div class="dot dot-primary"></div>Day divider: line + Playfair date label + line</div>
+      <div class="change"><div class="dot dot-primary"></div>Timeline stops: icon box + surface card + vertical connector line</div>
+      <div class="change"><div class="dot dot-sage"></div>Staggered entry animation per day group</div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="group-label">Profile</div>
+<div class="grid">
+  <div class="card has-spec">
+    <div class="card-header">
+      <div><div class="screen-name">Profile (main)</div><div class="file-path">modules/profile/ProfileScreen.tsx</div></div>
+      <div class="badge badge-spec">Has spec</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-primary"></div>User card: avatar with primaryBg, name + email, FREE/PRO badge</div>
+      <div class="change"><div class="dot dot-primary"></div>Archetype hero card: radial glow, archetype emoji + name</div>
+      <div class="change"><div class="dot dot-primary"></div>Match bars: animated width on mount</div>
+      <div class="change"><div class="dot dot-primary"></div>Preference accordion: expand_more rotates, chip grid</div>
+      <div class="change"><div class="dot dot-sky"></div>Appearance row (theme toggle): toggle switch in App section</div>
+    </div>
+  </div>
+  <div class="card inferred">
+    <div class="card-header">
+      <div><div class="screen-name">Profile Sub-screens</div><div class="file-path">profile/sub-screens/</div></div>
+      <div class="badge badge-inferred">Inferred</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-sky"></div>Notifications, Privacy, Units, Subscription Details</div>
+      <div class="change"><div class="dot dot-primary"></div>Same sticky header pattern: back circle + Playfair title</div>
+      <div class="change"><div class="dot dot-primary"></div>Settings rows: surface card, warm tokens throughout</div>
+    </div>
+  </div>
+  <div class="card inferred">
+    <div class="card-header">
+      <div><div class="screen-name">Subscription Screen</div><div class="file-path">modules/subscription/SubscriptionScreen.tsx</div></div>
+      <div class="badge badge-inferred">Inferred</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-amber"></div>Plan cards: surface bg, amber accent for Pro, primary for Unlimited</div>
+      <div class="change"><div class="dot dot-primary"></div>CTA button: gradient primary, 52px height</div>
+      <div class="change"><div class="dot dot-primary"></div>Tokens + fonts swapped; paywall layout unchanged</div>
+    </div>
+  </div>
+  <div class="card inferred">
+    <div class="card-header">
+      <div><div class="screen-name">Nav Screen</div><div class="file-path">modules/navigation/NavScreen.tsx</div></div>
+      <div class="badge badge-inferred">Inferred</div>
+    </div>
+    <div class="changes">
+      <div class="change"><div class="dot dot-sky"></div>Map remains full-bleed, overlay cards get warm surface tokens</div>
+      <div class="change"><div class="dot dot-primary"></div>Direction steps: surface card, primary accent, Playfair place name</div>
+    </div>
+  </div>
+</div>
+
+<p style="font-size:12px;color:#857268;margin-top:8px;text-align:center">Does this screen breakdown look right? Any screens to add, remove, or change? Reply in terminal.</p>

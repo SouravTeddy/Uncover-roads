@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Section 1 — Full User Journey</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #f1f5f9;
+    padding: 32px 24px 64px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+  .subtitle { font-size: 12px; color: #475569; margin-bottom: 40px; letter-spacing: 0.05em; }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .phase {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 0;
+  }
+
+  .phase-spine {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    width: 32px;
+  }
+
+  .phase-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  .phase-line {
+    width: 2px;
+    flex: 1;
+    min-height: 24px;
+  }
+
+  .phase-content {
+    padding-bottom: 32px;
+    flex: 1;
+    padding-top: 4px;
+  }
+
+  .phase-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .phase-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 8px;
+  }
+
+  .phase-desc {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  .screens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .screen-chip {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  .screen-chip.new {
+    background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.4);
+    color: #60a5fa;
+  }
+
+  .screen-chip.changed {
+    background: rgba(251,191,36,0.08);
+    border-color: rgba(251,191,36,0.3);
+    color: #fbbf24;
+  }
+
+  .screen-chip.remove {
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.2);
+    color: #f87171;
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
+
+  .rules {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .rule {
+    font-size: 11px;
+    color: #475569;
+    padding-left: 12px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .rule::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: #334155;
+  }
+
+  .rule.key {
+    color: #94a3b8;
+  }
+
+  /* Phase colors */
+  .p1 .phase-dot { background: rgba(139,92,246,0.2); border: 1.5px solid #7c3aed; color: #a78bfa; }
+  .p1 .phase-line { background: linear-gradient(to bottom, #7c3aed, #3b82f6); }
+  .p1 .phase-label { color: #a78bfa; }
+
+  .p2 .phase-dot { background: rgba(59,130,246,0.2); border: 1.5px solid #3b82f6; color: #60a5fa; }
+  .p2 .phase-line { background: linear-gradient(to bottom, #3b82f6, #0ea5e9); }
+  .p2 .phase-label { color: #60a5fa; }
+
+  .p3 .phase-dot { background: rgba(14,165,233,0.2); border: 1.5px solid #0ea5e9; color: #38bdf8; }
+  .p3 .phase-line { background: linear-gradient(to bottom, #0ea5e9, #34d399); }
+  .p3 .phase-label { color: #38bdf8; }
+
+  .p4 .phase-dot { background: rgba(52,211,153,0.2); border: 1.5px solid #34d399; color: #34d399; }
+  .p4 .phase-line { background: linear-gradient(to bottom, #34d399, #f97316); }
+  .p4 .phase-label { color: #34d399; }
+
+  .p5 .phase-dot { background: rgba(249,115,22,0.2); border: 1.5px solid #f97316; color: #fb923c; }
+  .p5 .phase-line { background: linear-gradient(to bottom, #f97316, #f9a8d4); }
+  .p5 .phase-label { color: #fb923c; }
+
+  .p6 .phase-dot { background: rgba(249,168,212,0.15); border: 1.5px solid #f9a8d4; color: #f9a8d4; }
+  .p6 .phase-line { background: none; }
+  .p6 .phase-label { color: #f9a8d4; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 2px;
+  }
+
+  /* ── Decision points ── */
+  .decision {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-left: 3px solid #334155;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.6;
+  }
+
+  .decision strong { color: #94a3b8; }
+
+  /* ── Path fork ── */
+  .fork {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .fork-path {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .fork-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .fork-path.a .fork-label { color: #34d399; }
+  .fork-path.b .fork-label { color: #f97316; }
+  .fork-desc {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<h1>Section 1 — Complete User Journey & Screen Architecture</h1>
+<p class="subtitle">Design Review · Uncover Roads Rebuild · 2026-04-29</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> New screen</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Significantly changed</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.5)"></div> Removed</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#334155"></div> Unchanged</div>
+</div>
+
+<div class="flow">
+
+  <!-- PHASE 1: AUTH -->
+  <div class="phase p1">
+    <div class="phase-spine">
+      <div class="phase-dot">1</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 1 — Auth</div>
+      <div class="phase-title">Login & Welcome</div>
+      <div class="phase-desc">Google/Apple OAuth. Returning users skip OB entirely and land on destination. No changes needed here.</div>
+      <div class="screens">
+        <span class="screen-chip">LoginScreen</span>
+        <span class="screen-chip">WelcomeBackScreen</span>
+      </div>
+      <div class="decision"><strong>Branch:</strong> persona in localStorage → skip to Destination. No persona → OB flow.</div>
+    </div>
+  </div>
+
+  <!-- PHASE 2: ONBOARDING -->
+  <div class="phase p2">
+    <div class="phase-spine">
+      <div class="phase-dot">2</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 2 — Onboarding</div>
+      <div class="phase-title">9-Step Persona Build</div>
+      <div class="phase-desc">Collects the full engine weight vector. Same 9 steps, expanded resolver. OB4 now captures mobility + walk affinity. Spontaneity question replaces budget-protect for non-budget users.</div>
+      <div class="screens">
+        <span class="screen-chip">OB1 Group</span>
+        <span class="screen-chip">OB2 Mood + crowd aversion</span>
+        <span class="screen-chip changed">OB3 Pace</span>
+        <span class="screen-chip changed">OB4 Movement style</span>
+        <span class="screen-chip">OB5 Dietary</span>
+        <span class="screen-chip">OB6 Budget</span>
+        <span class="screen-chip">OB7 Evening</span>
+        <span class="screen-chip">OB8 Kid focus (conditional)</span>
+        <span class="screen-chip changed">OB9 Spontaneity / Budget protect</span>
+      </div>
+      <div class="rules">
+        <div class="rule key">OB resolver outputs full 10-dimension engine weight vector</div>
+        <div class="rule key">Archetype computed via cosine similarity — never hardcoded</div>
+        <div class="rule">Conflict detection unchanged (C1–C4 hard conflicts)</div>
+        <div class="rule">OB8 conditional on group=family · OB9 always shown</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3: PERSONA REVEAL -->
+  <div class="phase p3">
+    <div class="phase-spine">
+      <div class="phase-dot">3</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 3 — Persona Reveal</div>
+      <div class="phase-title">Your Traveler Identity</div>
+      <div class="phase-desc">Full-screen moment. Mood image + archetype identity + story headline + trait chips. Two CTAs: primary "See your map →", secondary "↺ Retake questions".</div>
+      <div class="screens">
+        <span class="screen-chip changed">PersonaScreen</span>
+      </div>
+      <div class="rules">
+        <div class="rule key">Story copy is LLM-generated from archetype + top 3 weight signals</div>
+        <div class="rule key">Trait chips pulled from engine weight vector — not hardcoded per archetype</div>
+        <div class="rule">Retake → clears OB answers → restarts from OB1</div>
+        <div class="rule">Archetype color palette applied throughout app from this point</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4: DESTINATION + MAP -->
+  <div class="phase p4">
+    <div class="phase-spine">
+      <div class="phase-dot">4</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 4 — Explore</div>
+      <div class="phase-title">Destination → Map</div>
+      <div class="phase-desc">User picks city + date range (single calendar). One-tap discovery mode toggle per city. Map opens with three pin layers live. This is the core product loop.</div>
+      <div class="screens">
+        <span class="screen-chip changed">DestinationScreen</span>
+        <span class="screen-chip changed">MapScreen</span>
+      </div>
+      <div class="rules">
+        <div class="rule key">Three pin layers: Famous (gold/star) · Reference ghost (muted purple) · User-added (blue)</div>
+        <div class="rule key">Four pin states: normal → saved ❤️ → added to itinerary (ring) → saved + added</div>
+        <div class="rule key">"Surprise Me" CTA → full multi-day itinerary, straight to itinerary view</div>
+        <div class="rule key">Discovery mode: [ Essentials ] [ Local's pick ] — one tap per city</div>
+        <div class="rule">Pin tap → 40% card slides up (expandable to full)</div>
+        <div class="rule">Card: hero image · name · rating · why this for you · 2 intel pills · local tip</div>
+        <div class="rule">Card CTAs: Save (❤️) · Add to itinerary · Similar ·</div>
+        <div class="rule">Famous pins: Google Places seeded + hand-curated for Tier 1 cities</div>
+        <div class="rule">Reference pins: engine-generated per persona + city on destination select</div>
+      </div>
+
+      <div class="fork">
+        <div class="fork-path a">
+          <div class="fork-label">Path A — Self-build</div>
+          <div class="fork-desc">User taps pins, adds places, hits "Build itinerary" when ready. Engine runs all 5 layers.</div>
+        </div>
+        <div class="fork-path b">
+          <div class="fork-label">Path B — Surprise Me</div>
+          <div class="fork-desc">Engine builds full N-day itinerary from broader Google Places pool. Straight to itinerary view. Fully editable.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5: ITINERARY -->
+  <div class="phase p5">
+    <div class="phase-spine">
+      <div class="phase-dot">5</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 5 — Itinerary</div>
+      <div class="phase-title">Read-Only Output · Edit via Map</div>
+      <div class="phase-desc">Itinerary is the engine's output — never the editing surface. User views their day-by-day plan. Every engine decision has a WHAT+WHY+CONSEQUENCE message. One exception: swipe-to-remove on a stop triggers rebuild.</div>
+      <div class="screens">
+        <span class="screen-chip changed">RouteScreen (rebuilt)</span>
+        <span class="screen-chip remove">ItineraryView (1325 lines — deleted)</span>
+        <span class="screen-chip remove">ItineraryCards (1016 lines — deleted)</span>
+        <span class="screen-chip new">ItineraryDayView</span>
+        <span class="screen-chip new">ItineraryStopCard</span>
+        <span class="screen-chip new">EngineMessageBanner</span>
+      </div>
+      <div class="rules">
+        <div class="rule key">Read-only. No inline editing except swipe-to-remove</div>
+        <div class="rule key">Swipe-to-remove → confirm → engine rebuilds → counts as 1 generation</div>
+        <div class="rule key">"Edit trip" → map opens with pin snapshot → user edits → "Rebuild" → new generation</div>
+        <div class="rule key">Each rebuild = new saved itinerary entry. Old one preserved.</div>
+        <div class="rule">Generation counter shown · paywall at threshold</div>
+        <div class="rule">Engine messages: dismissable banners showing WHAT + WHY + CONSEQUENCE</div>
+        <div class="rule">AI-generated text marked with ✦ indicator</div>
+        <div class="rule">Factual data (hours, ratings, prices) sourced from Google Places only</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 6: SAVED TRIPS + PROFILE -->
+  <div class="phase p6">
+    <div class="phase-spine">
+      <div class="phase-dot">6</div>
+      <div class="phase-line" style="display:none"></div>
+    </div>
+    <div class="phase-content">
+      <div class="phase-label">Phase 6 — Persistence</div>
+      <div class="phase-title">Saved Trips · Profile · Saved Places</div>
+      <div class="phase-desc">Bottom nav: Explore · Itinerary · Saved Places · Profile. Saved Places is separate from itinerary — places the user bookmarked for later reference. Profile allows persona retake.</div>
+      <div class="screens">
+        <span class="screen-chip">TripsScreen</span>
+        <span class="screen-chip new">SavedPlacesScreen</span>
+        <span class="screen-chip changed">ProfileScreen</span>
+      </div>
+      <div class="rules">
+        <div class="rule key">Saved places (❤️) = bookmarks, separate from itinerary additions</div>
+        <div class="rule key">Saved places screen: list view, tap to see on map, add to next trip</div>
+        <div class="rule">Profile: persona retake · dietary prefs · units · notification settings</div>
+        <div class="rule">Trips: history of all generated itineraries, preserved forever</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

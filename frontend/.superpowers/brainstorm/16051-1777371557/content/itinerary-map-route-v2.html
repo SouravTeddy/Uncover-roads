@@ -1,0 +1,207 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; }
+  .layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .map-demo { flex: 1; min-width: 280px; }
+  .side-notes { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
+
+  .map-canvas {
+    width: 100%; aspect-ratio: 4/3;
+    background: linear-gradient(160deg, #0d1117 0%, #0a0f1a 100%);
+    border-radius: 16px; position: relative; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  /* SVG fills the whole canvas using absolute positioning */
+  .routes-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+  }
+
+  .stop-marker { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .stop-dot { width: 14px; height: 14px; border-radius: 50%; background: #e07854; border: 2.5px solid white; box-shadow: 0 0 0 5px rgba(224,120,84,.22); z-index: 2; }
+  .stop-dot.active { width: 18px; height: 18px; box-shadow: 0 0 0 7px rgba(224,120,84,.22); }
+  .stop-dot.transit { background: #4f8fab; box-shadow: 0 0 0 5px rgba(79,143,171,.22); }
+  .stop-label { font-size: 9px; color: rgba(255,255,255,.75); background: rgba(0,0,0,.6); padding: 2px 6px; border-radius: 4px; white-space: nowrap; font-weight: 600; }
+  .stop-label.active { color: #e07854; }
+
+  .rec-marker { position: absolute; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 3; }
+  .rec-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; }
+  .rec-dot.food  { background: #c49840; box-shadow: 0 0 0 3px rgba(196,152,64,.22); }
+  .rec-dot.cafe  { background: #6b9470; box-shadow: 0 0 0 3px rgba(107,148,112,.22); }
+  .rec-dot.view  { background: #4f8fab; box-shadow: 0 0 0 3px rgba(79,143,171,.22); }
+  .rec-label { font-size: 8px; padding: 1px 5px; border-radius: 4px; white-space: nowrap; font-weight: 600; }
+  .rec-label.food { color: #c49840; background: rgba(196,152,64,.18); border: 1px solid rgba(196,152,64,.35); }
+  .rec-label.cafe { color: #6b9470; background: rgba(107,148,112,.18); border: 1px solid rgba(107,148,112,.35); }
+  .rec-label.view { color: #4f8fab; background: rgba(79,143,171,.18); border: 1px solid rgba(79,143,171,.35); }
+
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #c0b0a4; }
+
+  .cond-card { background: #242018; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 12px; }
+  .cond-title { font-size: 11px; font-weight: 700; color: #f5f0ea; margin-bottom: 8px; }
+  .cond-tag { font-size: 9px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-left: 6px; }
+  .tag-amber { background: rgba(196,152,64,.15); color: #c49840; border: 1px solid rgba(196,152,64,.28); }
+  .tag-sky   { background: rgba(79,143,171,.15);  color: #4f8fab; border: 1px solid rgba(79,143,171,.28); }
+  .cond-list { display: flex; flex-direction: column; gap: 5px; }
+  .cond-item { font-size: 10px; color: #c0b0a4; display: flex; gap: 6px; line-height: 1.4; }
+  .cond-item::before { content: "→"; color: #857268; flex-shrink: 0; }
+  .arch-note { background: rgba(107,148,112,.08); border: 1px solid rgba(107,148,112,.25); border-radius: 12px; padding: 12px; font-size: 11px; color: #6b9470; line-height: 1.6; }
+  .arch-note code { background: rgba(107,148,112,.15); padding: 1px 5px; border-radius: 4px; font-size: 10px; }
+</style>
+
+<h2>Itinerary Map — Route + Recommendation Branches (fixed)</h2>
+<p class="subtitle">Google-style solid main route with dotted category branches</p>
+
+<div class="layout">
+  <div class="map-demo">
+    <div class="map-canvas">
+      <div class="map-grid"></div>
+
+      <!--
+        viewBox="0 0 400 300" matches the 4:3 aspect ratio.
+        All coordinates are in this space.
+
+        Stops (in viewBox px):
+          Stop 1:  60, 225
+          Stop 2: 210, 115
+          Stop 3: 340, 105
+
+        Branch midpoints:
+          Leg1 mid: 135, 170  → Lunch branch → 90, 120
+          Leg2 mid: 275,  110 → Café branch  → 240, 55
+                              → View branch  → 305, 50
+      -->
+      <svg class="routes-svg" viewBox="0 0 400 300" preserveAspectRatio="none">
+
+        <!-- ── Main route: thick solid Google-style polyline ── -->
+        <!-- Leg 1: Stop1 → Stop2 (active, full opacity) -->
+        <polyline
+          points="60,225 135,170 210,115"
+          fill="none"
+          stroke="#e07854"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          opacity="0.95"
+        />
+        <!-- Leg 2: Stop2 → Stop3 (upcoming, slightly muted) -->
+        <polyline
+          points="210,115 275,110 340,105"
+          fill="none"
+          stroke="#e07854"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          opacity="0.5"
+        />
+
+        <!-- ── Recommendation branches: thin dashed lines ── -->
+        <!-- Lunch branch from Leg1 midpoint -->
+        <line x1="135" y1="170" x2="90" y2="120"
+              stroke="#c49840" stroke-width="2" stroke-dasharray="5 4"
+              stroke-linecap="round" opacity="0.9"/>
+        <!-- Café branch from Leg2 midpoint -->
+        <line x1="275" y1="110" x2="240" y2="55"
+              stroke="#6b9470" stroke-width="2" stroke-dasharray="5 4"
+              stroke-linecap="round" opacity="0.9"/>
+        <!-- Viewpoint branch from Leg2 midpoint -->
+        <line x1="275" y1="110" x2="310" y2="52"
+              stroke="#4f8fab" stroke-width="2" stroke-dasharray="5 4"
+              stroke-linecap="round" opacity="0.9"/>
+
+        <!-- Branch origin dots on the main route -->
+        <circle cx="135" cy="170" r="5" fill="#c49840" opacity="0.95"/>
+        <circle cx="275" cy="110" r="5" fill="#6b9470" opacity="0.95"/>
+
+      </svg>
+
+      <!-- Stop markers (positioned as % of container) -->
+      <div class="stop-marker" style="left:15%;top:75%">
+        <div class="stop-dot active"></div>
+        <div class="stop-label active">Stop 1</div>
+      </div>
+      <div class="stop-marker" style="left:52.5%;top:38.3%">
+        <div class="stop-dot"></div>
+        <div class="stop-label">Stop 2</div>
+      </div>
+      <div class="stop-marker" style="left:85%;top:35%">
+        <div class="stop-dot transit"></div>
+        <div class="stop-label">Stop 3</div>
+      </div>
+
+      <!-- Rec markers -->
+      <div class="rec-marker" style="left:22.5%;top:40%">
+        <div class="rec-dot food"></div>
+        <div class="rec-label food">🍜 Lunch spot</div>
+      </div>
+      <div class="rec-marker" style="left:60%;top:18.3%">
+        <div class="rec-dot cafe"></div>
+        <div class="rec-label cafe">☕ Café</div>
+      </div>
+      <div class="rec-marker" style="left:77.5%;top:17.3%">
+        <div class="rec-dot view"></div>
+        <div class="rec-label view">📍 Viewpoint</div>
+      </div>
+
+      <!-- Floating header -->
+      <div style="position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:10">
+        <div style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;color:white">←</div>
+        <div style="background:rgba(0,0,0,.45);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);border-radius:99px;padding:4px 12px;font-size:9px;color:rgba(255,255,255,.85)">☀ 26° Sunny</div>
+      </div>
+    </div>
+
+    <div class="legend-row">
+      <div class="leg-item">
+        <svg width="28" height="8"><polyline points="0,4 28,4" fill="none" stroke="#e07854" stroke-width="3.5" stroke-linecap="round"/></svg>
+        Main route
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#c49840" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/></svg>
+        Food rec
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#6b9470" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/></svg>
+        Café rec
+      </div>
+      <div class="leg-item">
+        <svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#4f8fab" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round"/></svg>
+        Viewpoint rec
+      </div>
+    </div>
+  </div>
+
+  <div class="side-notes">
+    <div class="cond-card">
+      <div class="cond-title">Trigger conditions <span class="cond-tag tag-amber">rec-rules.ts</span></div>
+      <div class="cond-list">
+        <div class="cond-item">Time between stops falls in meal window → food / café rec</div>
+        <div class="cond-item">Persona = walker / pace = relaxed → recs within 500m walking only</div>
+        <div class="cond-item">Persona = epicurean → prefer restaurant over café</div>
+        <div class="cond-item">Persona = explorer + outdoor stop → viewpoint / park recs</div>
+        <div class="cond-item">Stop gap &lt; 30 min → suppress all recs</div>
+        <div class="cond-item">Max 2 dotted branches visible at once</div>
+      </div>
+    </div>
+
+    <div class="cond-card">
+      <div class="cond-title">Tap behaviour <span class="cond-tag tag-sky">place card</span></div>
+      <div class="cond-list">
+        <div class="cond-item">Tap stop marker → place card shows stop number + full details</div>
+        <div class="cond-item">Tap rec marker → place card shows "Detour ↗" badge, walking time from route</div>
+        <div class="cond-item">Rec card has "Add to itinerary" CTA — adds stop between adjacent stops</div>
+      </div>
+    </div>
+
+    <div class="arch-note">
+      <code>route/rec-rules.ts</code> — single source of truth for all conditions. Map renderer reads the rules; business logic never mixed into rendering code.
+    </div>
+  </div>
+</div>
+
+<p style="font-size:12px;color:#857268;margin-top:16px;text-align:center">Main route visible now? Reply in terminal to confirm or adjust.</p>
