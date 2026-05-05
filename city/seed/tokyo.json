@@ -1,0 +1,64 @@
+{
+  "id": "tokyo",
+  "name": "Tokyo",
+  "tier": 1,
+  "center": [35.6762, 139.6503],
+  "timezone": "Asia/Tokyo",
+  "climate": {"heat_threshold_c": 32, "rain_months": [6, 7, 9]},
+  "movement": {"walkability": 3, "transit": 3},
+  "culture": {"meal_times": {"lunch": "12:00", "dinner": "19:00"}, "siesta": false},
+  "neighborhoods": [
+    {
+      "id": "shinjuku",
+      "name": "Shinjuku",
+      "center": [35.6938, 139.7034],
+      "polygon": [],
+      "best_times": {"morning": 0.6, "afternoon": 0.9, "evening": 1.0},
+      "crowd_index": {"weekday": 0.7, "weekend": 0.9}
+    },
+    {
+      "id": "asakusa",
+      "name": "Asakusa",
+      "center": [35.7147, 139.7966],
+      "polygon": [],
+      "best_times": {"morning": 1.0, "afternoon": 0.8, "evening": 0.5},
+      "crowd_index": {"weekday": 0.5, "weekend": 0.8}
+    }
+  ],
+  "insert_candidates": [
+    {
+      "place_id": "coffee_shinjuku_1",
+      "name": "Streamer Coffee Shinjuku",
+      "lat": 35.6934,
+      "lon": 139.7042,
+      "type": "coffee",
+      "time_cost_min": 20,
+      "persona_affinity": {"wanderer": 0.9, "voyager": 0.8, "epicurean": 0.9},
+      "trigger": null,
+      "time_of_day_match": ["morning", "afternoon"]
+    },
+    {
+      "place_id": "lunch_asakusa_1",
+      "name": "Sometaro Okonomiyaki",
+      "lat": 35.7134,
+      "lon": 139.7956,
+      "type": "lunch",
+      "time_cost_min": 60,
+      "persona_affinity": {"epicurean": 1.0, "wanderer": 0.8, "explorer": 0.7},
+      "trigger": null,
+      "time_of_day_match": ["afternoon"]
+    }
+  ],
+  "scenic_routes": [
+    {"id": "sr_yanaka", "from_neighborhood": "asakusa", "to_neighborhood": "shinjuku", "walk_min": 25, "score": 0.8}
+  ],
+  "transit_edges": [],
+  "engine_modifiers": {
+    "siesta_window": null,
+    "lunch_window_strict": false,
+    "evening_end_time": "23:00",
+    "day_buffer_min": 30
+  },
+  "landmark_anchors": ["senso_ji", "meiji_jingu"],
+  "hidden_gems": ["yanaka_cemetery", "koenji_market"]
+}

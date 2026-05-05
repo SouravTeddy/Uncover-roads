@@ -1,0 +1,14 @@
+{
+  "archetype": "epicurean",
+  "weights": {
+    "w_walk_affinity": 0.5,
+    "w_food_density": 1.0,
+    "w_spontaneity": 0.5,
+    "w_rest_need": 0.4,
+    "w_culture_depth": 0.4,
+    "w_nightlife": 0.3
+  },
+  "evening_end_time": "23:00",
+  "day_buffer_min": 45,
+  "lunch_window": ["12:30", "14:00"]
+}
