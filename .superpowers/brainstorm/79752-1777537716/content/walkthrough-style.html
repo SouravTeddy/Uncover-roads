@@ -1,0 +1,106 @@
+<h2>Walkthrough visual direction</h2>
+<p class="subtitle">Three approaches for the first-time user experience — same content, very different feel</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="cinematic" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e14;padding:20px;min-height:320px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;border-radius:12px 12px 0 0;">
+      <!-- Simulated photo bg -->
+      <div style="position:absolute;inset:0;background:linear-gradient(160deg,#1a2744 0%,#0d1b2a 50%,#0a0e14 100%);"></div>
+      <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=60') center/cover no-repeat;opacity:0.35;"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 60%);"></div>
+      <!-- Content overlay -->
+      <div style="position:relative;z-index:1;padding:4px 0 0;">
+        <div style="display:inline-block;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.35);border-radius:20px;padding:3px 10px;margin-bottom:10px;">
+          <span style="color:#818cf8;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Itinerary</span>
+        </div>
+        <div style="color:white;font-size:19px;font-weight:700;line-height:1.25;margin-bottom:6px;">AI builds your<br>perfect day</div>
+        <div style="color:rgba(255,255,255,.5);font-size:12px;line-height:1.5;">Your persona + your picks = a timed, ordered itinerary crafted just for you.</div>
+        <!-- Progress dots -->
+        <div style="display:flex;gap:6px;margin-top:16px;">
+          <div style="width:20px;height:6px;background:#6366f1;border-radius:3px;"></div>
+          <div style="width:6px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;"></div>
+          <div style="width:6px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;"></div>
+          <div style="width:6px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Cinematic full-bleed</h3>
+      <p>Real city photography fills the screen. Each slide has its own destination backdrop. Text overlays ride on top with a dark gradient. Feels like a travel magazine. Each swipe cross-fades photo + text with subtle parallax.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="illustrated" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e14;padding:20px;min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px 12px 0 0;">
+      <!-- Animated gradient bg -->
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 30%, rgba(139,92,246,.25) 0%, transparent 70%), linear-gradient(160deg,#13082a 0%,#0a0e14 100%);"></div>
+      <!-- Floating shapes -->
+      <div style="position:absolute;top:18%;left:12%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.3),transparent);filter:blur(20px);"></div>
+      <div style="position:absolute;bottom:20%;right:10%;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,.25),transparent);filter:blur(16px);"></div>
+      <!-- Scene illustration (CSS art) -->
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;">
+        <!-- Illustrated map pin icon with glow -->
+        <div style="width:72px;height:72px;background:linear-gradient(135deg,rgba(139,92,246,.3),rgba(99,102,241,.15));border:1px solid rgba(139,92,246,.4);border-radius:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(139,92,246,.3);">
+          <span style="font-family:'Material Symbols Rounded',sans-serif;font-variation-settings:'FILL' 1;font-size:36px;color:#a78bfa;">travel_explore</span>
+        </div>
+        <!-- Animated route line -->
+        <div style="display:flex;align-items:center;gap:8px;opacity:.7;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#a78bfa;"></div>
+          <div style="width:60px;height:2px;background:linear-gradient(90deg,#a78bfa,#6366f1);border-radius:1px;"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#6366f1;"></div>
+          <div style="width:60px;height:2px;background:linear-gradient(90deg,#6366f1,rgba(99,102,241,.3));border-radius:1px;border:1px dashed rgba(99,102,241,.4);"></div>
+          <div style="width:8px;height:8px;border-radius:50%;border:2px dashed rgba(99,102,241,.5);"></div>
+        </div>
+        <div style="color:white;font-size:18px;font-weight:700;text-align:center;line-height:1.3;">Any city,<br>anywhere</div>
+        <div style="color:rgba(255,255,255,.4);font-size:11px;text-align:center;line-height:1.5;max-width:180px;">From Tokyo backstreets to Lisbon hilltops</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Illustrated + motion</h3>
+      <p>No photos — each slide has its own abstract animated scene built from CSS gradients, glows, and motion graphics. The persona slide might show a silhouette assembling. The map slide shows animated pins. Feels premium and app-native.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="screenshot" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e14;padding:16px;min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:12px 12px 0 0;">
+      <div style="position:absolute;inset:0;background:linear-gradient(160deg,#0f172a 0%,#0a0e14 100%);"></div>
+      <!-- Phone mockup with screenshot -->
+      <div style="position:relative;z-index:1;width:140px;flex-shrink:0;">
+        <div style="background:#1e293b;border-radius:20px;border:2px solid rgba(255,255,255,.1);padding:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+          <!-- Simulated app screen -->
+          <div style="background:#0f172a;border-radius:13px;overflow:hidden;aspect-ratio:9/16;display:flex;flex-direction:column;">
+            <!-- Map bg -->
+            <div style="flex:1;background:linear-gradient(135deg,#1e3a5f 0%,#0f2d4a 50%,#1a3a2e 100%);position:relative;overflow:hidden;">
+              <!-- Grid lines simulating map -->
+              <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:20px 20px;"></div>
+              <!-- Map pins -->
+              <div style="position:absolute;top:28%;left:35%;width:12px;height:12px;background:#3b82f6;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(59,130,246,.6);"></div>
+              <div style="position:absolute;top:42%;left:55%;width:10px;height:10px;background:#a855f7;border-radius:50%;border:2px solid white;box-shadow:0 0 6px rgba(168,85,247,.6);"></div>
+              <div style="position:absolute;top:55%;left:28%;width:10px;height:10px;background:#14b8a6;border-radius:50%;border:2px solid white;"></div>
+            </div>
+            <!-- Bottom card -->
+            <div style="background:#1e293b;padding:8px;border-top:1px solid rgba(255,255,255,.08);">
+              <div style="background:rgba(59,130,246,.15);border-radius:6px;padding:5px 7px;">
+                <div style="width:60%;height:5px;background:rgba(255,255,255,.3);border-radius:2px;margin-bottom:3px;"></div>
+                <div style="width:40%;height:4px;background:rgba(255,255,255,.15);border-radius:2px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Annotation callout -->
+      <div style="position:absolute;bottom:30px;right:16px;background:rgba(99,102,241,.9);border-radius:10px;padding:6px 10px;max-width:110px;z-index:2;">
+        <div style="color:white;font-size:9px;font-weight:700;line-height:1.4;">Pin hidden gems on an interactive map</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — App screenshot reveal</h3>
+      <p>Real app screenshots inside a phone frame, with glowing callout annotations pointing at key features. Each slide zooms into or animates a specific part of the UI. Shows the actual product — sets honest expectations, builds anticipation for features they're about to use.</p>
+    </div>
+  </div>
+
+</div>
