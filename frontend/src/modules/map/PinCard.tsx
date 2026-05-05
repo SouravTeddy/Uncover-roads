@@ -135,7 +135,7 @@ export function PinCard({
   const rating      = details?.rating      ?? place.rating      ?? null
   const ratingCount = details?.rating_count ?? null
   const priceLevel  = details?.price_level  ?? null
-  const dateAlert   = travelDate ? getTravelDateBadge(details?.weekday_text ?? null, travelDate) : null
+  const dateAlert   = travelDate ? getTravelDateBadge(details?.weekday_text ?? [], travelDate) : null
   const catColor    = CATEGORY_COLORS[place.category] ?? '#6b7280'
   const catIcon     = CATEGORY_ICONS[place.category]  ?? 'location_on'
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
@@ -193,8 +193,8 @@ export function PinCard({
           <h2 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: TEXT1, lineHeight: 1.2 }}>
             {place.title}
           </h2>
-          {place.area && (
-            <p style={{ margin: '0 0 6px', fontSize: '0.75rem', color: TEXT3 }}>{place.area}</p>
+          {details?.address && (
+            <p style={{ margin: '0 0 6px', fontSize: '0.75rem', color: TEXT3 }}>{details.address.split(',')[0]}</p>
           )}
 
           {/* Rating + price + category chip */}
