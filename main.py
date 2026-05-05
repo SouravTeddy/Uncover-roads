@@ -17,6 +17,15 @@ from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client as SupabaseClient
 from ip_engine import build_persona_response, get_city_profile, run_conflict_check, ARCHETYPES
 
+# Phase 5 — Intelligence Engine
+import json as _json
+from pathlib import Path as _Path
+from engine.builder import build_itinerary
+from engine.types import EngineStop, EngineContext
+from city.data_model import load_city
+from city.sync_job import start_scheduler as _start_sync_scheduler
+from pydantic import BaseModel
+
 load_dotenv()
 
 app = FastAPI()
@@ -50,6 +59,51 @@ PLACE_CACHE_TTL_DAYS = int(os.getenv("PLACE_CACHE_TTL_DAYS", "30"))
 _supabase: SupabaseClient | None = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     _supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+
+# ── Phase 5 Request Models ────────────────────────────────────────────────────
+
+class ItineraryStopRequest(BaseModel):
+    place_id: str
+    name: str
+    lat: float
+    lon: float
+    category: str
+    duration_min: int = 90
+    opening_hours: list[dict] = []
+    price_level: int = 1
+    rating: float = 4.0
+    neighborhood: str | None = None
+
+class ItineraryBuildRequest(BaseModel):
+    stops: list[ItineraryStopRequest]
+    city_id: str
+    travel_dates: list[str]
+    persona: dict
+    discovery_mode: str = "standard"
+
+
+# ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
+
+@app.on_event("startup")
+async def seed_cities_and_start_sync():
+    """Seed Tokyo/Paris/NYC into city_data if not present; start weekly sync."""
+    if _supabase is None:
+        return
+    for city_id in ["tokyo", "paris", "nyc"]:
+        try:
+            existing = _supabase.table("city_data").select("id").eq("id", city_id).execute()
+            if not existing.data:
+                seed_path = _Path("city/seed") / f"{city_id}.json"
+                if seed_path.exists():
+                    seed = _json.loads(seed_path.read_text())
+                    _supabase.table("city_data").insert({"id": city_id, "data": seed}).execute()
+        except Exception as exc:
+            print(f"[startup] Failed to seed {city_id}: {exc}")
+    # Start weekly City Intelligence Sync
+    google_key = os.environ.get("GOOGLE_PLACES_API_KEY")
+    _start_sync_scheduler(_supabase, google_key)
+
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -2321,6 +2375,87 @@ def nearby(
         return results
     except Exception:
         return []
+
+
+# ── Phase 5: Build Itinerary Endpoint ────────────────────────────────────────
+
+@app.post("/api/itinerary/build")
+async def build_itinerary_endpoint(
+    body: ItineraryBuildRequest,
+    user=Depends(require_auth_or_pack),
+):
+    """Build a deterministic 5-layer itinerary from user stops + persona."""
+    # Load city data
+    try:
+        city = load_city(body.city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+
+    # Convert request stops to EngineStop objects
+    engine_stops = [
+        EngineStop(
+            place_id=s.place_id,
+            name=s.name,
+            lat=s.lat,
+            lon=s.lon,
+            category=s.category,
+            duration_min=s.duration_min,
+            opening_hours=s.opening_hours,
+            price_level=s.price_level,
+            rating=s.rating,
+            neighborhood=s.neighborhood,
+            is_user_added=True,
+        )
+        for s in body.stops
+    ]
+
+    ctx = EngineContext(
+        persona=body.persona,
+        city=city,
+        travel_dates=body.travel_dates,
+        weather=None,
+    )
+
+    result = await build_itinerary(engine_stops, ctx)
+
+    return {
+        "generation_id": result.generation_id,
+        "days": [
+            {
+                "date": day.date,
+                "is_travel_day": day.is_travel_day,
+                "stops": [
+                    {
+                        "place_id": s.place_id,
+                        "name": s.name,
+                        "lat": s.lat,
+                        "lon": s.lon,
+                        "category": s.category,
+                        "duration_min": s.duration_min,
+                        "scheduled_time": s.scheduled_time,
+                        "transition_to_next": s.transition_to_next,
+                        "type": s.type,
+                        "is_user_added": s.is_user_added,
+                        "outdoor": s.outdoor,
+                    }
+                    for s in day.stops
+                ],
+            }
+            for day in result.days
+        ],
+        "messages": [
+            {
+                "type": m.type,
+                "what": m.what,
+                "why": m.why,
+                "consequence": m.consequence,
+                "dismissable": m.dismissable,
+                "undo_key": m.undo_key,
+            }
+            for m in result.messages
+        ],
+        "recommendations": result.recommendations,
+    }
 
 
 if __name__ == "__main__":
