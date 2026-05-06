@@ -1,15 +1,15 @@
-import { useState } from 'react';
+// useState removed — was only used for DateRangeSheet (deleted in Phase 4)
 import type { Place } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { ExploreSearchBar } from './ExploreSearchBar';
 import { InProgressSection } from './InProgressSection';
 import { ExploreEmptyState } from './ExploreEmptyState';
-import { DateRangeSheet } from '../map/TravelDateBar';
+// DateRangeSheet removed — TravelDateBar deleted in Phase 4, calendar rebuilt in Phase 7
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
   const { city, selectedPlaces, travelStartDate, travelEndDate } = state;
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  // showDatePicker removed — DateRangeSheet deleted in Phase 4, calendar rebuilt in Phase 7
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -28,7 +28,8 @@ export function DestinationScreen() {
       dispatch({ type: 'SET_TRAVEL_DATES', startDate: todayIso, endDate: todayIso });
       goToMap();
     } else {
-      setShowDatePicker(true);
+      // Date picker removed — Phase 7 will add calendar directly on destination screen
+      goToMap();
     }
   }
 
@@ -40,18 +41,7 @@ export function DestinationScreen() {
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
 
-      {showDatePicker && (
-        <DateRangeSheet
-          initialStart={travelStartDate}
-          initialEnd={travelEndDate}
-          onDone={(start, end) => {
-            dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
-            setShowDatePicker(false);
-            goToMap();
-          }}
-          onClose={() => setShowDatePicker(false)}
-        />
-      )}
+      {/* DateRangeSheet removed — calendar will be rebuilt in Phase 7 */}
 
       {/* Header */}
       <header
