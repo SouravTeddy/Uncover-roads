@@ -17,17 +17,27 @@ describe('DateRangeCalendar', () => {
   it('calls onSelect with ISO dates when range is picked', () => {
     const onSelect = vi.fn();
     render(<DateRangeCalendar onSelect={onSelect} onClose={vi.fn()} />);
-    // Click day 10 then day 14
-    const buttons = screen.getAllByRole('button').filter(b => /^\d+$/.test(b.textContent ?? ''));
-    const day10 = buttons.find(b => b.textContent === '10');
-    const day14 = buttons.find(b => b.textContent === '14');
-    if (day10 && day14) {
-      fireEvent.click(day10);
-      fireEvent.click(day14);
-      expect(onSelect).toHaveBeenCalledOnce();
-      const [start, end] = onSelect.mock.calls[0];
-      expect(start).toMatch(/^\d{4}-\d{2}-10$/);
-      expect(end).toMatch(/^\d{4}-\d{2}-14$/);
-    }
+
+    // Navigate forward one month to ensure days 10 and 14 are always in the future
+    const navButtons = screen.getAllByRole('button').filter(b =>
+      b.textContent === 'chevron_right' || b.getAttribute('aria-label') === 'Next month'
+    );
+    // The next-month button is the last nav button in the month header row
+    // It appears between two other buttons (prev, label, next) — get the rightmost chevron
+    const nextBtn = screen.getAllByRole('button').find(b => b.textContent?.trim() === 'chevron_right');
+    if (nextBtn) fireEvent.click(nextBtn);
+
+    const dayButtons = screen.getAllByRole('button').filter(b => /^\d+$/.test(b.textContent?.trim() ?? ''));
+    const day10 = dayButtons.find(b => b.textContent?.trim() === '10');
+    const day14 = dayButtons.find(b => b.textContent?.trim() === '14');
+
+    expect(day10).toBeTruthy();
+    expect(day14).toBeTruthy();
+    fireEvent.click(day10!);
+    fireEvent.click(day14!);
+    expect(onSelect).toHaveBeenCalledOnce();
+    const [start, end] = onSelect.mock.calls[0];
+    expect(start).toMatch(/^\d{4}-\d{2}-10$/);
+    expect(end).toMatch(/^\d{4}-\d{2}-14$/);
   });
 });
