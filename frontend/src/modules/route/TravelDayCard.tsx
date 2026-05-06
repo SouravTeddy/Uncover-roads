@@ -5,7 +5,7 @@ interface Props {
   toCity: string | null
 }
 
-export function TravelDayCard({ day, date: _date, fromCity, toCity }: Props) {
+export function TravelDayCard({ day, fromCity, toCity }: Props) {
   return (
     <div className="mx-4 my-3 rounded-[16px] bg-[var(--color-surface)] border border-[var(--color-border)] px-4 py-4 flex items-center gap-4">
       <div className="w-10 h-10 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center flex-shrink-0">

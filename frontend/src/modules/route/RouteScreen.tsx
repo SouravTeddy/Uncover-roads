@@ -16,7 +16,6 @@ export function RouteScreen() {
     pendingStopTitle,
     confirmationText,
     generationCount,
-    canGenerate: _canGenerate,
     requestRemoveStop,
     confirmRemoveStop,
     cancelRemoveStop,
