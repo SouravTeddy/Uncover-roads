@@ -17,6 +17,9 @@ function formatRange(start: string, end: string): string {
   return `${s.toLocaleDateString('en-US', opts)} – ${e.toLocaleDateString('en-US', opts)}`;
 }
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
 export function DateRangeCalendar({ onSelect, onClose }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -29,9 +32,6 @@ export function DateRangeCalendar({ onSelect, onClose }: Props) {
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-
   function handleDayClick(day: number) {
     const iso = toIso(viewYear, viewMonth, day);
     if (iso < todayIso) return;
@@ -43,6 +43,9 @@ export function DateRangeCalendar({ onSelect, onClose }: Props) {
       const e = iso < startDate ? startDate : iso;
       setEndDate(e);
       setStartDate(s);
+      // onSelect fires eagerly on second-date click (not Done tap).
+      // Parent uses this to persist dates to state reactively;
+      // onClose (called by Done) handles navigation/collapse.
       onSelect(s, e);
     }
   }
