@@ -11,6 +11,8 @@ import type {
   AutocompleteResult,
   PlaceDetails,
   NearbyResult,
+  EngineWeights,
+  EngineItinerary,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -254,6 +256,18 @@ export const api = {
 
   aiItinerary: (body: ItineraryRequest) =>
     post<Itinerary>('/ai-itinerary', body),
+
+  engineItinerary: (body: {
+    city: string
+    lat: number
+    lon: number
+    days: number
+    startDate: string
+    selectedPlaceIds: string[]
+    personaArchetype: string
+    engineWeights: EngineWeights | null
+  }) =>
+    post<EngineItinerary>('/engine-itinerary', body),
 
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),
