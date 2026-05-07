@@ -68,6 +68,8 @@ export function usePinCityDetector(
 ) {
   const prevCountRef = useRef(selectedPlaces.length);
   const processingRef = useRef(false);
+  const onNewCityRef = useRef(onNewCity);
+  useEffect(() => { onNewCityRef.current = onNewCity; });
 
   useEffect(() => {
     const prevCount = prevCountRef.current;
@@ -75,6 +77,9 @@ export function usePinCityDetector(
     prevCountRef.current = currentCount;
 
     if (currentCount <= prevCount) return; // removal or no change
+    // Note: pins added while an async city-detection is in flight are silently
+    // dropped. In practice, users rarely add two different-city pins within the
+    // ~2s Nominatim + OSRM round-trip. A queue can be added here if needed.
     if (processingRef.current) return;
 
     const newPlace = selectedPlaces[currentCount - 1];
@@ -108,7 +113,9 @@ export function usePinCityDetector(
         if (alreadyKnown) return;
 
         // Step 3: OSRM to determine transit mode from nearest known city
-        const fromCity = knownCities[knownCities.length - 1]; // most recently added city
+        // Uses the last footprint as the "from" city — cityFootprints is populated in
+        // ADD_CITY_FOOTPRINT dispatch order, so this is the most-recently-detected city.
+        const fromCity = knownCities[knownCities.length - 1];
         const { mode, durationMinutes } = await detectTransitMode(
           fromCity.lat, fromCity.lon,
           newPlace.lat, newPlace.lon,
@@ -121,7 +128,7 @@ export function usePinCityDetector(
           durationMinutes,
         };
 
-        onNewCity(detectedCityName, newPlace.lat, newPlace.lon, transit);
+        onNewCityRef.current(detectedCityName, newPlace.lat, newPlace.lon, transit);
       } finally {
         processingRef.current = false;
       }
