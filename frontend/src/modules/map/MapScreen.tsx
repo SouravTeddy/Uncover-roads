@@ -863,6 +863,7 @@ export function MapScreen() {
                 lat: activePlace.lat,
                 lon: activePlace.lon,
                 city,
+                category: activePlace.category,
               },
             });
           }}

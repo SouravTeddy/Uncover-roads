@@ -404,6 +404,7 @@ export interface FavouritedPin {
   lat: number;
   lon: number;
   city: string;
+  category?: Category;
 }
 
 /** Visual state of a pin on the explore map. */
