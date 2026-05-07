@@ -3,11 +3,22 @@ import { useAppStore } from '../../shared/store'
 import { useItinerary } from './useItinerary'
 import { ItineraryDayView } from './ItineraryDayView'
 
+export function computeExtraDays(
+  totalDays: number,
+  startDate: string | null,
+  endDate: string | null,
+): number {
+  if (!startDate || !endDate) return 0;
+  const budgetDays =
+    Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1;
+  return Math.max(0, totalDays - budgetDays);
+}
+
 const FREE_TIER_LIMIT = 5
 
 export function RouteScreen() {
   const { state, dispatch } = useAppStore()
-  const { city, tripContext, userTier } = state
+  const { city, tripContext, userTier, travelStartDate, travelEndDate } = state
   const [activeDayIndex, setActiveDayIndex] = useState(0)
 
   const {
@@ -24,6 +35,7 @@ export function RouteScreen() {
   } = useItinerary()
 
   const days = engineItinerary?.days ?? []
+  const extraDays = computeExtraDays(days.length, travelStartDate, travelEndDate)
   const activeDay = days[activeDayIndex] ?? null
   const nextCity = activeDayIndex < days.length - 1 ? days[activeDayIndex + 1]?.city ?? null : null
 
@@ -66,6 +78,35 @@ export function RouteScreen() {
           <span className="text-[11px] text-[var(--color-text-3)]">
             {generationCount} of {FREE_TIER_LIMIT} free itineraries used
           </span>
+        </div>
+      )}
+
+      {/* Date conflict info bar */}
+      {extraDays > 0 && travelStartDate && travelEndDate && (
+        <div
+          className="mx-4 mt-2 px-4 py-3 rounded-2xl flex items-start gap-3"
+          style={{
+            background: 'rgba(79,143,171,.08)',
+            border: '1px solid rgba(79,143,171,.2)',
+          }}
+        >
+          <span className="ms fill text-[var(--color-sky)] flex-shrink-0 mt-0.5" style={{ fontSize: 16 }}>calendar_today</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-xs font-semibold text-[var(--color-text-2)]">
+                Travel dates: {new Date(travelStartDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(travelEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+              <span
+                className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(79,143,171,.15)', color: 'var(--color-sky)' }}
+              >
+                +{extraDays} {extraDays === 1 ? 'day' : 'days'}
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--color-text-3)] leading-relaxed">
+              Added a travel day for the city hop. Remove places to shorten the trip.
+            </p>
+          </div>
         </div>
       )}
 
