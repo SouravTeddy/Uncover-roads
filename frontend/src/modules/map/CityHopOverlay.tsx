@@ -46,35 +46,31 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, storyIdx, storyCards.length]);
 
-  // Parabolic arc: peak at t=0.5
   const arcX = planePos * 100;
   const arcY = -4 * planePos * (planePos - 1) * 40;
-
   const card = storyCards[storyIdx] ?? null;
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 60,
-      background: 'rgba(5,8,15,0.92)',
+      background: 'rgba(5,8,15,0.95)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
     }}>
-
       {phase === 'arc' && (
         <div style={{ width: '80%', position: 'relative', height: 100 }}>
           <div style={{
             position: 'absolute', left: 0, bottom: 0,
-            fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8',
+            fontSize: '0.8rem', fontWeight: 700, color: '#c0b0a4',
           }}>
             {fromCity}
           </div>
           <div style={{
             position: 'absolute', right: 0, bottom: 0,
-            fontSize: '0.8rem', fontWeight: 700, color: '#94a3b8',
+            fontSize: '0.8rem', fontWeight: 700, color: '#c0b0a4',
           }}>
             {toCity}
           </div>
-
           <svg
             viewBox="0 0 100 50"
             preserveAspectRatio="none"
@@ -83,12 +79,11 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
             <path
               d="M 0 50 Q 50 0 100 50"
               fill="none"
-              stroke="rgba(148,163,184,.3)"
-              strokeWidth="1"
+              stroke="rgba(224,120,84,.35)"
+              strokeWidth="1.5"
               strokeDasharray="3 3"
             />
           </svg>
-
           <div style={{
             position: 'absolute',
             left: `${arcX}%`,
@@ -111,29 +106,28 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
         }}>
           <div style={{
             padding: '10px 16px',
-            background: 'rgba(99,102,241,.15)',
-            borderBottom: '1px solid rgba(99,102,241,.2)',
-            fontSize: '0.7rem', fontWeight: 700, color: '#818cf8',
+            background: 'rgba(224,120,84,.12)',
+            borderBottom: '1px solid rgba(224,120,84,.2)',
+            fontSize: '0.7rem', fontWeight: 700,
+            color: 'var(--color-primary)',
             letterSpacing: '0.5px',
           }}>
             {card.cityContext}
           </div>
-
           <div style={{ padding: '20px 20px 24px' }}>
             <div style={{
               fontSize: '1.05rem', fontWeight: 800,
-              color: '#f1f5f9', lineHeight: 1.3, marginBottom: 10,
+              color: '#f5f0ea', lineHeight: 1.3, marginBottom: 10,
             }}>
-              {card.headline}
+              {toCity} after {fromCity} — nice.
             </div>
             <div style={{
-              fontSize: '0.85rem', color: 'rgba(193,198,215,.75)',
+              fontSize: '0.85rem', color: 'rgba(192,176,164,.75)',
               lineHeight: 1.6,
             }}>
-              {card.body}
+              We've added a travel day between them. Keep pinning places in both cities.
             </div>
           </div>
-
           {storyCards.length > 1 && (
             <div style={{
               display: 'flex', justifyContent: 'center', gap: 5,
@@ -145,7 +139,7 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
                   style={{
                     width: i === storyIdx ? 18 : 6, height: 6,
                     borderRadius: 3,
-                    background: i === storyIdx ? '#6366f1' : 'rgba(255,255,255,.2)',
+                    background: i === storyIdx ? 'var(--color-primary)' : 'rgba(255,255,255,.2)',
                     transition: 'width 0.2s ease',
                   }}
                 />
@@ -155,13 +149,25 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
         </div>
       )}
 
+      {/* No story cards — show standalone message */}
+      {phase === 'story' && !card && (
+        <div style={{ width: '85%', maxWidth: 360, textAlign: 'center', padding: '0 16px' }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f5f0ea', marginBottom: 10 }}>
+            {toCity} after {fromCity} — nice.
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'rgba(192,176,164,.75)', lineHeight: 1.6 }}>
+            We've added a travel day between them. Keep pinning places in both cities.
+          </div>
+        </div>
+      )}
+
       <button
         onClick={onDone}
         style={{
           marginTop: 32,
           background: 'none', border: '1px solid rgba(255,255,255,.15)',
           borderRadius: 999, padding: '8px 20px',
-          color: 'rgba(148,163,184,.7)', fontSize: '0.75rem',
+          color: 'rgba(192,176,164,.7)', fontSize: '0.75rem',
           cursor: 'pointer',
         }}
       >
