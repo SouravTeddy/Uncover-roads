@@ -46,6 +46,7 @@ The following design decisions were added on 2026-04-30 and supersede earlier Ph
 | **Phase 7** | `2026-04-29-phase7-destination-multicity.md` | Destination screen, multi-city flow, city-hop animation | Phase 4 |
 | **Phase 8** | `2026-04-29-phase8-saved-places.md` | Saved places screen, bottom nav update | Phase 4 |
 | **Phase 9** | `2026-04-29-phase9-security-testing.md` | Security audit, penetration testing, Play Store submission | All phases |
+| **Phase 10** | `2026-05-05-phase10-global-city-profiling.md` | Global city profiling: 80 Tier 1 seeds, GeoNames whitelist (~4k cities), on-demand auto-seeder, whitelist-enforced search | Phase 5 |
 
 ---
 

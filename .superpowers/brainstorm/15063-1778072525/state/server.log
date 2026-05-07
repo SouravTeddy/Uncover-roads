@@ -1,0 +1,4 @@
+{"type":"server-started","port":63166,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:63166","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/15063-1778072525/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/15063-1778072525/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/15063-1778072525/content/p8-itinerary-tab.html"}
+{"source":"user-event","type":"click","text":"Option D\n      \n        🗺️Explore\n        🔖Saved\n        👤Profile","choice":"saved","id":null,"timestamp":1778072656160}
+{"type":"server-stopped","reason":"idle timeout"}
