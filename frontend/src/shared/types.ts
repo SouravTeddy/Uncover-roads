@@ -385,6 +385,7 @@ export interface CityFootprint {
   pinCount: number;    // number of places explored (not added), shown in chip
   lat: number;
   lon: number;
+  transitMode?: TransitMode;
 }
 
 /** A story card shown during city-hop loading transition. */

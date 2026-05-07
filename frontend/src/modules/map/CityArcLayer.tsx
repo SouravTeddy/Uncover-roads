@@ -1,6 +1,13 @@
 import { Source, Layer } from 'react-map-gl/maplibre';
-import type { LineLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
 import type { CityFootprint } from '../../shared/types';
+
+const TRANSIT_ICON: Record<string, string> = {
+  flight: '✈',
+  train: '🚄',
+  drive: '🚗',
+  bus: '🚌',
+};
 
 /**
  * Builds a GeoJSON FeatureCollection with:
@@ -36,7 +43,12 @@ export function buildArcGeoJSON(
     const midIdx = Math.floor(STEPS / 2);
     features.push({
       type: 'Feature',
-      properties: { fromCity: from.city, toCity: to.city },
+      properties: {
+        fromCity: from.city,
+        toCity: to.city,
+        transitMode: to.transitMode ?? null,
+        transitIcon: to.transitMode ? (TRANSIT_ICON[to.transitMode] ?? '') : '',
+      },
       geometry: { type: 'Point', coordinates: coords[midIdx] },
     });
   }
