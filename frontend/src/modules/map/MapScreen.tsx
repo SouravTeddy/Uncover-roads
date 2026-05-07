@@ -682,6 +682,34 @@ export function MapScreen() {
           />
         </div>
 
+        {/* Saved filter chip — appears when places are hearted */}
+        {favouritedPins.length > 0 && (
+          <div style={{ pointerEvents: 'auto' }}>
+            <button
+              onClick={() => {
+                if (activeFilter === 'saved') {
+                  setFilter('all');
+                } else {
+                  setFilter('saved' as MapFilter);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 h-7 rounded-full text-[11px] font-medium transition-all"
+              style={{
+                background: activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.15)',
+                color: activeFilter === 'saved' ? '#fff' : 'var(--color-primary)',
+                border: `1px solid ${activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.3)'}`,
+              }}
+            >
+              <span className="ms" style={{ fontSize: 13 }}>bookmark</span>
+              Saved
+              <span style={{ opacity: 0.7 }}>{favouritedPins.length}</span>
+              {activeFilter === 'saved' && (
+                <span className="ms" style={{ fontSize: 12 }}>close</span>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Journey breadcrumb */}
         <div style={{ pointerEvents: 'auto' }}>
           <JourneyBreadcrumb cities={getJourneyCities(selectedPlaces)} />
