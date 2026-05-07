@@ -172,7 +172,7 @@ export interface GeoData {
 
 // ── Places / Map ──────────────────────────────────────────────
 export type Category = 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism' | 'place' | 'event';
-export type MapFilter = Category | 'all' | 'recommended';
+export type MapFilter = Category | 'all' | 'recommended' | 'saved';
 
 export interface Place {
   id: string;

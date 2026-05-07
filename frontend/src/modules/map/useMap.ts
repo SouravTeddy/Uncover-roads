@@ -29,7 +29,7 @@ export function useMap() {
   // Session-only: tracks which categories the user has tapped — passed to LLM as behavior signal
   const viewedCategoriesRef = useRef<Set<string>>(new Set());
 
-  const { city, places, selectedPlaces, activeFilter, cityGeo, persona } = state;
+  const { city, places, selectedPlaces, activeFilter, cityGeo, persona, favouritedPins } = state;
 
   // Recommended places load once we have places to filter against
   useEffect(() => {
@@ -134,6 +134,8 @@ export function useMap() {
   const filteredPlaces: Place[] =
     activeFilter === 'recommended'
       ? recommendedPlaces
+      : activeFilter === 'saved'
+      ? places.filter(p => favouritedPins.some(f => f.placeId === p.id))
       : activeFilter === 'all'
       ? places
       : places.filter(p => p.category === (activeFilter as string));
