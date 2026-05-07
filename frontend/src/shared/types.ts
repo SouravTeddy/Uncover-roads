@@ -13,6 +13,7 @@ export type Screen =
   | 'journey'
   | 'route'
   | 'trips'
+  | 'saved'
   | 'nav'
   | 'profile'
   | 'subscription';
@@ -592,4 +593,16 @@ export interface EngineItinerary {
   days: EngineItineraryDay[]
   personaSnapshot: EngineWeights   // weights at generation time
   archetypeSnapshot: ArchetypeId
+}
+
+// ── Saved events ──────────────────────────────────────────────
+export interface SavedEvent {
+  id: string
+  title: string
+  city: string
+  date: string | null       // ISO date or null if annual/recurring
+  isAnnual: boolean
+  venue: string | null
+  category: 'festival' | 'concert' | 'market' | 'sport' | 'exhibition' | 'other'
+  savedAt: string           // ISO timestamp
 }

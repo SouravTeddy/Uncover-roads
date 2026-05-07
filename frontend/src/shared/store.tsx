@@ -28,6 +28,7 @@ import type {
   MapFilterChip,
   CityContext,
   EngineItinerary,
+  SavedEvent,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ export interface AppState {
   favouritedPins: FavouritedPin[];
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
+  savedEvents: SavedEvent[];
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: CityContext[]          // one per city in current multi-city trip
   activeCityIndex: number              // index into cityContexts — which city is active
@@ -271,6 +273,7 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
+  savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: [],
   activeCityIndex: 0,
@@ -335,6 +338,8 @@ export type Action =
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
   | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+  | { type: 'SAVE_EVENT'; event: SavedEvent }
+  | { type: 'REMOVE_EVENT'; id: string }
   // ── Phase 3: city context actions ────────────────────────────
   | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
   | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
@@ -692,6 +697,20 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_MAP_FILTER':
       return { ...state, mapFilter: action.filter }
+
+    case 'SAVE_EVENT': {
+      const exists = state.savedEvents.some(e => e.id === action.event.id);
+      if (exists) return state;
+      const updated = [...state.savedEvents, action.event];
+      ssSave('ur_ss_saved_events', updated);
+      return { ...state, savedEvents: updated };
+    }
+
+    case 'REMOVE_EVENT': {
+      const updated = state.savedEvents.filter(e => e.id !== action.id);
+      ssSave('ur_ss_saved_events', updated);
+      return { ...state, savedEvents: updated };
+    }
 
     default:
       return state;
