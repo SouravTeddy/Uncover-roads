@@ -25,5 +25,9 @@ describe('buildArcGeoJSON', () => {
     const result = buildArcGeoJSON([TOKYO, SYDNEY]);
     const midpoint = result!.features.find(f => f.geometry.type === 'Point');
     expect(midpoint).toBeTruthy();
+    expect(midpoint!.properties?.fromCity).toBe('Tokyo');
+    expect(midpoint!.properties?.toCity).toBe('Sydney');
+    expect(midpoint!.properties?.transitMode).toBeNull();
+    expect(midpoint!.properties?.transitIcon).toBe('');
   });
 });
