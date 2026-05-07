@@ -38,6 +38,18 @@ import { CityArcLayer } from './CityArcLayer';
 import { CityHopOverlay } from './CityHopOverlay';
 import type { TransitMode } from '../../shared/types';
 
+// ── Module-level utilities ───────────────────────────────────────
+
+function buildTransitSummary(transit: DetectedTransit | null): string {
+  if (!transit) return '';
+  const icon: Record<TransitMode, string> = { flight: '✈️', train: '🚄', drive: '🚗', bus: '🚌' };
+  const label: Record<TransitMode, string> = { flight: 'flight', train: 'train', drive: 'drive', bus: 'bus' };
+  const hours = transit.durationMinutes
+    ? `~${Math.round(transit.durationMinutes / 60)}h `
+    : '';
+  return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
+}
+
 // ── Main screen ─────────────────────────────────────────────────
 
 const PLACEHOLDER_EXAMPLES = [
@@ -85,18 +97,16 @@ export function MapScreen() {
 
   // Multi-city overlay state
   const [pendingNewCity, setPendingNewCity] = useState<{ city: string; lat: number; lon: number; transit: DetectedTransit | null } | null>(null);
-  const [shownCities, setShownCities] = useState<Set<string>>(new Set());
 
-  function handleNewCity(city: string, lat: number, lon: number, transit: DetectedTransit | null) {
-    if (shownCities.has(city)) return;
-    setShownCities(prev => new Set([...prev, city]));
-    setPendingNewCity({ city, lat, lon, transit });
+  const handleNewCity = useCallback((newCity: string, lat: number, lon: number, transit: DetectedTransit | null) => {
+    if (cityFootprints.some(f => f.city === newCity)) return;
+    setPendingNewCity({ city: newCity, lat, lon, transit });
     const emoji = '🌍';
     dispatch({
       type: 'ADD_CITY_FOOTPRINT',
-      footprint: { city, emoji, pinCount: 1, lat, lon, transitMode: transit?.mode },
+      footprint: { city: newCity, emoji, pinCount: 1, lat, lon, transitMode: transit?.mode },
     });
-  }
+  }, [cityFootprints, dispatch]);
 
   usePinCityDetector(
     selectedPlaces,
@@ -108,16 +118,6 @@ export function MapScreen() {
   );
 
   const isMultiCity = cityFootprints.length > 1 || isJourneyMode(selectedPlaces);
-
-  function buildTransitSummary(transit: DetectedTransit | null): string {
-    if (!transit) return '';
-    const icon: Record<TransitMode, string> = { flight: '✈️', train: '🚄', drive: '🚗', bus: '🚌' };
-    const label: Record<TransitMode, string> = { flight: 'flight', train: 'train', drive: 'drive', bus: 'bus' };
-    const hours = transit.durationMinutes
-      ? `~${Math.round(transit.durationMinutes / 60)}h `
-      : '';
-    return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
-  }
 
   const transitSummary = pendingNewCity?.transit
     ? buildTransitSummary(pendingNewCity.transit)
