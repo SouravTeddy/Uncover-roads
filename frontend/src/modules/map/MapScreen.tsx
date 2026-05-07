@@ -25,13 +25,18 @@ import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
-import { JourneyStrip } from '../journey';
 import { FamousPinsLayer } from './FamousPinsLayer';
 import { ReferencePinsLayer } from './ReferencePinsLayer';
 import { UserPinsLayer } from './UserPinsLayer';
 import { DiscoveryModeToggle } from './DiscoveryModeToggle';
 import { SurpriseMeButton } from './SurpriseMeButton';
 import { BuildItineraryBar } from './BuildItineraryBar';
+import { usePinCityDetector } from './usePinCityDetector';
+import type { DetectedTransit } from './usePinCityDetector';
+import { MultiCityHeader } from './MultiCityHeader';
+import { CityArcLayer } from './CityArcLayer';
+import { CityHopOverlay } from './CityHopOverlay';
+import type { TransitMode } from '../../shared/types';
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -57,7 +62,7 @@ export function MapScreen() {
   const personaProfile = state.personaProfile ?? null;
 
   // New store state for phase 4
-  const { activePinId, cityContexts, activeCityIndex, favouritedPins } = state;
+  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints } = state;
   const activeDiscoveryMode: DiscoveryMode = cityContexts[activeCityIndex]?.discoveryMode ?? 'anchor';
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
 
@@ -78,12 +83,45 @@ export function MapScreen() {
     }
   }, [pendingActivePlace, setActivePlace, dispatch]);
 
-  // Auto-navigate to journey screen when multi-city places are detected
-  useEffect(() => {
-    if (isJourneyMode(selectedPlaces)) {
-      dispatch({ type: 'GO_TO', screen: 'journey' });
-    }
-  }, [selectedPlaces, dispatch]);
+  // Multi-city overlay state
+  const [pendingNewCity, setPendingNewCity] = useState<{ city: string; lat: number; lon: number; transit: DetectedTransit | null } | null>(null);
+  const [shownCities, setShownCities] = useState<Set<string>>(new Set());
+
+  function handleNewCity(city: string, lat: number, lon: number, transit: DetectedTransit | null) {
+    if (shownCities.has(city)) return;
+    setShownCities(prev => new Set([...prev, city]));
+    setPendingNewCity({ city, lat, lon, transit });
+    const emoji = '🌍';
+    dispatch({
+      type: 'ADD_CITY_FOOTPRINT',
+      footprint: { city, emoji, pinCount: 1, lat, lon, transitMode: transit?.mode },
+    });
+  }
+
+  usePinCityDetector(
+    selectedPlaces,
+    cityFootprints,
+    cityGeo?.lat ?? null,
+    cityGeo?.lon ?? null,
+    city,
+    handleNewCity,
+  );
+
+  const isMultiCity = cityFootprints.length > 1 || isJourneyMode(selectedPlaces);
+
+  function buildTransitSummary(transit: DetectedTransit | null): string {
+    if (!transit) return '';
+    const icon: Record<TransitMode, string> = { flight: '✈️', train: '🚄', drive: '🚗', bus: '🚌' };
+    const label: Record<TransitMode, string> = { flight: 'flight', train: 'train', drive: 'drive', bus: 'bus' };
+    const hours = transit.durationMinutes
+      ? `~${Math.round(transit.durationMinutes / 60)}h `
+      : '';
+    return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
+  }
+
+  const transitSummary = pendingNewCity?.transit
+    ? buildTransitSummary(pendingNewCity.transit)
+    : '';
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
@@ -521,6 +559,7 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
+        {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
       </MapLibreMap>
 
       {/* Initial load overlay */}
@@ -534,56 +573,70 @@ export function MapScreen() {
         className="absolute inset-x-0 top-0 flex flex-col gap-2 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.5rem', zIndex: 20, pointerEvents: 'none' }}
       >
-        {/* Row 1: back + search input */}
-        <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
-          <button
-            onClick={goBack}
-            className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
-            style={{ background: 'rgba(15,20,30,.82)' }}
-          >
-            <span className="ms text-text-2 text-base">arrow_back</span>
-          </button>
-
-          {/* Search input */}
-          <div className="flex-1 relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
-            <input
-              ref={searchInputRef}
-              type="text"
-              lang="en"
-              value={searchQuery}
-              onChange={e => handleSearchInput(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-              placeholder=""
-              className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white outline-none"
-              style={{
-                background: 'rgba(15,20,30,.82)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255,255,255,.1)',
+        {/* Row 1: single-city search bar OR multi-city tab header */}
+        {isMultiCity ? (
+          <div style={{ pointerEvents: 'auto' }}>
+            <MultiCityHeader
+              cityFootprints={cityFootprints}
+              activeCityIdx={activeCityIndex}
+              transitSummary={transitSummary}
+              onCityTap={(idx) => {
+                dispatch({ type: 'SET_ACTIVE_CITY_INDEX', index: idx });
+                const f = cityFootprints[idx];
+                if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12);
               }}
+              onAddCity={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
             />
-            {/* Rotating placeholder overlay — only visible when input is empty */}
-            {!searchQuery && (
-              <span
-                className="absolute left-9 top-1/2 -translate-y-1/2 text-sm pointer-events-none truncate"
-                style={{
-                  color: 'rgba(255,255,255,0.3)',
-                  opacity: placeholderVisible ? 1 : 0,
-                  transition: 'opacity 0.2s ease',
-                  maxWidth: 'calc(100% - 72px)',
-                }}
-              >
-                {PLACEHOLDER_EXAMPLES[placeholderIdx]}
-              </span>
-            )}
-            {searchLoading ? (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
-            ) : searchQuery ? (
-              <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm">close</button>
-            ) : null}
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
+            <button
+              onClick={goBack}
+              className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
+              style={{ background: 'rgba(15,20,30,.82)' }}
+            >
+              <span className="ms text-text-2 text-base">arrow_back</span>
+            </button>
+            {/* Search input */}
+            <div className="flex-1 relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                lang="en"
+                value={searchQuery}
+                onChange={e => handleSearchInput(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                placeholder=""
+                className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white outline-none"
+                style={{
+                  background: 'rgba(15,20,30,.82)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,.1)',
+                }}
+              />
+              {!searchQuery && (
+                <span
+                  className="absolute left-9 top-1/2 -translate-y-1/2 text-sm pointer-events-none truncate"
+                  style={{
+                    color: 'rgba(255,255,255,0.3)',
+                    opacity: placeholderVisible ? 1 : 0,
+                    transition: 'opacity 0.2s ease',
+                    maxWidth: 'calc(100% - 72px)',
+                  }}
+                >
+                  {PLACEHOLDER_EXAMPLES[placeholderIdx]}
+                </span>
+              )}
+              {searchLoading ? (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
+              ) : searchQuery ? (
+                <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm">close</button>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* Search results dropdown */}
         {searchOpen && searchResults.length > 0 && (
@@ -617,11 +670,6 @@ export function MapScreen() {
             onChipTap={handleChipTap}
           />
         )}
-
-        {/* Journey strip — only visible in multi-city mode */}
-        <div style={{ pointerEvents: 'auto' }}>
-          <JourneyStrip />
-        </div>
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
@@ -821,6 +869,16 @@ export function MapScreen() {
           </div>
           {city && <button onClick={() => handleAreaLoad(cityGeo?.lat ?? 0, cityGeo?.lon ?? 0, 5000, true)} className="mt-1 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold">Try again</button>}
         </div>
+      )}
+
+      {/* CityHopOverlay — fires once per new city detected */}
+      {pendingNewCity && (
+        <CityHopOverlay
+          fromCity={pendingNewCity.transit?.from ?? city}
+          toCity={pendingNewCity.city}
+          storyCards={[]}
+          onDone={() => setPendingNewCity(null)}
+        />
       )}
     </div>
   );
