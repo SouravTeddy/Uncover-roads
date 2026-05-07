@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pin Detection Logic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e14; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 24px 20px 80px; }
+  h2 { font-size: 18px; font-weight: 700; color: #f5f0ea; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #8b9ab0; margin-bottom: 24px; }
+
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #e07854; margin-bottom: 12px; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 16px;
+    background: #131820;
+    border: 1px solid #1e2535;
+    border-radius: 0;
+    position: relative;
+  }
+  .flow-step:first-child { border-radius: 12px 12px 0 0; }
+  .flow-step:last-child { border-radius: 0 0 12px 12px; }
+  .flow-step + .flow-step { border-top: none; }
+  .flow-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #e07854; color: #fff;
+    font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .flow-body h4 { font-size: 13px; font-weight: 700; color: #f5f0ea; margin-bottom: 4px; }
+  .flow-body p { font-size: 12px; color: #8b9ab0; line-height: 1.5; }
+  .flow-body code { font-size: 11px; background: #1e2535; color: #818cf8; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+
+  /* Threshold table */
+  .table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .table th { text-align: left; color: #8b9ab0; font-weight: 600; font-size: 11px; padding: 8px 10px; border-bottom: 1px solid #1e2535; }
+  .table td { padding: 10px 10px; border-bottom: 1px solid #131820; color: #c1c6d7; vertical-align: top; }
+  .table tr:last-child td { border-bottom: none; }
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+  }
+  .tag-same { background: rgba(74,222,128,.15); color: #4ade80; }
+  .tag-city { background: rgba(99,102,241,.15); color: #818cf8; }
+  .tag-flight { background: rgba(224,120,84,.15); color: #e07854; }
+
+  /* UX moment illustration */
+  .phone-frame {
+    background: #0d1117;
+    border-radius: 16px;
+    border: 1px solid #1e2535;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-bg {
+    background: #141b27;
+    border-radius: 10px;
+    height: 180px;
+    margin-bottom: 10px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #4a5568;
+  }
+  .pin { position: absolute; font-size: 18px; }
+  .detection-toast {
+    background: rgba(15,20,30,.95);
+    border: 1px solid rgba(99,102,241,.4);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px;
+  }
+  .detection-icon { font-size: 20px; flex-shrink: 0; }
+  .detection-text h4 { font-size: 12px; font-weight: 700; color: #f5f0ea; }
+  .detection-text p { font-size: 11px; color: #8b9ab0; margin-top: 2px; }
+  .chips-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+  }
+  .chip-active { background: rgba(99,102,241,.25); border: 1px solid rgba(99,102,241,.5); color: #c7d2fe; }
+  .chip-inactive { background: rgba(15,20,30,.75); border: 1px solid rgba(255,255,255,.12); color: rgba(193,198,215,.8); }
+
+  /* Two column layout for scenarios */
+  .scenarios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .scenario {
+    background: #131820; border: 1px solid #1e2535; border-radius: 12px; padding: 14px;
+  }
+  .scenario h4 { font-size: 12px; font-weight: 700; color: #f5f0ea; margin-bottom: 6px; }
+  .scenario p { font-size: 11px; color: #8b9ab0; line-height: 1.5; }
+  .scenario .result { margin-top: 8px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; display: inline-block; }
+  .result-multi { background: rgba(99,102,241,.15); color: #818cf8; }
+  .result-day { background: rgba(74,222,128,.15); color: #4ade80; }
+</style>
+</head>
+<body>
+
+<h2>Phase 7 — Organic City Detection Design</h2>
+<p class="subtitle">How the app knows when pins are a new city vs more days in the same city</p>
+
+<div class="section">
+  <div class="section-title">Detection flow — runs on every pin add</div>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num">1</div>
+      <div class="flow-body">
+        <h4>Pin added → geo-cluster check</h4>
+        <p>New pin's lat/lon is compared against the <strong>centroid of all existing pins</strong> using <code>haversineKm()</code>. Already exists in codebase.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">2</div>
+      <div class="flow-body">
+        <h4>Distance threshold → classify</h4>
+        <p>If new pin is within <strong>80km</strong> of existing centroid → same city. If > 80km → potential new city. 80km covers large metro areas (Greater Tokyo, Greater London, etc.).</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">3</div>
+      <div class="flow-body">
+        <h4>Reverse geocode → assign city name</h4>
+        <p>If new city detected: reverse geocode the pin's coords to get city/admin name. Stamp <code>_city</code> on the place. Already uses Nominatim — same API, just reverse direction.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <h4>Transport mode → derive connection type</h4>
+        <p>Run <code>suggestTransportMode(distanceKm)</code> on centroid-to-centroid distance. < 150km = train/bus, 150–600km = train/short-haul, > 600km = flight. Already exists.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">5</div>
+      <div class="flow-body">
+        <h4>UI moment → toast + footprint chip appears</h4>
+        <p>Non-blocking toast slides up: <em>"Looks like you're exploring Sydney ✈️ — it's a flight from Tokyo"</em>. FootprintChip for new city adds to bar. No modal, no interruption.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Distance thresholds</div>
+  <table class="table">
+    <tr>
+      <th>Distance from existing pins</th>
+      <th>Classification</th>
+      <th>What happens</th>
+    </tr>
+    <tr>
+      <td>< 80 km</td>
+      <td><span class="tag tag-same">Same city</span></td>
+      <td>More days in existing city. Multi-day itinerary. No new city chip.</td>
+    </tr>
+    <tr>
+      <td>80–600 km</td>
+      <td><span class="tag tag-city">New city · train</span></td>
+      <td>New city detected. Train/bus transit leg. "Adding Kyoto — 2.5h by bullet train" toast.</td>
+    </tr>
+    <tr>
+      <td>> 600 km</td>
+      <td><span class="tag tag-flight">New city · flight</span></td>
+      <td>New city detected. Flight transit leg. "Adding Sydney — that's a flight from Tokyo ✈️" toast.</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">The UX moment — what the user sees</div>
+  <div class="phone-frame">
+    <!-- Map with pins in Tokyo + new Sydney pin -->
+    <div class="map-bg">
+      <span style="color:#6b7a93;font-size:11px;">map canvas</span>
+      <div class="pin" style="top:40px;left:60px;">📍</div>
+      <div class="pin" style="top:55px;left:80px;">📍</div>
+      <div class="pin" style="top:45px;left:72px;">📍</div>
+      <div class="pin" style="top:120px;right:40px;font-size:22px;filter:drop-shadow(0 0 6px rgba(99,102,241,.8));">📍</div>
+      <!-- Toast slides up from top -->
+      <div style="position:absolute;top:8px;left:10px;right:10px;background:rgba(10,14,20,.95);border:1px solid rgba(99,102,241,.4);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">✈️</span>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#f5f0ea;">Sydney added to your trip</div>
+          <div style="font-size:10px;color:#8b9ab0;margin-top:1px;">That's a flight from Tokyo · 9h 20min</div>
+        </div>
+        <div style="margin-left:auto;font-size:10px;color:#4a5568;">✕</div>
+      </div>
+    </div>
+    <!-- Footprint chips -->
+    <div class="chips-row">
+      <div class="chip chip-inactive">🗼 Tokyo · 3 pins</div>
+      <div class="chip chip-active">🦘 Sydney · 1 pin</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">The two scenarios disambiguated</div>
+  <div class="scenarios">
+    <div class="scenario">
+      <h4>🗼 Tokyo · 12 pins spread across the city</h4>
+      <p>All pins within 80km centroid. No new city detected. Engine creates a 3-day itinerary: Day 1 · Shibuya area, Day 2 · Asakusa, Day 3 · Shinjuku.</p>
+      <div class="result result-day">→ Multi-day · same city</div>
+    </div>
+    <div class="scenario">
+      <h4>🗼 Tokyo 4 pins + 🦘 Sydney 2 pins</h4>
+      <p>Sydney centroid is 7,800km from Tokyo centroid. Flight detected. JourneyScreen activates with Tokyo city block → ✈️ flight transit card → Sydney city block.</p>
+      <div class="result result-multi">→ Multi-city · flight</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Dates in organic flow</div>
+  <div style="background:#131820;border:1px solid #1e2535;border-radius:12px;padding:14px;">
+    <p style="font-size:12px;color:#c1c6d7;line-height:1.7;">
+      User doesn't set dates upfront. When a new city is detected, the app shows a <strong style="color:#f5f0ea;">lightweight date prompt</strong> inside the toast: <em>"When are you going? Add dates"</em> — a small secondary action. Tapping opens a compact date range sheet for that city only. Dates remain optional — the engine works without them but shows a "Add dates for smarter planning" nudge on the Journey screen.
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

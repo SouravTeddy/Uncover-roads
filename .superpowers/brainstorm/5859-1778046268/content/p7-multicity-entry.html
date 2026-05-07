@@ -1,0 +1,80 @@
+<h2>Phase 7 — Multi-City: How do you add a second city?</h2>
+<p class="subtitle">After the first city + dates are set, how does the user expand to multi-city?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d1117;border-radius:12px;padding:14px;font-family:system-ui,sans-serif;">
+      <!-- Option A: City strip at top with + chip -->
+      <div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;">
+        <div style="flex-shrink:0;background:#e07854;border-radius:20px;padding:6px 12px;display:flex;align-items:center;gap:6px;">
+          <span style="color:#fff;font-size:10px;font-weight:700;">🗼 Tokyo</span>
+          <span style="color:rgba(255,255,255,.7);font-size:9px;">May 14–18</span>
+        </div>
+        <div style="flex-shrink:0;background:#1a1f2e;border-radius:20px;padding:6px 12px;border:1px dashed #3a4258;display:flex;align-items:center;gap:4px;">
+          <span style="color:#e07854;font-size:14px;font-weight:300;">+</span>
+          <span style="color:#e07854;font-size:10px;font-weight:600;">Add city</span>
+        </div>
+      </div>
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="color:#8b9ab0;font-size:12px;">🔍</span>
+        <span style="color:#6b7a93;font-size:12px;">Search second city...</span>
+        <span style="color:#4a5568;font-size:10px;margin-left:auto;">📅</span>
+      </div>
+      <div style="color:#6b7a93;font-size:10px;text-align:center;">City chips scroll horizontally · tap chip to switch active city</div>
+    </div>
+    <div class="card-body">
+      <h3>A — Horizontal city strip</h3>
+      <p>A scrollable strip of city chips lives above the search bar. First city chip is always there. "+ Add city" chip opens a new search. Tap any chip to switch active city context.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d1117;border-radius:12px;padding:14px;font-family:system-ui,sans-serif;">
+      <!-- Option B: Add city button in the in-progress section -->
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="color:#e07854;font-size:12px;">🗼</span>
+        <span style="color:#f5f0ea;font-size:12px;font-weight:600;">Tokyo</span>
+        <span style="color:#6b7a93;font-size:10px;">May 14–18 · 4 pins</span>
+        <span style="color:#4a5568;font-size:10px;margin-left:auto;">📅</span>
+      </div>
+      <div style="background:#1a1f2e;border-radius:10px;padding:14px;border:1px dashed #2a3142;text-align:center;margin-bottom:6px;">
+        <div style="color:#e07854;font-size:18px;margin-bottom:4px;">+</div>
+        <div style="color:#f5f0ea;font-size:11px;font-weight:600;">Add another city</div>
+        <div style="color:#6b7a93;font-size:9px;margin-top:2px;">Continue your journey</div>
+      </div>
+      <div style="color:#6b7a93;font-size:10px;text-align:center;">Lives below the first city's in-progress section</div>
+    </div>
+    <div class="card-body">
+      <h3>B — "Add another city" card below in-progress</h3>
+      <p>The existing in-progress card shows city 1. Below it, a dashed "Add another city" card appears. Tapping opens city search in a modal. Natural vertical flow — city 2 stacks beneath city 1.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d1117;border-radius:12px;padding:14px;font-family:system-ui,sans-serif;">
+      <!-- Option C: Floating action inside search bar area -->
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="color:#8b9ab0;font-size:12px;">🔍</span>
+        <div style="flex:1;">
+          <div style="color:#f5f0ea;font-size:12px;font-weight:600;">Tokyo · May 14–18</div>
+        </div>
+        <div style="background:#1e2535;border-radius:8px;padding:4px 8px;display:flex;align-items:center;gap:4px;border:1px solid #2a3142;">
+          <span style="color:#e07854;font-size:11px;">+</span>
+          <span style="color:#e07854;font-size:9px;font-weight:600;">city</span>
+        </div>
+      </div>
+      <!-- Second city added inline -->
+      <div style="background:#1a1f2e;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;opacity:0.6;border:1px dashed #2a3142;">
+        <span style="color:#8b9ab0;font-size:12px;">🔍</span>
+        <span style="color:#6b7a93;font-size:12px;">Add city 2...</span>
+      </div>
+      <div style="color:#6b7a93;font-size:10px;text-align:center;margin-top:6px;">Search bar morphs to show current city · "+ city" chip right side</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Search bar morphs + "+ city" inline</h3>
+      <p>Once city 1 is set, the search bar shows "Tokyo · May 14–18" as a summary chip. A small "+ city" button on the right reveals a second search bar below. Compact, stays within the header zone.</p>
+    </div>
+  </div>
+
+</div>

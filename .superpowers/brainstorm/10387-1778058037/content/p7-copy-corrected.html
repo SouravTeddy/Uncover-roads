@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copy corrected</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1714; --bg2: #131110; --surface: #242018; --surface2: #2e2a22;
+    --primary: #e07854; --primary-dk: #c4613d; --primary-bg: rgba(224,120,84,.14);
+    --sage: #6b9470; --sage-bg: rgba(107,148,112,.15); --sage-bdr: rgba(107,148,112,.30);
+    --sky: #4f8fab; --sky-bg: rgba(79,143,171,.15); --sky-bdr: rgba(79,143,171,.30);
+    --amber: #c49840; --amber-bg: rgba(196,152,64,.15); --amber-bdr: rgba(196,152,64,.30);
+    --text-1: #f5f0ea; --text-2: #c0b0a4; --text-3: #857268; --text-4: #5a4e47;
+    --border: rgba(255,255,255,.08); --border-m: rgba(255,255,255,.14);
+    --divider: rgba(255,255,255,.06);
+    --font-sans: 'DM Sans', sans-serif; --font-head: 'Playfair Display', serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text-1); font-family: var(--font-sans); padding: 24px 16px 80px; }
+  h2 { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-3); margin-bottom: 28px; line-height: 1.5; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--primary); margin-bottom: 14px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .copy-block { background: var(--surface); border: 1px solid var(--border-m); border-radius: 12px; padding: 14px; }
+  .copy-block.wrong { border-color: rgba(196,64,64,.3); background: rgba(196,64,64,.05); }
+  .copy-block.right { border-color: var(--sage-bdr); background: var(--sage-bg); }
+  .copy-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .copy-label.wrong { color: rgba(220,100,100,.8); }
+  .copy-label.right { color: var(--sage); }
+  .copy-text { font-size: 12px; color: var(--text-1); line-height: 1.6; }
+  .copy-note { font-size: 10px; color: var(--text-3); margin-top: 6px; line-height: 1.5; }
+
+  /* Overlay mockup */
+  .overlay-mock {
+    background: rgba(26,23,20,.97); border-radius: 16px;
+    padding: 24px 20px; text-align: center;
+    border: 1px solid var(--border-m);
+    margin-bottom: 12px;
+  }
+  .overlay-mock .plane { font-size: 28px; margin-bottom: 12px; }
+  .overlay-mock h3 { font-family: var(--font-head); font-size: 17px; font-weight: 700; color: var(--text-1); line-height: 1.4; margin-bottom: 6px; }
+  .overlay-mock p { font-size: 11px; color: var(--text-3); margin-bottom: 16px; }
+  .overlay-mock .btn { display: inline-flex; align-items: center; padding: 7px 18px; background: var(--primary-bg); border: 1px solid var(--primary); border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--primary); }
+
+  /* Info bar mockup */
+  .info-bar {
+    background: var(--sky-bg); border: 1px solid var(--sky-bdr);
+    border-radius: 10px; padding: 11px 14px;
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;
+  }
+  .info-bar-text h4 { font-size: 12px; font-weight: 700; color: var(--text-1); }
+  .info-bar-text h4 span { color: var(--sky); }
+  .info-bar-text p { font-size: 10px; color: var(--text-3); margin-top: 2px; line-height: 1.5; }
+
+  .day-card {
+    background: var(--surface2); border-radius: 8px;
+    padding: 9px 11px; margin-bottom: 5px;
+    font-size: 10px; color: var(--text-1); font-weight: 600;
+  }
+  .day-card.travel {
+    background: var(--sky-bg); border: 1px solid var(--sky-bdr); color: var(--sky);
+  }
+
+  /* Breadcrumb mockup */
+  .breadcrumb-mock {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface); border: 1px solid var(--border-m);
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 11px; font-weight: 700; color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  .bc-arrow { color: var(--text-4); margin: 0 2px; }
+  .bc-mode { margin-left: auto; font-size: 10px; color: var(--sky); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h2>Copy — corrected</h2>
+<p class="subtitle">We account for travel time. We don't plan, book, or handle flights.</p>
+
+<div class="section">
+  <div class="section-title">CityHopOverlay — the moment Sydney is detected</div>
+
+  <div class="overlay-mock">
+    <div class="plane">✈️</div>
+    <h3>Sydney after Tokyo — nice.</h3>
+    <p>We've added a travel day between them. Keep pinning places in both cities.</p>
+    <div class="btn">Got it</div>
+  </div>
+
+  <div class="row">
+    <div class="copy-block wrong">
+      <div class="copy-label wrong">✗ Wrong</div>
+      <div class="copy-text">"We'll plan the flight, you handle the pins."</div>
+      <div class="copy-note">Implies we book or arrange flights.</div>
+    </div>
+    <div class="copy-block wrong">
+      <div class="copy-label wrong">✗ Wrong</div>
+      <div class="copy-text">"Going to Sydney after Tokyo! We'll handle the flights."</div>
+      <div class="copy-note">Same problem — "handle" suggests booking.</div>
+    </div>
+  </div>
+  <div class="copy-block right" style="margin-bottom:0;">
+    <div class="copy-label right">✓ Correct framing</div>
+    <div class="copy-text">"Sydney after Tokyo — nice. We've added a travel day between them. Keep pinning."</div>
+    <div class="copy-note">We added a day. Nothing more. User knows they still need to sort the flight themselves.</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Map breadcrumb — transit mode label</div>
+
+  <div class="breadcrumb-mock">
+    🗼 Tokyo <span class="bc-arrow">→</span> 🦘 Sydney
+    <span class="bc-mode">✈️ ~9h flight</span>
+  </div>
+
+  <div class="row">
+    <div class="copy-block wrong">
+      <div class="copy-label wrong">✗ Wrong</div>
+      <div class="copy-text">"We'll book the flight"<br>"Flight sorted"</div>
+      <div class="copy-note">We don't book anything.</div>
+    </div>
+    <div class="copy-block right">
+      <div class="copy-label right">✓ Correct</div>
+      <div class="copy-text">"✈️ ~9h flight" or "🚄 ~2h train"</div>
+      <div class="copy-note">Just the mode + estimated duration. Factual, no implication of booking.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Itinerary screen — date extension info bar</div>
+
+  <div class="info-bar">
+    <span style="font-size:16px;flex-shrink:0;">📅</span>
+    <div class="info-bar-text">
+      <h4>Travel dates: 2 May – 7 May <span>+2 days</span></h4>
+      <p>Added a travel day for Tokyo → Sydney. Remove places to shorten the trip.</p>
+    </div>
+  </div>
+
+  <div class="day-card">Day 1 · Tokyo — Senso-ji, Shibuya, Ueno</div>
+  <div class="day-card">Day 2 · Tokyo — Shinjuku, Harajuku</div>
+  <div class="day-card travel">Day 3 · Tokyo → Sydney — travel day</div>
+  <div class="day-card">Day 4 · Sydney — Opera House, Bondi</div>
+  <div class="day-card">Day 5 · Sydney — Manly, The Rocks</div>
+
+  <div class="row" style="margin-top:10px;">
+    <div class="copy-block wrong">
+      <div class="copy-label wrong">✗ Wrong</div>
+      <div class="copy-text">"Includes Tokyo → Sydney flight day"</div>
+      <div class="copy-note">"Flight day" implies we arranged it.</div>
+    </div>
+    <div class="copy-block right">
+      <div class="copy-label right">✓ Correct</div>
+      <div class="copy-text">"Added a travel day for Tokyo → Sydney"</div>
+      <div class="copy-note">We added time. The mode (flight/train) is informational only.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Rule for all copy going forward</div>
+  <div style="background:var(--surface);border:1px solid var(--border-m);border-radius:12px;padding:16px;">
+    <p style="font-size:12px;color:var(--text-2);line-height:1.8;">
+      ✓ <strong style="color:var(--text-1);">We account for</strong> travel time<br>
+      ✓ <strong style="color:var(--text-1);">We add</strong> a travel day<br>
+      ✓ <strong style="color:var(--text-1);">We build in</strong> transit between cities<br>
+      ✗ <strong style="color:rgba(220,100,100,.8);">Never: "plan / handle / book / sort / arrange"</strong> flights or transport
+    </p>
+  </div>
+</div>
+
+</body>
+</html>
