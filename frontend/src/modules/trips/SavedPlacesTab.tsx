@@ -86,7 +86,7 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
                   <SavedPlaceCard
                     key={pin.placeId}
                     pin={pin}
-                    category="place"
+                    category={pin.category ?? 'place'}
                     tall={i === 0}
                     onRemove={onRemovePin}
                   />
