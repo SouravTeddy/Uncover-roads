@@ -1,5 +1,5 @@
 import { Source, Layer } from 'react-map-gl/maplibre';
-import type { LineLayerSpecification, SymbolLayerSpecification } from 'maplibre-gl';
+import type { LineLayerSpecification } from 'maplibre-gl';
 import type { CityFootprint } from '../../shared/types';
 
 const TRANSIT_ICON: Record<string, string> = {

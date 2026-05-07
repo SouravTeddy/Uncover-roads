@@ -19,9 +19,6 @@ describe('DateRangeCalendar', () => {
     render(<DateRangeCalendar onSelect={onSelect} onClose={vi.fn()} />);
 
     // Navigate forward one month to ensure days 10 and 14 are always in the future
-    const navButtons = screen.getAllByRole('button').filter(b =>
-      b.textContent === 'chevron_right' || b.getAttribute('aria-label') === 'Next month'
-    );
     // The next-month button is the last nav button in the month header row
     // It appears between two other buttons (prev, label, next) — get the rightmost chevron
     const nextBtn = screen.getAllByRole('button').find(b => b.textContent?.trim() === 'chevron_right');

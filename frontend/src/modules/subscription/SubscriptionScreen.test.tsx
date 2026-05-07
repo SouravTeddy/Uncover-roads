@@ -62,6 +62,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     itineraryHistory: [],
     activePinId: null,
     mapFilter: 'all',
+    savedEvents: [],
     ...overrides,
   };
 }
