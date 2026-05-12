@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { buildReelCards } from './reel-builder';
-import type { EngineItinerary, WeatherData, JourneyLeg, EngineItineraryStop } from '../../../shared/types';
+import type { EngineItinerary, EngineItineraryDay, WeatherData, JourneyLeg, EngineItineraryStop } from '../../../shared/types';
+
+const DEFAULT_WEIGHTS = {
+  w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5,
+  w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.2,
+  w_budget_sensitivity: 0.4, w_crowd_aversion: 0.5,
+  w_spontaneity: 0.5, w_rest_need: 0.5,
+};
 
 const STOP = (overrides: Partial<EngineItineraryStop> = {}): EngineItineraryStop => ({
   id: 'stop-1',
@@ -23,17 +30,30 @@ const STOP = (overrides: Partial<EngineItineraryStop> = {}): EngineItineraryStop
   orderReason: null,
   orderConsequence: null,
   movedFrom: null,
+  googleMapsUrl: null,
+  website: null,
+  photoRef: null,
   ...overrides,
+});
+
+const DAY = (city: string, date: string, stops: EngineItineraryStop[], day = 1): EngineItineraryDay => ({
+  day,
+  date,
+  city,
+  isTravel: false,
+  stops,
+  messages: [],
 });
 
 const WEATHER: WeatherData = { temp: 22, condition: 'sunny', icon: 'wb_sunny' };
 
 const ITIN = (stops: EngineItineraryStop[]): EngineItinerary => ({
   id: 'itin-1',
-  city: 'Paris',
-  days: [{ city: 'Paris', date: '2026-05-20', stops }],
-  summary: { pro_tip: '', total_places: stops.length },
-  weights: {},
+  generatedAt: '2026-05-20T00:00:00Z',
+  cities: ['Paris'],
+  days: [DAY('Paris', '2026-05-20', stops)],
+  personaSnapshot: DEFAULT_WEIGHTS,
+  archetypeSnapshot: 'explorer',
 });
 
 describe('buildReelCards', () => {
@@ -70,13 +90,14 @@ describe('buildReelCards', () => {
     ];
     const multiItin: EngineItinerary = {
       id: 'multi',
-      city: 'Paris · Lyon',
+      generatedAt: '2026-05-20T00:00:00Z',
+      cities: ['Paris', 'Lyon'],
       days: [
-        { city: 'Paris', date: '2026-05-20', stops: [STOP({ id: 's1' })] },
-        { city: 'Lyon', date: '2026-05-21', stops: [STOP({ id: 's2', day: 2 })] },
+        DAY('Paris', '2026-05-20', [STOP({ id: 's1' })], 1),
+        DAY('Lyon', '2026-05-21', [STOP({ id: 's2', day: 2 })], 2),
       ],
-      summary: { pro_tip: '', total_places: 2 },
-      weights: {},
+      personaSnapshot: DEFAULT_WEIGHTS,
+      archetypeSnapshot: 'explorer',
     };
     const cards = buildReelCards(multiItin, legs, null, WEATHER, 'explorer');
     const transit = cards.find(c => c.type === 'transit');
@@ -91,15 +112,15 @@ describe('buildReelCards', () => {
   it('does not insert transit card when journeyLegs is empty', () => {
     const multiItin: EngineItinerary = {
       id: 'multi2',
-      city: 'Paris · Lyon',
+      generatedAt: '2026-05-20T00:00:00Z',
+      cities: ['Paris', 'Lyon'],
       days: [
-        { city: 'Paris', date: '2026-05-20', stops: [STOP({ id: 's1' })] },
-        { city: 'Lyon', date: '2026-05-21', stops: [STOP({ id: 's2', day: 2 })] },
+        DAY('Paris', '2026-05-20', [STOP({ id: 's1' })], 1),
+        DAY('Lyon', '2026-05-21', [STOP({ id: 's2', day: 2 })], 2),
       ],
-      summary: { pro_tip: '', total_places: 2 },
-      weights: {},
+      personaSnapshot: DEFAULT_WEIGHTS,
+      archetypeSnapshot: 'explorer',
     };
-    // Empty legs array (non-null) — no matching leg exists
     const cards = buildReelCards(multiItin, [], null, WEATHER, 'explorer');
     const transit = cards.find(c => c.type === 'transit');
     expect(transit).toBeUndefined();
