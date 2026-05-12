@@ -46,6 +46,10 @@ OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
+# In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
+_events_cache: dict[str, tuple[float, list]] = {}
+_EVENTS_CACHE_TTL = 3600  # seconds
+
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 
@@ -1525,6 +1529,10 @@ def events(
 ):
     if not TICKETMASTER_KEY:
         return {"error": "No Ticketmaster API key configured"}
+    cache_key = f"{city}|{start_date}|{end_date}"
+    cached = _events_cache.get(cache_key)
+    if cached and (_time() - cached[0]) < _EVENTS_CACHE_TTL:
+        return {"places": cached[1]}
     try:
         params = {
             "apikey":        TICKETMASTER_KEY,
@@ -1671,7 +1679,8 @@ def events(
                 print(f"EVENTS Yelp error (non-fatal): {ye}")
 
         print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
-        return places
+        _events_cache[cache_key] = (_time(), places)
+        return {"places": places}
 
     except Exception as e:
         print("EVENTS ERROR:", e)
