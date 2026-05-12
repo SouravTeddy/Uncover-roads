@@ -26,7 +26,8 @@ Modified:
   frontend/src/modules/login/WelcomeBackScreen.tsx             → same treatment as LoginScreen
   frontend/src/modules/persona/PersonaScreen.tsx               → 3-beat reveal
   frontend/src/modules/destination/DestinationScreen.tsx       → Playfair title, Unsplash city cards
-  frontend/src/modules/trips/TripsScreen.tsx                   → full-bleed Unsplash cards
+  frontend/src/modules/persona/types.ts                        → ARCHETYPE_COLORS warm palette remap
+  frontend/src/modules/trips/TripsScreen.tsx                   → fix hardcoded gold tokens on fan cards
   frontend/src/modules/map/MapScreen.tsx                       → tile theme switching
   frontend/src/modules/journey/JourneyScreen.tsx               → warm tokens
   frontend/src/modules/route/RouteScreen.tsx                   → warm tokens
@@ -613,83 +614,106 @@ git commit -m "feat(destination): Playfair title, Unsplash city photo cards, war
 
 ---
 
-## Task 10: TripsScreen — full-bleed Unsplash trip cards
+## Task 9b: Update `ARCHETYPE_COLORS` to warm design system palette
 
 **Files:**
-- Modify: `frontend/src/modules/trips/TripsScreen.tsx`
+- Modify: `frontend/src/modules/persona/types.ts`
 
-- [ ] **Step 1: Read the current TripsScreen**
+`ARCHETYPE_COLORS` is imported by both `TripsScreen` and `ProfileScreen`. The current values are cool-tone (blue, teal, green) — inconsistent with the warm editorial theme. The design spec maps archetypes to the warm accent palette (sage, amber, sky, primary).
 
-```bash
-cat /Users/souravbiswas/uncover-roads/frontend/src/modules/trips/TripsScreen.tsx
-```
+- [ ] **Step 1: Replace `ARCHETYPE_COLORS` with warm palette values**
 
-Note how trips are rendered and where city name / photo data comes from.
+In `frontend/src/modules/persona/types.ts`, replace the `ARCHETYPE_COLORS` constant:
 
-- [ ] **Step 2: Apply full-bleed Unsplash photo to each trip card**
-
-Each trip card should be 145px tall with a full-bleed photo and gradient overlay. Use `getCityPhotoUrl` (defined in Task 9, or duplicate the helper inline):
-
-```tsx
-function getCityPhotoUrl(cityName: string): string {
-  const CITY_PHOTOS: Record<string, string> = {
-    'paris':     'photo-1499856871958-5b9627545d1a',
-    'tokyo':     'photo-1540959733332-eab4deabeeaf',
-    'rome':      'photo-1552832230-c0197dd311b5',
-    'barcelona': 'photo-1583422409516-2895a77efded',
-    'lisbon':    'photo-1585208798174-6cedd4b9b6e5',
-    'london':    'photo-1520986606214-8b456906c813',
-    'amsterdam': 'photo-1534351590666-13e3e96b5017',
-    'kyoto':     'photo-1528360983277-13d401cdc186',
-    'new york':  'photo-1496442226666-8d4d0e62e6e9',
-    'istanbul':  'photo-1524231757912-21f4fe3a7200',
-  }
-  const key = cityName.toLowerCase()
-  const id = Object.entries(CITY_PHOTOS).find(([k]) => key.includes(k))?.[1] ?? 'photo-1476514525405-09b77a9d1f66'
-  return `https://images.unsplash.com/${id}?w=600&q=75`
+```typescript
+/** Per-archetype accent color + glow — warm editorial palette */
+export const ARCHETYPE_COLORS: Record<string, { primary: string; glow: string }> = {
+  voyager:       { primary: '#4f8fab', glow: 'rgba(79,143,171,.22)'   },  // sky
+  wanderer:      { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  epicurean:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
+  historian:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
+  pulse:         { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  slowtraveller: { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
+  explorer:      { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
 }
 ```
 
-Trip card structure:
-```tsx
-<div
-  className="relative overflow-hidden rounded-[22px]"
-  style={{
-    height: 145,
-    background: `url('${getCityPhotoUrl(trip.city ?? '')}') center/cover no-repeat`,
-    animation: `cardEntry 0.45s cubic-bezier(.22,1,.36,1) ${index * 0.09}s both`,
-  }}
->
-  {/* Gradient overlay */}
-  <div
-    className="absolute inset-0"
-    style={{ background: 'linear-gradient(160deg, rgba(20,16,12,.22) 0%, rgba(20,16,12,.8) 100%)' }}
-  />
-  {/* Top-left: city + meta */}
-  <div className="absolute top-3 left-4">
-    <p className="font-[family-name:var(--font-heading)] font-bold text-white" style={{ fontSize: 22, lineHeight: 1.1 }}>
-      {trip.city}
-    </p>
-    <p style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', fontWeight: 500, marginTop: 2 }}>
-      {trip.country} · {trip.stops} stops
-    </p>
-  </div>
-  {/* Bottom-left: Continue pill */}
-  <div
-    className="absolute bottom-3 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-    style={{ background: 'rgba(255,255,255,.12)', backdropFilter: 'blur(8px)' }}
-  >
-    <span className="ms fill text-white" style={{ fontSize: 14 }}>play_arrow</span>
-    <span style={{ fontSize: 11, fontWeight: 700, color: 'white' }}>Continue trip</span>
-  </div>
-</div>
+- [ ] **Step 2: Run tests**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/frontend
+npx vitest run
 ```
+
+Expected: all tests pass.
 
 - [ ] **Step 3: Commit**
 
 ```bash
+git add src/modules/persona/types.ts
+git commit -m "style(persona): remap ARCHETYPE_COLORS to warm design system palette"
+```
+
+---
+
+## Task 10: TripsScreen — fix hardcoded gold tokens on fan cards
+
+**Files:**
+- Modify: `frontend/src/modules/trips/TripsScreen.tsx`
+
+The card fan design (stacked rotated cards) is correct and should be kept. The only issues are hardcoded old-gold colour values that need updating to terracotta.
+
+- [ ] **Step 1: Fix the Play button gradient**
+
+In `TripCard`, find the Play button and replace its `background` and `boxShadow`:
+
+Old:
+```tsx
+background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+```
+
+New:
+```tsx
+background: 'linear-gradient(135deg, #e07854, #c4613d)',
+boxShadow: '0 6px 28px rgba(224,120,84,.25)',
+```
+
+Also fix the text colour — the old gold CTA used a dark text colour `#0c0c0e` (to contrast gold). Terracotta is dark enough that white text is correct:
+
+Old:
+```tsx
+color: '#0c0c0e',
+```
+
+New:
+```tsx
+color: '#ffffff',
+```
+
+- [ ] **Step 2: Fix the stop number circle border**
+
+Find the stop number circle in the expanded stop list:
+
+Old:
+```tsx
+border: '1px solid rgba(212,168,83,.25)',
+```
+
+New:
+```tsx
+border: '1px solid rgba(224,120,84,.25)',
+```
+
+- [ ] **Step 3: Verify archetype colours on fan cards now use warm palette**
+
+The fan card fallback gradient uses `archetypeColors.glow`. After Task 9b, `ARCHETYPE_COLORS` returns warm values, so no additional change needed here — just verify visually.
+
+- [ ] **Step 4: Commit**
+
+```bash
 git add src/modules/trips/TripsScreen.tsx
-git commit -m "feat(trips): full-bleed Unsplash photo trip cards with cardEntry animation"
+git commit -m "style(trips): fix hardcoded gold CTA and stop circle to terracotta"
 ```
 
 ---
@@ -888,109 +912,100 @@ git commit -m "feat(route): rec-rules.ts, warm tokens on place cards and CTA"
 
 ---
 
-## Task 14: ProfileScreen — warm tokens + theme toggle
+## Task 14: ProfileScreen — fix remaining hardcoded values
 
 **Files:**
 - Modify: `frontend/src/modules/profile/ProfileScreen.tsx`
 
-- [ ] **Step 1: Read ProfileScreen**
+The ProfileScreen already has the correct structure: Playfair heading ✓, theme toggle with terracotta ✓, save button with terracotta gradient ✓. Three specific hardcoded values still need fixing.
+
+- [ ] **Step 1: Fix the blue archetype fallback colour**
+
+In `ProfileScreen`, find the `archetypeColor` fallback:
+
+Old:
+```tsx
+const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' }
+```
+
+New:
+```tsx
+const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#e07854', glow: 'rgba(224,120,84,.22)' }
+```
+
+- [ ] **Step 2: Fix hardcoded `text-white/*` in sub-components**
+
+In `SectionLabel`, replace the hardcoded class:
+
+Old:
+```tsx
+<p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-2 px-1">{children}</p>
+```
+
+New:
+```tsx
+<p style={{ color: 'var(--color-text-3)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
+```
+
+In `SettingsRow`, replace the default `labelClass`:
+
+Old:
+```tsx
+labelClass = 'text-white/70',
+```
+
+New:
+```tsx
+labelClass = '',
+```
+
+And update the label `<p>` to use a token directly when `labelClass` is empty:
+```tsx
+<p className={`text-sm font-medium ${labelClass}`} style={!labelClass ? { color: 'var(--color-text-2)' } : {}}>
+  {label}
+</p>
+```
+
+For `sublabel` inside `SettingsRow`:
+
+Old:
+```tsx
+{sublabel && <p className="text-white/25 text-xs mt-0.5">{sublabel}</p>}
+```
+
+New:
+```tsx
+{sublabel && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-3)' }}>{sublabel}</p>}
+```
+
+- [ ] **Step 3: Fix `AttemptsCounter` pip colour**
+
+In `AttemptsCounter`, find the used pip background:
+
+Old:
+```tsx
+style={{ background: i < used ? '#f97316' : 'rgba(255,255,255,.12)' }}
+```
+
+New:
+```tsx
+style={{ background: i < used ? 'var(--color-primary)' : 'var(--color-surface2)' }}
+```
+
+- [ ] **Step 4: Run tests**
 
 ```bash
-cat /Users/souravbiswas/uncover-roads/frontend/src/modules/profile/ProfileScreen.tsx
+cd /Users/souravbiswas/uncover-roads/frontend
+npx vitest run
 ```
 
-- [ ] **Step 2: Fix header**
+Expected: all tests pass.
 
-```tsx
-<h1 className="font-[family-name:var(--font-heading)] font-bold text-[var(--color-text-1)]" style={{ fontSize: 18 }}>
-  Profile
-</h1>
-```
-
-- [ ] **Step 3: Add theme toggle in the App section**
-
-Find the "App" settings section. Add or replace the appearance row:
-
-```tsx
-function ThemeToggle() {
-  const { state, dispatch } = useAppStore()
-  const isDark = state.theme !== 'light'
-
-  function toggle() {
-    const next = isDark ? 'light' : 'dark'
-    dispatch({ type: 'SET_THEME', theme: next })
-  }
-
-  return (
-    <div className="flex items-center justify-between py-3 px-4">
-      <div className="flex items-center gap-3">
-        <span className="ms text-[var(--color-text-3)]" style={{ fontSize: 18 }}>
-          {isDark ? 'dark_mode' : 'light_mode'}
-        </span>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)' }}>Appearance</p>
-          <p style={{ fontSize: 11, color: 'var(--color-text-3)' }}>{isDark ? 'Dark mode' : 'Light mode'}</p>
-        </div>
-      </div>
-      <button
-        onClick={toggle}
-        style={{
-          width: 36,
-          height: 20,
-          borderRadius: 99,
-          background: isDark ? '#e07854' : 'rgba(255,255,255,.15)',
-          position: 'relative',
-          border: 'none',
-          cursor: 'pointer',
-          transition: 'background 0.2s',
-        }}
-      >
-        <div style={{
-          position: 'absolute',
-          top: 2,
-          left: isDark ? 18 : 2,
-          width: 16,
-          height: 16,
-          borderRadius: '50%',
-          background: 'white',
-          transition: 'left 0.2s',
-          boxShadow: '0 1px 4px rgba(0,0,0,.3)',
-        }} />
-      </button>
-    </div>
-  )
-}
-```
-
-- [ ] **Step 4: Ensure `SET_THEME` dispatches correctly**
-
-In the store, confirm `SET_THEME` updates `document.documentElement.dataset.theme` and writes `localStorage('ur_theme')`. If not, add it:
-
-```typescript
-// In the reducer / dispatch handler for SET_THEME:
-case 'SET_THEME':
-  document.documentElement.dataset.theme = action.theme
-  try { localStorage.setItem('ur_theme', action.theme) } catch { /* ignore */ }
-  return { ...state, theme: action.theme }
-```
-
-- [ ] **Step 5: Fix save button**
-
-```tsx
-style={{ background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 52, borderRadius: 18 }}
-```
-
-On save success, transition to:
-```tsx
-style={{ background: 'linear-gradient(135deg, #6b9470, #3d6642)' }}
-```
-with a `check_circle` icon for 1500ms, then revert.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/modules/profile/ProfileScreen.tsx
-git commit -m "feat(profile): warm tokens, theme toggle pill, Playfair header"
+git commit -m "style(profile): fix blue archetype fallback, tokenise SectionLabel/SettingsRow/pips"
 ```
 
 ---
