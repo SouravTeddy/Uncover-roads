@@ -81,7 +81,27 @@ describe('buildReelCards', () => {
     const cards = buildReelCards(multiItin, legs, null, WEATHER, 'explorer');
     const transit = cards.find(c => c.type === 'transit');
     expect(transit).toBeDefined();
-    expect((transit as any).from).toBe('Paris');
-    expect((transit as any).to).toBe('Lyon');
+    expect(transit?.type).toBe('transit');
+    if (transit?.type === 'transit') {
+      expect(transit.from).toBe('Paris');
+      expect(transit.to).toBe('Lyon');
+    }
+  });
+
+  it('does not insert transit card when journeyLegs is empty', () => {
+    const multiItin: EngineItinerary = {
+      id: 'multi2',
+      city: 'Paris · Lyon',
+      days: [
+        { city: 'Paris', date: '2026-05-20', stops: [STOP({ id: 's1' })] },
+        { city: 'Lyon', date: '2026-05-21', stops: [STOP({ id: 's2', day: 2 })] },
+      ],
+      summary: { pro_tip: '', total_places: 2 },
+      weights: {},
+    };
+    // Empty legs array (non-null) — no matching leg exists
+    const cards = buildReelCards(multiItin, [], null, WEATHER, 'explorer');
+    const transit = cards.find(c => c.type === 'transit');
+    expect(transit).toBeUndefined();
   });
 });

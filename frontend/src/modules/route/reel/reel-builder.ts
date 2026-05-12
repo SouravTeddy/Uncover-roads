@@ -97,16 +97,18 @@ export function buildReelCards(
           (l as Extract<JourneyLeg, { type: 'transit' }>).to === day.city
       ) as Extract<JourneyLeg, { type: 'transit' }> | undefined;
 
-      const transitCard: ReelTransitCard = {
-        type: 'transit',
-        mode: transitLeg?.mode ?? 'train',
-        from: prevCity,
-        to: day.city,
-        durationMinutes: transitLeg?.durationMinutes ?? null,
-        distanceKm: transitLeg?.distanceKm ?? null,
-        imageUrl: null,
-      };
-      cards.push(transitCard);
+      // Only emit transit card when a matching leg exists
+      if (transitLeg) {
+        cards.push({
+          type: 'transit',
+          mode: transitLeg.mode,
+          from: prevCity,
+          to: day.city,
+          durationMinutes: transitLeg.durationMinutes ?? null,
+          distanceKm: transitLeg.distanceKm ?? null,
+          imageUrl: null,
+        });
+      }
     }
 
     const recos = buildRecoCards(day.stops, persona, day.city);
