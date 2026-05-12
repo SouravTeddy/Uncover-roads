@@ -318,20 +318,6 @@ export const api = {
     });
   },
 
-  similarPlaces: async (params: {
-    placeName: string;
-    city: string;
-    personaArchetype: string;
-    category: string;
-  }): Promise<{ places: import('./types').ReferencePin[] }> => {
-    return post('/similar-places', {
-      place_name: params.placeName,
-      city: params.city,
-      persona_archetype: params.personaArchetype,
-      category: params.category,
-    });
-  },
-
   recalibrate: async (params: {
     stops: import('./types').ItineraryStop[];
     currentTime: string;
