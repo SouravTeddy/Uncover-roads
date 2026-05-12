@@ -65,8 +65,6 @@ export function Button({
   const disabledStyle: React.CSSProperties =
     disabled || loading ? { opacity: 0.5, cursor: 'not-allowed' } : {};
 
-  const hoverStyle: React.CSSProperties = {};
-
   return (
     <button
       {...props}
@@ -76,6 +74,7 @@ export function Button({
       onMouseLeave={() => setPressed(false)}
       onTouchStart={() => setPressed(true)}
       onTouchEnd={() => setPressed(false)}
+      onTouchCancel={() => setPressed(false)}
       className={className}
       style={{
         ...baseStyle,
