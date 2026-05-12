@@ -52,13 +52,11 @@ function buildTransitSummary(transit: DetectedTransit | null): string {
 // ── Main screen ─────────────────────────────────────────────────
 
 const PLACEHOLDER_EXAMPLES = [
-  'Museums in this area…',
-  'Hotels nearby…',
-  'Parks to explore…',
-  'Restaurants around here…',
-  'Historic sites nearby…',
-  'Cafes to discover…',
-  'Galleries in this area…',
+  'temples in the area…',
+  'best dinner spots…',
+  'hidden gems nearby…',
+  'live events this weekend…',
+  'things to do tomorrow…',
 ];
 
 export function MapScreen() {
