@@ -36,6 +36,14 @@ import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
 import { CityHopOverlay } from './CityHopOverlay';
 import type { TransitMode } from '../../shared/types';
+import { TravelDateBar } from './TravelDateBar'
+import { OurPicksPinsLayer } from './OurPicksPinsLayer'
+import type { PlacePickFE } from './OurPicksPinsLayer'
+import { LiveEventPinsLayer } from './LiveEventPinsLayer'
+import type { LiveEvent } from '../../shared/types'
+import { NumberedPinsLayer } from './NumberedPinsLayer'
+import type { SearchResultPin } from './NumberedPinsLayer'
+import { SearchResultsStrip } from './SearchResultsStrip'
 
 // ── Module-level utilities ───────────────────────────────────────
 
@@ -157,6 +165,19 @@ export function MapScreen() {
   const [suggestedChips, setSuggestedChips] = useState<SuggestedChip[]>([]);
   const [showZoomNudge, setShowZoomNudge] = useState(false);
   const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set());
+
+  // Phase 11: Our Picks layer
+  const [ourPicks, setOurPicks] = useState<PlacePickFE[]>([])
+
+  // Phase 11: Live events layer
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
+
+  // Phase 11: Search result pins (numbered)
+  const [searchPins, setSearchPins] = useState<SearchResultPin[]>([])
+  const [showSearchStrip, setShowSearchStrip] = useState(false)
+
+  // Phase 11: Surprise Me confirmation
+  const [surpriseConfirm, setSurpriseConfirm] = useState(false)
 
   // Rotating placeholder
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -334,6 +355,45 @@ export function MapScreen() {
     };
   }, [clusterGroup]);
 
+  useEffect(() => {
+    if (!city || activeFilter !== 'picks') { setOurPicks([]); return }
+    const activeCityContext = cityContexts[activeCityIndex]
+    const cityId = activeCityContext?.city ?? city
+    fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: PlacePickFE[]) => setOurPicks(data))
+      .catch(() => setOurPicks([]))
+  }, [city, activeFilter, activeCityIndex, cityContexts])
+
+  useEffect(() => {
+    if (!city || activeFilter !== 'event') { setLiveEvents([]); return }
+    const startDate = state.travelStartDate
+    const endDate = state.travelEndDate
+    if (!startDate || !endDate) return
+    const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
+    if (cityGeo) {
+      params.set('lat', String(cityGeo.lat))
+      params.set('lon', String(cityGeo.lon))
+    }
+    fetch(`/events?${params}`)
+      .then(r => r.ok ? r.json() : { places: [] })
+      .then((data: { places: Array<{ id: string; title: string; lat: number; lon: number; tags: { event_date?: string; event_time?: string; venue?: string; genre?: string; website?: string }; imageUrl: string | null }> }) => {
+        setLiveEvents(data.places.map(p => ({
+          id: p.id,
+          title: p.title,
+          lat: p.lat,
+          lon: p.lon,
+          venueName: p.tags?.venue ?? '',
+          date: p.tags?.event_date ?? '',
+          time: p.tags?.event_time ?? '',
+          genre: p.tags?.genre ?? '',
+          url: p.tags?.website ?? '',
+          imageUrl: p.imageUrl ?? null,
+        })))
+      })
+      .catch(() => setLiveEvents([]))
+  }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
+
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
     if (f === 'event' && !eventsLoaded) {
@@ -482,21 +542,39 @@ export function MapScreen() {
 
   // Surprise Me — calls backend, navigates to route screen
   const handleSurprise = useCallback(async () => {
-    if (!city || !personaProfile) return;
-    dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
+    if (!city || !personaProfile) return
+    if (state.engineItinerary) {
+      setSurpriseConfirm(true)
+      return
+    }
+    await _runSurprise()
+  }, [city, personaProfile, state.engineItinerary])
+
+  const _runSurprise = useCallback(async () => {
+    if (!city || !personaProfile) return
+    setSurpriseConfirm(false)
+    dispatch({ type: 'INCREMENT_GENERATION_COUNT' })
+    const startCityContext = cityContexts[0]
+    const endCityContext   = cityContexts[cityContexts.length - 1]
     try {
-      const res = await fetch('/api/itinerary/surprise', {
+      const res = await fetch('/api/surprise-me', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city, days: activeCityDays || 1, persona: personaProfile }),
-      });
+        body: JSON.stringify({
+          start_city_id: startCityContext?.city ?? city,
+          end_city_id:   endCityContext?.city ?? city,
+          start_date:    state.travelStartDate ?? undefined,
+          end_date:      state.travelEndDate ?? undefined,
+          persona:       personaProfile.archetype ?? 'explorer',
+        }),
+      })
       if (res.ok) {
-        const result = await res.json();
-        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result });
-        dispatch({ type: 'GO_TO', screen: 'route' });
+        const result = await res.json()
+        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+        dispatch({ type: 'GO_TO', screen: 'route' })
       }
     } catch { /* silence */ }
-  }, [city, personaProfile, activeCityDays, dispatch]);
+  }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
 
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
@@ -505,12 +583,10 @@ export function MapScreen() {
   const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
     all:         places.length,
-    recommended: recommendedPlaces.length,
+    trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
+    hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
     event:       eventsLoaded ? eventPlaces.length : undefined,
-    museum:      places.filter(p => p.category === 'museum').length,
-    park:        places.filter(p => p.category === 'park').length,
-    restaurant:  places.filter(p => p.category === 'restaurant').length,
-    historic:    places.filter(p => p.category === 'historic').length,
+    picks:       ourPicks.length || undefined,
   };
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
@@ -555,6 +631,35 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
+        {/* Our Picks layer */}
+        {activeFilter === 'picks' && (
+          <OurPicksPinsLayer
+            picks={ourPicks}
+            activePinId={activePinId ?? null}
+            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+          />
+        )}
+
+        {/* Live Events layer */}
+        {activeFilter === 'event' && (
+          <LiveEventPinsLayer
+            events={liveEvents}
+            activePinId={activePinId ?? null}
+            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+          />
+        )}
+
+        {/* Numbered search result pins */}
+        {showSearchStrip && searchPins.length > 0 && (
+          <NumberedPinsLayer
+            pins={searchPins}
+            onPinClick={(pin) => {
+              const match = places.find(p => p.id === pin.id)
+              if (match) setActivePlace(match)
+            }}
+          />
+        )}
+
         {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
       </MapLibreMap>
 
@@ -667,13 +772,25 @@ export function MapScreen() {
           />
         )}
 
+        {/* Travel date bar */}
+        {(state.travelStartDate || state.travelEndDate) && (
+          <div style={{ pointerEvents: 'auto', display: 'flex', justifyContent: 'center' }}>
+            <TravelDateBar
+              startDate={state.travelStartDate}
+              endDate={state.travelEndDate}
+              cities={cityContexts.map(c => c.city)}
+              onTap={() => {}}
+            />
+          </div>
+        )}
+
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
             counts={counts}
             onSelect={handleFilterSelect}
-            lockedFilters={isCurationLocked(state) ? ['recommended', 'event'] : []}
+            lockedFilters={isCurationLocked(state) ? ['picks', 'trending'] : []}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
@@ -865,6 +982,55 @@ export function MapScreen() {
         days={activeCityDays}
         onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
       />
+
+      {/* Search results strip */}
+      {showSearchStrip && searchPins.length > 0 && (
+        <SearchResultsStrip
+          results={searchPins}
+          onSelect={(pin) => {
+            const match = places.find(p => p.id === pin.id)
+            if (match) setActivePlace(match)
+          }}
+          onDismiss={() => {
+            setSearchPins([])
+            setShowSearchStrip(false)
+          }}
+        />
+      )}
+
+      {/* Surprise Me confirmation */}
+      {surpriseConfirm && (
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setSurpriseConfirm(false)}
+        >
+          <div
+            style={{ width: '100%', background: 'var(--color-surface)', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8 }}>
+              Replace current itinerary?
+            </p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-3)', marginBottom: 20 }}>
+              This will replace your current itinerary. Continue?
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setSurpriseConfirm(false)}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={_runSurprise}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#8b5cf6', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Yes, surprise me
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error state */}
       {!loading && error && (
