@@ -69,7 +69,7 @@ const PLACEHOLDER_EXAMPLES = [
 
 export function MapScreen() {
   const {
-    city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
+    city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory, goBack,
   } = useMap();
