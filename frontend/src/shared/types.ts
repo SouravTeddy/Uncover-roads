@@ -12,6 +12,7 @@ export type Screen =
   | 'map'
   | 'journey'
   | 'route'
+  | 'itinerary-reel'
   | 'trips'
   | 'nav'
   | 'profile'
