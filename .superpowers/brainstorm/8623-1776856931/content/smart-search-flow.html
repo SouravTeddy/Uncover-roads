@@ -1,0 +1,70 @@
+<h2>Smart Search — #2 + #6</h2>
+<p class="subtitle">How the search handles "museum" (no location) and natural language queries</p>
+
+<div class="section">
+  <h3>The unified search pipeline</h3>
+  <p style="font-size:13px;color:#aaa;margin-bottom:16px;">Every query goes through this before hitting the API:</p>
+
+  <div style="background:#131325;border-radius:12px;padding:16px;font-size:12px;line-height:1.9;">
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+      <span style="background:#7c8cf8;color:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;">Step 1</span>
+      <span style="color:#ccc;"><strong style="color:#e0e0e0;">Keyword extraction</strong> — strip filler words, find place types + named locations<br>
+      <em style="color:#888;">"I want some good museum options" → types: [museum]</em><br>
+      <em style="color:#888;">"hotels near the Eiffel Tower" → types: [hotel], location: "Eiffel Tower"</em><br>
+      <em style="color:#888;">"museum and parks" → types: [museum, park]</em></span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+      <span style="background:#7c8cf8;color:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;">Step 2</span>
+      <span style="color:#ccc;"><strong style="color:#e0e0e0;">Location resolution</strong> — if no location found, use current map bbox<br>
+      <em style="color:#888;">"museum" → search within current map viewport</em><br>
+      <em style="color:#888;">"hotels in Montmartre" → geocode "Montmartre", center search there</em></span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <span style="background:#7c8cf8;color:#fff;border-radius:6px;padding:2px 8px;white-space:nowrap;">Step 3</span>
+      <span style="color:#ccc;"><strong style="color:#e0e0e0;">Parallel API calls</strong> — one Nominatim call per type, results merged<br>
+      <em style="color:#888;">"museum and parks" → 2 parallel calls, deduplicated by OSM ID</em></span>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>For keyword extraction — which approach?</h3>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Client-side dictionary match</h3>
+      <p>A hardcoded map of keywords → place types. Fast, offline, zero cost. Handles: museum, hotel, park, gallery, restaurant, cafe, bar, church, mosque, hospital, pharmacy, ATM, etc.</p>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Instant, no API call</li><li>Predictable</li><li>Works offline</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Won't understand "somewhere cozy for breakfast"</li><li>Needs manual upkeep</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Backend LLM extraction</h3>
+      <p>Send query to a small backend endpoint that uses Claude/GPT to extract types + location. Returns structured JSON: <code style="font-size:11px;background:#252540;padding:1px 5px;border-radius:4px;">{"types":["museum"],"location":null}</code></p>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Understands natural language</li><li>Handles edge cases gracefully</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Latency on every keystroke</li><li>Cost + infra</li><li>Debounce needed</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dictionary first, LLM fallback</h3>
+      <p>Try the dictionary match first (instant). If nothing matches, fire an LLM call once the user stops typing (500ms debounce). Best of both worlds.</p>
+      <div class="pros-cons" style="margin-top:10px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Fast for common queries</li><li>Smart for unusual ones</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly more complex</li><li>LLM cost for edge cases only</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pin Detection V2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e14; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 24px 20px 80px; }
+  h2 { font-size: 18px; font-weight: 700; color: #f5f0ea; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #8b9ab0; margin-bottom: 24px; line-height: 1.5; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #e07854; margin-bottom: 12px; }
+
+  .flow { display: flex; flex-direction: column; }
+  .flow-step {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 16px;
+    background: #131820; border: 1px solid #1e2535;
+    position: relative;
+  }
+  .flow-step:first-child { border-radius: 12px 12px 0 0; }
+  .flow-step:last-child { border-radius: 0 0 12px 12px; }
+  .flow-step + .flow-step { border-top: none; }
+  .flow-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #e07854; color: #fff; font-size: 11px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+  }
+  .flow-num.fast { background: #4ade80; color: #0a0e14; }
+  .flow-num.slow { background: #818cf8; color: #fff; }
+  .flow-body h4 { font-size: 13px; font-weight: 700; color: #f5f0ea; margin-bottom: 4px; }
+  .flow-body p { font-size: 12px; color: #8b9ab0; line-height: 1.6; }
+  .flow-body code { font-size: 11px; background: #1e2535; color: #818cf8; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; margin-left: 6px; }
+  .badge-fast { background: rgba(74,222,128,.15); color: #4ade80; }
+  .badge-async { background: rgba(129,140,248,.15); color: #818cf8; }
+
+  /* Decision tree */
+  .tree { font-size: 12px; }
+  .tree-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 8px; margin-bottom: 6px; }
+  .tree-row.condition { background: #131820; border: 1px solid #1e2535; }
+  .tree-row.result-same { background: rgba(74,222,128,.06); border: 1px solid rgba(74,222,128,.2); }
+  .tree-row.result-train { background: rgba(129,140,248,.06); border: 1px solid rgba(129,140,248,.2); }
+  .tree-row.result-flight { background: rgba(224,120,84,.06); border: 1px solid rgba(224,120,84,.2); }
+  .tree-icon { font-size: 16px; flex-shrink: 0; }
+  .tree-text { flex: 1; }
+  .tree-text strong { color: #f5f0ea; }
+  .tree-text span { color: #8b9ab0; }
+
+  /* Real world examples */
+  .examples { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .example { background: #131820; border: 1px solid #1e2535; border-radius: 10px; padding: 12px; }
+  .example h4 { font-size: 12px; font-weight: 700; color: #f5f0ea; margin-bottom: 4px; }
+  .example .detail { font-size: 11px; color: #8b9ab0; line-height: 1.5; margin-bottom: 6px; }
+  .example .verdict { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; display: inline-block; }
+  .v-same { background: rgba(74,222,128,.15); color: #4ade80; }
+  .v-train { background: rgba(129,140,248,.15); color: #818cf8; }
+  .v-flight { background: rgba(224,120,84,.15); color: #e07854; }
+  .v-ferry { background: rgba(56,189,248,.15); color: #38bdf8; }
+
+  /* Existing code callout */
+  .callout { background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.25); border-radius: 12px; padding: 14px 16px; }
+  .callout h4 { font-size: 12px; font-weight: 700; color: #818cf8; margin-bottom: 8px; }
+  .callout p { font-size: 12px; color: #c1c6d7; line-height: 1.6; }
+  .callout code { font-size: 11px; background: rgba(129,140,248,.15); color: #c7d2fe; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<h2>Pin Detection: OSRM as Ground Truth</h2>
+<p class="subtitle">Distance was wrong. The routing engine already knows about water. Here's the corrected design — and most of it is already built.</p>
+
+<div class="section">
+  <div class="section-title">What's already in the codebase</div>
+  <div class="callout">
+    <h4>Already built — just not wired to pin-add yet</h4>
+    <p>
+      <code>routeInterCity(lat1,lon1,lat2,lon2)</code> calls OSRM backend. Returns <code>null</code> when there is no road route — which is exactly what happens for any ocean, strait, or island crossing. No extra API. No special water detection. OSRM itself encodes the physical world.<br><br>
+      <code>detectTransitMode()</code> wraps this: null → flight, > 480min road → flight, > 120min road → train, else → drive. Already handles every case correctly.<br><br>
+      Both are used in <code>buildJourneyLegs()</code> today. The only gap: they run <em>after</em> cities are grouped. We need to run them <em>during</em> pin add to stamp the right <code>_city</code>.
+    </p>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Detection flow on every pin add</div>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="flow-num fast">1</div>
+      <div class="flow-body">
+        <h4>Fast path: within 30km of a known city centroid <span class="badge badge-fast">sync · instant</span></h4>
+        <p>Compute haversine from new pin to centroid of each known city. If within 30km → same city, assign that <code>_city</code>. Done. No API call. 30km is small enough that false positives (wrong city) are essentially impossible — most cities are tighter than this.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num slow">2</div>
+      <div class="flow-body">
+        <h4>Slow path: > 30km from all known centroids → reverse geocode <span class="badge badge-async">async</span></h4>
+        <p>Call Nominatim reverse geocode on the pin's lat/lon to get city name. If city name matches a known city → assign it (user is in the outskirts). If new city name → proceed to step 3.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num slow">3</div>
+      <div class="flow-body">
+        <h4>New city confirmed → OSRM check <span class="badge badge-async">async</span></h4>
+        <p>Run <code>detectTransitMode()</code> between the nearest existing city centroid and the new pin. OSRM returns null → water/barrier → flight (or ferry if < 200km). OSRM returns a route → drive or train based on duration. This is the ground truth — no distance heuristic involved.</p>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-num">4</div>
+      <div class="flow-body">
+        <h4>Stamp + notify</h4>
+        <p>Stamp <code>_city</code> on the pin. Fire <code>ADD_CITY_FOOTPRINT</code> dispatch. Show non-blocking toast with city name + detected transit mode. Footprint chip appears. Done.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Decision tree (step 3 expanded)</div>
+  <div class="tree">
+    <div class="tree-row condition">
+      <div class="tree-icon">🗺️</div>
+      <div class="tree-text"><strong>OSRM road route exists?</strong> <span>Call routeInterCity() between city centroids</span></div>
+    </div>
+    <div style="padding-left:24px;">
+      <div class="tree-row result-same">
+        <div class="tree-icon">🚗</div>
+        <div class="tree-text"><strong>Road exists · < 2h drive</strong> <span>→ nearby city, same-day reachable. Transit card: "Drive · 45 min"</span></div>
+      </div>
+      <div class="tree-row result-train">
+        <div class="tree-icon">🚄</div>
+        <div class="tree-text"><strong>Road exists · 2–8h drive</strong> <span>→ train/bus city hop. Transit card: "Train · 2h 30min". CityHopOverlay fires.</span></div>
+      </div>
+      <div class="tree-row result-flight">
+        <div class="tree-icon">✈️</div>
+        <div class="tree-text"><strong>Road exists · > 8h</strong> <span>→ road technically exists but impractical. Classify as flight.</span></div>
+      </div>
+      <div class="tree-row result-flight" style="border-color:rgba(56,189,248,.3);background:rgba(56,189,248,.04);">
+        <div class="tree-icon">⛴️</div>
+        <div class="tree-text"><strong>No road route · haversine < 200km</strong> <span style="color:#38bdf8;">→ water crossing but nearby. Ferry. "Ferry · ~3h" (estimated from distance).</span></div>
+      </div>
+      <div class="tree-row result-flight">
+        <div class="tree-icon">✈️</div>
+        <div class="tree-text"><strong>No road route · haversine > 200km</strong> <span>→ ocean crossing. Flight. "Flight from Tokyo ✈️"</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Real-world examples — does it hold?</div>
+  <div class="examples">
+    <div class="example">
+      <h4>🗼 Tokyo → 🏯 Kyoto</h4>
+      <div class="detail">450km apart. OSRM: road exists, ~5.5h drive. → Train/bullet train.</div>
+      <div class="verdict v-train">🚄 Train · 2h 15min (Shinkansen)</div>
+    </div>
+    <div class="example">
+      <h4>🇭🇰 Hong Kong → 🇲🇴 Macau</h4>
+      <div class="detail">60km apart across Pearl River Delta. OSRM: null (water). haversine < 200km → Ferry.</div>
+      <div class="verdict v-ferry">⛴️ Ferry · ~1h</div>
+    </div>
+    <div class="example">
+      <h4>🗼 Tokyo → 🦘 Sydney</h4>
+      <div class="detail">7,800km. OSRM: null (ocean). haversine >> 200km → Flight.</div>
+      <div class="verdict v-flight">✈️ Flight · ~9h 20min</div>
+    </div>
+    <div class="example">
+      <h4>🏝️ Bali → 🇸🇬 Singapore</h4>
+      <div class="detail">~1,600km. OSRM: null (ocean). haversine >> 200km → Flight.</div>
+      <div class="verdict v-flight">✈️ Flight · ~2h 30min</div>
+    </div>
+    <div class="example">
+      <h4>🏰 Paris → 🇬🇧 London</h4>
+      <div class="detail">340km. OSRM: road exists via Eurotunnel road (or returns null for direct crossing). Duration ~3h → Train.</div>
+      <div class="verdict v-train">🚄 Eurostar · 2h 15min</div>
+    </div>
+    <div class="example">
+      <h4>🇩🇰 Copenhagen → 🇸🇪 Malmö</h4>
+      <div class="detail">20km. OSRM: road exists (Øresund Bridge). < 30 min drive → nearby city, same-day.</div>
+      <div class="verdict v-same">🚗 Drive · 25 min</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

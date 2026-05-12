@@ -1,0 +1,43 @@
+{
+  "id": "nyc",
+  "name": "New York City",
+  "tier": 1,
+  "center": [40.7128, -74.0060],
+  "timezone": "America/New_York",
+  "climate": {"heat_threshold_c": 35, "rain_months": [3, 4, 11]},
+  "movement": {"walkability": 3, "transit": 3},
+  "culture": {"meal_times": {"lunch": "12:00", "dinner": "19:00"}, "siesta": false},
+  "neighborhoods": [
+    {
+      "id": "midtown",
+      "name": "Midtown",
+      "center": [40.7549, -73.9840],
+      "polygon": [],
+      "best_times": {"morning": 0.7, "afternoon": 0.9, "evening": 0.8},
+      "crowd_index": {"weekday": 0.9, "weekend": 0.7}
+    }
+  ],
+  "insert_candidates": [
+    {
+      "place_id": "coffee_midtown_1",
+      "name": "Joe Coffee Midtown",
+      "lat": 40.7549,
+      "lon": -73.9848,
+      "type": "coffee",
+      "time_cost_min": 15,
+      "persona_affinity": {"pulse": 0.8, "explorer": 0.7},
+      "trigger": null,
+      "time_of_day_match": ["morning"]
+    }
+  ],
+  "scenic_routes": [],
+  "transit_edges": [],
+  "engine_modifiers": {
+    "siesta_window": null,
+    "lunch_window_strict": false,
+    "evening_end_time": "23:00",
+    "day_buffer_min": 20
+  },
+  "landmark_anchors": ["central_park", "moma"],
+  "hidden_gems": ["the_high_line", "red_hook"]
+}

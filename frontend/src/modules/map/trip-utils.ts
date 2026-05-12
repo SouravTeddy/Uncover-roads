@@ -8,11 +8,11 @@ export interface DateEntry {
 
 const DAY_ABBRS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** Generate a strip of `count` consecutive days starting from today. */
+/** Generate a strip of `count` consecutive days starting from tomorrow (future dates only). */
 export function generateDateStrip(count = 7): DateEntry[] {
   const result: DateEntry[] = [];
   const today = new Date();
-  for (let i = 0; i < count; i++) {
+  for (let i = 1; i <= count; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() + i);
     const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

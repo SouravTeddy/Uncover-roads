@@ -1,0 +1,9 @@
+{"type":"server-started","port":54987,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:54987","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-multicity-entry.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-detection-logic.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-detection-v2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-dates-per-city.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-map-toggle.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-map-toggle-v2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/10387-1778058037/content/p7-copy-corrected.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conflict Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surf-hst: #334155;
+    --primary: #3b82f6; --orange: #f97316;
+    --text-1: #f1f5f9; --text-2: #cbd5e1; --text-3: #8e9099;
+    --conflict: #f59e0b; --conflict-bg: rgba(245,158,11,0.08); --conflict-border: rgba(245,158,11,0.25);
+    --font-sans: 'Inter', sans-serif; --font-head: 'Plus Jakarta Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-1); font-family: var(--font-sans); padding: 28px 20px 80px; }
+
+  .page-title { font-family: var(--font-head); font-size: 19px; font-weight: 800; margin: 0 0 4px; }
+  .page-sub { font-size: 13px; color: var(--text-3); margin: 0 0 28px; line-height: 1.5; }
+
+  .q-label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-3); display: block; margin-bottom: 4px; }
+  .q-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; margin: 0 0 16px; line-height: 1.2; }
+
+  /* ── Row option ── */
+  .row-option {
+    background: var(--surface); border: 1px solid var(--surf-hst);
+    border-radius: 14px; padding: 13px 14px;
+    display: flex; align-items: center; gap: 13px;
+    cursor: pointer; margin-bottom: 8px; position: relative; overflow: hidden;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  }
+  .row-option:hover { transform: translateX(3px); }
+  .row-option.selected { background: rgba(59,130,246,0.08); border-color: var(--primary); }
+  .row-option.conflicting { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.4); }
+  .row-option.conflicting .row-name { color: var(--conflict); }
+
+  .row-img { width: 46px; height: 46px; border-radius: 10px; object-fit: cover; flex-shrink: 0; transition: transform 0.3s, filter 0.3s; }
+  .row-option:hover .row-img, .row-option.selected .row-img { transform: scale(1.06); }
+  .row-option.conflicting .row-img { filter: saturate(0.4) brightness(0.7); }
+
+  .row-text { flex: 1; min-width: 0; }
+  .row-name { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--text-1); display: block; transition: color 0.2s; }
+  .row-desc { font-size: 12px; color: var(--text-3); display: block; margin-top: 2px; }
+
+  .row-check {
+    width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--surf-hst);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  }
+  .row-option.selected .row-check { background: var(--primary); border-color: var(--primary); transform: scale(1.1); }
+  .row-option.conflicting .row-check { border-color: var(--conflict); }
+  .row-check svg { opacity: 0; transform: scale(0.6); transition: opacity 0.2s, transform 0.2s; }
+  .row-option.selected .row-check svg { opacity: 1; transform: scale(1); }
+
+  /* conflict icon on check */
+  .row-option.conflicting .row-check::after {
+    content: '!';
+    font-size: 12px; font-weight: 800; color: var(--conflict);
+  }
+
+  @keyframes glow-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.35); }
+    70%  { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+    100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+  }
+  .row-option.selected { animation: glow-pulse 0.45s ease-out; }
+
+  /* ══════════════════════════
+     CONFLICT PANEL
+  ══════════════════════════ */
+  .conflict-panel {
+    background: var(--conflict-bg);
+    border: 1px solid var(--conflict-border);
+    border-radius: 14px;
+    padding: 14px 15px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    max-height: 0; opacity: 0;
+    transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, margin 0.3s;
+    margin-top: -4px;
+  }
+  .conflict-panel.visible {
+    max-height: 400px; opacity: 1; margin-top: 0;
+  }
+
+  .conflict-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .conflict-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px; font-weight: 800; color: var(--conflict);
+  }
+  .conflict-title {
+    font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--conflict);
+  }
+
+  .conflict-reason {
+    font-size: 12px; color: var(--text-2); line-height: 1.6; margin: 0 0 12px;
+    padding-left: 30px;
+  }
+  .conflict-reason strong { color: var(--text-1); }
+
+  /* Suggestion row */
+  .suggestion-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-3); padding-left: 30px; display: block; margin-bottom: 7px;
+  }
+  .suggestion-row {
+    background: rgba(15,23,42,0.6); border: 1px solid rgba(59,130,246,0.25);
+    border-radius: 11px; padding: 11px 13px;
+    display: flex; align-items: center; gap: 11px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-left: 0;
+  }
+  .suggestion-row:hover { border-color: var(--primary); background: rgba(59,130,246,0.08); }
+  .suggestion-img { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+  .suggestion-text { flex: 1; }
+  .suggestion-name { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--text-1); display: block; }
+  .suggestion-why { font-size: 11px; color: var(--primary); display: block; margin-top: 2px; }
+
+  .suggestion-apply {
+    background: var(--primary); border: none; border-radius: 8px;
+    padding: 7px 13px; color: white;
+    font-family: var(--font-head); font-size: 12px; font-weight: 700;
+    cursor: pointer; flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .suggestion-apply:hover { background: #2563eb; transform: scale(1.04); }
+  .suggestion-apply:active { transform: scale(0.97); }
+
+  /* divider */
+  .conflict-divider {
+    display: flex; align-items: center; gap: 8px;
+    margin: 10px 0; padding-left: 0;
+  }
+  .conflict-divider-line { flex: 1; height: 1px; background: var(--surf-hst); }
+  .conflict-divider-text { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* keep both option */
+  .keep-both {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 13px; border-radius: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .keep-both:hover { border-color: var(--surf-hst); }
+  .keep-both-text { font-size: 12px; color: var(--text-3); }
+  .keep-both-badge {
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    background: var(--surface); border-radius: 100px;
+    padding: 2px 8px; border: 1px solid var(--surf-hst);
+  }
+
+  /* ── Reveal CTA ── */
+  .reveal-cta {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 10px 0 2px; cursor: pointer; border: none; background: none; width: 100%;
+  }
+  .reveal-cta-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--surf-hst), transparent); }
+  .reveal-cta-text { font-size: 12px; font-weight: 600; color: var(--text-3); white-space: nowrap; transition: color 0.2s; }
+  .reveal-cta:hover .reveal-cta-text { color: var(--text-2); }
+  .reveal-cta-arrow { color: var(--text-3); font-size: 12px; transition: transform 0.3s; }
+  .reveal-cta.open .reveal-cta-arrow { transform: rotate(180deg); }
+  .hidden-section { overflow: hidden; max-height: 0; transition: max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.3s; opacity: 0; }
+  .hidden-section.open { max-height: 300px; opacity: 1; }
+  .hidden-section-inner { padding-top: 8px; }
+  .outside-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; color: var(--orange); background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2); border-radius: 100px; padding: 2px 8px; margin-bottom: 5px; width: fit-content; }
+  .row-option.hidden-opt { border-color: rgba(51,65,85,0.6); background: rgba(30,41,59,0.5); }
+  .row-option.hidden-opt .row-img { filter: saturate(0.5) brightness(0.75); }
+  .row-option.hidden-opt .row-name { color: var(--text-2); }
+  .row-option.hidden-opt .row-desc { color: rgba(142,144,153,0.7); }
+  .row-option.hidden-opt.selected { background: rgba(59,130,246,0.08); border-color: var(--primary); }
+  .row-option.hidden-opt.selected .row-img { filter: none; }
+  .row-option.hidden-opt.selected .row-name { color: var(--text-1); }
+
+  /* ── Logic note ── */
+  .logic-note {
+    margin-top: 32px; border-radius: 12px;
+    background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12);
+    padding: 14px 16px;
+  }
+  .logic-note h4 { font-family: var(--font-head); font-size: 12px; font-weight: 700; color: var(--primary); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .logic-note p { font-size: 12px; color: var(--text-3); line-height: 1.7; margin: 0 0 6px; }
+  .logic-note code { font-family: monospace; font-size: 11px; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; color: var(--text-2); }
+
+  @keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .scene { animation: fade-up 0.4s ease both; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+  .shake { animation: shake 0.35s ease; }
+</style>
+</head>
+<body>
+<p class="page-title">Inline conflict detection</p>
+<p class="page-sub">Try selecting both <strong style="color:var(--text-2)">Slow & deep</strong> and <strong style="color:var(--text-2)">Pack it in</strong> — watch what happens.</p>
+
+<div class="scene">
+  <span class="q-label">Step 03 of 07</span>
+  <h2 class="q-title">How do you pace a day?</h2>
+
+  <!-- Option 1: Slow & deep -->
+  <div class="row-option selected" id="opt-slow" onclick="handleSelect('slow')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=120&q=80" alt="Slow">
+    <div class="row-text">
+      <span class="row-name">Slow & deep</span>
+      <span class="row-desc">2–3 stops/day · 90–120 min each · rest built in</span>
+    </div>
+    <div class="row-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  </div>
+
+  <!-- Option 2: Balanced -->
+  <div class="row-option" id="opt-balanced" onclick="handleSelect('balanced')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=120&q=80" alt="Balanced">
+    <div class="row-text">
+      <span class="row-name">Balanced</span>
+      <span class="row-desc">4–5 stops/day · 45–60 min each · mix of walk and transit</span>
+    </div>
+    <div class="row-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  </div>
+
+  <!-- CONFLICT PANEL — appears between balanced and pack-it-in -->
+  <div class="conflict-panel" id="conflictPanel">
+    <div class="conflict-header">
+      <div class="conflict-icon">!</div>
+      <span class="conflict-title">These two conflict</span>
+    </div>
+    <p class="conflict-reason">
+      <strong>Slow & deep</strong> caps your day at 2–3 stops. <strong>Pack it in</strong> targets 6–8.
+      They use the same <code>stops_per_day</code> slot — only one can lead.<br><br>
+      Based on your other answers — <strong>Relax & recharge mood</strong> and <strong>solo traveller</strong> — we think:
+    </p>
+
+    <span class="suggestion-label">Suggested instead</span>
+    <div class="suggestion-row" onclick="applySuggestion()">
+      <img class="suggestion-img" src="https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=80&q=80" alt="Balanced">
+      <div class="suggestion-text">
+        <span class="suggestion-name">Balanced</span>
+        <span class="suggestion-why">Relax mood × solo × mid-range → score: 0.82</span>
+      </div>
+      <button class="suggestion-apply">Use this</button>
+    </div>
+
+    <div class="conflict-divider">
+      <span class="conflict-divider-line"></span>
+      <span class="conflict-divider-text">or</span>
+      <span class="conflict-divider-line"></span>
+    </div>
+
+    <div class="keep-both" onclick="keepBoth()">
+      <span class="keep-both-text">Let the app decide — blend based on my full profile</span>
+      <span class="keep-both-badge">Auto</span>
+    </div>
+  </div>
+
+  <!-- Option 3: Pack it in -->
+  <div class="row-option" id="opt-pack" onclick="handleSelect('pack')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=120&q=80" alt="Pack it in">
+    <div class="row-text">
+      <span class="row-name">Pack it in</span>
+      <span class="row-desc">6–8 stops/day · 25–40 min each · efficient routing</span>
+    </div>
+    <div class="row-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  </div>
+
+  <!-- Option 4: Spontaneous -->
+  <div class="row-option" id="opt-spontaneous" onclick="handleSelect('spontaneous')">
+    <img class="row-img" src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=120&q=80" alt="Spontaneous">
+    <div class="row-text">
+      <span class="row-name">Spontaneous</span>
+      <span class="row-desc">3 anchor stops + open gaps · flexible order</span>
+    </div>
+    <div class="row-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  </div>
+
+  <!-- Reveal CTA -->
+  <button class="reveal-cta" id="revealBtn" onclick="toggleHidden()">
+    <span class="reveal-cta-line"></span>
+    <span class="reveal-cta-text">These don't feel right? See all options</span>
+    <span class="reveal-cta-arrow">▾</span>
+    <span class="reveal-cta-line"></span>
+  </button>
+  <div class="hidden-section" id="hiddenSection">
+    <div class="hidden-section-inner">
+      <div class="row-option hidden-opt" onclick="this.classList.toggle('selected')">
+        <img class="row-img" src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=120&q=80" alt="Ultra slow">
+        <div class="row-text">
+          <span class="outside-badge">less common for your trip type</span>
+          <span class="row-name">Ultra slow</span>
+          <span class="row-desc">1–2 stops/day · full immersion · multi-hour stays</span>
+        </div>
+        <div class="row-check"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,7 5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logic engine note -->
+  <div class="logic-note">
+    <h4>How the suggestion is computed</h4>
+    <p>Each answer carries a weight vector across 6 itinerary dimensions. When a conflict is detected, a scoring function evaluates all non-conflicting options against the accumulated answer weights:</p>
+    <p><code>score(option) = Σ weight[dimension] × alignment[option][dimension]</code></p>
+    <p>The highest-scoring compatible option surfaces as the suggestion. No AI — pure lookup table + dot product. The "why" line shows the two heaviest signals that drove the score.</p>
+  </div>
+</div>
+
+<script>
+const state = { slow: true, balanced: false, pack: false, spontaneous: false };
+const CONFLICT_PAIRS = [['slow', 'pack']];
+
+function isConflicting(a, b) {
+  return CONFLICT_PAIRS.some(p => (p[0]===a && p[1]===b) || (p[0]===b && p[1]===a));
+}
+
+function hasConflict() {
+  return state.slow && state.pack;
+}
+
+function handleSelect(key) {
+  state[key] = !state[key];
+  updateUI();
+}
+
+function updateUI() {
+  const conflict = hasConflict();
+
+  // Update each row
+  ['slow','balanced','pack','spontaneous'].forEach(k => {
+    const el = document.getElementById('opt-' + k);
+    el.classList.toggle('selected', state[k]);
+    // Mark conflicting rows
+    const isConfl = conflict && (k === 'slow' || k === 'pack');
+    el.classList.toggle('conflicting', isConfl && state[k]);
+  });
+
+  // Show/hide conflict panel
+  const panel = document.getElementById('conflictPanel');
+  if (conflict) {
+    panel.classList.add('visible');
+    // Shake the two conflicting rows
+    ['opt-slow','opt-pack'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('shake');
+      void el.offsetWidth;
+      el.classList.add('shake');
+    });
+  } else {
+    panel.classList.remove('visible');
+    ['opt-slow','opt-pack'].forEach(id => {
+      document.getElementById(id).classList.remove('shake','conflicting');
+    });
+  }
+}
+
+function applySuggestion() {
+  // Apply "Balanced" as the resolution: deselect slow & pack, select balanced
+  state.slow = false; state.pack = false; state.balanced = true;
+  updateUI();
+  document.getElementById('conflictPanel').classList.remove('visible');
+}
+
+function keepBoth() {
+  // Mark as auto-blend — remove conflict state visually
+  document.getElementById('conflictPanel').classList.remove('visible');
+  ['opt-slow','opt-pack'].forEach(id => {
+    document.getElementById(id).classList.remove('conflicting','shake');
+  });
+  // Visual feedback
+  const kb = event.currentTarget;
+  kb.style.borderColor = 'var(--primary)';
+  kb.querySelector('.keep-both-badge').textContent = '✓ Set';
+  kb.querySelector('.keep-both-badge').style.color = 'var(--primary)';
+}
+
+function toggleHidden() {
+  document.getElementById('revealBtn').classList.toggle('open');
+  document.getElementById('hiddenSection').classList.toggle('open');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<h2>Search Bar + Result Row Layout</h2>
+<p class="subtitle">Two decisions at once — rotating placeholder (#1) and what each result row shows (#5)</p>
+
+<div class="section">
+  <h3>A — Rotating Placeholder</h3>
+  <p class="subtitle">Cycles through example queries every ~2.5s with a fade transition</p>
+  <div style="background:#1a1a2e;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;font-size:14px;margin-top:8px;">
+    <span style="color:#888;">🔍</span>
+    <span style="color:#666;font-style:italic;">Museums near Rue de Rivoli…</span>
+  </div>
+  <div style="margin-top:8px;background:#131325;border-radius:8px;padding:10px 14px;font-size:12px;color:#aaa;">
+    Rotates: "Museums near [street]" → "Hotels in [district]" → "Parks near [landmark]" → "Restaurants on [street]" → "Galleries in [area]" → …
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>B — Result Row: What to show?</h3>
+  <p class="subtitle">User searches "museum" — place type column is redundant. Two options for the row:</p>
+
+  <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+
+    <div style="flex:1;min-width:200px;background:#1a1a2e;border-radius:12px;padding:14px;">
+      <div style="font-size:11px;color:#7c8cf8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Option B1 — Name + Address + Rating</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#252540;border-radius:8px;font-size:13px;">
+        <span style="font-size:18px;">🏛️</span>
+        <div style="flex:1;">
+          <div style="color:#e0e0e0;font-weight:500;">Musée d'Orsay</div>
+          <div style="color:#888;font-size:11px;margin-top:2px;">62 Rue de Lille, 7th arr.</div>
+        </div>
+        <span style="color:#f4c542;font-size:12px;">★ 4.7</span>
+        <span style="color:#7c8cf8;font-size:16px;margin-left:4px;">ⓘ</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#252540;border-radius:8px;font-size:13px;margin-top:6px;">
+        <span style="font-size:18px;">🏛️</span>
+        <div style="flex:1;">
+          <div style="color:#e0e0e0;font-weight:500;">Louvre Museum</div>
+          <div style="color:#888;font-size:11px;margin-top:2px;">Rue de Rivoli, 1st arr.</div>
+        </div>
+        <span style="color:#f4c542;font-size:12px;">★ 4.8</span>
+        <span style="color:#7c8cf8;font-size:16px;margin-left:4px;">ⓘ</span>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:200px;background:#1a1a2e;border-radius:12px;padding:14px;">
+      <div style="font-size:11px;color:#7c8cf8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Option B2 — Name + Address only (no rating in list)</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#252540;border-radius:8px;font-size:13px;">
+        <span style="font-size:18px;">🏛️</span>
+        <div style="flex:1;">
+          <div style="color:#e0e0e0;font-weight:500;">Musée d'Orsay</div>
+          <div style="color:#888;font-size:11px;margin-top:2px;">62 Rue de Lille, 7th arr.</div>
+        </div>
+        <span style="color:#7c8cf8;font-size:16px;">ⓘ</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#252540;border-radius:8px;font-size:13px;margin-top:6px;">
+        <span style="font-size:18px;">🏛️</span>
+        <div style="flex:1;">
+          <div style="color:#e0e0e0;font-weight:500;">Louvre Museum</div>
+          <div style="color:#888;font-size:11px;margin-top:2px;">Rue de Rivoli, 1st arr.</div>
+        </div>
+        <span style="color:#7c8cf8;font-size:16px;">ⓘ</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="options" style="margin-top:24px;">
+  <div class="option" data-choice="b1" onclick="toggleSelect(this)">
+    <div class="letter">B1</div>
+    <div class="content">
+      <h3>Show rating in the list</h3>
+      <p>Star + number visible at a glance — user can compare without opening each card</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b2" onclick="toggleSelect(this)">
+    <div class="letter">B2</div>
+    <div class="content">
+      <h3>Rating only in the card</h3>
+      <p>Cleaner list — rating shows when you open the ⓘ card. Avoids cluttering short rows.</p>
+    </div>
+  </div>
+</div>

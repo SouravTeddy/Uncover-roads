@@ -1,0 +1,6 @@
+{"type":"server-started","port":64604,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64604","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/content/persona-reveal-v2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/content/persona-reveal.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/content/section1-journey.html"}
+{"type":"screen-updated","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/56409-1777467680/content/section1-journey.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,193 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .screens { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; padding: 8px 0 24px; }
+  .screen-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: pointer; }
+  .screen-wrap.selected .phone { outline: 3px solid #e07854; outline-offset: 3px; }
+  .screen-wrap .label-tag { font-size: 13px; font-weight: 700; color: #e07854; opacity: 0; transition: opacity .2s; }
+  .screen-wrap.selected .label-tag { opacity: 1; }
+  .phone {
+    width: 220px; border-radius: 32px;
+    background: #1a1714; border: 1.5px solid rgba(255,255,255,.08);
+    overflow: hidden; font-family: 'DM Sans', sans-serif;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    transition: transform .15s;
+  }
+  .screen-wrap:hover .phone { transform: translateY(-3px); }
+
+  /* phone internals */
+  .ph-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ph-header h2 { font-size: 15px; font-weight: 700; color: #f5f0ea; font-family: 'Playfair Display', serif; }
+  .ph-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* user card */
+  .user-card {
+    display: flex; align-items: center; gap: 10px;
+    background: #242018; border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px; padding: 10px 12px;
+  }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(224,120,84,.2); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #e07854; flex-shrink: 0; }
+  .user-info { flex: 1; }
+  .user-name { font-size: 12px; font-weight: 600; color: #f5f0ea; }
+  .user-email { font-size: 10px; color: #857268; }
+  .free-badge { font-size: 9px; font-weight: 700; color: #c49840; background: rgba(196,152,64,.12); border: 1px solid rgba(196,152,64,.28); padding: 2px 7px; border-radius: 6px; }
+
+  /* section label */
+  .section-lbl { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #857268; padding: 0 2px; }
+
+  /* settings block */
+  .settings-block { background: #242018; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; overflow: hidden; }
+  .settings-row { display: flex; align-items: center; padding: 9px 12px; gap: 8px; border-top: 1px solid rgba(255,255,255,.05); }
+  .settings-row:first-child { border-top: none; }
+  .row-label { flex: 1; font-size: 11px; color: #c0b0a4; font-weight: 500; }
+  .row-sub { font-size: 9px; color: #857268; }
+  .chevron { font-size: 14px; color: rgba(255,255,255,.2); }
+
+  /* Toggle switch */
+  .toggle-pill {
+    width: 36px; height: 20px; border-radius: 99px; position: relative; flex-shrink: 0;
+    transition: background .2s;
+  }
+  .toggle-pill.dark-active { background: #e07854; }
+  .toggle-pill.light-active { background: rgba(255,255,255,.15); }
+  .toggle-knob {
+    position: absolute; top: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: white; transition: left .2s;
+  }
+  .toggle-pill.dark-active .toggle-knob { left: 18px; }
+  .toggle-pill.light-active .toggle-knob { left: 2px; }
+  .theme-icon { font-size: 13px; }
+
+  /* Header inline toggle (option B) */
+  .header-toggle { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 99px; padding: 4px 10px; }
+  .header-toggle span { font-size: 9px; color: #857268; font-weight: 600; }
+  .mini-toggle { width: 26px; height: 14px; border-radius: 99px; background: #e07854; position: relative; }
+  .mini-knob { position: absolute; top: 2px; left: 12px; width: 10px; height: 10px; border-radius: 50%; background: white; }
+
+  /* Hero toggle (option C) */
+  .hero-toggle { background: #242018; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+  .theme-options { display: flex; gap: 6px; flex: 1; }
+  .theme-btn { flex: 1; padding: 6px 4px; border-radius: 10px; font-size: 9px; font-weight: 700; text-align: center; cursor: pointer; }
+  .theme-btn.active { background: rgba(224,120,84,.2); color: #e07854; border: 1px solid rgba(224,120,84,.3); }
+  .theme-btn.inactive { color: #857268; border: 1px solid rgba(255,255,255,.06); }
+
+  /* dim overlay for screens-app section for option A */
+  .dim { opacity: 0.4; }
+</style>
+
+<h2>Where should the theme toggle live in Profile?</h2>
+<p class="subtitle">Click a phone to select your preference</p>
+
+<div class="screens">
+
+  <!-- Option A: Inside App settings row -->
+  <div class="screen-wrap" data-choice="a" onclick="toggleSelect(this)">
+    <div class="phone">
+      <div class="ph-header">
+        <h2>Profile</h2>
+        <span style="font-size:11px;color:#e07854;font-weight:600">Sign out</span>
+      </div>
+      <div class="ph-body">
+        <div class="user-card">
+          <div class="avatar">S</div>
+          <div class="user-info"><div class="user-name">Sourav</div><div class="user-email">sourav@uncoverroads.com</div></div>
+          <div class="free-badge">FREE</div>
+        </div>
+        <div class="section-lbl">App</div>
+        <div class="settings-block">
+          <div class="settings-row">
+            <span class="theme-icon">🌙</span>
+            <div class="flex-1" style="flex:1"><div class="row-label">Appearance</div><div class="row-sub">Dark mode</div></div>
+            <div class="toggle-pill dark-active"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="settings-row">
+            <div class="row-label">Units</div><span class="chevron">›</span>
+          </div>
+          <div class="settings-row">
+            <div class="row-label">Notifications</div><span class="chevron">›</span>
+          </div>
+        </div>
+        <div class="section-lbl">Account</div>
+        <div class="settings-block dim">
+          <div class="settings-row"><div class="row-label">Upgrade to Pro</div></div>
+          <div class="settings-row"><div class="row-label">Privacy &amp; Data</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="label-tag">Selected</div>
+    <div style="font-size:12px;color:#c0b0a4;font-weight:600;text-align:center">A — Row in App section<br><span style="font-size:10px;color:#857268;font-weight:400">toggle switch, subtle</span></div>
+  </div>
+
+  <!-- Option B: Header inline toggle -->
+  <div class="screen-wrap" data-choice="b" onclick="toggleSelect(this)">
+    <div class="phone">
+      <div class="ph-header">
+        <h2>Profile</h2>
+        <div class="header-toggle">
+          <span>☀</span>
+          <div class="mini-toggle"><div class="mini-knob"></div></div>
+          <span>🌙</span>
+        </div>
+      </div>
+      <div class="ph-body">
+        <div class="user-card">
+          <div class="avatar">S</div>
+          <div class="user-info"><div class="user-name">Sourav</div><div class="user-email">sourav@uncoverroads.com</div></div>
+          <div class="free-badge">FREE</div>
+        </div>
+        <div class="section-lbl">App</div>
+        <div class="settings-block">
+          <div class="settings-row"><div class="row-label">Units</div><span class="chevron">›</span></div>
+          <div class="settings-row"><div class="row-label">Notifications</div><span class="chevron">›</span></div>
+        </div>
+        <div class="section-lbl">Account</div>
+        <div class="settings-block dim">
+          <div class="settings-row"><div class="row-label">Upgrade to Pro</div></div>
+          <div class="settings-row"><div class="row-label">Privacy &amp; Data</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="label-tag">Selected</div>
+    <div style="font-size:12px;color:#c0b0a4;font-weight:600;text-align:center">B — Sun/moon pill in header<br><span style="font-size:10px;color:#857268;font-weight:400">always visible, quick access</span></div>
+  </div>
+
+  <!-- Option C: Hero 3-way segment -->
+  <div class="screen-wrap" data-choice="c" onclick="toggleSelect(this)">
+    <div class="phone">
+      <div class="ph-header">
+        <h2>Profile</h2>
+        <span style="font-size:11px;color:#e07854;font-weight:600">Sign out</span>
+      </div>
+      <div class="ph-body">
+        <div class="user-card">
+          <div class="avatar">S</div>
+          <div class="user-info"><div class="user-name">Sourav</div><div class="user-email">sourav@uncoverroads.com</div></div>
+          <div class="free-badge">FREE</div>
+        </div>
+        <div class="hero-toggle">
+          <span style="font-size:11px;color:#857268;font-weight:600;width:60px">Appearance</span>
+          <div class="theme-options">
+            <div class="theme-btn inactive">☀ Light</div>
+            <div class="theme-btn active">🌙 Dark</div>
+            <div class="theme-btn inactive">⚙ Auto</div>
+          </div>
+        </div>
+        <div class="section-lbl">App</div>
+        <div class="settings-block">
+          <div class="settings-row"><div class="row-label">Units</div><span class="chevron">›</span></div>
+          <div class="settings-row"><div class="row-label">Notifications</div><span class="chevron">›</span></div>
+        </div>
+        <div class="section-lbl dim">Account</div>
+        <div class="settings-block dim">
+          <div class="settings-row"><div class="row-label">Upgrade to Pro</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="label-tag">Selected</div>
+    <div style="font-size:12px;color:#c0b0a4;font-weight:600;text-align:center">C — 3-way segment (Light/Dark/Auto)<br><span style="font-size:10px;color:#857268;font-weight:400">prominent, supports system default</span></div>
+  </div>
+
+</div>

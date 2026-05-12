@@ -4,3 +4,8 @@ requests
 anthropic
 python-dotenv
 supabase
+posthog>=3.0.0
+apscheduler>=3.10
+pytest
+pytest-mock
+pytest-asyncio

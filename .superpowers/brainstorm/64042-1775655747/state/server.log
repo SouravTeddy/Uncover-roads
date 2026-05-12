@@ -1,0 +1,6 @@
+{"type":"server-started","port":58860,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:58860","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/content/pincard-layouts.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/content/waiting.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/content/pincard-final.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/64042-1775655747/content/trip-directions.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Explore Tab — Full Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a14;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  .page-wrap {
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .page-title {
+    font-size: 13px;
+    color: #555;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .split-view {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 320px;
+    flex-shrink: 0;
+    background: #111;
+    border-radius: 36px;
+    border: 2px solid #222;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    position: relative;
+  }
+
+  .phone-notch {
+    height: 28px;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 10;
+  }
+  .notch-pill {
+    width: 80px;
+    height: 10px;
+    background: #0a0a14;
+    border-radius: 10px;
+  }
+
+  .phone-screen {
+    background: #0a0a14;
+    height: 620px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .phone-bottom-bar {
+    height: 52px;
+    background: rgba(10,10,20,0.95);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 8px;
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .nav-item.active { background: rgba(108,143,255,0.12); }
+  .nav-icon { font-size: 16px; }
+  .nav-label { font-size: 9px; opacity: 0.4; }
+  .nav-item.active .nav-label { color: #6c8fff; opacity: 1; }
+
+  /* Screen content */
+  .screen-scroll {
+    height: 100%;
+    overflow-y: auto;
+    padding: 0 0 16px;
+    scrollbar-width: none;
+  }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Header */
+  .screen-header {
+    padding: 14px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .greeting {
+    font-size: 11px;
+    color: #555;
+    letter-spacing: 0.5px;
+  }
+  .app-name {
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #6c8fff, #b06cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.3px;
+  }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6c8fff, #b06cff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* Search */
+  .search-wrap {
+    padding: 4px 16px 12px;
+  }
+  .search-bar {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    transition: border-color 0.2s;
+  }
+  .search-bar:hover { border-color: rgba(108,143,255,0.3); }
+  .search-icon { font-size: 14px; opacity: 0.4; flex-shrink: 0; }
+  .search-placeholder {
+    font-size: 12px;
+    color: #555;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .location-btn {
+    background: linear-gradient(135deg, rgba(108,143,255,0.2), rgba(176,108,255,0.2));
+    border: 1px solid rgba(108,143,255,0.25);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 9px;
+    color: #8aa8ff;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* Section label */
+  .section-label {
+    padding: 0 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #444;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* City hero card */
+  .city-hero {
+    margin: 0 16px 10px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    height: 110px;
+    cursor: pointer;
+  }
+  .city-hero-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&q=70');
+    background-size: cover;
+    background-position: center;
+  }
+  .city-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10,10,20,0.75) 0%, rgba(30,40,80,0.5) 100%);
+  }
+  .city-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 14px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .city-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .city-name { font-size: 18px; font-weight: 700; color: #fff; }
+  .city-sub { font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+  .resume-btn {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 10px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Place chips */
+  .chips-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 16px;
+    margin-bottom: 10px;
+    scrollbar-width: none;
+  }
+  .chips-scroll::-webkit-scrollbar { display: none; }
+  .place-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(108,143,255,0.1);
+    border: 1px solid rgba(108,143,255,0.2);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 10px;
+    color: #8aa8ff;
+    cursor: pointer;
+  }
+  .chip-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #4ade80;
+    flex-shrink: 0;
+  }
+
+  /* Compact draft banner */
+  .draft-banner {
+    margin: 0 16px 16px;
+    background: linear-gradient(90deg, rgba(26,42,74,0.8), rgba(42,26,74,0.8));
+    border: 1px solid rgba(108,143,255,0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .draft-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background-image: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=100&q=60');
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+  }
+  .draft-info { flex: 1; min-width: 0; }
+  .draft-title { font-size: 11px; font-weight: 600; color: #fff; }
+  .draft-sub { font-size: 9px; color: #555; margin-top: 2px; }
+  .draft-dots { display: flex; gap: 3px; margin-top: 4px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .dot.filled { background: #6c8fff; }
+  .dot.empty { background: #2a2a3a; }
+  .draft-arrow { font-size: 16px; color: #444; }
+
+  /* Place cards horizontal scroll */
+  .place-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 16px 0;
+    margin-bottom: 16px;
+    scrollbar-width: none;
+  }
+  .place-scroll::-webkit-scrollbar { display: none; }
+  .place-card {
+    flex-shrink: 0;
+    width: 80px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    height: 100px;
+    cursor: pointer;
+  }
+  .place-card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+  .place-card:hover .place-card-bg { opacity: 0.9; }
+  .place-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 60%);
+  }
+  .place-card-label {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    right: 6px;
+    font-size: 8px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .place-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 14px;
+    height: 14px;
+    background: #4ade80;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: #000;
+  }
+  .place-card-add {
+    flex-shrink: 0;
+    width: 80px;
+    height: 100px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .place-card-add span:first-child { font-size: 18px; opacity: 0.3; }
+  .place-card-add span:last-child { font-size: 8px; color: #444; }
+
+  /* Carousel */
+  .carousel-section { margin-bottom: 16px; }
+  .carousel-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 0 16px;
+    scrollbar-width: none;
+  }
+  .carousel-scroll::-webkit-scrollbar { display: none; }
+
+  .info-card {
+    flex-shrink: 0;
+    width: 180px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    height: 120px;
+    cursor: pointer;
+  }
+  .info-card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+  }
+  .info-card-overlay {
+    position: absolute;
+    inset: 0;
+  }
+  .info-card-content {
+    position: relative;
+    z-index: 1;
+    padding: 12px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .info-card-tag {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 8px;
+    display: inline-block;
+    align-self: flex-start;
+  }
+  .info-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+  }
+  .info-card-stat {
+    font-size: 18px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+  }
+  .info-card-stat-label {
+    font-size: 9px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 2px;
+  }
+
+  /* Annotations */
+  .annotations {
+    flex: 1;
+    min-width: 0;
+    max-width: 340px;
+  }
+  .annotation-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .annotation {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .ann-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6c8fff, #b06cff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .ann-body h4 { font-size: 12px; font-weight: 600; color: #ccc; margin-bottom: 3px; }
+  .ann-body p { font-size: 11px; color: #555; line-height: 1.5; }
+
+  /* Animations */
+  @keyframes shimmer {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+  .pulse { animation: shimmer 2.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-title">Explore Tab Redesign — Full Mockup</div>
+
+  <div class="split-view">
+
+    <!-- Phone -->
+    <div class="phone">
+      <div class="phone-notch"><div class="notch-pill"></div></div>
+      <div class="phone-screen">
+        <div class="screen-scroll">
+
+          <!-- Header -->
+          <div class="screen-header">
+            <div>
+              <div class="greeting">Wednesday, April 23</div>
+              <div class="app-name">uncover roads</div>
+            </div>
+            <div class="avatar">S</div>
+          </div>
+
+          <!-- Search -->
+          <div class="search-wrap">
+            <div class="search-bar">
+              <span class="search-icon">🔍</span>
+              <span class="search-placeholder">Paris, Eiffel Tower, cafés in Rome…</span>
+              <div class="location-btn">
+                <span>📍</span>
+                <span>Near me</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- In Progress -->
+          <div class="section-label">In Progress</div>
+
+          <!-- City hero -->
+          <div class="city-hero">
+            <div class="city-hero-bg"></div>
+            <div class="city-hero-overlay"></div>
+            <div class="city-hero-content">
+              <div class="city-hero-top">
+                <div>
+                  <div class="city-name">Paris</div>
+                  <div class="city-sub">3 places · no dates set</div>
+                </div>
+                <div class="resume-btn">Resume →</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Place chips -->
+          <div class="chips-scroll">
+            <div class="place-chip"><span class="chip-dot"></span>Eiffel Tower</div>
+            <div class="place-chip"><span class="chip-dot"></span>Le Marais</div>
+            <div class="place-chip"><span class="chip-dot"></span>Musée d'Orsay</div>
+            <div class="place-chip" style="color:#555;border-color:rgba(255,255,255,0.06)">+ Add more</div>
+          </div>
+
+          <!-- Compact draft banner -->
+          <div class="draft-banner">
+            <div class="draft-thumb"></div>
+            <div class="draft-info">
+              <div class="draft-title">Paris draft</div>
+              <div class="draft-sub">No dates · 3 stops selected</div>
+              <div class="draft-dots">
+                <div class="dot filled"></div>
+                <div class="dot filled"></div>
+                <div class="dot filled"></div>
+                <div class="dot empty"></div>
+                <div class="dot empty"></div>
+              </div>
+            </div>
+            <div class="draft-arrow">›</div>
+          </div>
+
+          <!-- Place scroll -->
+          <div class="place-scroll">
+            <div class="place-card">
+              <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1431274172761-fca41d930114?w=200&q=60')"></div>
+              <div class="place-card-overlay"></div>
+              <div class="place-check">✓</div>
+              <div class="place-card-label">Eiffel Tower</div>
+            </div>
+            <div class="place-card">
+              <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=200&q=60')"></div>
+              <div class="place-card-overlay"></div>
+              <div class="place-check">✓</div>
+              <div class="place-card-label">Le Marais</div>
+            </div>
+            <div class="place-card">
+              <div class="place-card-bg" style="background-image:url('https://images.unsplash.com/photo-1563115298-e9585e7943d4?w=200&q=60')"></div>
+              <div class="place-card-overlay"></div>
+              <div class="place-check">✓</div>
+              <div class="place-card-label">Musée d'Orsay</div>
+            </div>
+            <div class="place-card-add">
+              <span>+</span>
+              <span>Explore</span>
+            </div>
+          </div>
+
+          <!-- Discovery Carousel -->
+          <div class="carousel-section">
+            <div class="section-label" style="margin-bottom:10px">Discover</div>
+            <div class="carousel-scroll">
+
+              <!-- Stat card -->
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1504512485720-7d83a16ee930?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(20,10,40,0.85),rgba(80,20,120,0.6))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(176,108,255,0.25);color:#d094ff">TRAVEL STAT</div>
+                  <div>
+                    <div class="info-card-stat">€52</div>
+                    <div class="info-card-stat-label">avg. daily cost in Lisbon</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Editorial card -->
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(10,30,40,0.85),rgba(20,80,60,0.6))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(74,222,128,0.2);color:#4ade80">BEST TIME</div>
+                  <div class="info-card-title">Cherry blossoms peak in Kyoto — early April</div>
+                </div>
+              </div>
+
+              <!-- Stat card 2 -->
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(40,10,10,0.85),rgba(120,40,20,0.6))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(255,140,60,0.25);color:#ff9b5e">TRAVEL STAT</div>
+                  <div>
+                    <div class="info-card-stat">#1</div>
+                    <div class="info-card-stat-label">Bangkok — most visited city 2025</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Editorial card 2 -->
+              <div class="info-card">
+                <div class="info-card-bg" style="background-image:url('https://images.unsplash.com/photo-1555992336-03a23c7b20ee?w=400&q=60')"></div>
+                <div class="info-card-overlay" style="background:linear-gradient(135deg,rgba(10,20,50,0.85),rgba(20,60,120,0.6))"></div>
+                <div class="info-card-content">
+                  <div class="info-card-tag" style="background:rgba(108,143,255,0.25);color:#8aa8ff">INSIDER TIP</div>
+                  <div class="info-card-title">Paris museums free on first Sunday of each month</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="phone-bottom-bar">
+        <div class="nav-item active">
+          <div class="nav-icon">🧭</div>
+          <div class="nav-label" style="color:#6c8fff;opacity:1">Explore</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">📋</div>
+          <div class="nav-label">Itinerary</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">👥</div>
+          <div class="nav-label">Community</div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-icon">👤</div>
+          <div class="nav-label">Profile</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotations -->
+    <div class="annotations">
+      <div class="annotation-title">Design Notes</div>
+
+      <div class="annotation">
+        <div class="ann-num">1</div>
+        <div class="ann-body">
+          <h4>Search — smart, unified</h4>
+          <p>Single search handles cities and places. "Paris" loads the map for Paris. "Eiffel Tower" jumps to that pin. "cafés near me" uses the location button. Rotating placeholders (already built in MapScreen) carry over here.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">2</div>
+        <div class="ann-body">
+          <h4>In Progress — 3-layer mix</h4>
+          <p>City hero card (photo + city name + resume button) → chips for quick place access → compact draft banner showing progress dots → horizontal place card scroll. Only visible when there are selected places. Hidden with a clean CTA when empty.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">3</div>
+        <div class="ann-body">
+          <h4>Discover carousel — A + D</h4>
+          <p>Alternates between editorial cards ("Best time to visit Kyoto") and stat cards ("€52/day in Lisbon", "#1 Bangkok"). No AI/persona inference. Curated, real data. Different card accent colours per type.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">4</div>
+        <div class="ann-body">
+          <h4>Session restore fix</h4>
+          <p><code>getInitialScreen()</code> always returns <code>'destination'</code> (this screen) instead of restoring to <code>'map'</code>. The last map state (city, places, filter) is still preserved in localStorage — it just surfaces here first, not directly on the map.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">5</div>
+        <div class="ann-body">
+          <h4>Empty state</h4>
+          <p>When there's no in-progress activity, the "In Progress" section is replaced by a gentle nudge — "Where are you heading?" with a large illustrated prompt. The Discover carousel is always visible.</p>
+        </div>
+      </div>
+
+      <div class="annotation">
+        <div class="ann-num">6</div>
+        <div class="ann-body">
+          <h4>Animations planned</h4>
+          <p>Entrance shimmer on place cards, carousel auto-scroll with pause-on-hover, subtle gradient pulse on city hero card, smooth slide-in for the In Progress section when activity exists.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

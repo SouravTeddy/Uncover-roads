@@ -2,8 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
-import type { Place, MapFilter, Category } from '../../shared/types';
-import { TripPlanningCard } from './TripPlanningCard';
+import type { Place, MapFilter, Category, DiscoveryMode } from '../../shared/types';
+import { isCurationLocked } from '../../shared/tier';
+import { SearchResultRow } from './SearchResultRow';
+import { SearchNudge } from './SearchNudge';
+import {
+  nominatimToCategory,
+  multiTypeNominatimSearch,
+  extractSearchIntent,
+  bboxDiagonalKm,
+} from './useSmartSearch';
+import type { NominatimResult, SuggestedChip } from './useSmartSearch';
+import type { MapHandle } from './MapLibreMap';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
@@ -13,79 +23,68 @@ import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
-import { getJourneyCities } from './journey-utils';
-import { TravelDateBar } from './TravelDateBar';
+import { getJourneyCities, isJourneyMode } from './journey-utils';
+import { FamousPinsLayer } from './FamousPinsLayer';
+import { ReferencePinsLayer } from './ReferencePinsLayer';
+import { UserPinsLayer } from './UserPinsLayer';
+import { DiscoveryModeToggle } from './DiscoveryModeToggle';
+import { SurpriseMeButton } from './SurpriseMeButton';
+import { BuildItineraryBar } from './BuildItineraryBar';
+import { usePinCityDetector } from './usePinCityDetector';
+import type { DetectedTransit } from './usePinCityDetector';
+import { MultiCityHeader } from './MultiCityHeader';
+import { CityArcLayer } from './CityArcLayer';
+import { CityHopOverlay } from './CityHopOverlay';
+import type { TransitMode } from '../../shared/types';
+import { TravelDateBar } from './TravelDateBar'
+import { OurPicksPinsLayer } from './OurPicksPinsLayer'
+import type { PlacePickFE } from './OurPicksPinsLayer'
+import { LiveEventPinsLayer } from './LiveEventPinsLayer'
+import type { LiveEvent } from '../../shared/types'
+import { NumberedPinsLayer } from './NumberedPinsLayer'
+import type { SearchResultPin } from './NumberedPinsLayer'
+import { SearchResultsStrip } from './SearchResultsStrip'
 
-// ── Nominatim place search ──────────────────────────────────────
+// ── Module-level utilities ───────────────────────────────────────
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  name: string;
-  lat: string;
-  lon: string;
-  class: string;
-  type: string;
-}
-
-async function nominatimSearch(
-  query: string,
-  bbox: [number, number, number, number] | null,
-  signal: AbortSignal,
-): Promise<NominatimResult[]> {
-  const [south, north, west, east] = bbox ?? [0, 0, 0, 0];
-  const params = new URLSearchParams({
-    q: query,
-    format: 'json',
-    limit: '5',
-    'accept-language': 'en',
-  });
-  if (bbox) {
-    params.set('viewbox', `${west},${north},${east},${south}`);
-    params.set('bounded', '1');
-  }
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { 'Accept-Language': 'en' },
-    signal,
-  });
-  const data = await res.json();
-  // If bounded search returns nothing, retry without bounded
-  if (Array.isArray(data) && data.length === 0 && bbox) {
-    params.delete('bounded');
-    const res2 = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { 'Accept-Language': 'en' },
-      signal,
-    });
-    return res2.json();
-  }
-  return Array.isArray(data) ? data : [];
-}
-
-function nominatimToCategory(cls: string, type: string): Category {
-  if (cls === 'amenity') {
-    if (['restaurant', 'bar', 'fast_food', 'food_court', 'biergarten'].includes(type)) return 'restaurant';
-    if (type === 'cafe') return 'cafe';
-    if (type === 'museum') return 'museum';
-  }
-  if (cls === 'tourism') {
-    if (['museum', 'gallery', 'artwork'].includes(type)) return 'museum';
-    if (['attraction', 'viewpoint', 'theme_park'].includes(type)) return 'tourism';
-  }
-  if (cls === 'historic') return 'historic';
-  if (cls === 'leisure' || ['park', 'garden', 'nature_reserve'].includes(type)) return 'park';
-  return 'place';
+function buildTransitSummary(transit: DetectedTransit | null): string {
+  if (!transit) return '';
+  const icon: Record<TransitMode, string> = { flight: '✈️', train: '🚄', drive: '🚗', bus: '🚌' };
+  const label: Record<TransitMode, string> = { flight: 'flight', train: 'train', drive: 'drive', bus: 'bus' };
+  const hours = transit.durationMinutes
+    ? `~${Math.round(transit.durationMinutes / 60)}h `
+    : '';
+  return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
 }
 
 // ── Main screen ─────────────────────────────────────────────────
 
+const PLACEHOLDER_EXAMPLES = [
+  'temples in the area…',
+  'best dinner spots…',
+  'hidden gems nearby…',
+  'live events this weekend…',
+  'things to do tomorrow…',
+];
+
 export function MapScreen() {
   const {
-    city, cityGeo, filteredPlaces, recommendedPlaces, places, selectedPlaces,
+    city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, goBack,
+    togglePlace, setFilter, trackViewedCategory, goBack,
   } = useMap();
 
   const { state, dispatch } = useAppStore();
+  const { pendingActivePlace } = state;
+  const personaProfile = state.personaProfile ?? null;
+
+  // New store state for phase 4
+  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints } = state;
+  const activeDiscoveryMode: DiscoveryMode = cityContexts[activeCityIndex]?.discoveryMode ?? 'anchor';
+  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
+
+  // Session cache for PinCard persona insights
+  const insightCacheRef = useRef(new Map<string, string>());
 
   // Guard: if city was lost (fresh tab, cleared session), kick back to destination
   useEffect(() => {
@@ -93,13 +92,55 @@ export function MapScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Consume a place requested from the Explore tab — open its PinCard then clear
+  useEffect(() => {
+    if (pendingActivePlace) {
+      setActivePlace(pendingActivePlace);
+      dispatch({ type: 'CLEAR_PENDING_PLACE' });
+    }
+  }, [pendingActivePlace, setActivePlace, dispatch]);
+
+  // Multi-city overlay state
+  const [pendingNewCity, setPendingNewCity] = useState<{ city: string; lat: number; lon: number; transit: DetectedTransit | null } | null>(null);
+
+  const handleNewCity = useCallback((newCity: string, lat: number, lon: number, transit: DetectedTransit | null) => {
+    if (cityFootprints.some(f => f.city === newCity)) return;
+    setPendingNewCity({ city: newCity, lat, lon, transit });
+    const emoji = '🌍';
+    dispatch({
+      type: 'ADD_CITY_FOOTPRINT',
+      footprint: { city: newCity, emoji, pinCount: 1, lat, lon, transitMode: transit?.mode },
+    });
+  }, [cityFootprints, dispatch]);
+
+  usePinCityDetector(
+    selectedPlaces,
+    cityFootprints,
+    cityGeo?.lat ?? null,
+    cityGeo?.lon ?? null,
+    city,
+    handleNewCity,
+  );
+
+  const isMultiCity = cityFootprints.length > 1 || isJourneyMode(selectedPlaces);
+
+  const transitSummary = pendingNewCity?.transit
+    ? buildTransitSummary(pendingNewCity.transit)
+    : '';
+
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
+  const favouritedIds = useMemo(
+    () => new Set(favouritedPins.map(f => f.placeId)),
+    [favouritedPins],
+  );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
-  const handlePinClick = useCallback((p: Place) => { setClusterGroup(null); setActivePlace(p); fetchDetails(p); }, [setActivePlace, fetchDetails]);
+
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
+  const clusterSheetRef    = useRef<HTMLDivElement>(null);
+  const clusterTouchStartY = useRef(0);
+  const clusterDragY       = useRef(0);
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [showTripSheet, setShowTripSheet] = useState(false);
 
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
@@ -107,11 +148,7 @@ export function MapScreen() {
   const [eventsLoaded, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
-
-  // Pin drop
-  const [awaitingPinDrop, setAwaitingPinDrop]   = useState(false);
-  const [pinDropResult, setPinDropResult]         = useState<{ lat: number; lon: number } | null>(null);
-  const [pinPlaceName, setPinPlaceName]           = useState<string | null>(null);
+  const [eventsError, setEventsError]           = useState<string | null>(null);
 
   // Place search
   const [searchQuery, setSearchQuery]       = useState('');
@@ -120,7 +157,47 @@ export function MapScreen() {
   const [searchOpen, setSearchOpen]         = useState(false);
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef     = useRef<AbortController | null>(null);
+  const glowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mapHandleRef = useRef<MapHandle>(null);
+  const [currentBbox, setCurrentBbox] = useState<[number, number, number, number] | null>(null);
+  const [activeSearchTypes, setActiveSearchTypes] = useState<{ types: Category[]; label: string } | null>(null);
+  const [suggestedChips, setSuggestedChips] = useState<SuggestedChip[]>([]);
+  const [showZoomNudge, setShowZoomNudge] = useState(false);
+  const [highlightIds, setHighlightIds] = useState<Set<string>>(new Set());
+
+  // Phase 11: Our Picks layer
+  const [ourPicks, setOurPicks] = useState<PlacePickFE[]>([])
+
+  // Phase 11: Live events layer
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
+
+  // Phase 11: Search result pins (numbered)
+  const [searchPins, setSearchPins] = useState<SearchResultPin[]>([])
+  const [showSearchStrip, setShowSearchStrip] = useState(false)
+
+  // Phase 11: Surprise Me confirmation
+  const [surpriseConfirm, setSurpriseConfirm] = useState(false)
+
+  // Rotating placeholder
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [placeholderVisible, setPlaceholderVisible] = useState(true);
+
+  useEffect(() => {
+    if (searchQuery) return;
+    let fadeTimer: ReturnType<typeof setTimeout>;
+    const id = setInterval(() => {
+      setPlaceholderVisible(false);
+      fadeTimer = setTimeout(() => {
+        setPlaceholderIdx(i => (i + 1) % PLACEHOLDER_EXAMPLES.length);
+        setPlaceholderVisible(true);
+      }, 200);
+    }, 1500);
+    return () => {
+      clearInterval(id);
+      clearTimeout(fadeTimer);
+    };
+  }, [searchQuery]);
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
@@ -155,6 +232,7 @@ export function MapScreen() {
     if (!cityGeo) return;
     initialLoadFired.current = true;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
+    if (cityGeo.bbox) setCurrentBbox(cityGeo.bbox);
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
@@ -162,32 +240,6 @@ export function MapScreen() {
       loadEvents();
     }
   }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Pin drop click handler — sets pin then reverse geocodes for a street name
-  const handleMapClick = useCallback(
-    ({ lat, lng }: { lat: number; lng: number }) => {
-      if (!awaitingPinDrop) return;
-      setPinDropResult({ lat, lon: lng });
-      setPinPlaceName(null);
-      setAwaitingPinDrop(false);
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-        { headers: { 'Accept-Language': 'en' } },
-      )
-        .then(r => r.json())
-        .then(d => {
-          const name =
-            d.address?.road ??
-            d.address?.neighbourhood ??
-            d.address?.suburb ??
-            d.display_name?.split(',')[0] ??
-            null;
-          setPinPlaceName(name);
-        })
-        .catch(() => { /* leave null — coordinates shown as fallback */ });
-    },
-    [awaitingPinDrop],
-  );
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
     onFetch: useCallback((center: [number, number]) => {
@@ -198,9 +250,31 @@ export function MapScreen() {
     }, []),
   });
 
-  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number) => {
+  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, bbox: [number, number, number, number]) => {
+    setCurrentBbox(bbox);
     handleMoveEnd(center, zoom);
-  }, [handleMoveEnd]);
+
+    // Re-run area search if there's an active type-only search
+    if (activeSearchTypes && searchQuery) {
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      multiTypeNominatimSearch(activeSearchTypes.types, searchQuery, bbox, abortRef.current.signal)
+        .then(results => {
+          if (!abortRef.current?.signal.aborted) {
+            const newIds = new Set(results.map(r => `nominatim-${r.place_id}`));
+            setHighlightIds(newIds);
+            if (glowTimerRef.current !== null) clearTimeout(glowTimerRef.current);
+            glowTimerRef.current = setTimeout(() => {
+              setHighlightIds(new Set());
+              glowTimerRef.current = null;
+            }, 800);
+            setSearchResults(results.slice(0, 10));
+            setShowZoomNudge(bboxDiagonalKm(bbox) > 15);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [handleMoveEnd, activeSearchTypes, searchQuery]);
 
   async function loadEvents() {
     const date = state.tripContext.date;
@@ -214,18 +288,111 @@ export function MapScreen() {
     setEventsLoading(true);
     try {
       const data = await api.events(city, date, endDate, cityGeo?.lat, cityGeo?.lon);
-      const withIds = (Array.isArray(data) ? data : []).map((p, i) => ({
-        ...p,
-        id: p.id ?? `event-${i}`,
-      }));
+      // Backend returns {"error": "..."} when API key is missing
+      if (!Array.isArray(data)) {
+        setEventsError('Events unavailable right now');
+        setTimeout(() => setEventsError(null), 4000);
+        return;
+      }
+      const withIds = data.map((p, i) => ({ ...p, id: p.id ?? `event-${i}` }));
+      if (withIds.length === 0) {
+        setEventsError(`No events found in ${city} for your dates`);
+        setTimeout(() => setEventsError(null), 4000);
+      } else {
+        setEventsError(null);
+      }
       dispatch({ type: 'MERGE_PLACES', places: withIds });
       setEventsLoaded(true);
     } catch (e) {
       console.error('[MapScreen] loadEvents failed:', e);
+      setEventsError('Events unavailable right now');
+      setTimeout(() => setEventsError(null), 4000);
     } finally {
       setEventsLoading(false);
     }
   }
+
+  // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
+  useEffect(() => {
+    const el = clusterSheetRef.current;
+    if (!el || !clusterGroup) return;
+
+    let dismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const onStart = (e: TouchEvent) => {
+      clusterTouchStartY.current = e.touches[0].clientY;
+      clusterDragY.current = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      const dy = e.touches[0].clientY - clusterTouchStartY.current;
+      if (dy > 0 && el) {
+        if (e.cancelable) e.preventDefault();
+        el.style.transition = 'none';
+        el.style.transform  = `translateY(${dy}px)`;
+        clusterDragY.current = dy;
+      }
+    };
+    const onEnd = () => {
+      if (!el) return;
+      el.style.transition = '';
+      if (clusterDragY.current > 80) {
+        el.style.transform = 'translateY(100%)';
+        dismissTimer = setTimeout(() => setClusterGroup(null), 220);
+      } else {
+        el.style.transform = 'translateY(0)';
+      }
+      clusterDragY.current = 0;
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove',  onMove,  { passive: false });
+    el.addEventListener('touchend',   onEnd,   { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove',  onMove);
+      el.removeEventListener('touchend',   onEnd);
+      if (dismissTimer !== null) clearTimeout(dismissTimer);
+    };
+  }, [clusterGroup]);
+
+  useEffect(() => {
+    if (!city || activeFilter !== 'picks') { setOurPicks([]); return }
+    const activeCityContext = cityContexts[activeCityIndex]
+    const cityId = activeCityContext?.city ?? city
+    fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: PlacePickFE[]) => setOurPicks(data))
+      .catch(() => setOurPicks([]))
+  }, [city, activeFilter, activeCityIndex, cityContexts])
+
+  useEffect(() => {
+    if (!city || activeFilter !== 'event') { setLiveEvents([]); return }
+    const startDate = state.travelStartDate
+    const endDate = state.travelEndDate
+    if (!startDate || !endDate) return
+    const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
+    if (cityGeo) {
+      params.set('lat', String(cityGeo.lat))
+      params.set('lon', String(cityGeo.lon))
+    }
+    fetch(`/events?${params}`)
+      .then(r => r.ok ? r.json() : { places: [] })
+      .then((data: { places: Array<{ id: string; title: string; lat: number; lon: number; tags: { event_date?: string; event_time?: string; venue?: string; genre?: string; website?: string }; imageUrl: string | null }> }) => {
+        setLiveEvents(data.places.map(p => ({
+          id: p.id,
+          title: p.title,
+          lat: p.lat,
+          lon: p.lon,
+          venueName: p.tags?.venue ?? '',
+          date: p.tags?.event_date ?? '',
+          time: p.tags?.event_time ?? '',
+          genre: p.tags?.genre ?? '',
+          url: p.tags?.website ?? '',
+          imageUrl: p.imageUrl ?? null,
+        })))
+      })
+      .catch(() => setLiveEvents([]))
+  }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
@@ -242,16 +409,37 @@ export function MapScreen() {
   function handleSearchInput(val: string) {
     setSearchQuery(val);
     setSearchOpen(true);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+    setActiveSearchTypes(null);
+
     if (!val.trim()) { setSearchResults([]); return; }
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
       setSearchLoading(true);
+
+      const intent = extractSearchIntent(val);
+
+      if (intent.types.length === 0 && intent.locationQuery === null) {
+        setSuggestedChips(intent.chips);
+        setSearchResults([]);
+        setSearchLoading(false);
+        return;
+      }
+
       try {
-        const bbox = cityGeo?.bbox ?? null;
-        const results = await nominatimSearch(val, bbox, abortRef.current.signal);
-        if (!abortRef.current.signal.aborted) setSearchResults(results.slice(0, 5));
+        const bbox = intent.locationQuery === null ? currentBbox : null;
+        const results = await multiTypeNominatimSearch(intent.types, val, bbox, abortRef.current.signal);
+        if (!abortRef.current.signal.aborted) {
+          setSearchResults(results.slice(0, 10));
+          if (intent.types.length > 0 && intent.locationQuery === null && bbox && bboxDiagonalKm(bbox) > 15) {
+            setShowZoomNudge(true);
+            setActiveSearchTypes({ types: intent.types, label: intent.types[0] });
+          }
+        }
       } catch {
         // aborted or network error — ignore
       } finally {
@@ -260,44 +448,145 @@ export function MapScreen() {
     }, 320);
   }
 
-  function handleSelectResult(r: NominatimResult) {
+  function navigateToResult(r: NominatimResult) {
     const lat = parseFloat(r.lat);
     const lon = parseFloat(r.lon);
     const name = r.name || r.display_name.split(',')[0];
     const category = nominatimToCategory(r.class, r.type);
-    const place: Place = {
-      id: `nominatim-${r.place_id}`,
-      title: name,
-      category,
-      lat,
-      lon,
-      _city: city,
-    };
+    const place: Place = { id: `nominatim-${r.place_id}`, title: name, category, lat, lon, _city: city };
     dispatch({ type: 'MERGE_PLACES', places: [place] });
-    setActivePlace(place);
+    mapHandleRef.current?.flyTo(lat, lon);
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
+    setSuggestedChips([]);
     searchInputRef.current?.blur();
+  }
+
+  function openCardFromResult(r: NominatimResult) {
+    const lat = parseFloat(r.lat);
+    const lon = parseFloat(r.lon);
+    const name = r.name || r.display_name.split(',')[0];
+    const category = nominatimToCategory(r.class, r.type);
+    const place: Place = { id: `nominatim-${r.place_id}`, title: name, category, lat, lon, _city: city };
+    dispatch({ type: 'MERGE_PLACES', places: [place] });
+    setActivePlace(place);
+    fetchDetails(place);
+    mapHandleRef.current?.flyTo(lat, lon);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchOpen(false);
+    setSuggestedChips([]);
+    searchInputRef.current?.blur();
+  }
+
+  function handleChipTap(chip: SuggestedChip) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSearchQuery(chip.label);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    setSearchLoading(true);
+    const bbox = currentBbox;
+    multiTypeNominatimSearch([chip.type], chip.label, bbox, abortRef.current.signal)
+      .then(results => {
+        if (!abortRef.current?.signal.aborted) {
+          setSearchResults(results.slice(0, 10));
+          setSearchOpen(true);
+          setActiveSearchTypes({ types: [chip.type], label: chip.label });
+          if (bbox && bboxDiagonalKm(bbox) > 15) setShowZoomNudge(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setSearchLoading(false));
   }
 
   function clearSearch() {
     setSearchQuery('');
     setSearchResults([]);
     setSearchOpen(false);
+    setSuggestedChips([]);
+    setShowZoomNudge(false);
+    setActiveSearchTypes(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (abortRef.current) abortRef.current.abort();
+    if (glowTimerRef.current !== null) { clearTimeout(glowTimerRef.current); glowTimerRef.current = null; }
   }
+
+  // ── Phase 4: new pin click handler — updates both local and store state ──
+  const handlePinClick = useCallback((placeId: string) => {
+    setClusterGroup(null);
+    const found =
+      places.find(p => p.id === placeId) ??
+      state.referencePins.find(p => p.id === placeId) ??
+      selectedPlaces.find(p => p.id === placeId) ?? null;
+    if (found) {
+      setActivePlace(found as Place);
+      fetchDetails(found as Place);
+      trackViewedCategory((found as Place).category);
+    }
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: placeId });
+  }, [places, state.referencePins, selectedPlaces, setActivePlace, fetchDetails, trackViewedCategory, dispatch]);
+
+  const handlePinCardClose = useCallback(() => {
+    setActivePlace(null);
+    clearDetails();
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
+  }, [setActivePlace, clearDetails, dispatch]);
+
+  // Discovery mode toggle
+  const handleDiscoveryModeChange = useCallback((mode: DiscoveryMode) => {
+    dispatch({ type: 'SET_DISCOVERY_MODE', cityIndex: activeCityIndex, mode });
+  }, [activeCityIndex, dispatch]);
+
+  // Surprise Me — calls backend, navigates to route screen
+  const handleSurprise = useCallback(async () => {
+    if (!city || !personaProfile) return
+    if (state.engineItinerary) {
+      setSurpriseConfirm(true)
+      return
+    }
+    await _runSurprise()
+  }, [city, personaProfile, state.engineItinerary])
+
+  const _runSurprise = useCallback(async () => {
+    if (!city || !personaProfile) return
+    setSurpriseConfirm(false)
+    dispatch({ type: 'INCREMENT_GENERATION_COUNT' })
+    const startCityContext = cityContexts[0]
+    const endCityContext   = cityContexts[cityContexts.length - 1]
+    try {
+      const res = await fetch('/api/surprise-me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          start_city_id: startCityContext?.city ?? city,
+          end_city_id:   endCityContext?.city ?? city,
+          start_date:    state.travelStartDate ?? undefined,
+          end_date:      state.travelEndDate ?? undefined,
+          persona:       personaProfile.archetype ?? 'explorer',
+        }),
+      })
+      if (res.ok) {
+        const result = await res.json()
+        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+        dispatch({ type: 'GO_TO', screen: 'route' })
+      }
+    } catch { /* silence */ }
+  }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
+
+  const isFavourited = activePlace
+    ? favouritedIds.has(activePlace.id)
+    : false;
 
   const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
-    all:         places.filter(p => p.category !== 'event').length,
-    recommended: recommendedPlaces.length,
+    all:         places.length,
+    trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
+    hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
     event:       eventsLoaded ? eventPlaces.length : undefined,
-    museum:      places.filter(p => p.category === 'museum').length,
-    park:        places.filter(p => p.category === 'park').length,
-    restaurant:  places.filter(p => p.category === 'restaurant').length,
-    historic:    places.filter(p => p.category === 'historic').length,
+    picks:       ourPicks.length || undefined,
   };
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
@@ -311,20 +600,68 @@ export function MapScreen() {
     : null;
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: (awaitingPinDrop || !!activePlace) ? 35 : 10 }}>
+    <div className="fixed inset-0" style={{ zIndex: !!activePlace ? 35 : 10 }}>
 
       {/* Map — full screen */}
       <MapLibreMap
+        ref={mapHandleRef}
         center={center}
         zoom={cityGeo ? 13 : 2}
-        places={filteredPlaces}
-        selectedPlace={activePlace}
-        onPlaceClick={handlePinClick}
+        places={[]}
+        selectedPlace={null}
+        highlightIds={highlightIds}
+        onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
-        onClick={handleMapClick}
         routeGeojson={routeGeojson}
-        pinDropResult={pinDropResult}
-      />
+      >
+        <FamousPinsLayer
+          places={filteredPlaces}
+          activePlaceId={activePinId}
+          discoveryMode={activeDiscoveryMode}
+          onPinClick={handlePinClick}
+        />
+        <ReferencePinsLayer
+          pins={state.referencePins}
+          activePinId={activePinId}
+          onPinClick={handlePinClick}
+        />
+        <UserPinsLayer
+          itineraryPlaces={selectedPlaces}
+          favouritedPins={favouritedPins}
+          activePinId={activePinId}
+          onPinClick={handlePinClick}
+        />
+        {/* Our Picks layer */}
+        {activeFilter === 'picks' && (
+          <OurPicksPinsLayer
+            picks={ourPicks}
+            activePinId={activePinId ?? null}
+            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+          />
+        )}
+
+        {/* Live Events layer */}
+        {activeFilter === 'event' && (
+          <LiveEventPinsLayer
+            events={liveEvents}
+            activePinId={activePinId ?? null}
+            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+          />
+        )}
+
+        {/* Numbered search result pins */}
+        {showSearchStrip && searchPins.length > 0 && (
+          <NumberedPinsLayer
+            pins={searchPins}
+            onPinClick={(pin) => {
+              const match = places.find(p => p.id === pin.id)
+              if (match) setActivePlace(match)
+            }}
+          />
+        )}
+
+        {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
+      </MapLibreMap>
 
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
@@ -332,64 +669,75 @@ export function MapScreen() {
       {/* Map status — loading / zoomed-out indicator */}
       <MapStatusIndicator status={mapStatus} />
 
-      {/* Drop pin strip */}
-      {awaitingPinDrop && (
-        <div
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-5 py-4"
-          style={{
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)',
-            zIndex: 20,
-            background: 'linear-gradient(to top, rgba(20,184,166,.9), rgba(20,184,166,.7))',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          <span className="text-xl">📍</span>
-          <p className="text-white font-semibold text-sm">Tap the map to drop your starting pin</p>
-          <button onClick={() => setAwaitingPinDrop(false)} className="ml-auto text-white/70 text-xs underline underline-offset-2">Cancel</button>
-        </div>
-      )}
-
       {/* ── Top overlay ── */}
       <div
         className="absolute inset-x-0 top-0 flex flex-col gap-2 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.5rem', zIndex: 20, pointerEvents: 'none' }}
       >
-        {/* Row 1: back + search input */}
-        <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
-          <button
-            onClick={goBack}
-            className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
-            style={{ background: 'rgba(15,20,30,.82)' }}
-          >
-            <span className="ms text-text-2 text-base">arrow_back</span>
-          </button>
-
-          {/* Search input */}
-          <div className="flex-1 relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
-            <input
-              ref={searchInputRef}
-              type="text"
-              lang="en"
-              value={searchQuery}
-              onChange={e => handleSearchInput(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
-              placeholder={`Search places in ${city || 'city'}…`}
-              className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white placeholder-white/30 outline-none"
-              style={{
-                background: 'rgba(15,20,30,.82)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255,255,255,.1)',
+        {/* Row 1: single-city search bar OR multi-city tab header */}
+        {isMultiCity ? (
+          <div style={{ pointerEvents: 'auto' }}>
+            <MultiCityHeader
+              cityFootprints={cityFootprints}
+              activeCityIdx={activeCityIndex}
+              transitSummary={transitSummary}
+              onCityTap={(idx) => {
+                dispatch({ type: 'SET_ACTIVE_CITY_INDEX', index: idx });
+                const f = cityFootprints[idx];
+                if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12);
               }}
+              onAddCity={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
             />
-            {searchLoading ? (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
-            ) : searchQuery ? (
-              <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm">close</button>
-            ) : null}
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2" style={{ pointerEvents: 'auto' }}>
+            <button
+              onClick={goBack}
+              className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10 flex-shrink-0"
+              style={{ background: 'rgba(15,20,30,.82)' }}
+            >
+              <span className="ms text-text-2 text-base">arrow_back</span>
+            </button>
+            {/* Search input */}
+            <div className="flex-1 relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 ms text-white/35 text-base pointer-events-none">search</span>
+              <input
+                ref={searchInputRef}
+                type="text"
+                lang="en"
+                value={searchQuery}
+                onChange={e => handleSearchInput(e.target.value)}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                placeholder=""
+                className="w-full h-10 rounded-full pl-9 pr-9 text-sm text-white outline-none"
+                style={{
+                  background: 'rgba(15,20,30,.82)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255,255,255,.1)',
+                }}
+              />
+              {!searchQuery && (
+                <span
+                  className="absolute left-9 top-1/2 -translate-y-1/2 text-sm pointer-events-none truncate"
+                  style={{
+                    color: 'rgba(255,255,255,0.3)',
+                    opacity: placeholderVisible ? 1 : 0,
+                    transition: 'opacity 0.2s ease',
+                    maxWidth: 'calc(100% - 72px)',
+                  }}
+                >
+                  {PLACEHOLDER_EXAMPLES[placeholderIdx]}
+                </span>
+              )}
+              {searchLoading ? (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm animate-spin pointer-events-none">autorenew</span>
+              ) : searchQuery ? (
+                <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 ms text-white/30 text-sm">close</button>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* Search results dropdown */}
         {searchOpen && searchResults.length > 0 && (
@@ -403,28 +751,77 @@ export function MapScreen() {
             }}
           >
             {searchResults.map((r, i) => (
-              <button
+              <SearchResultRow
                 key={r.place_id}
-                onMouseDown={() => handleSelectResult(r)}
-                className="w-full text-left px-4 py-3 transition-colors active:bg-white/5"
-                style={{ borderBottom: i < searchResults.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none' }}
-              >
-                <p className="text-white text-sm font-medium truncate">{r.name || r.display_name.split(',')[0]}</p>
-                <p className="text-white/35 text-xs truncate mt-0.5">{r.display_name.split(',').slice(1, 3).join(',').trim()}</p>
-              </button>
+                result={r}
+                isLast={i === searchResults.length - 1}
+                onNavigate={() => navigateToResult(r)}
+                onOpenCard={() => openCardFromResult(r)}
+              />
             ))}
           </div>
         )}
 
+        {/* Smart search nudge — chips or zoom nudge */}
+        {searchOpen && (suggestedChips.length > 0 || showZoomNudge) && (
+          <SearchNudge
+            chips={suggestedChips}
+            showZoomNudge={showZoomNudge}
+            activeTypeLabel={activeSearchTypes?.label ?? ''}
+            onChipTap={handleChipTap}
+          />
+        )}
+
         {/* Travel date bar */}
-        <div style={{ pointerEvents: 'auto' }}>
-          <TravelDateBar />
-        </div>
+        {(state.travelStartDate || state.travelEndDate) && (
+          <div style={{ pointerEvents: 'auto', display: 'flex', justifyContent: 'center' }}>
+            <TravelDateBar
+              startDate={state.travelStartDate}
+              endDate={state.travelEndDate}
+              cities={cityContexts.map(c => c.city)}
+              onTap={() => {}}
+            />
+          </div>
+        )}
 
         {/* Filter bar */}
         <div style={{ pointerEvents: 'auto' }}>
-          <FilterBar active={activeFilter as MapFilter} counts={counts} onSelect={handleFilterSelect} />
+          <FilterBar
+            active={activeFilter as MapFilter}
+            counts={counts}
+            onSelect={handleFilterSelect}
+            lockedFilters={isCurationLocked(state) ? ['picks', 'trending'] : []}
+            onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
+          />
         </div>
+
+        {/* Saved filter chip — appears when places are hearted */}
+        {favouritedPins.length > 0 && (
+          <div style={{ pointerEvents: 'auto' }}>
+            <button
+              onClick={() => {
+                if (activeFilter === 'saved') {
+                  setFilter('all');
+                } else {
+                  setFilter('saved' as MapFilter);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 h-7 rounded-full text-[11px] font-medium transition-all"
+              style={{
+                background: activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.15)',
+                color: activeFilter === 'saved' ? '#fff' : 'var(--color-primary)',
+                border: `1px solid ${activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.3)'}`,
+              }}
+            >
+              <span className="ms" style={{ fontSize: 13 }}>bookmark</span>
+              Saved
+              <span style={{ opacity: 0.7 }}>{favouritedPins.length}</span>
+              {activeFilter === 'saved' && (
+                <span className="ms" style={{ fontSize: 12 }}>close</span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Journey breadcrumb */}
         <div style={{ pointerEvents: 'auto' }}>
@@ -454,6 +851,17 @@ export function MapScreen() {
         </div>
       )}
 
+      {/* Events error toast */}
+      {eventsError && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(245,158,11,.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(245,158,11,.3)' }}
+        >
+          <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>event_busy</span>
+          <span className="text-amber-300 text-xs font-medium">{eventsError}</span>
+        </div>
+      )}
+
       {/* Loading — tiny spinner, corner, barely visible */}
       {loading && (
         <div
@@ -476,9 +884,14 @@ export function MapScreen() {
           style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
         >
           <div
+            ref={clusterSheetRef}
             className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
-            style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)' }}
+            style={{ background: 'rgba(15,20,30,.96)', backdropFilter: 'blur(16px)', transition: 'transform 0.22s ease' }}
           >
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px', touchAction: 'none' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.2)' }} />
+            </div>
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
               <div className="flex items-center gap-2">
                 <span className="ms fill text-primary" style={{ fontSize: 14 }}>layers</span>
@@ -496,7 +909,7 @@ export function MapScreen() {
               return (
                 <button
                   key={place.id}
-                  onClick={() => { setClusterGroup(null); handlePinClick(place); }}
+                  onClick={() => handlePinClick(place.id)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-white/5"
                   style={{ borderTop: i > 0 ? '1px solid rgba(255,255,255,.06)' : undefined }}
                 >
@@ -518,6 +931,20 @@ export function MapScreen() {
         </div>
       )}
 
+      {/* Discovery mode toggle (bottom-left) */}
+      {city && (
+        <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, left: 12, zIndex: 19 }}>
+          <DiscoveryModeToggle mode={activeDiscoveryMode} onChange={handleDiscoveryModeChange} />
+        </div>
+      )}
+
+      {/* Surprise Me (bottom-right) */}
+      {city && (
+        <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, right: 12, zIndex: 19 }}>
+          <SurpriseMeButton onSurprise={handleSurprise} />
+        </div>
+      )}
+
       {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
       {activePlace && (
         <PinCard
@@ -525,42 +952,82 @@ export function MapScreen() {
           city={city}
           isSelected={selectedIds.has(activePlace.id)}
           onAdd={() => togglePlace(activePlace)}
-          onClose={() => { setActivePlace(null); clearDetails(); }}
+          onClose={handlePinCardClose}
           details={details}
+          isFavourited={isFavourited}
+          onFavourite={() => {
+            if (!activePlace) return;
+            dispatch({
+              type: 'TOGGLE_FAVOURITE',
+              pin: {
+                placeId: activePlace.id,
+                title: activePlace.title,
+                lat: activePlace.lat,
+                lon: activePlace.lon,
+                city,
+                category: activePlace.category,
+              },
+            });
+          }}
+          travelDate={state.tripContext.date}
+          persona={state.persona ?? null}
+          personaProfile={personaProfile}
+          insightCache={insightCacheRef}
         />
       )}
 
-      {/* Itinerary bar — shown only when no pin sheet is open */}
-      {!activePlace && selectedPlaces.length >= 2 && (
+      {/* Build itinerary bar — uses portal, renders when places added */}
+      <BuildItineraryBar
+        itineraryPlaces={selectedPlaces}
+        days={activeCityDays}
+        onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
+      />
+
+      {/* Search results strip */}
+      {showSearchStrip && searchPins.length > 0 && (
+        <SearchResultsStrip
+          results={searchPins}
+          onSelect={(pin) => {
+            const match = places.find(p => p.id === pin.id)
+            if (match) setActivePlace(match)
+          }}
+          onDismiss={() => {
+            setSearchPins([])
+            setShowSearchStrip(false)
+          }}
+        />
+      )}
+
+      {/* Surprise Me confirmation */}
+      {surpriseConfirm && (
         <div
-          className="absolute inset-x-4"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)', zIndex: 20 }}
+          style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={() => setSurpriseConfirm(false)}
         >
           <div
-            className="flex items-center gap-3 px-3 h-12 rounded-2xl border border-white/10 shadow-xl"
-            style={{ background: 'rgba(15,20,30,.92)', backdropFilter: 'blur(12px)' }}
+            style={{ width: '100%', background: 'var(--color-surface)', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex -space-x-1.5">
-                {selectedPlaces.slice(0, 5).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-4 h-4 rounded-full border-2"
-                    style={{ background: '#ffffff', borderColor: 'rgba(15,20,30,1)', opacity: 1 - i * 0.14, zIndex: 5 - i }}
-                  />
-                ))}
-              </div>
-              <span className="text-text-1 text-sm font-semibold">{selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''}</span>
-              <span className="text-text-3 text-xs">added</span>
+            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8 }}>
+              Replace current itinerary?
+            </p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-3)', marginBottom: 20 }}>
+              This will replace your current itinerary. Continue?
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setSurpriseConfirm(false)}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={_runSurprise}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#8b5cf6', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Yes, surprise me
+              </button>
             </div>
-            <button
-              onClick={() => setShowTripSheet(true)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-xl bg-primary text-white font-heading font-bold"
-              style={{ fontSize: 12 }}
-            >
-              <span className="ms fill" style={{ fontSize: 14 }}>auto_fix</span>
-              Build Itinerary
-            </button>
           </div>
         </div>
       )}
@@ -584,13 +1051,13 @@ export function MapScreen() {
         </div>
       )}
 
-      {showTripSheet && (
-        <TripPlanningCard
-          onClose={() => setShowTripSheet(false)}
-          onRequestPinDrop={() => { setAwaitingPinDrop(true); }}
-          onClearPin={() => { setPinDropResult(null); setPinPlaceName(null); }}
-          pinDropResult={pinDropResult}
-          pinPlaceName={pinPlaceName}
+      {/* CityHopOverlay — fires once per new city detected */}
+      {pendingNewCity && (
+        <CityHopOverlay
+          fromCity={pendingNewCity.transit?.from ?? city}
+          toCity={pendingNewCity.city}
+          storyCards={[]}
+          onDone={() => setPendingNewCity(null)}
         />
       )}
     </div>

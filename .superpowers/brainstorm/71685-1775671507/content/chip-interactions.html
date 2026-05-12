@@ -1,0 +1,139 @@
+<h2>How should chips behave on tap?</h2>
+<p class="subtitle">You said some chips act directly, others expand a list. Three ways to handle that distinction in the UI.</p>
+
+<div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:16px;min-height:300px;display:flex;flex-direction:column;gap:10px;font-family:system-ui,sans-serif;">
+      <!-- Card -->
+      <div style="background:#111827;border-radius:16px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;">While you're here</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px;">Monsanto Forest Park</div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:8px;">All chips open a bottom sheet</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;">
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">🥾 Trail map</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">📸 Viewpoints</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">☕ Café nearby</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">🚻 Restrooms</div>
+          </div>
+        </div>
+      </div>
+      <!-- Sheet -->
+      <div style="background:#1e293b;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);">
+        <div style="font-size:9px;color:#60a5fa;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">☕ Café nearby — 3 options</div>
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:10px;color:#fff;font-weight:600;">Casa do Parque</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">3 min walk · 4.2★</div>
+            </div>
+            <div style="background:#3b82f6;border-radius:8px;padding:4px 10px;font-size:9px;color:#fff;font-weight:700;">Go ↗</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:10px;color:#fff;font-weight:600;">Miradouro Kiosk</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.4);">7 min walk · 4.0★</div>
+            </div>
+            <div style="background:rgba(255,255,255,.07);border-radius:8px;padding:4px 10px;font-size:9px;color:#fff;">Go ↗</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — All chips → bottom sheet</h3>
+      <p>Every chip opens a sheet below the card. Consistent — always the same interaction. Sheet shows options or a direct "Go" action for simple chips.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:16px;min-height:300px;display:flex;flex-direction:column;gap:10px;font-family:system-ui,sans-serif;">
+      <div style="background:#111827;border-radius:16px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;">While you're here</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px;">Monsanto Forest Park</div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:8px;">Chips are visually coded by action type</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;">
+            <!-- expand chip (chevron) -->
+            <div style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:6px 11px;font-size:10px;color:#a5b4fc;display:flex;align-items:center;gap:5px;">☕ Café nearby <span style="opacity:.6">›</span></div>
+            <div style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:6px 11px;font-size:10px;color:#a5b4fc;display:flex;align-items:center;gap:5px;">📸 Viewpoints <span style="opacity:.6">›</span></div>
+            <!-- direct chip (arrow) -->
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">🚻 Restrooms ↗</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;display:flex;align-items:center;gap:5px;">🥾 Trail map ↗</div>
+          </div>
+          <!-- expanded state -->
+          <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:10px 12px;">
+            <div style="font-size:9px;color:#818cf8;font-weight:600;margin-bottom:7px;">☕ Café nearby</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between;">
+                <div><div style="font-size:10px;color:#fff;font-weight:600;">Casa do Parque</div><div style="font-size:8px;color:rgba(255,255,255,.4);">3 min · 4.2★</div></div>
+                <div style="background:#4f46e5;border-radius:7px;padding:3px 9px;font-size:9px;color:#fff;font-weight:600;align-self:center;">Go ↗</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <div><div style="font-size:10px;color:#fff;font-weight:600;">Miradouro Kiosk</div><div style="font-size:8px;color:rgba(255,255,255,.4);">7 min · 4.0★</div></div>
+                <div style="background:rgba(255,255,255,.06);border-radius:7px;padding:3px 9px;font-size:9px;color:#fff;align-self:center;">Go ↗</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Visually coded chips</h3>
+      <p>Indigo chips (›) expand inline. White chips (↗) navigate directly. User sees at a glance which chips have options vs instant action. Expansion appears inside the card.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0e18;padding:16px;min-height:300px;display:flex;flex-direction:column;gap:10px;font-family:system-ui,sans-serif;">
+      <div style="background:#111827;border-radius:16px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07);">
+          <div style="font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:1.5px;">While you're here</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px;">Monsanto Forest Park</div>
+        </div>
+        <div style="padding:12px 14px;">
+          <div style="font-size:9px;color:rgba(255,255,255,.35);margin-bottom:8px;">No visual distinction — tap reveals intent</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;">
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;">🥾 Trail map</div>
+            <div style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:20px;padding:6px 11px;font-size:10px;color:#86efac;">📸 Viewpoints</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;">☕ Café nearby</div>
+            <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:6px 11px;font-size:10px;color:#fff;">🚻 Restrooms</div>
+          </div>
+        </div>
+      </div>
+      <!-- Separate sheet slides up -->
+      <div style="background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:10px;color:#fff;font-weight:700;">📸 Photo spots nearby</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.35);">✕</div>
+        </div>
+        <div style="display:flex;gap:8px;overflow:hidden;">
+          <div style="flex:1;background:rgba(255,255,255,.04);border-radius:10px;padding:8px;">
+            <div style="height:40px;background:linear-gradient(135deg,#1e3a5f,#0f2942);border-radius:6px;margin-bottom:6px;"></div>
+            <div style="font-size:9px;color:#fff;font-weight:600;">Miradouro</div>
+            <div style="font-size:8px;color:rgba(255,255,255,.4);">5 min</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,.04);border-radius:10px;padding:8px;">
+            <div style="height:40px;background:linear-gradient(135deg,#1a3a2f,#0f2920);border-radius:6px;margin-bottom:6px;"></div>
+            <div style="font-size:9px;color:#fff;font-weight:600;">Pine grove</div>
+            <div style="font-size:8px;color:rgba(255,255,255,.4);">8 min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Tap reveals, no pre-coding</h3>
+      <p>All chips look similar. Tapping navigates directly if there's only one answer (Restrooms → Maps), or opens a mini panel if there are choices. Less visual noise, but less predictable.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:12px;">In all options, "Restrooms" and navigation chips fire directly to Maps. Expand chips show 2–3 nearby options with a "Go ↗" button each.</p>

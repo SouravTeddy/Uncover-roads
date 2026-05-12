@@ -42,6 +42,35 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
   });
 }
 
+// Fetch persona data for a user from Supabase.
+// Returns the persona object if found, null if the user has not completed onboarding.
+// Used as a fallback when localStorage is cleared (e.g. after sign-out).
+export async function fetchPersonaForRestore(
+  userId: string,
+): Promise<{ archetype: string; archetype_name: string } | null> {
+  const { data } = await supabase
+    .from('personas')
+    .select('archetype, archetype_name')
+    .eq('user_id', userId)
+    .single();
+  return data ?? null;
+}
+
+// Sync the new-style persona profile to Supabase personas table.
+export async function syncPersonaProfile(
+  userId: string,
+  archetype: string,
+  archetypeName: string,
+  rawAnswers: unknown,
+) {
+  await supabase.from('personas').upsert({
+    user_id: userId,
+    archetype,
+    archetype_name: archetypeName,
+    answers: rawAnswers,
+  }, { onConflict: 'user_id' });
+}
+
 // Load role + generation count for the signed-in user.
 // Returns null on failure so callers never downgrade a cached role.
 export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number } | null> {
@@ -78,5 +107,11 @@ export async function loadSavedItineraries(userId: string): Promise<SavedItinera
     date: row.date,
     itinerary: row.itinerary,
     persona: row.persona,
+    travelDate: row.travel_date ?? null,
+    cityLat: row.city_lat ?? null,
+    cityLon: row.city_lon ?? null,
+    selectedPlaces: row.selected_places ?? [],
+    lastUpdateCheck: null,
+    pendingSwapCards: [],
   }));
 }

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Screen</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#0d1117; font-family:system-ui,sans-serif; color:white; padding:24px; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  h2 { color:#f0f6fc; font-size:17px; text-align:center; }
+  .subtitle { color:#8b949e; font-size:13px; text-align:center; max-width:560px; line-height:1.6; }
+
+  .phone {
+    width:310px; height:650px; background:#0f172a;
+    border-radius:36px; border:2px solid rgba(255,255,255,.12);
+    overflow:hidden; position:relative;
+    box-shadow:0 24px 72px rgba(0,0,0,.75);
+    display:flex; flex-direction:column;
+  }
+
+  /* ── top bar ── */
+  .topbar {
+    flex-shrink:0; height:52px;
+    background:rgba(10,14,20,.95); backdrop-filter:blur(14px);
+    display:flex; align-items:center; gap:10px; padding:0 14px;
+    border-bottom:1px solid rgba(255,255,255,.08); z-index:10;
+  }
+  .back { font-size:18px; color:rgba(255,255,255,.5); cursor:pointer; }
+  .topbar-title { font-size:13px; font-weight:700; color:white; flex:1; }
+  .topbar-badge { font-size:10px; font-weight:700; padding:3px 9px; border-radius:20px;
+    background:rgba(59,130,246,.2); color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+
+  /* ── mini world map strip ── */
+  .world-map {
+    flex-shrink:0; height:140px; position:relative;
+    background:linear-gradient(180deg,#0d1f35 0%,#1a2d45 100%);
+    overflow:hidden;
+  }
+  .world-grid {
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+    background-size:24px 24px;
+  }
+  /* arc line between cities */
+  .arc-svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  .city-pin {
+    position:absolute; display:flex; flex-direction:column; align-items:center; gap:3px;
+    transform:translate(-50%,-100%);
+  }
+  .city-pin-dot { width:10px; height:10px; border-radius:50%; border:2px solid white; }
+  .city-pin-dot.t { background:#3b82f6; box-shadow:0 0 10px rgba(59,130,246,.7); }
+  .city-pin-dot.s { background:#22c55e; box-shadow:0 0 10px rgba(34,197,94,.7); }
+  .city-pin-label { font-size:9px; font-weight:700; color:rgba(255,255,255,.8); white-space:nowrap; margin-top:-2px; }
+
+  /* ── section tabs ── */
+  .tab-bar {
+    flex-shrink:0;
+    display:flex; gap:0;
+    background:rgba(0,0,0,.3); border-bottom:1px solid rgba(255,255,255,.08);
+    padding:0 4px;
+  }
+  .tab {
+    flex:1; padding:10px 4px; text-align:center;
+    font-size:11px; font-weight:700; cursor:pointer;
+    color:rgba(255,255,255,.38); position:relative;
+    display:flex; align-items:center; justify-content:center; gap:4px;
+  }
+  .tab.active { color:white; }
+  .tab.active::after { content:''; position:absolute; bottom:0; left:20%; right:20%; height:2px; background:#3b82f6; border-radius:2px 2px 0 0; }
+  .tab-icon { font-size:13px; }
+
+  /* ── tab content ── */
+  .content { flex:1; overflow-y:auto; }
+
+  /* ── LEGS tab ── */
+  .legs-panel { padding:12px; display:flex; flex-direction:column; gap:8px; }
+
+  .leg-card { border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+  .leg-head { display:flex; align-items:center; gap:9px; padding:11px 12px 8px; }
+  .leg-bar { width:3px; height:34px; border-radius:2px; flex-shrink:0; }
+  .leg-main { flex:1; }
+  .leg-name { font-size:13px; font-weight:800; color:white; }
+  .leg-meta { font-size:10px; color:rgba(255,255,255,.38); margin-top:1px; }
+  .leg-days-chip { font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px;
+    background:rgba(255,255,255,.08); color:rgba(255,255,255,.55); }
+  .leg-places { padding:0 12px 10px; display:flex; flex-wrap:wrap; gap:4px; }
+  .pchip { font-size:10px; padding:3px 8px; border-radius:20px;
+    background:rgba(255,255,255,.06); color:rgba(255,255,255,.45); }
+
+  .flight-row { display:flex; align-items:center; gap:8px; padding:9px 12px;
+    border-radius:12px; background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.18); }
+  .fr-icon { font-size:14px; }
+  .fr-body { flex:1; }
+  .fr-title { font-size:11px; font-weight:700; color:#93c5fd; }
+  .fr-sub { font-size:10px; color:rgba(255,255,255,.4); }
+  .fr-find { font-size:10px; font-weight:700; padding:4px 10px; border-radius:8px;
+    background:rgba(59,130,246,.2); color:#60a5fa; border:1px solid rgba(59,130,246,.3); }
+
+  /* ── FLIGHTS tab ── */
+  .flights-panel { padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .flight-card { border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); padding:12px; }
+  .fc-route { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .fc-city { font-size:12px; font-weight:800; color:white; }
+  .fc-arrow { font-size:11px; color:rgba(255,255,255,.3); }
+  .fc-duration { font-size:10px; color:rgba(255,255,255,.4); margin-left:auto; }
+  .fc-options { display:flex; flex-direction:column; gap:6px; }
+  .fc-option { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); cursor:pointer; }
+  .fc-option:hover { border-color:rgba(59,130,246,.4); background:rgba(59,130,246,.06); }
+  .fc-airline { font-size:11px; font-weight:700; color:white; flex:1; }
+  .fc-time { font-size:10px; color:rgba(255,255,255,.45); }
+  .fc-price { font-size:11px; font-weight:700; color:#4ade80; }
+  .fc-book { font-size:10px; font-weight:700; color:#3b82f6; margin-left:4px; }
+  .fc-note { font-size:10px; color:rgba(255,255,255,.3); text-align:center; padding-top:4px; }
+
+  /* ── DATES tab ── */
+  .dates-panel { padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .date-card { border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); padding:12px; }
+  .dc-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .dc-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .dc-title { font-size:12px; font-weight:700; color:white; }
+  .dc-dates { font-size:10px; color:rgba(255,255,255,.4); margin-left:auto; }
+  .day-slider { display:flex; align-items:center; gap:8px; }
+  .day-btn { width:28px; height:28px; border-radius:50%; border:1px solid rgba(255,255,255,.15);
+    background:rgba(255,255,255,.06); color:white; font-size:14px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; }
+  .day-count { flex:1; text-align:center; font-size:20px; font-weight:800; color:white; }
+  .day-label { text-align:center; font-size:10px; color:rgba(255,255,255,.35); margin-top:4px; }
+  .total-row { display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); }
+  .total-label { font-size:11px; color:rgba(255,255,255,.45); }
+  .total-value { font-size:13px; font-weight:800; color:white; }
+
+  /* ── bottom CTA ── */
+  .bottom-cta { flex-shrink:0; padding:10px 14px 24px;
+    background:rgba(10,14,20,.9); border-top:1px solid rgba(255,255,255,.08); }
+  .btn-build { width:100%; height:44px; border-radius:14px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    color:white; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:8px; }
+</style>
+</head>
+<body>
+
+<h2>The multi-city Journey screen</h2>
+<p class="subtitle">The whole map screen shifts to a dedicated Journey screen. Mini-map at top shows the route. Three tabs: Legs (places per city), Flights, Dates. Tap the active tab below to see each section.</p>
+
+<div style="display:flex; gap:28px; flex-wrap:wrap; justify-content:center;">
+
+  <!-- LEGS TAB -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#58a6ff;">Tab 1 — Legs</div>
+    <div class="phone">
+      <div class="topbar">
+        <span class="back">‹</span>
+        <span class="topbar-title">Multi-city Journey</span>
+        <span class="topbar-badge">2 cities</span>
+      </div>
+      <div class="world-map">
+        <div class="world-grid"></div>
+        <svg class="arc-svg" viewBox="0 0 310 140" preserveAspectRatio="none">
+          <path d="M 90 95 Q 155 20 220 90" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-dasharray="5 3" opacity=".6"/>
+          <circle cx="90" cy="95" r="3" fill="#3b82f6"/>
+          <circle cx="220" cy="90" r="3" fill="#22c55e"/>
+          <!-- plane icon midpoint -->
+          <text x="152" y="38" font-size="12" text-anchor="middle" fill="rgba(255,255,255,.5)">✈</text>
+        </svg>
+        <div class="city-pin" style="left:90px;top:95px;">
+          <div class="city-pin-dot t"></div>
+          <div class="city-pin-label">Tokyo</div>
+        </div>
+        <div class="city-pin" style="left:220px;top:90px;">
+          <div class="city-pin-dot s"></div>
+          <div class="city-pin-label">Singapore</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab active"><span class="tab-icon">📍</span> Legs</div>
+        <div class="tab"><span class="tab-icon">✈</span> Flights</div>
+        <div class="tab"><span class="tab-icon">📅</span> Dates</div>
+      </div>
+      <div class="content">
+        <div class="legs-panel">
+          <div class="leg-card">
+            <div class="leg-head">
+              <div class="leg-bar" style="background:#3b82f6"></div>
+              <div class="leg-main">
+                <div class="leg-name">Tokyo</div>
+                <div class="leg-meta">3 places · Day 1 – Day 2</div>
+              </div>
+              <div class="leg-days-chip">2 days</div>
+            </div>
+            <div class="leg-places">
+              <span class="pchip">Senso-ji</span>
+              <span class="pchip">Shibuya</span>
+              <span class="pchip">Tsukiji</span>
+            </div>
+          </div>
+          <div class="flight-row">
+            <span class="fr-icon">✈</span>
+            <div class="fr-body">
+              <div class="fr-title">Flight · Tokyo → Singapore</div>
+              <div class="fr-sub">~7 hrs · Day 3 travel day</div>
+            </div>
+            <div class="fr-find">Find →</div>
+          </div>
+          <div class="leg-card">
+            <div class="leg-head">
+              <div class="leg-bar" style="background:#22c55e"></div>
+              <div class="leg-main">
+                <div class="leg-name">Singapore</div>
+                <div class="leg-meta">2 places · Day 4</div>
+              </div>
+              <div class="leg-days-chip">1 day</div>
+            </div>
+            <div class="leg-places">
+              <span class="pchip">Gardens by the Bay</span>
+              <span class="pchip">Hawker Chan</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-cta">
+        <button class="btn-build">✈ &nbsp;Build journey itinerary</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLIGHTS TAB -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#58a6ff;">Tab 2 — Flights</div>
+    <div class="phone">
+      <div class="topbar">
+        <span class="back">‹</span>
+        <span class="topbar-title">Multi-city Journey</span>
+        <span class="topbar-badge">2 cities</span>
+      </div>
+      <div class="world-map">
+        <div class="world-grid"></div>
+        <svg class="arc-svg" viewBox="0 0 310 140" preserveAspectRatio="none">
+          <path d="M 90 95 Q 155 20 220 90" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-dasharray="5 3" opacity=".6"/>
+          <circle cx="90" cy="95" r="3" fill="#3b82f6"/>
+          <circle cx="220" cy="90" r="3" fill="#22c55e"/>
+          <text x="152" y="38" font-size="12" text-anchor="middle" fill="rgba(255,255,255,.5)">✈</text>
+        </svg>
+        <div class="city-pin" style="left:90px;top:95px;">
+          <div class="city-pin-dot t"></div>
+          <div class="city-pin-label">Tokyo</div>
+        </div>
+        <div class="city-pin" style="left:220px;top:90px;">
+          <div class="city-pin-dot s"></div>
+          <div class="city-pin-label">Singapore</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><span class="tab-icon">📍</span> Legs</div>
+        <div class="tab active"><span class="tab-icon">✈</span> Flights</div>
+        <div class="tab"><span class="tab-icon">📅</span> Dates</div>
+      </div>
+      <div class="content">
+        <div class="flights-panel">
+          <div class="flight-card">
+            <div class="fc-route">
+              <span class="fc-city">Tokyo</span>
+              <span class="fc-arrow">→</span>
+              <span class="fc-city">Singapore</span>
+              <span class="fc-duration">~7 hrs · Day 3</span>
+            </div>
+            <div class="fc-options">
+              <div class="fc-option">
+                <div class="fc-airline">🇸🇬 Singapore Airlines</div>
+                <span class="fc-time">09:15 → 16:10</span>
+                <span class="fc-price">$320</span>
+                <span class="fc-book">Book →</span>
+              </div>
+              <div class="fc-option">
+                <div class="fc-airline">🇯🇵 ANA</div>
+                <span class="fc-time">11:40 → 18:30</span>
+                <span class="fc-price">$290</span>
+                <span class="fc-book">Book →</span>
+              </div>
+              <div class="fc-option">
+                <div class="fc-airline">🛫 Jetstar</div>
+                <span class="fc-time">06:00 → 13:20</span>
+                <span class="fc-price">$185</span>
+                <span class="fc-book">Book →</span>
+              </div>
+            </div>
+            <div class="fc-note">Prices from Google Flights · tap to open</div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-cta">
+        <button class="btn-build">✈ &nbsp;Build journey itinerary</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATES TAB -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#58a6ff;">Tab 3 — Dates</div>
+    <div class="phone">
+      <div class="topbar">
+        <span class="back">‹</span>
+        <span class="topbar-title">Multi-city Journey</span>
+        <span class="topbar-badge">2 cities</span>
+      </div>
+      <div class="world-map">
+        <div class="world-grid"></div>
+        <svg class="arc-svg" viewBox="0 0 310 140" preserveAspectRatio="none">
+          <path d="M 90 95 Q 155 20 220 90" stroke="#3b82f6" stroke-width="1.5" fill="none" stroke-dasharray="5 3" opacity=".6"/>
+          <circle cx="90" cy="95" r="3" fill="#3b82f6"/>
+          <circle cx="220" cy="90" r="3" fill="#22c55e"/>
+          <text x="152" y="38" font-size="12" text-anchor="middle" fill="rgba(255,255,255,.5)">✈</text>
+        </svg>
+        <div class="city-pin" style="left:90px;top:95px;">
+          <div class="city-pin-dot t"></div>
+          <div class="city-pin-label">Tokyo</div>
+        </div>
+        <div class="city-pin" style="left:220px;top:90px;">
+          <div class="city-pin-dot s"></div>
+          <div class="city-pin-label">Singapore</div>
+        </div>
+      </div>
+      <div class="tab-bar">
+        <div class="tab"><span class="tab-icon">📍</span> Legs</div>
+        <div class="tab"><span class="tab-icon">✈</span> Flights</div>
+        <div class="tab active"><span class="tab-icon">📅</span> Dates</div>
+      </div>
+      <div class="content">
+        <div class="dates-panel">
+          <div class="date-card">
+            <div class="dc-header">
+              <div class="dc-dot" style="background:#3b82f6;box-shadow:0 0 6px rgba(59,130,246,.6)"></div>
+              <span class="dc-title">Tokyo</span>
+              <span class="dc-dates">Apr 10 – Apr 11</span>
+            </div>
+            <div class="day-slider">
+              <button class="day-btn">−</button>
+              <div class="day-count">2</div>
+              <button class="day-btn">+</button>
+            </div>
+            <div class="day-label">days</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:0 4px;">
+            <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
+            <span style="font-size:11px;color:rgba(255,255,255,.25)">✈ travel day</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
+          </div>
+          <div class="date-card">
+            <div class="dc-header">
+              <div class="dc-dot" style="background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,.6)"></div>
+              <span class="dc-title">Singapore</span>
+              <span class="dc-dates">Apr 13 – Apr 13</span>
+            </div>
+            <div class="day-slider">
+              <button class="day-btn">−</button>
+              <div class="day-count">1</div>
+              <button class="day-btn">+</button>
+            </div>
+            <div class="day-label">days</div>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Total trip length</span>
+            <span class="total-value">4 days</span>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-cta">
+        <button class="btn-build">✈ &nbsp;Build journey itinerary</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

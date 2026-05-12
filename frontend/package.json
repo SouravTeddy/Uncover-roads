@@ -12,15 +12,21 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.1",
     "@supabase/supabase-js": "^2.101.0",
+    "framer-motion": "^12.38.0",
     "maplibre-gl": "^4.7.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-map-gl": "^7.1.9"
   },
   "devDependencies": {
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/ios": "^8.3.1",
     "@eslint/js": "^9.39.4",
     "@tailwindcss/vite": "^4.2.2",
+    "@testing-library/react": "^16.3.2",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
@@ -32,6 +38,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^29.0.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-city — side tab</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#0d1117; font-family:system-ui,sans-serif; color:white; padding:24px; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  h2 { color:#f0f6fc; font-size:17px; text-align:center; }
+  .subtitle { color:#8b949e; font-size:13px; text-align:center; max-width:520px; line-height:1.6; }
+
+  .split { display:flex; gap:28px; flex-wrap:wrap; justify-content:center; }
+  .phone-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#58a6ff; }
+
+  .phone {
+    width:300px; height:610px; background:#0f172a;
+    border-radius:36px; border:2px solid rgba(255,255,255,.12);
+    overflow:hidden; position:relative;
+    box-shadow:0 24px 64px rgba(0,0,0,.7);
+  }
+
+  /* map bg */
+  .map { position:absolute; inset:0; background:#1a2332; overflow:hidden; }
+  .map-grid { position:absolute; inset:0;
+    background-image: linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+    background-size:30px 30px; }
+  .road { position:absolute; background:rgba(255,255,255,.06); }
+  .road.h { height:2px; width:100%; }
+  .road.v { width:2px; height:100%; }
+  .pin { position:absolute; width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:800; border:2px solid rgba(255,255,255,.3);
+    transform:translate(-50%,-50%); }
+  .pin.t { background:#3b82f6; box-shadow:0 0 12px rgba(59,130,246,.55); }
+  .pin.s { background:#22c55e; box-shadow:0 0 12px rgba(34,197,94,.55); }
+  .city-lbl { position:absolute; font-size:9px; font-weight:700;
+    letter-spacing:.07em; text-transform:uppercase; color:rgba(255,255,255,.22); pointer-events:none; }
+
+  /* top bar */
+  .topbar { position:absolute; top:0; left:0; right:0; height:52px;
+    background:rgba(10,14,20,.93); backdrop-filter:blur(14px);
+    display:flex; align-items:center; gap:10px; padding:0 14px;
+    z-index:10; border-bottom:1px solid rgba(255,255,255,.08); }
+  .topbar-city { font-size:13px; font-weight:700; color:white; }
+
+  /* tab pill row */
+  .tab-row { position:absolute; top:60px; left:50%; transform:translateX(-50%);
+    display:flex; gap:4px; z-index:10;
+    background:rgba(10,14,20,.7); backdrop-filter:blur(12px);
+    padding:4px; border-radius:22px; border:1px solid rgba(255,255,255,.1);
+    white-space:nowrap; }
+  .tab { padding:6px 14px; border-radius:18px; font-size:11px; font-weight:700; cursor:pointer; transition:.15s; display:flex; align-items:center; gap:5px; }
+  .tab.active { background:#1d4ed8; color:white; }
+  .tab.inactive { color:rgba(255,255,255,.45); }
+  .tab-dot { width:6px; height:6px; border-radius:50%; background:#3b82f6; animation:blink 1.2s infinite; }
+  .tab-new { font-size:9px; font-weight:800; padding:1px 5px; border-radius:6px; background:rgba(59,130,246,.3); color:#93c5fd; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* journey tab content panel */
+  .journey-panel {
+    position:absolute; top:52px; left:0; right:0; bottom:0;
+    background:#0f172a; overflow-y:auto;
+    display:flex; flex-direction:column;
+    z-index:9;
+  }
+
+  /* journey header */
+  .jhead { padding:16px 16px 10px;
+    border-bottom:1px solid rgba(255,255,255,.07); }
+  .jhead-top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .jhead-icon { width:32px; height:32px; border-radius:10px; flex-shrink:0;
+    background:linear-gradient(135deg,#1e40af,#3b82f6);
+    display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .jhead-title { font-size:14px; font-weight:800; color:white; }
+  .jhead-sub { font-size:11px; color:rgba(255,255,255,.38); }
+  .journey-summary { display:flex; gap:6px; }
+  .jsummary-chip { font-size:10px; font-weight:600; padding:3px 9px; border-radius:20px;
+    background:rgba(255,255,255,.06); color:rgba(255,255,255,.5); }
+
+  /* legs */
+  .legs { padding:12px 14px; display:flex; flex-direction:column; gap:6px; flex:1; }
+
+  .leg-card { border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); overflow:hidden; }
+  .leg-header { display:flex; align-items:center; gap:9px; padding:10px 12px; }
+  .leg-color-bar { width:3px; height:32px; border-radius:2px; flex-shrink:0; }
+  .leg-info { flex:1; }
+  .leg-name { font-size:12px; font-weight:700; color:white; }
+  .leg-meta { font-size:10px; color:rgba(255,255,255,.38); }
+  .leg-days-badge { font-size:10px; font-weight:700; padding:3px 9px; border-radius:12px;
+    background:rgba(255,255,255,.08); color:rgba(255,255,255,.5); }
+
+  .leg-places { padding:0 12px 10px; display:flex; flex-wrap:wrap; gap:5px; }
+  .place-chip { font-size:10px; padding:3px 9px; border-radius:20px;
+    background:rgba(255,255,255,.06); color:rgba(255,255,255,.45); }
+
+  /* flight connector */
+  .flight-row {
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    border-radius:12px;
+    background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.18);
+  }
+  .fr-icon { font-size:14px; }
+  .fr-text { flex:1; font-size:11px; color:rgba(255,255,255,.5); }
+  .fr-text strong { color:#93c5fd; }
+  .fr-cta { font-size:10px; font-weight:700; color:#3b82f6;
+    padding:4px 10px; border-radius:8px; background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.25); cursor:pointer; }
+
+  /* build CTA */
+  .build-cta { padding:12px 14px 24px; }
+  .btn-build { width:100%; height:42px; border-radius:14px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    color:white; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:8px; }
+
+  /* bottom sheet for "map" tab (existing single-city card) */
+  .map-sheet { position:absolute; bottom:0; left:0; right:0;
+    background:#111827; border-radius:18px 18px 0 0;
+    border-top:1px solid rgba(255,255,255,.08);
+    padding:10px 14px 20px; z-index:9; }
+  .ms-handle { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,.12); margin:0 auto 10px; }
+  .ms-title { font-size:12px; font-weight:700; color:white; margin-bottom:4px; }
+  .ms-sub { font-size:11px; color:rgba(255,255,255,.38); margin-bottom:10px; }
+  .ms-selected { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; }
+  .ms-chip { font-size:10px; padding:3px 9px; border-radius:20px; background:rgba(59,130,246,.15); color:#60a5fa; border:1px solid rgba(59,130,246,.2); }
+  .btn-build-sm { width:100%; height:38px; border-radius:12px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    color:white; font-size:12px; font-weight:700; }
+</style>
+</head>
+<body>
+
+<h2>Multi-city lives in its own tab</h2>
+<p class="subtitle">When the app detects 2+ cities, a "Journey" tab appears next to "Map". The user can switch over to see and build the multi-city plan — the map stays untouched.</p>
+
+<div class="split">
+
+  <!-- State 1: Map tab active (normal) -->
+  <div class="phone-wrap">
+    <div class="label">Map tab (normal mode)</div>
+    <div class="phone">
+      <div class="map">
+        <div class="map-grid"></div>
+        <div class="road h" style="top:38%"></div>
+        <div class="road h" style="top:62%"></div>
+        <div class="road v" style="left:35%"></div>
+        <div class="road v" style="left:68%"></div>
+        <span class="city-lbl" style="top:14%;left:10%">Tokyo</span>
+        <div class="pin t" style="top:22%;left:22%">T</div>
+        <div class="pin t" style="top:30%;left:48%">T</div>
+        <div class="pin t" style="top:18%;left:70%">T</div>
+        <span class="city-lbl" style="top:44%;left:44%">Singapore</span>
+        <div class="pin s" style="top:52%;left:30%">S</div>
+        <div class="pin s" style="top:58%;left:60%">S</div>
+      </div>
+      <div class="topbar">
+        <span style="font-size:16px">🗺</span>
+        <span class="topbar-city">Exploring</span>
+      </div>
+      <!-- tab row: Map active, Journey badge -->
+      <div class="tab-row">
+        <div class="tab active">🗺 &nbsp;Map</div>
+        <div class="tab inactive">
+          <div class="tab-dot"></div>
+          ✈ Journey
+          <span class="tab-new">NEW</span>
+        </div>
+      </div>
+      <!-- existing trip card -->
+      <div class="map-sheet">
+        <div class="ms-handle"></div>
+        <div class="ms-title">5 places selected</div>
+        <div class="ms-sub">Switch to Journey tab to plan multi-city</div>
+        <div class="ms-selected">
+          <span class="ms-chip">Senso-ji</span>
+          <span class="ms-chip">Shibuya</span>
+          <span class="ms-chip">+3 more</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- State 2: Journey tab active -->
+  <div class="phone-wrap">
+    <div class="label">Journey tab (multi-city plan)</div>
+    <div class="phone">
+      <div class="map">
+        <div class="map-grid"></div>
+        <div class="road h" style="top:38%"></div>
+        <div class="road h" style="top:62%"></div>
+        <div class="road v" style="left:35%"></div>
+        <div class="road v" style="left:68%"></div>
+        <div class="pin t" style="top:22%;left:22%;opacity:.4">T</div>
+        <div class="pin t" style="top:30%;left:48%;opacity:.4">T</div>
+        <div class="pin s" style="top:52%;left:30%;opacity:.4">S</div>
+        <div class="pin s" style="top:58%;left:60%;opacity:.4">S</div>
+      </div>
+      <div class="topbar">
+        <span style="font-size:16px">🗺</span>
+        <span class="topbar-city">Exploring</span>
+      </div>
+      <!-- tab row: Journey active -->
+      <div class="tab-row">
+        <div class="tab inactive">🗺 &nbsp;Map</div>
+        <div class="tab active">✈ &nbsp;Journey</div>
+      </div>
+      <!-- journey panel -->
+      <div class="journey-panel" style="top:104px">
+        <div class="jhead">
+          <div class="jhead-top">
+            <div class="jhead-icon">✈</div>
+            <div>
+              <div class="jhead-title">Multi-city Journey</div>
+              <div class="jhead-sub">Tokyo → Singapore</div>
+            </div>
+          </div>
+          <div class="journey-summary">
+            <span class="jsummary-chip">5 places</span>
+            <span class="jsummary-chip">2 cities</span>
+            <span class="jsummary-chip">~3 days</span>
+          </div>
+        </div>
+
+        <div class="legs">
+          <!-- Leg 1 -->
+          <div class="leg-card">
+            <div class="leg-header">
+              <div class="leg-color-bar" style="background:#3b82f6"></div>
+              <div class="leg-info">
+                <div class="leg-name">Tokyo</div>
+                <div class="leg-meta">3 places · starts from hotel</div>
+              </div>
+              <div class="leg-days-badge">2 days</div>
+            </div>
+            <div class="leg-places">
+              <span class="place-chip">Senso-ji</span>
+              <span class="place-chip">Shibuya Crossing</span>
+              <span class="place-chip">Tsukiji</span>
+            </div>
+          </div>
+
+          <!-- Flight connector -->
+          <div class="flight-row">
+            <span class="fr-icon">✈</span>
+            <div class="fr-text"><strong>Flight</strong> · Tokyo → Singapore · ~7 hrs</div>
+            <div class="fr-cta">Find →</div>
+          </div>
+
+          <!-- Leg 2 -->
+          <div class="leg-card">
+            <div class="leg-header">
+              <div class="leg-color-bar" style="background:#22c55e"></div>
+              <div class="leg-info">
+                <div class="leg-name">Singapore</div>
+                <div class="leg-meta">2 places · arrives evening</div>
+              </div>
+              <div class="leg-days-badge">1 day</div>
+            </div>
+            <div class="leg-places">
+              <span class="place-chip">Gardens by the Bay</span>
+              <span class="place-chip">Hawker Chan</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="build-cta">
+          <button class="btn-build">✈ &nbsp;Build journey itinerary</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
