@@ -24,6 +24,7 @@ class EngineStop:
     scheduled_time: str | None = None          # ISO time, set by sequencer
     transition_to_next: str | None = None      # 'walk'|'transit'|'rideshare'
     type: str | None = None                    # 'coffee'|'lunch'|'scenic_walk'|'rest'
+    tags: list = field(default_factory=list)
 
     @property
     def outdoor(self) -> bool:

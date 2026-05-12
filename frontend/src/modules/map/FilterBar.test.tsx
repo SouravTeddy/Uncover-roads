@@ -7,7 +7,7 @@ afterEach(() => cleanup());
 
 const defaultProps = {
   active: 'all' as MapFilter,
-  counts: { all: 10, recommended: 3, event: 2 },
+  counts: { all: 10, picks: 3, event: 2 },
   onSelect: vi.fn(),
 };
 
@@ -28,7 +28,7 @@ describe('FilterBar — locked filter chips', () => {
   it('shows lock icon on locked filter chips', () => {
     const q = renderExpanded({
       ...defaultProps,
-      lockedFilters: ['recommended', 'event'],
+      lockedFilters: ['picks', 'trending'],
     });
 
     // Both locked chips should render a lock icon
@@ -43,13 +43,13 @@ describe('FilterBar — locked filter chips', () => {
     const q = renderExpanded({
       ...defaultProps,
       onSelect,
-      lockedFilters: ['recommended'],
+      lockedFilters: ['picks'],
       onLockedTap,
     });
 
-    // "Our Picks" chip is locked — find it among all buttons
+    // "Picks" chip is locked — find it among all buttons
     const allButtons = q.getAllByRole('button');
-    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Our Picks'));
+    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Picks'));
     expect(ourPicksBtn).toBeDefined();
     fireEvent.click(ourPicksBtn!);
 
@@ -64,7 +64,7 @@ describe('FilterBar — locked filter chips', () => {
     const q = renderExpanded({
       ...defaultProps,
       onSelect,
-      lockedFilters: ['recommended'],
+      lockedFilters: ['picks'],
       onLockedTap,
     });
 
@@ -104,16 +104,16 @@ describe('FilterBar — locked filter chips', () => {
       ...defaultProps,
       active: 'all' as MapFilter,
       onSelect,
-      lockedFilters: ['recommended'],
+      lockedFilters: ['picks'],
       onLockedTap,
     });
 
     const allButtons = q.getAllByRole('button');
-    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Our Picks'));
+    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Picks'));
     expect(ourPicksBtn).toBeDefined();
     fireEvent.click(ourPicksBtn!);
 
-    // onSelect was not called, so active state remains 'all' (not 'recommended')
+    // onSelect was not called, so active state remains 'all' (not 'picks')
     expect(onSelect).not.toHaveBeenCalled();
   });
 });

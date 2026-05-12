@@ -40,3 +40,25 @@ export function getUserPinStyle({ saved, inItinerary }: PinFlags): UserPinStyle 
     : '2px solid rgba(255,255,255,0.85)'
   return { border, showSavedBadge: saved }
 }
+
+// ── Our Picks pin layer ──────────────────────────────────────
+export const PICKS_PIN_SIZE    = 26
+export const PICKS_PIN_BG      = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+export const PICKS_PIN_BORDER  = '2px solid rgba(255,255,255,0.85)'
+
+// ── Live Event pin layer ─────────────────────────────────────
+export const EVENT_PIN_COLOR   = '#7c3aed'
+export const EVENT_PIN_SIZE    = 26
+export const EVENT_PIN_ICON    = 'calendar_month'
+
+// ── Numbered search result pins ──────────────────────────────
+export const SEARCH_PIN_BG     = '#3b82f6'
+export const SEARCH_PIN_SIZE   = 24
+
+// ── Badge pill colours ───────────────────────────────────────
+export const BADGE_COLORS: Record<string, string> = {
+  trending:     '#f59e0b',
+  hidden_gem:   '#14b8a6',
+  getting_busy: '#f97316',
+  live_event:   '#7c3aed',
+}

@@ -46,6 +46,10 @@ OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
+# In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
+_events_cache: dict[str, tuple[float, list]] = {}
+_EVENTS_CACHE_TTL = 3600  # seconds
+
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 
@@ -1197,72 +1201,6 @@ Rules:
 
 
 # =========================================
-# SIMILAR PLACES — LLM-generated similar pin set
-# =========================================
-@app.post("/similar-places")
-def similar_places_endpoint(body: dict):
-    """
-    Generate 4 places similar to a given place in the same city.
-    Returns: { places: [...] }
-    """
-    if not ANTHROPIC_API_KEY:
-        return {"error": "No Anthropic API key configured"}
-
-    place_name = body.get("place_name", "")
-    city = body.get("city", "")
-    persona_archetype = body.get("persona_archetype", "Explorer")
-    category = body.get("category", "place")
-
-    if not place_name or not city:
-        return {"error": "place_name and city are required"}
-
-    prompt = f"""You are a travel intelligence engine. A {persona_archetype} traveler just viewed {place_name} in {city} (category: {category}).
-
-Generate exactly 4 nearby places that are similar — same category, close proximity, complementary vibe.
-
-Return a JSON object:
-{{
-  "places": [
-    {{
-      "id": "ref-<short_slug>",
-      "title": "Place Name",
-      "lat": 35.1234,
-      "lon": 139.5678,
-      "category": "museum|historic|park|restaurant|cafe|tourism|place",
-      "whyRec": "One sentence on why this is similar to {place_name}",
-      "localTip": "One practical insider tip"
-    }}
-  ]
-}}
-
-Rules:
-- Coordinates must be accurate real-world lat/lon in {city}, within 2km of {place_name} if possible
-- All 4 places must be real, well-known locations
-- Return only valid JSON, no markdown fences"""
-
-    try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.content[0].text.strip()
-        # Strip markdown fences if present
-        if "```" in raw:
-            import re
-            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
-        result = json.loads(raw)
-        return result
-    except json.JSONDecodeError as e:
-        print(f"SIMILAR PLACES JSON ERROR: {e}")
-        return {"places": []}
-    except Exception as e:
-        print(f"SIMILAR PLACES ERROR: {e}")
-        return {"error": str(e)}
-
-
-# =========================================
 # RECOMMENDED PLACES — LLM picks with persona + behaviour signals
 # =========================================
 @app.post("/recommended-places")
@@ -1591,6 +1529,10 @@ def events(
 ):
     if not TICKETMASTER_KEY:
         return {"error": "No Ticketmaster API key configured"}
+    cache_key = f"{city}|{start_date}|{end_date}"
+    cached = _events_cache.get(cache_key)
+    if cached and (_time() - cached[0]) < _EVENTS_CACHE_TTL:
+        return {"places": cached[1]}
     try:
         params = {
             "apikey":        TICKETMASTER_KEY,
@@ -1737,7 +1679,8 @@ def events(
                 print(f"EVENTS Yelp error (non-fatal): {ye}")
 
         print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
-        return places
+        _events_cache[cache_key] = (_time(), places)
+        return {"places": places}
 
     except Exception as e:
         print("EVENTS ERROR:", e)
@@ -2439,6 +2382,7 @@ async def build_itinerary_endpoint(
                         "type": s.type,
                         "is_user_added": s.is_user_added,
                         "outdoor": s.outdoor,
+                        "tags": s.tags or [],
                     }
                     for s in day.stops
                 ],
@@ -2621,6 +2565,167 @@ async def cities_picks(city_id: str, _user=Depends(require_pro)):
             badge=badge, badge_reason=badge_reason,
         ))
     return picks
+
+
+# ── Phase 11: Surprise Me ────────────────────────────────────────────────────
+
+class SurpriseMeRequest(BaseModel):
+    start_city_id: str
+    end_city_id: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    persona: str = "explorer"
+
+
+_PERSONA_DESCRIPTIONS = {
+    "wanderer":      "an adventurous traveller who loves getting lost in side streets and local markets",
+    "historian":     "a culture-lover who prioritises historical landmarks, museums and heritage sites",
+    "epicurean":     "a foodie who plans their day around restaurants, cafes, street food and local markets",
+    "pulse":         "a night-owl who loves nightlife, live music, bars and late-night street food",
+    "slowtraveller": "a relaxed traveller who prefers slow mornings, parks, cafes and unhurried exploration",
+    "voyager":       "an efficiency-focused traveller who wants to see the most important sights in limited time",
+    "explorer":      "a curious traveller who balances iconic sights with hidden gems and local experiences",
+}
+
+
+@app.post("/api/surprise-me")
+async def surprise_me(body: SurpriseMeRequest, user=Depends(require_auth_or_pack)):
+    """Build a full itinerary from scratch using Claude Haiku + the 5-layer engine."""
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=503, detail="anthropic_key_not_configured")
+
+    try:
+        city_data = load_city(body.start_city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+
+    # Build date list
+    travel_dates: list[str] = []
+    if body.start_date and body.end_date:
+        from datetime import date as _date, timedelta as _td
+        d = _date.fromisoformat(body.start_date)
+        end = _date.fromisoformat(body.end_date)
+        while d <= end:
+            travel_dates.append(d.isoformat())
+            d += _td(days=1)
+    if not travel_dates:
+        travel_dates = [body.start_date or "2026-01-01"]
+
+    total_days = len(travel_dates)
+    persona_desc = _PERSONA_DESCRIPTIONS.get(body.persona.lower(), _PERSONA_DESCRIPTIONS["explorer"])
+
+    # Collect city context for Claude
+    city_context_lines: list[str] = []
+    if city_data.insert_candidates:
+        picks = city_data.insert_candidates[:15]
+        city_context_lines.append("Available places (use these for suggestions):")
+        for p in picks:
+            city_context_lines.append(f"  - {p.name} ({p.type}) at ({p.lat:.4f},{p.lon:.4f})")
+    city_context = "\n".join(city_context_lines)
+
+    system_prompt = (
+        "You are a travel itinerary generator. Return ONLY valid JSON, no markdown, no explanation.\n"
+        f"Build a {total_days}-day itinerary for {city_data.name} for {persona_desc}.\n"
+        "JSON format: {\"days\": [{\"city\": \"CityName\", \"date\": \"YYYY-MM-DD\", \"places\": "
+        "[{\"name\": \"Place\", \"category\": \"restaurant|cafe|park|museum|historic|tourism|place\", "
+        "\"duration_min\": 60, \"lat\": 0.0, \"lon\": 0.0}]}]}\n"
+        "Rules: 4-6 places per day. Use real lat/lon coordinates. Dates must match the trip dates."
+    )
+
+    user_message = (
+        f"City: {city_data.name}\n"
+        f"Dates: {', '.join(travel_dates)}\n"
+        f"Persona: {body.persona} — {persona_desc}\n"
+        f"{city_context}"
+    )
+
+    # Step 1: Claude Haiku generates raw itinerary
+    client_ai = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    try:
+        response = client_ai.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        raw = response.content[0].text.strip()
+        if "```" in raw:
+            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+        claude_data = json.loads(raw)
+    except (json.JSONDecodeError, Exception) as e:
+        raise HTTPException(status_code=502, detail=f"claude_error: {str(e)}")
+
+    # Step 2: Convert Claude's place list to EngineStop objects
+    engine_stops: list[EngineStop] = []
+    for day_data in claude_data.get("days", []):
+        for place in day_data.get("places", []):
+            try:
+                engine_stops.append(EngineStop(
+                    place_id=f"surprise-{uuid.uuid4().hex[:8]}",
+                    name=place.get("name", ""),
+                    lat=float(place.get("lat", 0)),
+                    lon=float(place.get("lon", 0)),
+                    category=place.get("category", "place"),
+                    duration_min=int(place.get("duration_min", 60)),
+                    opening_hours=[],
+                    price_level=None,
+                    rating=None,
+                    neighborhood=None,
+                    is_user_added=False,
+                ))
+            except (TypeError, ValueError):
+                continue
+
+    if not engine_stops:
+        raise HTTPException(status_code=502, detail="claude_returned_no_places")
+
+    # Step 3: Run engine pipeline
+    ctx = EngineContext(
+        persona={"archetype": body.persona, "arrival_time": "09:00", "day_buffer_min": 30},
+        city=city_data,
+        travel_dates=travel_dates,
+        weather=None,
+    )
+    result = await build_itinerary(engine_stops, ctx)
+
+    return {
+        "generation_id": result.generation_id,
+        "days": [
+            {
+                "date": day.date,
+                "is_travel_day": day.is_travel_day,
+                "stops": [
+                    {
+                        "place_id": s.place_id,
+                        "name": s.name,
+                        "lat": s.lat,
+                        "lon": s.lon,
+                        "category": s.category,
+                        "duration_min": s.duration_min,
+                        "scheduled_time": s.scheduled_time,
+                        "transition_to_next": s.transition_to_next,
+                        "type": s.type,
+                        "is_user_added": s.is_user_added,
+                        "outdoor": s.outdoor,
+                        "tags": s.tags or [],
+                    }
+                    for s in day.stops
+                ],
+            }
+            for day in result.days
+        ],
+        "messages": [
+            {
+                "type": msg.type,
+                "what": msg.what,
+                "why": msg.why,
+                "consequence": msg.consequence,
+                "dismissable": msg.dismissable,
+            }
+            for msg in result.messages
+        ],
+        "recommendations": result.recommendations,
+    }
 
 
 if __name__ == "__main__":
