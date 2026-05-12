@@ -3,48 +3,55 @@
 /* ── Design tokens (Tailwind v4 CSS-first config) ─── */
 @theme {
   /* Backgrounds */
-  --color-bg:         #1a1714;
-  --color-bg2:        #131110;
-  --color-surface:    #242018;
-  --color-surface2:   #2e2a22;
+  --color-bg:         #0c0c0e;
+  --color-bg2:        #111114;
+  --color-surface:    #18181c;
+  --color-surface2:   #1f1f24;
 
-  /* Primary */
-  --color-primary:    #e07854;
-  --color-primary-dk: #c4613d;
-  --color-primary-bg: rgba(224,120,84,.14);
+  /* Primary — warm amber/gold */
+  --color-primary:    #d4a853;
+  --color-primary-dk: #b8893a;
+  --color-primary-bg: rgba(212,168,83,.10);
+  --color-primary-glow: rgba(212,168,83,.22);
 
   /* Semantic accents */
-  --color-sage:       #6b9470;
-  --color-sage-bg:    rgba(107,148,112,.15);
-  --color-sage-bdr:   rgba(107,148,112,.30);
-  --color-sky:        #4f8fab;
-  --color-sky-bg:     rgba(79,143,171,.15);
-  --color-sky-bdr:    rgba(79,143,171,.30);
-  --color-amber:      #c49840;
-  --color-amber-bg:   rgba(196,152,64,.15);
-  --color-amber-bdr:  rgba(196,152,64,.30);
+  --color-sage:       #5a8a60;
+  --color-sage-bg:    rgba(90,138,96,.12);
+  --color-sage-bdr:   rgba(90,138,96,.28);
+  --color-sky:        #4a7fa0;
+  --color-sky-bg:     rgba(74,127,160,.12);
+  --color-sky-bdr:    rgba(74,127,160,.28);
+  --color-amber:      #b88c3a;
+  --color-amber-bg:   rgba(184,140,58,.12);
+  --color-amber-bdr:  rgba(184,140,58,.28);
+  --color-cobalt:     #3b6bce;
+  --color-cobalt-bg:  rgba(59,107,206,.12);
+  --color-cobalt-bdr: rgba(59,107,206,.25);
 
   /* Text */
-  --color-text-1:     #f5f0ea;
-  --color-text-2:     #c0b0a4;
-  --color-text-3:     #857268;
-  --color-text-4:     #5a4e47;
+  --color-text-1:     #f2ede6;
+  --color-text-2:     #a09888;
+  --color-text-3:     #6a6058;
+  --color-text-4:     #3e3830;
 
   /* Borders */
-  --color-border:     rgba(255,255,255,.08);
-  --color-border-m:   rgba(255,255,255,.14);
-  --color-divider:    rgba(255,255,255,.06);
+  --color-border:     rgba(242,237,230,.07);
+  --color-border-m:   rgba(242,237,230,.13);
+  --color-border-s:   rgba(242,237,230,.04);
+  --color-divider:    rgba(242,237,230,.06);
 
   /* Shadows */
-  --shadow-md:        0 4px 24px rgba(0,0,0,.45);
-  --shadow-primary:   0 6px 24px rgba(224,120,84,.25);
+  --shadow-sm:        0 2px 12px rgba(0,0,0,.4);
+  --shadow-md:        0 4px 28px rgba(0,0,0,.55);
+  --shadow-lg:        0 16px 56px rgba(0,0,0,.7);
+  --shadow-primary:   0 6px 28px rgba(212,168,83,.25);
 
   /* Fonts */
   --font-sans:        'DM Sans', sans-serif;
-  --font-heading:     'Playfair Display', serif;
+  --font-heading:     'Cormorant Garamond', serif;
 
-  /* Nav bg (theme-switchable) */
-  --nav-bg:           rgba(26,23,20,.92);
+  /* Nav bg */
+  --nav-bg:           rgba(12,12,14,.92);
 }
 
 [data-theme=light] {
@@ -59,7 +66,7 @@
   --color-border:     rgba(44,36,32,.08);
   --color-border-m:   rgba(44,36,32,.14);
   --color-divider:    rgba(44,36,32,.06);
-  --color-primary-bg: rgba(224,120,84,.10);
+  --color-primary-bg: rgba(212,168,83,.10);
   --shadow-md:        0 4px 24px rgba(44,36,32,.12);
   --nav-bg:           rgba(250,248,244,.94);
 }
@@ -71,8 +78,8 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: #1a1714;
-  color: #f5f0ea;
+  background: #0c0c0e;
+  color: #f2ede6;
   font-family: 'DM Sans', sans-serif;
 }
 #root { width: 100%; min-height: 100dvh; }
@@ -227,4 +234,30 @@ html, body {
 @keyframes spin {
   0%   { transform: rotate(0deg);   }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeUp {
+  0%   { transform: translateY(28px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes titleReveal {
+  0%   { transform: translateY(48px) skewY(2deg); opacity: 0; }
+  100% { transform: translateY(0)    skewY(0deg); opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: .6; }
+  50%       { opacity: 1; }
+}
+
+@keyframes dotPop {
+  0%   { transform: scale(0);    }
+  70%  { transform: scale(1.3);  }
+  100% { transform: scale(1);    }
+}
+
+@keyframes collapseToFan {
+  0%   { transform: translateY(0) scale(1);    opacity: 1; }
+  100% { transform: translateY(60px) scale(.1); opacity: 0; }
 }
