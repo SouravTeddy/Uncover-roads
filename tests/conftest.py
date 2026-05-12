@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 from engine.types import EngineStop, EngineContext, EngineMessage
 from city.data_model import CityData, load_city_from_dict
+import pytest
+from fastapi.testclient import TestClient
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -77,3 +81,9 @@ def make_ctx(
         travel_dates=travel_dates or ["2026-06-01"],
         weather=weather,
     )
+
+
+@pytest.fixture
+def client():
+    from main import app
+    return TestClient(app)

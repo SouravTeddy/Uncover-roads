@@ -7,6 +7,7 @@ import uuid
 from engine.types import EngineStop, EngineContext, EngineMessage, EngineDay, EngineResult
 from engine import constraints, sequencer, transitions, inserts, swapper
 from engine import narrator as _narrator
+from engine import tags as _tags
 
 
 def _ensure_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:
@@ -74,6 +75,7 @@ async def build_itinerary(
     stops, msgs3 = transitions.score(stops, ctx)
     stops, msgs4 = inserts.detect(stops, ctx)
     stops, msgs5 = swapper.check(stops, ctx)
+    stops = _tags.apply(stops, ctx)
     all_messages = msgs1 + msgs2 + msgs3 + msgs4 + msgs5
 
     # Ensure all stops have scheduled_time (inserts may add stops without it)
