@@ -57,6 +57,29 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
         )}
       </div>
 
+      {/* Conflict tags */}
+      {stop.tags && stop.tags.length > 0 && (
+        <div className="flex items-center gap-1.5 px-4 pb-2 flex-wrap">
+          {stop.tags.map((tag) => (
+            <span
+              key={tag}
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'var(--color-text-3)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Why for you */}
       <div className="px-4 pb-3">
         <p className="text-[12px] text-[var(--color-text-2)] leading-relaxed">
