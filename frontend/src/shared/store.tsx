@@ -103,6 +103,7 @@ export interface AppState {
   itineraryHistory: EngineItinerary[]  // previous generations — max 10
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
+  reelSavedId: string | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -273,6 +274,7 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
+<<<<<<< HEAD
   savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: [],
@@ -282,6 +284,7 @@ export const initialState: AppState = {
   itineraryHistory: ssGet<EngineItinerary[]>('ur_ss_itin_history') ?? [],
   activePinId: null,
   mapFilter: 'all' as MapFilterChip,
+  reelSavedId: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -338,6 +341,7 @@ export type Action =
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
   | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+<<<<<<< HEAD
   | { type: 'SAVE_EVENT'; event: SavedEvent }
   | { type: 'REMOVE_EVENT'; id: string }
   // ── Phase 3: city context actions ────────────────────────────
@@ -354,7 +358,8 @@ export type Action =
   | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary }
   // ── Phase 3: map UI actions ───────────────────────────────────
   | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
-  | { type: 'SET_MAP_FILTER'; filter: MapFilterChip };
+  | { type: 'SET_MAP_FILTER'; filter: MapFilterChip }
+  | { type: 'SET_REEL_SAVED_ID'; id: string | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -641,6 +646,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, theme: action.theme };
     }
 
+<<<<<<< HEAD
     // ── Phase 3: city context cases ────────────────────────────
 
     case 'SET_CITY_CONTEXTS':
@@ -711,6 +717,9 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_saved_events', updated);
       return { ...state, savedEvents: updated };
     }
+
+    case 'SET_REEL_SAVED_ID':
+      return { ...state, reelSavedId: action.id };
 
     default:
       return state;
