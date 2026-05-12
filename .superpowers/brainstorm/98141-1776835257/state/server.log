@@ -1,0 +1,13 @@
+{"type":"server-started","port":59944,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:59944","screen_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content","state_dir":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/state"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/search-interaction.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-layout.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/search-interaction-v2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-layout-v2.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/waiting-1.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states.html"}
+{"type":"screen-added","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states-v2.html"}
+{"type":"screen-updated","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states-v2.html"}
+{"type":"screen-updated","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states-v2.html"}
+{"type":"screen-updated","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states-v2.html"}
+{"type":"screen-updated","file":"/Users/souravbiswas/uncover-roads/.superpowers/brainstorm/98141-1776835257/content/results-states-v2.html"}
+{"type":"server-stopped","reason":"idle timeout"}

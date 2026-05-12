@@ -1,395 +1,327 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Place, PlaceDetails } from '../../shared/types';
-import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
-import { getPlacePhotoUrl, api } from '../../shared/api';
-import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl } from './pincard-utils';
+import { useState, useEffect, useRef, useCallback } from 'react'
+import type { MutableRefObject } from 'react'
+import type { Place, PlaceDetails, ReferencePin } from '../../shared/types'
+import type { Persona, PersonaProfile } from '../../shared/types'
+import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
+import { getPlacePhotoUrl, api } from '../../shared/api'
+import { getTravelDateBadge } from './pincard-utils'
+import { ShimmerLine } from '../../shared/Shimmer'
+import { computePersonaBadges, usePersonaInsight } from './pincard-persona'
 
-interface Props {
-  place: Place;
-  city: string;
-  isSelected: boolean;
-  onAdd: () => void;
-  onClose: () => void;
-  details?: PlaceDetails | null;
-}
-
-const PRICE: Record<number, string> = { 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
-
+// ── Design tokens ─────────────────────────────────────────────
+const SURFACE  = 'rgba(15,19,28,0.97)'
+const BORDER   = 'rgba(255,255,255,0.08)'
+const TEXT1    = '#f1f5f9'
+const TEXT3    = 'rgba(193,198,215,0.7)'
+const ACCENT   = '#3b82f6'
+const AI_MARK  = '#8b5cf6'
+const PRICE: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' }
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
   museum: '#8b5cf6', historic: '#a16207', tourism: '#0ea5e9',
   event: '#ec4899', place: '#6b7280',
-};
+}
 
-const CATEGORY_BG: Record<string, string> = {
-  restaurant: 'rgba(239,68,68,.12)', cafe: 'rgba(249,115,22,.12)',
-  park: 'rgba(34,197,94,.12)', museum: 'rgba(139,92,246,.12)',
-  historic: 'rgba(161,98,7,.12)', tourism: 'rgba(14,165,233,.12)',
-  event: 'rgba(236,72,153,.12)', place: 'rgba(107,114,128,.12)',
-};
+// ── Props ─────────────────────────────────────────────────────
+interface Props {
+  place: Place
+  city: string
+  isSelected: boolean
+  isFavourited: boolean
+  onAdd: () => void
+  onClose: () => void
+  onFavourite: () => void
+  details?: PlaceDetails | null
+  referencePin?: ReferencePin | null
+  travelDate?: string | null
+  persona?: Persona | null
+  personaProfile?: PersonaProfile | null
+  insightCache?: MutableRefObject<Map<string, string>>
+}
 
-const linkBtn: React.CSSProperties = {
+const linkStyle: React.CSSProperties = {
   flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
   height: 36, padding: '0 14px', borderRadius: 999,
   background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)',
   fontSize: '0.72rem', fontWeight: 700, color: 'rgba(193,198,215,.8)',
   textDecoration: 'none', WebkitTapHighlightColor: 'transparent',
-};
+}
 
-export function PinCard({ place, city, isSelected, onAdd, onClose, details }: Props) {
-  const [visible, setVisible]         = useState(false);
-  const [imgSrc, setImgSrc]           = useState<string | null>(null);
-  const [hoursExpanded, setHoursExpanded] = useState(false);
-  const sheetRef    = useRef<HTMLDivElement>(null);
-  const touchStartY = useRef(0);
-  const dragY       = useRef(0);
-  const closing     = useRef(false);
+export function PinCard({
+  place, city, isSelected, isFavourited,
+  onAdd, onClose, onFavourite,
+  details, referencePin, travelDate,
+  persona, personaProfile, insightCache,
+}: Props) {
+  const [visible, setVisible]   = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [imgSrc, setImgSrc]     = useState<string | null>(null)
+  const sheetRef    = useRef<HTMLDivElement>(null)
+  const touchStartY = useRef(0)
+  const dragY       = useRef(0)
+  const closing     = useRef(false)
 
   // Slide-in on mount
   useEffect(() => {
-    const id = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+    const id = requestAnimationFrame(() => setVisible(true))
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    document.body.style.overscrollBehaviorY = 'none'
+    return () => {
+      cancelAnimationFrame(id)
+      document.documentElement.style.overscrollBehaviorY = ''
+      document.body.style.overscrollBehaviorY = ''
+    }
+  }, [])
 
-  // Image: Google photo → Wikipedia fallback
-  const photoRef       = details?.photo_ref ?? place.photo_ref ?? null;
-  const googlePhotoUrl = photoRef ? getPlacePhotoUrl(photoRef) : null;
-
+  // Hero image loading
+  const photoRef = details?.photo_ref ?? place.photo_ref ?? null
+  const googlePhotoUrl = photoRef ? getPlacePhotoUrl(photoRef) : null
   useEffect(() => {
-    closing.current = false;
-    setHoursExpanded(false);
-
+    closing.current = false
     if (googlePhotoUrl) {
-      setImgSrc(googlePhotoUrl);
+      const img = new Image()
+      img.onload = () => setImgSrc(googlePhotoUrl)
+      img.onerror = () => {
+        api.placeImage(place.title, city).then(url => { if (url) setImgSrc(url) })
+      }
+      img.src = googlePhotoUrl
     } else {
-      setImgSrc(null);
-      // No Google photo — try Wikipedia/Wikimedia immediately
-      api.placeImage(place.title, city).then(url => { if (url) setImgSrc(url); });
+      setImgSrc(null)
+      api.placeImage(place.title, city).then(url => { if (url) setImgSrc(url) })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [place.id, googlePhotoUrl]);
+  }, [place.id, googlePhotoUrl])
 
-  const handleImgError = useCallback(() => {
-    // Google photo proxy failed (API key not set in Railway) — try wiki
-    api.placeImage(place.title, city).then(url => setImgSrc(url));
-  }, [place.title, city]);
+  // LLM archetype insight
+  const fallbackCache = useRef(new Map<string, string>())
+  const activeCache = insightCache ?? fallbackCache
+  const { insight, loading: insightLoading } = usePersonaInsight(
+    place, persona ?? null, 'map', activeCache,
+  )
 
-  const handleClose = useCallback(() => {
-    if (closing.current) return;
-    closing.current = true;
-    setVisible(false);
-    setTimeout(onClose, 380);
-  }, [onClose]);
+  // Persona badges — computed synchronously
+  const personaBadges = (persona && personaProfile != null)
+    ? computePersonaBadges(place, persona, personaProfile, 'map')
+    : []
 
-  // Swipe-to-close — touch handlers on drag handle only
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    dragY.current = 0;
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
+  // Swipe to dismiss handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    dragY.current = 0
+  }, [])
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current
     if (dy > 0 && sheetRef.current) {
-      sheetRef.current.style.transition = 'none';
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-      dragY.current = dy;
+      sheetRef.current.style.transform = `translateY(${dy}px)`
+      dragY.current = dy
     }
-  };
-  const onTouchEnd = () => {
-    if (!sheetRef.current) return;
-    sheetRef.current.style.transition = '';
-    if (dragY.current > 80) {
-      handleClose();
-    } else {
-      sheetRef.current.style.transform = 'translateY(0)';
+  }, [])
+  const handleTouchEnd = useCallback(() => {
+    if (dragY.current > 80 && !closing.current) {
+      closing.current = true
+      if (sheetRef.current) {
+        sheetRef.current.style.transform = 'translateY(100%)'
+        sheetRef.current.style.transition = 'transform 0.25s ease'
+      }
+      setTimeout(onClose, 240)
+    } else if (sheetRef.current) {
+      sheetRef.current.style.transform = ''
     }
-    dragY.current = 0;
-  };
+    dragY.current = 0
+  }, [onClose])
 
-  // ── Derived data ─────────────────────────────────────────────
-  const icon  = CATEGORY_ICONS[place.category] ?? 'location_on';
-  const color = CATEGORY_COLORS[place.category] ?? '#6b7280';
-  const bg    = CATEGORY_BG[place.category] ?? 'rgba(107,114,128,.12)';
+  // Data from Google Places (factual — no AI marker)
+  const rating      = details?.rating      ?? place.rating      ?? null
+  const ratingCount = details?.rating_count ?? null
+  const priceLevel  = details?.price_level  ?? null
+  const dateAlert   = travelDate ? getTravelDateBadge(details?.weekday_text ?? [], travelDate) : null
+  const catColor    = CATEGORY_COLORS[place.category] ?? '#6b7280'
+  const catIcon     = CATEGORY_ICONS[place.category]  ?? 'location_on'
+  const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
+  const websiteUrl  = details?.website ?? place.tags?.website ?? null
+  const mapsUrl     = details?.place_id
+    ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
+    : `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`
 
-  const hasGoogleData = !!(
-    details?.rating !== undefined || details?.address ||
-    details?.open_now !== undefined ||
-    (details?.weekday_text?.length ?? 0) > 0 ||
-    details?.editorial_summary
-  );
-  const d = hasGoogleData ? details : null;
-
-  const rating      = d?.rating      ?? place.rating      ?? null;
-  const ratingCount = d?.rating_count                     ?? null;
-  const openNow     = d?.open_now    ?? place.open_now    ?? null;
-  const priceLevel  = d?.price_level ?? place.price_level ?? null;
-  const typeTags    = d?.types ? filterTypes(d.types) : [];
-
-  const todayJsDay  = new Date().getDay();
-  const rawHoursLine = d?.weekday_text?.length
-    ? getHoursLabel(d.weekday_text, todayJsDay) : null;
-  const hoursLabel  = rawHoursLine !== null && d?.open_now !== undefined
-    ? parseOpenClose(rawHoursLine, d.open_now) : rawHoursLine;
-
-  const description = d?.editorial_summary
-    || (d?.top_review ? d.top_review.slice(0, 200) + (d.top_review.length > 200 ? '…' : '') : null)
-    || place.tags?.description
-    || null;
-
-  const cuisineTags = place.tags?.cuisine
-    ? place.tags.cuisine.split(';').map(s => s.trim().replace(/_/g, ' ')).filter(Boolean)
-    : [];
-  const chips = typeTags.length > 0 ? typeTags : cuisineTags;
-
-  const directionsUrl = getDirectionsUrl(d?.lat ?? place.lat, d?.lon ?? place.lon);
-  const website       = d?.website || place.tags?.website || null;
-
-  let catLabel = CATEGORY_LABELS[place.category] ?? 'Place';
-  if (place.tags?.cuisine) {
-    catLabel += ' · ' + place.tags.cuisine.replace(/;/g, ', ').replace(/_/g, ' ');
-  }
-
-  // ── Render ───────────────────────────────────────────────────
   return (
     <>
       {/* Backdrop */}
       <div
-        onClick={handleClose}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,.45)',
-          backdropFilter: 'blur(2px)',
-          zIndex: 39,
-          opacity: visible ? 1 : 0,
-          transition: 'opacity .38s ease',
-          pointerEvents: visible ? 'auto' : 'none',
-        }}
+        onClick={() => { if (!closing.current) { closing.current = true; onClose() } }}
+        style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'transparent' }}
       />
 
       {/* Sheet */}
       <div
         ref={sheetRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#141921',
-          borderRadius: '20px 20px 0 0',
-          zIndex: 40,
+          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 40,
+          background: SURFACE, borderRadius: '20px 20px 0 0',
+          border: `1px solid ${BORDER}`, borderBottom: 'none',
+          backdropFilter: 'blur(20px)',
+          maxHeight: expanded ? '92vh' : '48vh',
+          overflow: expanded ? 'auto' : 'hidden',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform .38s cubic-bezier(.32,.72,0,1)',
-          maxHeight: '80dvh',
-          overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
-          boxShadow: '0 -8px 48px rgba(0,0,0,.7)',
+          transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1), max-height 0.3s ease',
           willChange: 'transform',
         }}
       >
         {/* Drag handle */}
-        <div
-          style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0, touchAction: 'none' }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div style={{ width: 36, height: 4, background: 'rgba(255,255,255,.15)', borderRadius: 2 }} />
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4, touchAction: 'none' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
         </div>
 
-        {/* Hero */}
-        <div style={{
-          position: 'relative', width: '100%', height: 180,
-          background: bg, overflow: 'hidden', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+        {/* Hero image */}
+        <div style={{ height: 140, background: catColor + '22', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
           {imgSrc ? (
-            <img
-              src={imgSrc} alt={place.title}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={handleImgError}
-            />
+            <img src={imgSrc} alt={place.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <span className="ms fill" style={{ fontSize: 56, color: color + '55' }}>{icon}</span>
-          )}
-          {/* Bottom gradient */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,.5) 100%)' }} />
-
-          {/* Open/closed badge */}
-          {openNow !== null && (
-            <div style={{
-              position: 'absolute', bottom: 10, left: 12,
-              display: 'inline-flex', alignItems: 'center',
-              height: 26, padding: '0 10px', borderRadius: 999,
-              background: openNow ? 'rgba(22,163,74,.3)' : 'rgba(220,38,38,.2)',
-              border: `1px solid ${openNow ? 'rgba(74,222,128,.3)' : 'rgba(248,113,113,.25)'}`,
-              backdropFilter: 'blur(12px)',
-              fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.5px',
-              color: openNow ? '#4ade80' : '#f87171',
-            }}>
-              ● {openNow ? 'Open now' : 'Closed'}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <span className="ms fill" style={{ fontSize: 48, color: catColor, opacity: 0.6 }}>{catIcon}</span>
             </div>
           )}
-
-          {/* Close button */}
-          <button
-            onClick={handleClose}
-            style={{
-              position: 'absolute', top: 10, right: 10,
-              background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,.12)', borderRadius: '50%',
-              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#aaa', fontSize: 14, cursor: 'pointer',
-            }}
-          >
-            ✕
-          </button>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,19,28,0.8) 0%, transparent 50%)' }} />
         </div>
 
-        {/* Scrollable body — minHeight:0 is required for flex child to actually scroll */}
-        <div style={{
-          overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-          padding: `16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px)`,
-          flex: 1, minHeight: 0,
-        }}>
+        {/* Card body */}
+        <div style={{ padding: '12px 16px 20px' }}>
+          {/* Title + area */}
+          <h2 style={{ margin: '0 0 2px', fontSize: '1.1rem', fontWeight: 800, color: TEXT1, lineHeight: 1.2 }}>
+            {place.title}
+          </h2>
+          {details?.address && (
+            <p style={{ margin: '0 0 6px', fontSize: '0.75rem', color: TEXT3 }}>{details.address.split(',')[0]}</p>
+          )}
 
-          {/* Title + category */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#F9F9FF', lineHeight: 1.25 }}>
-              {place.title}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'rgba(193,198,215,.45)', marginTop: 3 }}>
-              {catLabel}
-            </div>
+          {/* Rating + price + category chip */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            {rating !== null && (
+              <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 700 }}>
+                ★ {typeof rating === 'number' ? rating.toFixed(1) : rating}
+                {ratingCount !== null && (
+                  <span style={{ color: TEXT3, fontWeight: 400 }}> ({(ratingCount as number).toLocaleString()})</span>
+                )}
+              </span>
+            )}
+            {priceLevel !== null && priceLevel in PRICE && (
+              <span style={{ fontSize: '0.75rem', color: TEXT3 }}>{PRICE[priceLevel as keyof typeof PRICE]}</span>
+            )}
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: catColor, background: catColor + '18', borderRadius: 99, padding: '2px 8px' }}>
+              {categoryLabel}
+            </span>
           </div>
 
-          {/* Rating + price */}
-          {(rating !== null || priceLevel !== null) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              {rating !== null && (
-                <>
-                  <span style={{ fontSize: 12, color: '#fbbf24', fontWeight: 700 }}>★ {rating}</span>
-                  {ratingCount !== null && (
-                    <span style={{ fontSize: 10, color: '#555' }}>({ratingCount.toLocaleString()})</span>
-                  )}
-                </>
-              )}
-              {priceLevel !== null && priceLevel > 0 && (
-                <span style={{ fontSize: 10, color: '#666' }}>{PRICE[priceLevel]}</span>
-              )}
+          {/* Intel pill — travel date alert (factual, from Google Places) */}
+          {dateAlert && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', borderRadius: 99, marginBottom: 8,
+              background: dateAlert.status === 'closed' ? 'rgba(234,179,8,.12)' : 'rgba(34,197,94,.1)',
+              border: `1px solid ${dateAlert.status === 'closed' ? 'rgba(234,179,8,.3)' : 'rgba(34,197,94,.3)'}`,
+              fontSize: '0.7rem', fontWeight: 700,
+              color: dateAlert.status === 'closed' ? '#fbbf24' : '#86efac',
+            }}>
+              {dateAlert.status === 'closed' ? '⚠️' : '✓'} {dateAlert.text}
             </div>
           )}
 
-          {/* Divider */}
-          <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginBottom: 14 }} />
-
-          {/* Hours */}
-          {hoursLabel ? (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 14 }}>
-              <span className="ms" style={{ fontSize: 15, color: 'rgba(193,198,215,.4)', marginTop: 1, flexShrink: 0 }}>schedule</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: (openNow ?? false) ? '#4ade80' : '#f87171' }}>
-                    {hoursLabel}
-                  </span>
-                  {d?.weekday_text && d.weekday_text.length > 0 && (
-                    <button
-                      onClick={() => setHoursExpanded(e => !e)}
-                      style={{ fontSize: 9, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
-                    >
-                      {hoursExpanded ? 'Hide ▴' : 'All hours ▾'}
-                    </button>
-                  )}
+          {/* Persona badges */}
+          {personaBadges.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {personaBadges.map((badge) => (
+                <div key={badge.text} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 9px', borderRadius: 999,
+                  fontSize: '0.68rem', fontWeight: 700,
+                  color: badge.color,
+                  background: badge.bg,
+                  border: `1px solid ${badge.border}`,
+                }}>
+                  {badge.text}
                 </div>
-                {hoursExpanded && d?.weekday_text && (
-                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {d.weekday_text.map((line, i) => {
-                      const isToday = i === (todayJsDay === 0 ? 6 : todayJsDay - 1);
-                      const colonIdx = line.indexOf(':');
-                      const day   = colonIdx > -1 ? line.slice(0, colonIdx) : line;
-                      const hours = colonIdx > -1 ? line.slice(colonIdx + 2) : '';
-                      return (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                          <span style={{ color: isToday ? '#4ade80' : '#555', fontWeight: isToday ? 600 : 400 }}>{day}</span>
-                          <span style={{ color: '#888', fontWeight: isToday ? 600 : 400 }}>{hours}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : place.tags?.opening_hours ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <span className="ms" style={{ fontSize: 15, color: 'rgba(193,198,215,.4)', flexShrink: 0 }}>schedule</span>
-              <span style={{ fontSize: 11, color: '#aaa', lineHeight: 1.4 }}>{place.tags.opening_hours}</span>
-            </div>
-          ) : null}
-
-          {/* Description */}
-          {description && (
-            <div style={{ fontSize: '0.82rem', color: 'rgba(193,198,215,.75)', lineHeight: 1.6, marginBottom: 14 }}>
-              {description}
-            </div>
-          )}
-
-          {/* Type / cuisine chips */}
-          {chips.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {chips.map(tag => (
-                <span
-                  key={tag}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    height: 28, padding: '0 10px', borderRadius: 999,
-                    background: 'rgba(255,255,255,.06)',
-                    border: '1px solid rgba(255,255,255,.08)',
-                    fontSize: '0.7rem', fontWeight: 600,
-                    color: 'rgba(193,198,215,.8)', textTransform: 'capitalize',
-                  }}
-                >
-                  {tag}
-                </span>
               ))}
             </div>
           )}
 
-          {/* Link pills */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 2 }}>
-            <a href={directionsUrl} target="_blank" rel="noreferrer" style={linkBtn}>
-              <span className="ms" style={{ fontSize: 14 }}>map</span>
-              Directions
-            </a>
-            {website && (
-              <a href={website} target="_blank" rel="noreferrer" style={linkBtn}>
-                <span className="ms" style={{ fontSize: 14 }}>language</span>
-                {(() => { try { return new URL(website).hostname; } catch { return 'Website'; } })()}
-              </a>
-            )}
-            <a
-              href={`https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(place.title + ' ' + city)}`}
-              target="_blank" rel="noreferrer"
-              style={linkBtn}
-            >
-              <span className="ms" style={{ fontSize: 14 }}>open_in_new</span>
-              Wikipedia
-            </a>
+          {/* Archetype insight — LLM ✦ (persona tone only, no facts) */}
+          <div style={{ marginBottom: 12, minHeight: 20 }}>
+            {insightLoading ? (
+              <ShimmerLine width="80%" height={14} />
+            ) : insight ? (
+              <p style={{ margin: 0, fontSize: '0.78rem', color: TEXT3, fontStyle: 'italic', lineHeight: 1.5 }}>
+                <span style={{ color: AI_MARK, marginRight: 4 }}>✦</span>{insight}
+              </p>
+            ) : null}
           </div>
 
-          {/* Add to trip */}
-          <button
-            onClick={onAdd}
-            style={{
-              width: '100%',
-              background: isSelected ? 'rgba(99,102,241,.15)' : '#6366f1',
-              border: isSelected ? '1px solid rgba(99,102,241,.4)' : 'none',
-              borderRadius: 14, padding: '13px 0',
-              fontSize: 13, fontWeight: 700,
-              color: isSelected ? '#a5b4fc' : '#fff',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          >
-            <span className="ms" style={{ fontSize: 16 }}>{isSelected ? 'check_circle' : 'add_circle'}</span>
-            {isSelected ? 'Added to trip' : 'Add to trip'}
-          </button>
+          {/* CTAs */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            <button onClick={onFavourite} style={{
+              flex: 1, padding: '10px 0', borderRadius: 12,
+              background: isFavourited ? 'rgba(239,68,68,.15)' : 'rgba(255,255,255,.06)',
+              border: `1px solid ${isFavourited ? 'rgba(239,68,68,.4)' : BORDER}`,
+              color: isFavourited ? '#f87171' : TEXT3,
+              fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+            }}>
+              {isFavourited ? '❤️ Saved' : '🤍 Save'}
+            </button>
+            <button onClick={onAdd} style={{
+              flex: 1, padding: '10px 0', borderRadius: 12,
+              background: isSelected ? 'rgba(59,130,246,.15)' : ACCENT,
+              border: `1px solid ${isSelected ? 'rgba(59,130,246,.4)' : 'transparent'}`,
+              color: isSelected ? '#60a5fa' : '#fff',
+              fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+            }}>
+              {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
+            </button>
+          </div>
+
+          {/* Expand toggle */}
+          {!expanded && (
+            <button onClick={() => setExpanded(true)} style={{
+              width: '100%', marginTop: 8, padding: '8px 0',
+              background: 'transparent', border: 'none', color: TEXT3, fontSize: '0.72rem', cursor: 'pointer',
+            }}>
+              More details ↓
+            </button>
+          )}
+
+          {/* Expanded content */}
+          {expanded && (
+            <div>
+              {referencePin?.localTip && (
+                <div style={{
+                  marginTop: 12, padding: '10px 12px', borderRadius: 10,
+                  background: 'rgba(139,92,246,.08)', border: '1px solid rgba(139,92,246,.2)',
+                }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: TEXT3, lineHeight: 1.5 }}>
+                    <span style={{ color: AI_MARK, marginRight: 4 }}>✦</span>{referencePin.localTip}
+                  </p>
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+                  <span className="ms" style={{ fontSize: 14 }}>map</span> Google Maps
+                </a>
+                {websiteUrl && (
+                  <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
+                    <span className="ms" style={{ fontSize: 14 }}>language</span> Website
+                  </a>
+                )}
+              </div>
+              <button onClick={() => setExpanded(false)} style={{
+                width: '100%', marginTop: 12, padding: '8px 0',
+                background: 'transparent', border: 'none', color: TEXT3, fontSize: '0.72rem', cursor: 'pointer',
+              }}>
+                Show less ↑
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
-  );
+  )
 }

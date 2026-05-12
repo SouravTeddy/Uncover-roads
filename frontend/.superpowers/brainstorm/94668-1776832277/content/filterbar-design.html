@@ -1,0 +1,311 @@
+<h2>Filter Bar — Design Options</h2>
+<p class="subtitle">3 approaches for the collapsible filter bar. Current state shown for reference.</p>
+
+<style>
+  .map-preview {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #1a2035 0%, #0f1520 50%, #141c2e 100%);
+    opacity: 0.9;
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .overlay-bar {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .search-box {
+    background: rgba(255,255,255,.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 24px;
+    padding: 10px 16px;
+    color: rgba(255,255,255,.5);
+    font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .search-icon { font-size: 16px; color: rgba(255,255,255,.3); }
+
+  /* ─── CURRENT ─── */
+  .chips-row {
+    display: flex; gap: 8px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .chip {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px; height: 36px; border-radius: 18px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    background: rgba(30,35,50,.9); color: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  .chip.active { background: #6c63ff; color: #fff; border-color: transparent; }
+  .chip-icon { font-size: 14px; }
+  .chip-count { font-size: 11px; color: rgba(255,255,255,.4); }
+  .chip.active .chip-count { color: rgba(255,255,255,.7); }
+
+  /* ─── OPTION A ─── */
+  .a-collapsed {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .a-all-chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 10px; height: 28px; border-radius: 14px;
+    font-size: 11px; font-weight: 500; color: #fff;
+    background: #6c63ff;
+  }
+  .a-expand-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.5); font-size: 14px;
+  }
+  .a-hint { font-size: 10px; color: rgba(255,255,255,.3); margin-left: 4px; font-style: italic; }
+
+  .a-expanded {
+    display: flex; align-items: center; gap: 6px;
+    position: relative;
+  }
+  .a-chips-wrap {
+    display: flex; gap: 6px; overflow: hidden;
+    flex: 1; position: relative;
+  }
+  .a-chip {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 10px; height: 26px; border-radius: 13px;
+    font-size: 11px; font-weight: 400; white-space: nowrap;
+    background: rgba(255,255,255,.07); color: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .a-chip.active { background: #6c63ff; color: #fff; border-color: transparent; }
+  .a-chip.special-picks { background: rgba(245,158,11,.15); color: #f59e0b; border-color: rgba(245,158,11,.2); }
+  .a-chip.special-events { background: rgba(167,139,250,.15); color: #a78bfa; border-color: rgba(167,139,250,.2); }
+  .a-chip-count { font-size: 10px; opacity: 0.6; }
+  .a-fade-right {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 40px;
+    background: linear-gradient(to right, transparent, rgba(13,17,23,.95));
+    pointer-events: none;
+  }
+  .a-collapse-btn {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.4); font-size: 13px;
+  }
+
+  /* ─── OPTION B ─── */
+  .b-row {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .b-toggle {
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 10px; height: 26px; border-radius: 13px;
+    font-size: 11px; font-weight: 500; color: rgba(255,255,255,.7);
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+  }
+  .b-toggle-icon { font-size: 12px; color: rgba(255,255,255,.35); }
+  .b-sep { width: 1px; height: 16px; background: rgba(255,255,255,.1); margin: 0 2px; }
+  .b-chip-sm {
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 9px; height: 26px; border-radius: 13px;
+    font-size: 11px; font-weight: 400; white-space: nowrap;
+    color: rgba(255,255,255,.5);
+  }
+  .b-chip-sm.active { color: #fff; font-weight: 500; }
+  .b-chip-sm.picks { color: #f59e0b; }
+  .b-chip-sm.events { color: #a78bfa; }
+
+  /* ─── OPTION C ─── */
+  .c-row {
+    display: flex; align-items: center; gap: 0;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 20px;
+    padding: 2px;
+    width: fit-content;
+  }
+  .c-chip {
+    padding: 0 10px; height: 24px; border-radius: 18px;
+    font-size: 10.5px; font-weight: 400; white-space: nowrap;
+    color: rgba(255,255,255,.45);
+  }
+  .c-chip.active {
+    background: #6c63ff; color: #fff; font-weight: 500;
+  }
+  .c-chip.picks { color: #f59e0b; }
+  .c-chip.events { color: #a78bfa; }
+  .c-chip-count { font-size: 9.5px; opacity: 0.6; margin-left: 3px; }
+  .c-more {
+    padding: 0 8px; height: 24px; border-radius: 18px;
+    font-size: 10px; color: rgba(255,255,255,.3);
+    display: flex; align-items: center; gap: 2px;
+  }
+
+  .label-tag {
+    display: inline-block;
+    font-size: 9px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; padding: 2px 8px;
+    border-radius: 4px; margin-bottom: 6px;
+  }
+  .label-current { background: rgba(255,255,255,.08); color: rgba(255,255,255,.4); }
+  .label-a { background: rgba(108,99,255,.2); color: #a5a0ff; }
+  .label-b { background: rgba(16,185,129,.15); color: #6ee7b7; }
+  .label-c { background: rgba(245,158,11,.15); color: #fcd34d; }
+  .preview-label { font-size: 10px; color: rgba(255,255,255,.35); margin-bottom: 4px; }
+  .state-row { display: flex; flex-direction: column; gap: 10px; }
+</style>
+
+<div class="cards" style="grid-template-columns: 1fr 1fr;">
+
+  <!-- CURRENT STATE -->
+  <div class="card" data-choice="current" style="cursor:default; pointer-events:none; opacity:.7;">
+    <div class="card-image">
+      <div class="map-preview" style="min-height:140px;">
+        <div class="map-bg"></div><div class="map-grid"></div>
+        <div class="overlay-bar">
+          <div class="search-box"><span class="search-icon">⌕</span> Search places…</div>
+          <div class="chips-row">
+            <div class="chip active"><span class="chip-icon">⊞</span> All <span class="chip-count">47</span></div>
+            <div class="chip"><span class="chip-icon">✦</span> Our Picks <span class="chip-count">12</span></div>
+            <div class="chip"><span class="chip-icon">🎉</span> Events</div>
+            <div class="chip">Museums <span class="chip-count">8</span></div>
+            <div class="chip">Parks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="label-tag label-current">Current</div>
+      <h3>Status quo</h3>
+      <p>Horizontal scroll, heavy chips, all always visible, no scroll indicator, same style for all</p>
+    </div>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="map-preview" style="min-height:270px;">
+        <div class="map-bg"></div><div class="map-grid"></div>
+        <div class="overlay-bar">
+          <div class="search-box"><span class="search-icon">⌕</span> Search places…</div>
+
+          <div class="preview-label">▾ Collapsed (default)</div>
+          <div class="a-collapsed">
+            <div class="a-all-chip">⊞ All · 54 <span style="margin-left:4px;opacity:.7;">▾</span></div>
+            <span class="a-hint">tap to expand</span>
+          </div>
+
+          <div style="height:12px;"></div>
+          <div class="preview-label">▸ Expanded (after tap)</div>
+          <div class="a-expanded">
+            <div class="a-chips-wrap">
+              <div class="a-chip active">All <span class="a-chip-count">54</span></div>
+              <div class="a-chip special-picks">✦ Our Picks <span class="a-chip-count">12</span></div>
+              <div class="a-chip special-events">🎉 Events</div>
+              <div class="a-chip">Museums <span class="a-chip-count">8</span></div>
+              <div class="a-chip">Parks <span class="a-chip-count">6</span></div>
+              <div class="a-chip">Dining</div>
+              <div class="a-fade-right"></div>
+            </div>
+            <div class="a-collapse-btn">▴</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="label-tag label-a">Option A — Recommended</div>
+      <h3>Accordion with fade indicator</h3>
+      <p>One-tap toggle. Collapsed shows active filter + count. Expanded shows slim scrollable chips with gradient fade for overflow. Our Picks = amber, Events = violet.</p>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="map-preview" style="min-height:270px;">
+        <div class="map-bg"></div><div class="map-grid"></div>
+        <div class="overlay-bar">
+          <div class="search-box"><span class="search-icon">⌕</span> Search places…</div>
+
+          <div class="preview-label">▾ Collapsed — shows All + 2 specials always</div>
+          <div class="b-row">
+            <div class="b-toggle">⊞ All · 54 <span class="b-toggle-icon" style="margin-left:4px;">▾</span></div>
+            <div class="b-sep"></div>
+            <div class="b-chip-sm picks">✦ Our Picks</div>
+            <div class="b-chip-sm events">🎉 Events</div>
+          </div>
+
+          <div style="height:12px;"></div>
+          <div class="preview-label">▸ Expanded — reveals rest inline</div>
+          <div class="b-row" style="flex-wrap:wrap; gap:4px;">
+            <div class="b-chip-sm active" style="background:rgba(108,99,255,.2);border-radius:13px;border:1px solid rgba(108,99,255,.3);padding:0 9px;height:26px;">⊞ All · 54</div>
+            <div class="b-chip-sm picks" style="background:rgba(245,158,11,.1);border-radius:13px;border:1px solid rgba(245,158,11,.2);padding:0 9px;height:26px;">✦ Our Picks</div>
+            <div class="b-chip-sm events" style="background:rgba(167,139,250,.1);border-radius:13px;border:1px solid rgba(167,139,250,.2);padding:0 9px;height:26px;">🎉 Events</div>
+            <div class="b-chip-sm" style="background:rgba(255,255,255,.06);border-radius:13px;border:1px solid rgba(255,255,255,.08);padding:0 9px;height:26px;">Museums</div>
+            <div class="b-chip-sm" style="background:rgba(255,255,255,.06);border-radius:13px;border:1px solid rgba(255,255,255,.08);padding:0 9px;height:26px;">Parks</div>
+            <div class="b-chip-sm" style="background:rgba(255,255,255,.06);border-radius:13px;border:1px solid rgba(255,255,255,.08);padding:0 9px;height:26px;">Dining</div>
+            <div class="b-chip-sm" style="background:rgba(255,255,255,.06);border-radius:13px;border:1px solid rgba(255,255,255,.08);padding:0 9px;height:26px;">Historic</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="label-tag label-b">Option B</div>
+      <h3>Always-visible specials + toggle rest</h3>
+      <p>Our Picks and Events always pinned visible. Tapping "All" expands a wrap-flow of the remaining category chips below. No horizontal scroll needed.</p>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="map-preview" style="min-height:270px;">
+        <div class="map-bg"></div><div class="map-grid"></div>
+        <div class="overlay-bar">
+          <div class="search-box"><span class="search-icon">⌕</span> Search places…</div>
+
+          <div class="preview-label">▾ Collapsed — segmented pill</div>
+          <div class="c-row">
+            <div class="c-chip active">All <span class="c-chip-count">54</span></div>
+            <div class="c-chip picks">✦ Picks</div>
+            <div class="c-chip events">Events</div>
+            <div class="c-more">+4 ▾</div>
+          </div>
+
+          <div style="height:12px;"></div>
+          <div class="preview-label">▸ Expanded</div>
+          <div class="c-row">
+            <div class="c-chip active">All <span class="c-chip-count">54</span></div>
+            <div class="c-chip picks">✦ Picks</div>
+            <div class="c-chip events">Events</div>
+            <div class="c-chip">Museums</div>
+            <div class="c-chip">Parks</div>
+            <div class="c-chip">Dining</div>
+            <div class="c-chip">Historic</div>
+            <div class="c-more">▴</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="label-tag label-c">Option C</div>
+      <h3>Segmented pill strip</h3>
+      <p>All chips live in one pill container. Collapsed shows first 3 + "+4 ▾" overflow badge. Tapping expands in-place. Very minimal — no separate toggle element.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px; text-align:center;">Click A, B, or C to select. Current state is shown for reference only.</p>

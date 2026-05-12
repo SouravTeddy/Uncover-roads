@@ -1,0 +1,14 @@
+{
+  "archetype": "wanderer",
+  "weights": {
+    "w_walk_affinity": 0.9,
+    "w_food_density": 0.6,
+    "w_spontaneity": 0.8,
+    "w_rest_need": 0.3,
+    "w_culture_depth": 0.5,
+    "w_nightlife": 0.4
+  },
+  "evening_end_time": "22:00",
+  "day_buffer_min": 30,
+  "lunch_window": ["12:00", "14:30"]
+}

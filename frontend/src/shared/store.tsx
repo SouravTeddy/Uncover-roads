@@ -11,6 +11,24 @@ import type {
   WeatherData,
   RouteData,
   SavedItinerary,
+  RawOBAnswers,
+  PersonaProfile,
+  ResolvedConflict,
+  JourneyLeg,
+  AdvisorMessage,
+  OriginPlace,
+  UserTier,
+  TripPack,
+  NotifPrefs,
+  ReferencePin,
+  FavouritedPin,
+  CityFootprint,
+  EngineMessage,
+  DiscoveryMode,
+  MapFilterChip,
+  CityContext,
+  EngineItinerary,
+  SavedEvent,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -38,8 +56,12 @@ const defaultObAnswers: OnboardingAnswers = {
 };
 
 export interface AppState {
+  theme: 'dark' | 'light';
   currentScreen: Screen;
   obAnswers: OnboardingAnswers;
+  rawOBAnswers: RawOBAnswers | null;
+  personaProfile: PersonaProfile | null;
+  obPreResolved: ResolvedConflict[];
   persona: Persona | null;
   city: string;
   cityGeo: GeoData | null;
@@ -55,32 +77,66 @@ export interface AppState {
   route: RouteData | null;
   savedItineraries: SavedItinerary[];
   userRole: 'user' | 'admin';
+  userTier: UserTier;
+  packTripsRemaining: number;
+  autoReplenish: boolean;
   generationCount: number;
   profileLoaded: boolean;
+  tripPacks: TripPack[];
+  packPurchaseCount: number;
+  notifPrefs: NotifPrefs;
+  units: 'km' | 'miles';
+  journey: JourneyLeg[] | null;
+  journeyBudgetDays: number | null;
+  advisorMessages: AdvisorMessage[];
+  pendingActivePlace: Place | null;
+  referencePins: ReferencePin[];
+  favouritedPins: FavouritedPin[];
+  cityFootprints: CityFootprint[];
+  similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
+  savedEvents: SavedEvent[];
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: CityContext[]          // one per city in current multi-city trip
+  activeCityIndex: number              // index into cityContexts — which city is active
+  engineMessages: EngineMessage[]      // current session engine decision banners (transient)
+  engineItinerary: EngineItinerary | null  // current engine-built itinerary
+  itineraryHistory: EngineItinerary[]  // previous generations — max 10
+  activePinId: string | null           // which pin card is currently shown
+  mapFilter: MapFilterChip             // active filter chip in the map filter bar
+  reelSavedId: string | null;
 }
 
-// ── Session persistence (survives tab switches, clears on tab close) ──────────
+// ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
 
 function ssGet<T>(key: string): T | null {
   try {
-    const v = sessionStorage.getItem(key);
+    const v = localStorage.getItem(key);
     return v ? (JSON.parse(v) as T) : null;
   } catch { return null; }
 }
 
 function ssSave(key: string, value: unknown) {
-  try { sessionStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
 }
 
 function getInitialScreen(): Screen {
   try {
-    // Restore map session if user was mid-session
-    const sessionScreen = ssGet<Screen>('ur_ss_screen');
-    if (sessionScreen && ['map', 'route', 'destination'].includes(sessionScreen)) {
-      return sessionScreen;
+    // Primary signal: a flag set by signInWithGoogle() before the OAuth
+    // redirect. Session storage survives same-tab redirects, so this is
+    // 100% reliable regardless of URL param stripping or auth-event timing.
+    if (sessionStorage.getItem('ur_auth_pending') === '1') {
+      sessionStorage.removeItem('ur_auth_pending');
+      return 'login';
+    }
+    // Fallback: detect OAuth redirect via ?code= / #access_token= in URL.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code') || window.location.hash.includes('access_token=')) {
+      return 'login';
     }
     const stored = localStorage.getItem('ur_persona');
-    if (stored) return 'welcome';
+    if (stored) {
+      return 'destination';
+    }
   } catch {
     // ignore
   }
@@ -99,7 +155,20 @@ function getStoredPersona(): Persona | null {
 function getStoredItineraries(): SavedItinerary[] {
   try {
     const stored = localStorage.getItem('ur_saved_itineraries');
-    return stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    const items = stored ? (JSON.parse(stored) as SavedItinerary[]) : [];
+    // Backfill new fields for itineraries saved before this version
+    return items.map(rawItem => {
+      const item = rawItem as unknown as Record<string, unknown>;
+      return {
+        travelDate: null,
+        cityLat: null,
+        cityLon: null,
+        selectedPlaces: [],
+        lastUpdateCheck: null,
+        pendingSwapCards: [],
+        ...item,
+      } as unknown as SavedItinerary;
+    });
   } catch {
     return [];
   }
@@ -122,9 +191,57 @@ function getStoredUserRole(): 'user' | 'admin' {
   }
 }
 
+function getStoredTier(): UserTier {
+  try {
+    const v = localStorage.getItem('ur_user_tier');
+    if (v === 'pack' || v === 'pro') return v;
+    return 'free';
+  } catch { return 'free'; }
+}
+
+function getStoredTripPacks(): TripPack[] {
+  try {
+    const v = localStorage.getItem('ur_trip_packs');
+    return v ? (JSON.parse(v) as TripPack[]) : [];
+  } catch { return []; }
+}
+
+function getStoredPackPurchaseCount(): number {
+  try {
+    const v = localStorage.getItem('ur_pack_count');
+    if (!v) return 0;
+    const parsed = parseInt(v, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  } catch { return 0; }
+}
+
+function getStoredNotifPrefs(): NotifPrefs {
+  try {
+    const v = localStorage.getItem('ur_notif_prefs');
+    return v ? (JSON.parse(v) as NotifPrefs) : {
+      tripReminders: true,
+      destinationSuggestions: true,
+      liveEventAlerts: false,
+      appUpdates: true,
+    };
+  } catch {
+    return { tripReminders: true, destinationSuggestions: true, liveEventAlerts: false, appUpdates: true };
+  }
+}
+
+function getStoredUnits(): 'km' | 'miles' {
+  try {
+    return localStorage.getItem('ur_units') === 'miles' ? 'miles' : 'km';
+  } catch { return 'km'; }
+}
+
 export const initialState: AppState = {
+  theme: 'dark',
   currentScreen: getInitialScreen(),
   obAnswers: defaultObAnswers,
+  rawOBAnswers: null,
+  personaProfile: null,
+  obPreResolved: [],
   persona: getStoredPersona(),
   city:           ssGet<string>('ur_ss_city')    ?? '',
   cityGeo:        ssGet<GeoData>('ur_ss_geo')    ?? null,
@@ -140,8 +257,33 @@ export const initialState: AppState = {
   route: null,
   savedItineraries: getStoredItineraries(),
   userRole: getStoredUserRole(),
+  userTier: getStoredTier(),
+  packTripsRemaining: (ssGet<number>('ur_ss_pack_trips') ?? 0),
+  autoReplenish: (ssGet<boolean>('ur_ss_auto_replenish') ?? false),
   generationCount: getStoredGenerationCount(),
   profileLoaded: false,
+  tripPacks: getStoredTripPacks(),
+  packPurchaseCount: getStoredPackPurchaseCount(),
+  notifPrefs: getStoredNotifPrefs(),
+  units: getStoredUnits(),
+  journey: null,
+  journeyBudgetDays: null,
+  advisorMessages: [],
+  pendingActivePlace: null,
+  referencePins: [],
+  favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
+  cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
+  similarPinsState: null,
+  savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
+  // ── Phase 3: new architecture fields ─────────────────────────
+  cityContexts: [],
+  activeCityIndex: 0,
+  engineMessages: [],
+  engineItinerary: ssGet<EngineItinerary>('ur_ss_engine_itin') ?? null,
+  itineraryHistory: ssGet<EngineItinerary[]>('ur_ss_itin_history') ?? [],
+  activePinId: null,
+  mapFilter: 'all' as MapFilterChip,
+  reelSavedId: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -151,6 +293,7 @@ export type Action =
   | { type: 'SET_OB_ANSWER'; key: keyof OnboardingAnswers; value: OnboardingAnswers[keyof OnboardingAnswers] }
   | { type: 'SET_PERSONA'; persona: Persona }
   | { type: 'SET_CITY'; city: string }
+  | { type: 'UPDATE_CITY_LABEL'; city: string }
   | { type: 'SET_CITY_GEO'; geo: GeoData }
   | { type: 'SET_PLACES'; places: Place[] }
   | { type: 'MERGE_PLACES'; places: Place[] }
@@ -166,11 +309,55 @@ export type Action =
   | { type: 'SET_ROUTE'; route: RouteData }
   | { type: 'SAVE_ITINERARY'; saved: SavedItinerary }
   | { type: 'SET_SAVED_ITINERARIES'; items: SavedItinerary[] }
+  | { type: 'UPDATE_SAVED_ITINERARY'; id: string; patch: Partial<SavedItinerary> }
   | { type: 'SET_USER_ROLE'; role: 'user' | 'admin' }
+  | { type: 'SET_TIER'; tier: UserTier }
+  | { type: 'SET_PACK_TRIPS'; count: number }
+  | { type: 'CONSUME_PACK_TRIP' }
+  | { type: 'SET_AUTO_REPLENISH'; enabled: boolean }
   | { type: 'SET_GENERATION_COUNT'; count: number }
   | { type: 'INCREMENT_GENERATION_COUNT' }
   | { type: 'PROFILE_LOADED' }
-  | { type: 'RESET_MAP' };
+  | { type: 'RESET_MAP' }
+  | { type: 'SET_RAW_OB_ANSWER'; key: keyof RawOBAnswers; value: unknown }
+  | { type: 'SET_OB_PRE_RESOLVED'; value: ResolvedConflict[] }
+  | { type: 'SET_PERSONA_PROFILE'; profile: PersonaProfile }
+  | { type: 'SET_JOURNEY_ORIGIN'; place: OriginPlace }
+  | { type: 'UPDATE_JOURNEY_LEGS'; legs: JourneyLeg[] }
+  | { type: 'SET_JOURNEY_BUDGET'; days: number }
+  | { type: 'ADD_ADVISOR_MESSAGE'; message: AdvisorMessage }
+  | { type: 'CLEAR_ADVISOR_MESSAGES' }
+  | { type: 'RESET_JOURNEY' }
+  | { type: 'SET_PENDING_PLACE'; place: Place }
+  | { type: 'CLEAR_PENDING_PLACE' }
+  | { type: 'SET_USER_TIER'; tier: UserTier }
+  | { type: 'ADD_TRIP_PACK'; pack: TripPack }
+  | { type: 'USE_PACK_TRIP'; packId: string }
+  | { type: 'SET_NOTIF_PREFS'; prefs: Partial<NotifPrefs> }
+  | { type: 'SET_UNITS'; units: 'km' | 'miles' }
+  | { type: 'SET_REFERENCE_PINS'; pins: ReferencePin[] }
+  | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
+  | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
+  | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
+  | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+  | { type: 'SAVE_EVENT'; event: SavedEvent }
+  | { type: 'REMOVE_EVENT'; id: string }
+  // ── Phase 3: city context actions ────────────────────────────
+  | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
+  | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
+  | { type: 'SET_ACTIVE_CITY_INDEX'; index: number }
+  | { type: 'SET_DISCOVERY_MODE'; cityIndex: number; mode: DiscoveryMode }
+  // ── Phase 3: engine message actions ──────────────────────────
+  | { type: 'ADD_ENGINE_MESSAGE'; message: EngineMessage }
+  | { type: 'DISMISS_ENGINE_MESSAGE'; id: string }
+  | { type: 'CLEAR_ENGINE_MESSAGES' }
+  // ── Phase 3: engine itinerary actions ────────────────────────
+  | { type: 'SET_ENGINE_ITINERARY'; itinerary: EngineItinerary | null }
+  | { type: 'PUSH_ITINERARY_HISTORY'; itinerary: EngineItinerary }
+  // ── Phase 3: map UI actions ───────────────────────────────────
+  | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
+  | { type: 'SET_MAP_FILTER'; filter: MapFilterChip }
+  | { type: 'SET_REEL_SAVED_ID'; id: string | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -201,6 +388,10 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_sel', []);
       ssSave('ur_ss_geo', null);
       return { ...state, city: action.city, places: [], selectedPlaces: [], cityGeo: null };
+
+    case 'UPDATE_CITY_LABEL':
+      ssSave('ur_ss_city', action.city);
+      return { ...state, city: action.city };
 
     case 'SET_CITY_GEO':
       ssSave('ur_ss_geo', action.geo);
@@ -274,12 +465,40 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, savedItineraries: updated };
     }
 
+    case 'UPDATE_SAVED_ITINERARY': {
+      const updated = state.savedItineraries.map(s =>
+        s.id === action.id ? { ...s, ...action.patch } : s
+      );
+      try {
+        localStorage.setItem('ur_saved_itineraries', JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return { ...state, savedItineraries: updated };
+    }
+
     case 'SET_SAVED_ITINERARIES':
       return { ...state, savedItineraries: action.items };
 
     case 'SET_USER_ROLE':
       try { localStorage.setItem('ur_user_role', action.role); } catch { /* ignore */ }
       return { ...state, userRole: action.role };
+
+    case 'SET_TIER':
+      ssSave('ur_ss_tier', action.tier);
+      return { ...state, userTier: action.tier };
+
+    case 'SET_PACK_TRIPS':
+      ssSave('ur_ss_pack_trips', action.count);
+      return { ...state, packTripsRemaining: action.count };
+
+    case 'CONSUME_PACK_TRIP': {
+      const updated = Math.max(0, state.packTripsRemaining - 1);
+      ssSave('ur_ss_pack_trips', updated);
+      return { ...state, packTripsRemaining: updated };
+    }
+
+    case 'SET_AUTO_REPLENISH':
+      ssSave('ur_ss_auto_replenish', action.enabled);
+      return { ...state, autoReplenish: action.enabled };
 
     case 'SET_GENERATION_COUNT':
       try { localStorage.setItem('ur_gen_count', String(action.count)); } catch { /* ignore */ }
@@ -311,10 +530,210 @@ export function reducer(state: AppState, action: Action): AppState {
         travelEndDate: null, route: null, weather: null,
       };
 
+    case 'SET_RAW_OB_ANSWER':
+      return {
+        ...state,
+        rawOBAnswers: {
+          ...(state.rawOBAnswers ?? {
+            group: null, mood: [], pace: [], day_open: null,
+            dietary: [], budget: null, evening: null,
+          }),
+          [action.key]: action.value,
+        } as RawOBAnswers,
+      };
+
+    case 'SET_OB_PRE_RESOLVED':
+      return { ...state, obPreResolved: action.value };
+
+    case 'SET_PERSONA_PROFILE':
+      // Persist immediately so the app knows OB is done even if the user
+      // closes before hitting "Start Planning" on the PersonaScreen.
+      try {
+        localStorage.setItem('ur_persona', JSON.stringify({ archetype: action.profile.archetype }));
+      } catch { /* ignore */ }
+      return { ...state, personaProfile: action.profile };
+
+    case 'SET_JOURNEY_ORIGIN': {
+      const originLeg: JourneyLeg = { type: 'origin', place: action.place };
+      const existingNonOrigin = (state.journey ?? []).filter(l => l.type !== 'origin');
+      return { ...state, journey: [originLeg, ...existingNonOrigin] };
+    }
+
+    case 'UPDATE_JOURNEY_LEGS':
+      return { ...state, journey: action.legs };
+
+    case 'SET_JOURNEY_BUDGET':
+      return { ...state, journeyBudgetDays: action.days };
+
+    case 'ADD_ADVISOR_MESSAGE':
+      return { ...state, advisorMessages: [...state.advisorMessages, action.message] };
+
+    case 'CLEAR_ADVISOR_MESSAGES':
+      return { ...state, advisorMessages: [] };
+
+    case 'RESET_JOURNEY':
+      return { ...state, journey: null, journeyBudgetDays: null, advisorMessages: [] };
+
+    case 'SET_PENDING_PLACE':
+      return { ...state, pendingActivePlace: action.place };
+
+    case 'CLEAR_PENDING_PLACE':
+      return { ...state, pendingActivePlace: null };
+
+    case 'SET_USER_TIER':
+      try { localStorage.setItem('ur_user_tier', action.tier); } catch { /* ignore */ }
+      return { ...state, userTier: action.tier };
+
+    case 'ADD_TRIP_PACK': {
+      const packs = [...state.tripPacks, action.pack];
+      const count = state.packPurchaseCount + 1;
+      try {
+        localStorage.setItem('ur_trip_packs', JSON.stringify(packs));
+        localStorage.setItem('ur_pack_count', String(count));
+      } catch { /* ignore */ }
+      return { ...state, tripPacks: packs, packPurchaseCount: count };
+    }
+
+    case 'USE_PACK_TRIP': {
+      const packs = state.tripPacks.map(p =>
+        p.id === action.packId ? { ...p, usedTrips: p.usedTrips + 1 } : p
+      );
+      try { localStorage.setItem('ur_trip_packs', JSON.stringify(packs)); } catch { /* ignore */ }
+      return { ...state, tripPacks: packs };
+    }
+
+    case 'SET_NOTIF_PREFS': {
+      const prefs = { ...state.notifPrefs, ...action.prefs };
+      try { localStorage.setItem('ur_notif_prefs', JSON.stringify(prefs)); } catch { /* ignore */ }
+      return { ...state, notifPrefs: prefs };
+    }
+
+    case 'SET_UNITS':
+      try { localStorage.setItem('ur_units', action.units); } catch { /* ignore */ }
+      return { ...state, units: action.units };
+
+    case 'SET_REFERENCE_PINS':
+      return { ...state, referencePins: action.pins };
+
+    case 'TOGGLE_FAVOURITE': {
+      const exists = state.favouritedPins.some(f => f.placeId === action.pin.placeId);
+      const updated = exists
+        ? state.favouritedPins.filter(f => f.placeId !== action.pin.placeId)
+        : [...state.favouritedPins, action.pin];
+      ssSave('ur_ss_favs', updated);
+      return { ...state, favouritedPins: updated };
+    }
+
+    case 'ADD_CITY_FOOTPRINT': {
+      const exists = state.cityFootprints.some(f => f.city === action.footprint.city);
+      const updated = exists
+        ? state.cityFootprints.map(f =>
+            f.city === action.footprint.city ? action.footprint : f
+          )
+        : [...state.cityFootprints, action.footprint];
+      ssSave('ur_ss_footprints', updated);
+      return { ...state, cityFootprints: updated };
+    }
+
+    case 'SET_SIMILAR_PINS':
+      return { ...state, similarPinsState: action.state };
+
+    case 'SET_THEME': {
+      localStorage.setItem('ur_theme', action.theme);
+      document.documentElement.dataset.theme = action.theme;
+      return { ...state, theme: action.theme };
+    }
+
+    // ── Phase 3: city context cases ────────────────────────────
+
+    case 'SET_CITY_CONTEXTS':
+      return { ...state, cityContexts: action.contexts }
+
+    case 'ADD_CITY_CONTEXT': {
+      const exists = state.cityContexts.some(c => c.city === action.context.city)
+      if (exists) return state
+      return { ...state, cityContexts: [...state.cityContexts, action.context] }
+    }
+
+    case 'SET_ACTIVE_CITY_INDEX':
+      return { ...state, activeCityIndex: action.index }
+
+    case 'SET_DISCOVERY_MODE': {
+      if (action.cityIndex < 0 || action.cityIndex >= state.cityContexts.length) return state
+      const contexts = state.cityContexts.map((c, i) =>
+        i === action.cityIndex ? { ...c, discoveryMode: action.mode } : c
+      )
+      return { ...state, cityContexts: contexts }
+    }
+
+    // ── Phase 3: engine message cases ──────────────────────────
+
+    case 'ADD_ENGINE_MESSAGE':
+      return { ...state, engineMessages: [...state.engineMessages, action.message] }
+
+    case 'DISMISS_ENGINE_MESSAGE':
+      return {
+        ...state,
+        engineMessages: state.engineMessages.filter(m => m.id !== action.id),
+      }
+
+    case 'CLEAR_ENGINE_MESSAGES':
+      return { ...state, engineMessages: [] }
+
+    // ── Phase 3: engine itinerary cases ────────────────────────
+
+    case 'SET_ENGINE_ITINERARY':
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      return { ...state, engineItinerary: action.itinerary }
+
+    case 'PUSH_ITINERARY_HISTORY': {
+      const history = [action.itinerary, ...state.itineraryHistory].slice(0, 10)
+      ssSave('ur_ss_engine_itin', action.itinerary)
+      ssSave('ur_ss_itin_history', history)
+      return { ...state, engineItinerary: action.itinerary, itineraryHistory: history }
+    }
+
+    // ── Phase 3: map UI cases ───────────────────────────────────
+
+    case 'SET_ACTIVE_PIN_ID':
+      return { ...state, activePinId: action.id }
+
+    case 'SET_MAP_FILTER':
+      return { ...state, mapFilter: action.filter }
+
+    case 'SAVE_EVENT': {
+      const exists = state.savedEvents.some(e => e.id === action.event.id);
+      if (exists) return state;
+      const updated = [...state.savedEvents, action.event];
+      ssSave('ur_ss_saved_events', updated);
+      return { ...state, savedEvents: updated };
+    }
+
+    case 'REMOVE_EVENT': {
+      const updated = state.savedEvents.filter(e => e.id !== action.id);
+      ssSave('ur_ss_saved_events', updated);
+      return { ...state, savedEvents: updated };
+    }
+
+    case 'SET_REEL_SAVED_ID':
+      return { ...state, reelSavedId: action.id };
+
     default:
       return state;
   }
 }
+
+// ── Module-level store reference (for getState() outside React) ──────────────
+
+interface StoreSnapshot {
+  theme: AppState['theme'];
+  dispatch: React.Dispatch<Action>;
+}
+
+let _currentState: AppState = initialState;
+let _dispatch: React.Dispatch<Action> = (action: Action) => {
+  _currentState = reducer(_currentState, action);
+};
 
 // ── Context ───────────────────────────────────────────────────
 
@@ -327,6 +746,11 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // Keep module-level references in sync with React state
+  _currentState = state;
+  _dispatch = dispatch;
+
   return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
 
@@ -334,4 +758,30 @@ export function useAppStore() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useAppStore must be used within AppProvider');
   return ctx;
+}
+
+useAppStore.getState = (): StoreSnapshot & Pick<AppState, 'theme'> => ({
+  theme: _currentState.theme,
+  dispatch: _dispatch,
+});
+
+/**
+ * Pure function — determines whether a generation attempt is allowed
+ * and whether it should be degraded (no Our Picks / Live Events).
+ *
+ * @param tier       Current user tier
+ * @param genCount   Number of itineraries generated so far (free tier)
+ * @param packTrips  Current pack trip balance (pack tier)
+ */
+export function getGenerationAccess(
+  tier: UserTier,
+  genCount: number,
+  packTrips: number,
+): { allowed: boolean; degraded: boolean } {
+  if (tier === 'pro') return { allowed: true, degraded: false };
+  if (tier === 'pack') return { allowed: packTrips > 0, degraded: false };
+  // Free tier
+  if (genCount < 2) return { allowed: true, degraded: false };
+  if (genCount === 2) return { allowed: true, degraded: true };
+  return { allowed: false, degraded: false };
 }

@@ -1,0 +1,127 @@
+<h2>A + C hybrid — slide mockup</h2>
+<p class="subtitle">City photography as atmosphere + real app UI floating in frame. Two layout variations to pick from.</p>
+
+<div class="cards">
+
+  <!-- Layout 1: Photo bg, phone centered, text below -->
+  <div class="card" data-choice="centered-phone" onclick="toggleSelect(this)">
+    <div class="card-image" style="min-height:380px;background:#0a0e14;border-radius:12px 12px 0 0;overflow:hidden;position:relative;display:flex;flex-direction:column;">
+      <!-- Full bleed photo -->
+      <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=500&q=70') center/cover no-repeat;opacity:0.4;"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,.3) 0%, rgba(0,0,0,.2) 40%, rgba(10,14,20,.95) 100%);"></div>
+
+      <!-- Top label -->
+      <div style="position:relative;z-index:2;padding:16px 16px 0;display:flex;justify-content:center;">
+        <div style="background:rgba(168,85,247,.2);border:1px solid rgba(168,85,247,.35);border-radius:20px;padding:3px 12px;">
+          <span style="color:#c084fc;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Itinerary</span>
+        </div>
+      </div>
+
+      <!-- Centered phone mockup -->
+      <div style="position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:12px;">
+        <div style="width:130px;background:#1e293b;border-radius:18px;border:1.5px solid rgba(255,255,255,.12);padding:7px;box-shadow:0 24px 60px rgba(0,0,0,.7),0 0 40px rgba(168,85,247,.15);">
+          <div style="background:#0f172a;border-radius:12px;overflow:hidden;">
+            <!-- Itinerary list simulation -->
+            <div style="background:linear-gradient(135deg,#1a0a2e,#0f172a);padding:10px 8px;">
+              <div style="color:rgba(255,255,255,.5);font-size:7px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Your day in Paris</div>
+              <!-- Stop 1 -->
+              <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;">
+                <div style="width:20px;height:20px;background:rgba(168,85,247,.3);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                  <div style="width:6px;height:6px;background:#c084fc;border-radius:50%;"></div>
+                </div>
+                <div style="flex:1;">
+                  <div style="height:5px;background:rgba(255,255,255,.35);border-radius:2px;width:75%;margin-bottom:3px;"></div>
+                  <div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px;width:55%;"></div>
+                </div>
+              </div>
+              <!-- Connector -->
+              <div style="width:1px;height:8px;background:linear-gradient(to bottom,rgba(168,85,247,.4),rgba(168,85,247,.1));margin-left:10px;margin-bottom:6px;"></div>
+              <!-- Stop 2 -->
+              <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:8px;">
+                <div style="width:20px;height:20px;background:rgba(99,102,241,.3);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                  <div style="width:6px;height:6px;background:#818cf8;border-radius:50%;"></div>
+                </div>
+                <div style="flex:1;">
+                  <div style="height:5px;background:rgba(255,255,255,.35);border-radius:2px;width:65%;margin-bottom:3px;"></div>
+                  <div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px;width:45%;"></div>
+                </div>
+              </div>
+              <!-- Connector -->
+              <div style="width:1px;height:8px;background:linear-gradient(to bottom,rgba(99,102,241,.4),rgba(99,102,241,.1));margin-left:10px;margin-bottom:6px;"></div>
+              <!-- Stop 3 (dimmed / upcoming) -->
+              <div style="display:flex;align-items:flex-start;gap:6px;opacity:.5;">
+                <div style="width:20px;height:20px;background:rgba(255,255,255,.06);border-radius:6px;flex-shrink:0;border:1px dashed rgba(255,255,255,.15);"></div>
+                <div style="flex:1;">
+                  <div style="height:5px;background:rgba(255,255,255,.2);border-radius:2px;width:50%;margin-bottom:3px;"></div>
+                  <div style="height:4px;background:rgba(255,255,255,.1);border-radius:2px;width:35%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Callout -->
+        <div style="position:absolute;right:18px;top:50%;transform:translateY(-20px);background:rgba(168,85,247,.9);border-radius:10px;padding:5px 9px;max-width:90px;box-shadow:0 4px 20px rgba(168,85,247,.4);">
+          <div style="color:white;font-size:9px;font-weight:700;line-height:1.4;">Timed stops built for your style</div>
+        </div>
+      </div>
+
+      <!-- Text bottom -->
+      <div style="position:relative;z-index:2;padding:0 16px 16px;text-align:center;">
+        <div style="color:white;font-size:17px;font-weight:700;margin-bottom:4px;">AI builds your perfect day</div>
+        <div style="color:rgba(255,255,255,.45);font-size:11px;line-height:1.5;">Your persona + your picks = a timed itinerary crafted just for you</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Layout 1 — Phone centred</h3>
+      <p>Phone sits in the middle of the photo. Text below. Callout annotation points at a feature on screen. Clean, editorial.</p>
+    </div>
+  </div>
+
+  <!-- Layout 2: Photo bg, phone tilted bottom-right, large text top-left -->
+  <div class="card" data-choice="tilted-editorial" onclick="toggleSelect(this)">
+    <div class="card-image" style="min-height:380px;background:#0a0e14;border-radius:12px 12px 0 0;overflow:hidden;position:relative;">
+      <!-- Photo -->
+      <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=500&q=70') center/cover no-repeat;opacity:0.35;"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(135deg, rgba(0,0,0,.15) 0%, rgba(10,14,20,.7) 60%, rgba(10,14,20,.98) 100%);"></div>
+
+      <!-- Large text top-left -->
+      <div style="position:relative;z-index:2;padding:20px 16px 0;">
+        <div style="background:rgba(20,184,166,.18);border:1px solid rgba(20,184,166,.3);border-radius:20px;padding:3px 12px;display:inline-block;margin-bottom:10px;">
+          <span style="color:#2dd4bf;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">Explore</span>
+        </div>
+        <div style="color:white;font-size:22px;font-weight:800;line-height:1.2;margin-bottom:6px;">Pin what<br>calls to you</div>
+        <div style="color:rgba(255,255,255,.45);font-size:11px;line-height:1.5;max-width:160px;">Browse an interactive map, discover hidden gems, build your shortlist.</div>
+      </div>
+
+      <!-- Phone bottom-right, slightly tilted -->
+      <div style="position:absolute;bottom:-10px;right:-8px;z-index:2;transform:rotate(6deg);">
+        <div style="width:120px;background:#1e293b;border-radius:18px;border:1.5px solid rgba(255,255,255,.12);padding:6px;box-shadow:0 20px 50px rgba(0,0,0,.8),0 0 30px rgba(20,184,166,.12);">
+          <div style="background:#0f172a;border-radius:12px;overflow:hidden;aspect-ratio:9/16;">
+            <!-- Map simulation -->
+            <div style="height:100%;background:linear-gradient(135deg,#0d2137 0%,#0f2d4a 40%,#0d2137 100%);position:relative;overflow:hidden;">
+              <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:16px 16px;"></div>
+              <!-- Roads -->
+              <div style="position:absolute;top:45%;left:0;right:0;height:2px;background:rgba(255,255,255,.06);"></div>
+              <div style="position:absolute;top:0;bottom:0;left:40%;width:2px;background:rgba(255,255,255,.06);"></div>
+              <!-- Pins -->
+              <div style="position:absolute;top:30%;left:32%;width:11px;height:11px;background:#2dd4bf;border-radius:50%;border:2px solid white;box-shadow:0 0 10px rgba(45,212,191,.7);"></div>
+              <div style="position:absolute;top:48%;left:55%;width:10px;height:10px;background:#3b82f6;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(59,130,246,.6);"></div>
+              <div style="position:absolute;top:60%;left:25%;width:10px;height:10px;background:#a855f7;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(168,85,247,.5);"></div>
+              <div style="position:absolute;top:38%;left:60%;width:9px;height:9px;background:rgba(255,255,255,.3);border-radius:50%;border:1.5px dashed rgba(255,255,255,.4);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Callout bottom-left -->
+      <div style="position:absolute;bottom:24px;left:14px;z-index:3;background:rgba(20,184,166,.88);border-radius:10px;padding:5px 9px;">
+        <div style="color:white;font-size:9px;font-weight:700;line-height:1.4;">Colour-coded pins by category</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Layout 2 — Tilted editorial</h3>
+      <p>Large headline text takes the upper-left. Phone is oversized and slightly tilted into the corner. More energy and tension, like a magazine spread. Callout is in the opposite corner from the phone.</p>
+    </div>
+  </div>
+
+</div>

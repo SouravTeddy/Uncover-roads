@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map mode toggle v2 — correct design system</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:          #1a1714;
+    --bg2:         #131110;
+    --surface:     #242018;
+    --surface2:    #2e2a22;
+    --primary:     #e07854;
+    --primary-dk:  #c4613d;
+    --primary-bg:  rgba(224,120,84,.14);
+    --sage:        #6b9470;
+    --sage-bg:     rgba(107,148,112,.15);
+    --sage-bdr:    rgba(107,148,112,.30);
+    --sky:         #4f8fab;
+    --sky-bg:      rgba(79,143,171,.15);
+    --sky-bdr:     rgba(79,143,171,.30);
+    --amber:       #c49840;
+    --amber-bg:    rgba(196,152,64,.15);
+    --amber-bdr:   rgba(196,152,64,.30);
+    --text-1:      #f5f0ea;
+    --text-2:      #c0b0a4;
+    --text-3:      #857268;
+    --text-4:      #5a4e47;
+    --border:      rgba(255,255,255,.08);
+    --border-m:    rgba(255,255,255,.14);
+    --divider:     rgba(255,255,255,.06);
+    --font-sans:   'DM Sans', sans-serif;
+    --font-head:   'Playfair Display', serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: var(--font-sans);
+    padding: 24px 16px 80px;
+  }
+
+  h2 { font-family: var(--font-head); font-size: 22px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-3); margin-bottom: 28px; line-height: 1.5; }
+  .section { margin-bottom: 36px; }
+  .section-title {
+    font-family: var(--font-sans); font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.2px; color: var(--primary);
+    margin-bottom: 14px;
+  }
+
+  /* ── Two phone frames ── */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .phone {
+    background: var(--bg2);
+    border-radius: 22px;
+    border: 1px solid var(--border-m);
+    overflow: hidden;
+    position: relative;
+  }
+  .phone-label {
+    font-family: var(--font-sans);
+    font-size: 9px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
+    text-align: center; padding: 10px 0 0;
+    color: var(--text-3);
+  }
+  .phone-label.multi { color: var(--primary); }
+
+  .map-body { height: 440px; position: relative; overflow: hidden; }
+
+  /* Warm map background — matches app's warm dark palette */
+  .map-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(170deg, #1f1b16 0%, #171310 100%);
+  }
+  .map-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(245,240,234,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,240,234,.018) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* ── Header components ── */
+  .header {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    padding: 10px 10px 8px;
+    background: rgba(26,23,20,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--divider);
+  }
+
+  /* Single: search bar */
+  .search-bar {
+    background: var(--surface);
+    border: 1px solid var(--border-m);
+    border-radius: 999px;
+    padding: 7px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .search-city { font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--text-1); }
+  .cal-icon { font-size: 11px; color: var(--text-4); margin-left: auto; }
+
+  /* Multi: city tab strip */
+  .city-tabs {
+    display: flex; gap: 6px; overflow-x: auto;
+    scrollbar-width: none; padding-bottom: 0;
+  }
+  .city-tab {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 999px;
+    font-family: var(--font-sans); font-size: 10px; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0; cursor: pointer;
+  }
+  .city-tab.active {
+    background: var(--primary-bg);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+  }
+  .city-tab.inactive {
+    background: var(--surface);
+    border: 1px solid var(--border-m);
+    color: var(--text-2);
+  }
+  .city-tab .pin-count {
+    font-size: 9px; color: var(--text-3); font-weight: 400;
+  }
+
+  /* Journey breadcrumb (below tabs) */
+  .breadcrumb {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 0 0;
+  }
+  .bc-city { font-size: 9px; font-weight: 700; color: var(--text-3); }
+  .bc-arrow { font-size: 9px; color: var(--text-4); }
+  .bc-mode { font-size: 9px; color: var(--sky); margin-left: auto; }
+
+  /* ── Pins ── */
+  .pin-gold {
+    position: absolute;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #c49840;
+    border: 2px solid rgba(196,152,64,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: #fff; font-weight: 700;
+  }
+  .pin-blue {
+    position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #4f8fab;
+    border: 2px solid rgba(79,143,171,.4);
+  }
+  .pin-blue-ring {
+    position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #4f8fab;
+    border: 2px solid #7ab3c8;
+    box-shadow: 0 0 0 3px rgba(79,143,171,.22);
+  }
+  .pin-ghost {
+    position: absolute;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #857268;
+    border: 1px solid rgba(133,114,104,.4);
+    opacity: 0.45;
+  }
+
+  /* City cluster label */
+  .cluster-label {
+    position: absolute;
+    font-family: var(--font-sans);
+    font-size: 8px; font-weight: 700;
+    color: var(--text-2);
+    background: rgba(26,23,20,.85);
+    padding: 2px 7px; border-radius: 4px;
+    border: 1px solid var(--border-m);
+  }
+
+  /* Arc SVG */
+  .arc-svg { position: absolute; inset: 0; pointer-events: none; }
+  @keyframes drawArc { from { stroke-dashoffset: 300; } to { stroke-dashoffset: 0; } }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    position: absolute; left: 8px; right: 8px;
+    display: flex; gap: 5px; overflow: hidden; z-index: 8;
+  }
+  .filter-chip {
+    padding: 4px 10px; border-radius: 999px;
+    font-family: var(--font-sans); font-size: 9px; font-weight: 700;
+    background: rgba(26,23,20,.85); border: 1px solid var(--border-m);
+    color: var(--text-3); white-space: nowrap; flex-shrink: 0;
+    backdrop-filter: blur(8px);
+  }
+  .filter-chip.active {
+    background: var(--primary-bg);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* ── Bottom nav ── */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(26,23,20,.94); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--divider);
+    display: flex; justify-content: space-around;
+    padding: 8px 0 14px;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .nav-label { font-family: var(--font-sans); font-size: 8px; font-weight: 600; }
+  .nav-icon { font-size: 16px; }
+  .nav-active { color: var(--primary); }
+  .nav-inactive { color: var(--text-4); }
+
+  /* ── Annotation blocks ── */
+  .annotation {
+    background: var(--surface);
+    border: 1px solid var(--border-m);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+  }
+  .annotation h4 {
+    font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+    color: var(--text-1); margin-bottom: 5px;
+  }
+  .annotation p { font-size: 11px; color: var(--text-2); line-height: 1.6; }
+  .annotation .existing {
+    display: inline-block; margin-top: 6px;
+    font-size: 10px; font-weight: 700; color: var(--sage);
+    background: var(--sage-bg); padding: 2px 8px; border-radius: 4px;
+  }
+  .annotation .new-work {
+    display: inline-block; margin-top: 6px;
+    font-size: 10px; font-weight: 700; color: var(--amber);
+    background: var(--amber-bg); padding: 2px 8px; border-radius: 4px;
+  }
+
+  /* ── Itinerary info bar ── */
+  .info-bar {
+    background: var(--surface);
+    border: 1px solid var(--border-m);
+    border-radius: 14px; padding: 14px;
+  }
+  .info-bar-inner {
+    background: var(--sky-bg); border: 1px solid var(--sky-bdr);
+    border-radius: 10px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .day-card {
+    background: var(--surface2); border-radius: 8px;
+    padding: 9px 11px; margin-bottom: 5px;
+    font-size: 10px; color: var(--text-1); font-weight: 600;
+  }
+  .day-card.travel {
+    background: var(--sky-bg); border: 1px solid var(--sky-bdr);
+    color: var(--sky);
+  }
+</style>
+</head>
+<body>
+
+<h2>Map — Single vs Multi city</h2>
+<p class="subtitle">Correct design system. Warm darks, orange primary, sage/sky/amber accents.</p>
+
+<div class="section">
+  <div class="section-title">Before & after</div>
+  <div class="split">
+
+    <!-- SINGLE CITY -->
+    <div class="phone">
+      <div class="phone-label">Single city</div>
+      <div class="map-body">
+        <div class="map-bg"></div>
+        <div class="map-grid"></div>
+
+        <!-- Pins: Tokyo -->
+        <div class="pin-gold" style="top:150px;left:48px;">★</div>
+        <div class="pin-gold" style="top:175px;left:85px;">★</div>
+        <div class="pin-blue-ring" style="top:158px;left:68px;"></div>
+        <div class="pin-blue" style="top:140px;left:92px;"></div>
+        <div class="pin-blue" style="top:195px;left:58px;"></div>
+        <div class="pin-ghost" style="top:208px;left:100px;"></div>
+        <div class="pin-ghost" style="top:218px;left:72px;"></div>
+
+        <!-- Header -->
+        <div class="header">
+          <div class="search-bar">
+            <span style="font-size:12px;color:var(--text-3);">🔍</span>
+            <span class="search-city">Tokyo</span>
+            <span style="font-size:10px;color:var(--text-3);">Jun 14–18</span>
+            <span class="cal-icon">📅</span>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar" style="top:66px;">
+          <div class="filter-chip active">All</div>
+          <div class="filter-chip">Famous</div>
+          <div class="filter-chip">For you</div>
+          <div class="filter-chip">Food</div>
+        </div>
+
+        <!-- Bottom nav -->
+        <div class="bottom-nav">
+          <div class="nav-item nav-active"><span class="nav-icon">🗺️</span><span class="nav-label">Explore</span></div>
+          <div class="nav-item nav-inactive"><span class="nav-icon">📋</span><span class="nav-label">Itinerary</span></div>
+          <div class="nav-item nav-inactive"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MULTI CITY -->
+    <div class="phone">
+      <div class="phone-label multi">Multi city</div>
+      <div class="map-body">
+        <div class="map-bg"></div>
+        <div class="map-grid"></div>
+
+        <!-- Arc between clusters -->
+        <svg class="arc-svg" viewBox="0 0 160 380" preserveAspectRatio="none">
+          <path
+            d="M 72 175 Q 145 100 118 270"
+            fill="none"
+            stroke="rgba(196,152,64,.4)"
+            stroke-width="1.2"
+            stroke-dasharray="4 4"
+            style="animation: drawArc 1.5s ease forwards; stroke-dashoffset: 0;"
+          />
+          <text x="122" y="185" font-size="11">✈️</text>
+        </svg>
+
+        <!-- Tokyo cluster -->
+        <div class="pin-gold" style="top:148px;left:45px;">★</div>
+        <div class="pin-blue-ring" style="top:162px;left:64px;"></div>
+        <div class="pin-blue" style="top:145px;left:80px;"></div>
+        <div class="pin-blue" style="top:178px;left:52px;"></div>
+        <div class="cluster-label" style="top:130px;left:42px;">🗼 Tokyo</div>
+
+        <!-- Sydney cluster -->
+        <div class="pin-blue-ring" style="top:258px;left:100px;"></div>
+        <div class="pin-blue" style="top:275px;left:118px;"></div>
+        <div class="pin-gold" style="top:265px;left:84px;">★</div>
+        <div class="cluster-label" style="top:244px;left:82px;">🦘 Sydney</div>
+
+        <!-- Header: city tabs -->
+        <div class="header">
+          <div class="city-tabs">
+            <div class="city-tab active">🗼 Tokyo <span class="pin-count">· 4</span></div>
+            <div class="city-tab inactive">🦘 Sydney <span class="pin-count">· 2</span></div>
+            <div class="city-tab inactive" style="color:var(--text-4);border-style:dashed;">+ city</div>
+          </div>
+          <div class="breadcrumb">
+            <span class="bc-city">Tokyo</span>
+            <span class="bc-arrow">→</span>
+            <span class="bc-city">Sydney</span>
+            <span class="bc-mode">✈️ flight</span>
+          </div>
+        </div>
+
+        <!-- Filter bar (shifted down for taller header) -->
+        <div class="filter-bar" style="top:84px;">
+          <div class="filter-chip active">Tokyo</div>
+          <div class="filter-chip">Famous</div>
+          <div class="filter-chip">For you</div>
+        </div>
+
+        <!-- Bottom nav — same, no accent change -->
+        <div class="bottom-nav">
+          <div class="nav-item nav-active"><span class="nav-icon">🗺️</span><span class="nav-label">Explore</span></div>
+          <div class="nav-item nav-inactive"><span class="nav-icon">📋</span><span class="nav-label">Itinerary</span></div>
+          <div class="nav-item nav-inactive"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">City tabs behaviour</div>
+  <div class="annotation">
+    <h4>Tapping a city tab → map flies to that city's cluster</h4>
+    <p>Active tab highlights in orange. Filter bar filters pins to that city. Tapping "+ city" opens the city search. The tab strip replaces the single search bar — it IS the navigation header in multi-city mode.</p>
+    <span class="existing">✓ FootprintChips already built — tabs are a reskin of this</span>
+  </div>
+  <div class="annotation">
+    <h4>Breadcrumb row below tabs: Tokyo → Sydney · ✈️ flight</h4>
+    <p>One line. Shows trip sequence and detected transit mode. Non-interactive — just context. Disappears if only 1 city.</p>
+    <span class="existing">✓ JourneyBreadcrumb already built</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">CityHopOverlay copy — short & celebratory</div>
+  <div style="background:var(--surface);border-radius:14px;padding:16px;border:1px solid var(--border-m);">
+    <!-- Overlay mockup -->
+    <div style="background:rgba(26,23,20,.95);border-radius:16px;padding:20px;text-align:center;border:1px solid var(--border-m);">
+      <!-- Arc -->
+      <div style="font-size:32px;margin-bottom:12px;">✈️</div>
+      <p style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text-1);line-height:1.4;margin-bottom:6px;">
+        Going to Sydney after Tokyo!
+      </p>
+      <p style="font-size:11px;color:var(--text-3);margin-bottom:16px;">We'll plan the flight, you keep adding pins.</p>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:var(--primary-bg);border:1px solid var(--primary);border-radius:999px;">
+        <span style="font-size:10px;font-weight:700;color:var(--primary);">Got it</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Itinerary screen — date extension info bar</div>
+  <div class="info-bar">
+    <div class="info-bar-inner">
+      <span style="font-size:16px;flex-shrink:0;">📅</span>
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--text-1);">Travel dates: 2 May – 7 May</span>
+        <span style="font-size:12px;font-weight:700;color:var(--sky);"> +2 days</span>
+        <div style="font-size:10px;color:var(--text-3);margin-top:2px;">Includes Tokyo → Sydney flight day. Remove places to shorten.</div>
+      </div>
+    </div>
+    <!-- Day view -->
+    <div class="day-card">Day 1 · Tokyo — Senso-ji, Shibuya, Ueno</div>
+    <div class="day-card">Day 2 · Tokyo — Shinjuku, Harajuku</div>
+    <div class="day-card travel">Day 3 · ✈️ Tokyo → Sydney (travel day)</div>
+    <div class="day-card">Day 4 · Sydney — Opera House, Bondi</div>
+    <div class="day-card">Day 5 · Sydney — Manly, The Rocks</div>
+  </div>
+</div>
+
+</body>
+</html>

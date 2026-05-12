@@ -17,10 +17,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 interface Props {
   places: Place[];
   selectedPlace: Place | null;
+  highlightIds: Set<string>;
   onPlaceClick: (place: Place) => void;
 }
 
-export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) {
+export function MapLibreMarkers({ places, selectedPlace, highlightIds, onPlaceClick }: Props) {
   return (
     <>
       {places.map((place) => {
@@ -31,6 +32,7 @@ export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) 
         const color = CATEGORY_COLORS[place.category] ?? '#6b7280';
         const icon  = CATEGORY_ICONS[place.category] ?? 'location_on';
         const size  = isSelected ? 34 : 28;
+        const shouldGlow = highlightIds.has(place.id);
 
         return (
           <Marker
@@ -44,15 +46,18 @@ export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) 
             }}
           >
             <div
+              className={shouldGlow ? 'marker-glow-burst' : undefined}
               style={{
                 width: size,
                 height: size,
                 borderRadius: '50%',
                 backgroundColor: color,
                 border: isSelected ? '2.5px solid #fff' : '2px solid rgba(255,255,255,0.85)',
-                boxShadow: isSelected
-                  ? `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,.45)`
-                  : '0 2px 6px rgba(0,0,0,0.35)',
+                boxShadow: shouldGlow
+                  ? undefined
+                  : isSelected
+                    ? `0 0 0 2px ${color}, 0 3px 8px rgba(0,0,0,.45)`
+                    : '0 2px 6px rgba(0,0,0,0.35)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 display: 'flex',
@@ -62,11 +67,7 @@ export function MapLibreMarkers({ places, selectedPlace, onPlaceClick }: Props) 
             >
               <span
                 className="ms fill"
-                style={{
-                  fontSize: isSelected ? 17 : 14,
-                  color: '#fff',
-                  lineHeight: 1,
-                }}
+                style={{ fontSize: isSelected ? 17 : 14, color: '#fff', lineHeight: 1 }}
               >
                 {icon}
               </span>

@@ -11,6 +11,8 @@ import type {
   AutocompleteResult,
   PlaceDetails,
   NearbyResult,
+  EngineWeights,
+  EngineItinerary,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -208,10 +210,43 @@ export const api = {
     return get<Place[]>(`/map-data?city=${encodeURIComponent(city)}`);
   },
 
-  recommended: (city: string, persona: Persona) =>
-    get<Place[]>(
-      `/recommended-places?city=${encodeURIComponent(city)}&persona=${encodeURIComponent(JSON.stringify(persona))}`
-    ),
+  recommendedPlaces: (params: {
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    venueFilters: string[];
+    itineraryBias: string[];
+    viewedCategories: string[];
+  }) =>
+    post<{ picks: Place[] }>('/recommended-places', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc: params.personaDesc,
+      venue_filters: params.venueFilters,
+      itinerary_bias: params.itineraryBias,
+      viewed_categories: params.viewedCategories,
+    }),
+
+  personaInsight: (params: {
+    placeTitle: string;
+    placeCategory: string;
+    city: string;
+    personaArchetype: string;
+    personaDesc: string;
+    mode: 'map' | 'itinerary';
+    tags?: Record<string, string>;
+    priceLevel?: number;
+  }) =>
+    post<{ insight: string | null }>('/persona-insight', {
+      place_title:       params.placeTitle,
+      place_category:    params.placeCategory,
+      city:              params.city,
+      persona_archetype: params.personaArchetype,
+      persona_desc:      params.personaDesc,
+      mode:              params.mode,
+      tags:              params.tags ?? {},
+      price_level:       params.priceLevel ?? null,
+    }),
 
   citySearch: (q: string) =>
     get<CityResult[]>(`/city-search?q=${encodeURIComponent(q)}`),
@@ -221,6 +256,18 @@ export const api = {
 
   aiItinerary: (body: ItineraryRequest) =>
     post<Itinerary>('/ai-itinerary', body),
+
+  engineItinerary: (body: {
+    city: string
+    lat: number
+    lon: number
+    days: number
+    startDate: string
+    selectedPlaceIds: string[]
+    personaArchetype: string
+    engineWeights: EngineWeights | null
+  }) =>
+    post<EngineItinerary>('/engine-itinerary', body),
 
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),
@@ -253,6 +300,67 @@ export const api = {
     if (lat !== undefined) params.set('lat', String(lat));
     if (lon !== undefined) params.set('lon', String(lon));
     return get<Place[]>(`/events?${params}`);
+  },
+
+  referencePins: async (params: {
+    city: string;
+    personaArchetype: string;
+    days: number;
+    prevCity?: string;
+    prevPicks?: string[];
+  }): Promise<{ pins: import('./types').ReferencePin[]; storyCards: import('./types').StoryCard[] }> => {
+    return post('/reference-pins', {
+      city: params.city,
+      persona_archetype: params.personaArchetype,
+      days: params.days,
+      prev_city: params.prevCity ?? '',
+      prev_picks: params.prevPicks ?? [],
+    });
+  },
+
+  recalibrate: async (params: {
+    stops: import('./types').ItineraryStop[];
+    currentTime: string;
+    persona: string;
+    pace: string;
+    city: string;
+    lat: number;
+    lon: number;
+    travelDate: string;
+  }): Promise<{ swap_cards: import('./types').SwapCard[] }> => {
+    const raw = await post<{ swap_cards: Array<{
+      id: string;
+      stop_name: string;
+      stop_idx: number;
+      current_summary: string;
+      current_note?: string;
+      suggested_summary: string;
+      suggested_note: string;
+      resolved: boolean;
+      choice: 'new' | 'original' | null;
+    }> }>('/recalibrate', {
+      stops:        params.stops,
+      current_time: params.currentTime,
+      persona:      params.persona,
+      pace:         params.pace,
+      city:         params.city,
+      lat:          params.lat,
+      lon:          params.lon,
+      travel_date:  params.travelDate,
+    });
+    return {
+      swap_cards: (raw.swap_cards ?? []).map(c => ({
+        id:               c.id,
+        stopName:         c.stop_name,
+        stopIdx:          c.stop_idx,
+        currentSummary:   c.current_summary,
+        currentNote:      c.current_note,
+        suggestedSummary: c.suggested_summary,
+        suggestedNote:    c.suggested_note,
+        resolved:         c.resolved,
+        choice:           c.choice,
+      })),
+    };
   },
 };
 
@@ -336,6 +444,51 @@ export async function fetchNearby(
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
+}
+
+export async function searchNearby(
+  lat: number,
+  lon: number,
+  type: string,
+  radius: number,
+  limit: number,
+): Promise<NearbyResult[]> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    type,
+    radius: String(radius),
+    limit: String(limit),
+  });
+  const res = await fetch(`${BASE}/nearby?${params}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+export interface InterCityRouteResult {
+  duration_min: number;
+  distance_km: number;
+}
+
+/**
+ * Calls the backend /route endpoint (OSRM) between two lat/lon points.
+ * Returns null if OSRM has no road route (e.g. ocean crossing).
+ */
+export async function routeInterCity(
+  fromLat: number, fromLon: number,
+  toLat: number, toLon: number,
+): Promise<InterCityRouteResult | null> {
+  try {
+    const result = await post<{ summary?: { duration_min: number; distance_km: number }; error?: string }>(
+      '/route',
+      { points: [{ lat: fromLat, lon: fromLon }, { lat: toLat, lon: toLon }] },
+    );
+    if (result.error || !result.summary) return null;
+    return { duration_min: result.summary.duration_min, distance_km: result.summary.distance_km };
+  } catch {
+    return null;
+  }
 }
 
 export async function* aiItineraryStream(

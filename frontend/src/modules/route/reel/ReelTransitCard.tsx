@@ -1,0 +1,55 @@
+import type { ReelTransitCard } from './types';
+
+interface Props { card: ReelTransitCard; active: boolean; }
+
+const MODE_ICONS: Record<string, string> = {
+  flight: 'flight', train: 'train', drive: 'directions_car', bus: 'directions_bus',
+};
+
+export function ReelTransitCard({ card }: Props) {
+  const icon = MODE_ICONS[card.mode] ?? 'directions_transit';
+
+  return (
+    <div className="reel-card" style={{
+      position: 'relative', width: '100%', height: '100dvh',
+      background: 'radial-gradient(ellipse at 50% 60%, #0c1020, #060c1a)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '0 32px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32, width: '100%', maxWidth: 280 }}>
+        <div style={{ flex: 1, height: 1, borderTop: '1.5px dashed rgba(212,168,83,.35)' }} />
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(74,127,160,.12)', border: '1px solid rgba(74,127,160,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="ms fill" style={{ fontSize: 22, color: '#4a7fa0' }}>{icon}</span>
+        </div>
+        <div style={{ flex: 1, height: 1, borderTop: '1.5px dashed rgba(212,168,83,.35)' }} />
+      </div>
+
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: 8 }}>
+        Now travelling to
+      </p>
+
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 700, color: '#fff', textAlign: 'center', marginBottom: 20 }}>
+        {card.to}
+      </h2>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        {card.durationMinutes != null && (
+          <span style={{ padding: '5px 12px', borderRadius: 999, background: 'rgba(74,127,160,.12)', border: '1px solid rgba(74,127,160,.28)', fontSize: 12, color: '#4a7fa0', fontWeight: 600 }}>
+            {card.durationMinutes >= 60
+              ? `${Math.floor(card.durationMinutes / 60)}h ${card.durationMinutes % 60}m`
+              : `${card.durationMinutes}m`}
+          </span>
+        )}
+        {card.distanceKm != null && (
+          <span style={{ padding: '5px 12px', borderRadius: 999, background: 'rgba(242,237,230,.05)', border: '1px solid rgba(242,237,230,.07)', fontSize: 12, color: 'rgba(255,255,255,.5)', fontWeight: 600 }}>
+            {card.distanceKm} km
+          </span>
+        )}
+      </div>
+
+      <p style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', marginTop: 16, fontStyle: 'italic' }}>
+        Swipe to continue to {card.to}
+      </p>
+    </div>
+  );
+}

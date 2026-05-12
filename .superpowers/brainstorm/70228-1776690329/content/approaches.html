@@ -1,0 +1,45 @@
+<h2>3 Approaches: Conversational Origin Card</h2>
+<p class="subtitle">Replacing the Hotel / Airport / Drop pin chips with something that feels alive</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Progressive Reveal</h3>
+      <p>Card opens with a single warm question: <em>"Where are you starting your trip from?"</em> — then presents 3 friendly answer tiles (Hotel, Airport, I haven't decided yet). Each answer reveals a follow-up inline — hotel → check-in time picker, airport → landing time, undecided → a "find a place" panel with Google Hotels / Booking.com shortcuts.</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Feels like a conversation, not a form</li><li>Reveals complexity only when needed</li><li>Minimal taps for decided users</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly longer flow for hotel users (vs. current)</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Bubble Chat Thread</h3>
+      <p>The card behaves like a mini chat — assistant sends a message bubble, user taps a reply chip. <em>"Hey! Where will you kick off your trip?"</em> → reply chips: Hotel · Airport · Not sure yet. Answer reveals the next message bubble with a follow-up. Mirrors the existing JourneyAdvisorThread pattern already in the app.</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Most "conversational" feel</li><li>Consistent with JourneyAdvisorThread</li><li>Memorable, brand-differentiating</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More visual space per step</li><li>Can feel slow if user knows what they want</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Smart Single Screen</h3>
+      <p>One screen, no steps. A bold heading <em>"Where are you starting from?"</em> with 3 large tap targets below. The "Not sure yet" tile is equal weight — not hidden or secondary. Tapping hotel/airport opens an inline search right on the same card. Undecided opens a bottom sheet with booking links.</p>
+      <div class="pros-cons" style="margin-top:12px">
+        <div class="pros"><h4>Pros</h4><ul><li>Fastest path for all user types</li><li>No perceived "steps"</li><li>Clean, modern feel</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Less narrative/conversational</li><li>Check-in time needs a separate tap</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;padding:16px;background:rgba(59,130,246,0.1);border-radius:8px;border-left:3px solid #3b82f6">
+  <p class="label">My recommendation</p>
+  <p><strong>A (Progressive Reveal)</strong> — gives the most natural conversation feel without the visual overhead of chat bubbles. It's the right balance between "interesting" and "fast." The "not sure yet" path becomes a first-class citizen, not an afterthought. And it sets up the future neighborhood suggestions (option C you mentioned) as a natural expansion of that undecided panel.</p>
+</div>

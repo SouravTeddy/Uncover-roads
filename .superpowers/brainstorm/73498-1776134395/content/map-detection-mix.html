@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-city — mixed</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; font-family: system-ui, sans-serif; color: white; padding: 24px; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  h2 { color: #f0f6fc; font-size: 17px; text-align:center; }
+  .subtitle { color: #8b949e; font-size: 13px; text-align:center; max-width:480px; }
+
+  .phone {
+    width: 300px; height: 600px;
+    background: #0f172a;
+    border-radius: 36px;
+    border: 2px solid rgba(255,255,255,.13);
+    overflow: hidden; position: relative;
+    box-shadow: 0 24px 64px rgba(0,0,0,.7);
+  }
+
+  /* map */
+  .map { position:absolute; inset:0; background:#1a2332; overflow:hidden; }
+  .map-grid {
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:30px 30px;
+  }
+  .road { position:absolute; background:rgba(255,255,255,.06); }
+  .road.h { height:2px; width:100%; }
+  .road.v { width:2px; height:100%; }
+
+  /* pins */
+  .pin {
+    position:absolute; width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:800;
+    border:2px solid rgba(255,255,255,.2);
+    transform:translate(-50%,-50%);
+  }
+  .pin.t { background:#3b82f6; box-shadow:0 0 14px rgba(59,130,246,.55); border-color:rgba(255,255,255,.35); }
+  .pin.s { background:#22c55e; box-shadow:0 0 14px rgba(34,197,94,.55); border-color:rgba(255,255,255,.35); }
+
+  .city-label {
+    position:absolute; font-size:9px; font-weight:700;
+    letter-spacing:.07em; text-transform:uppercase;
+    color:rgba(255,255,255,.25); pointer-events:none;
+  }
+
+  /* top bar */
+  .topbar {
+    position:absolute; top:0; left:0; right:0; height:52px;
+    background:rgba(10,14,20,.93); backdrop-filter:blur(14px);
+    display:flex; align-items:center; gap:10px; padding:0 14px;
+    z-index:10; border-bottom:1px solid rgba(255,255,255,.07);
+  }
+  .topbar-label { font-size:13px; font-weight:700; color:white; }
+
+  /* floating badge */
+  .badge {
+    position:absolute; top:62px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+    border-radius:22px; padding:7px 14px;
+    display:flex; align-items:center; gap:7px;
+    font-size:11px; font-weight:700; white-space:nowrap;
+    z-index:10;
+    box-shadow:0 4px 22px rgba(59,130,246,.45);
+    animation:pulse 2.2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow:0 4px 22px rgba(59,130,246,.4); }
+    50%      { box-shadow:0 4px 30px rgba(59,130,246,.75); }
+  }
+  .badge-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.7); animation:blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* bottom sheet */
+  .sheet {
+    position:absolute; bottom:0; left:0; right:0;
+    background:#111827;
+    border-top:1px solid rgba(255,255,255,.09);
+    border-radius:22px 22px 0 0;
+    padding:10px 14px 20px;
+    z-index:20;
+  }
+  .handle { width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,.14); margin:0 auto 12px; }
+  .sheet-head { display:flex; align-items:center; gap:9px; margin-bottom:10px; }
+  .flight-badge {
+    width:34px; height:34px; border-radius:11px; flex-shrink:0;
+    background:linear-gradient(135deg,#1e40af,#3b82f6);
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .sheet-title { font-size:13px; font-weight:700; color:white; margin-bottom:1px; }
+  .sheet-sub { font-size:11px; color:rgba(255,255,255,.4); }
+
+  /* legs */
+  .legs { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .leg-row {
+    display:flex; align-items:center; gap:9px;
+    padding:9px 11px; border-radius:12px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+  }
+  .leg-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .leg-dot.t { background:#3b82f6; box-shadow:0 0 6px rgba(59,130,246,.7); }
+  .leg-dot.s { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,.7); }
+  .leg-info { flex:1; }
+  .leg-name { font-size:12px; font-weight:700; color:white; }
+  .leg-count { font-size:10px; color:rgba(255,255,255,.38); }
+  .leg-days {
+    font-size:10px; font-weight:700;
+    padding:3px 8px; border-radius:20px;
+    background:rgba(255,255,255,.08); color:rgba(255,255,255,.55);
+  }
+
+  /* flight connector */
+  .flight-connector {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 11px; border-radius:10px;
+    background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.18);
+    margin: 0 4px;
+  }
+  .fc-icon { font-size:12px; color:#60a5fa; }
+  .fc-text { font-size:11px; color:rgba(255,255,255,.5); flex:1; }
+  .fc-text strong { color:#93c5fd; }
+  .fc-link { font-size:10px; font-weight:700; color:#3b82f6; }
+
+  /* CTAs */
+  .cta-row { display:flex; gap:8px; }
+  .btn-primary {
+    flex:1; height:40px; border-radius:13px; border:none; cursor:pointer;
+    background:linear-gradient(135deg,#2563eb,#3b82f6);
+    color:white; font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .btn-ghost {
+    height:40px; padding:0 14px; border-radius:13px;
+    border:1px solid rgba(255,255,255,.1); cursor:pointer;
+    background:transparent; color:rgba(255,255,255,.45); font-size:12px;
+  }
+
+  /* note */
+  .note { font-size:12px; color:#8b949e; text-align:center; max-width:360px; line-height:1.6; }
+  .note strong { color:#c9d1d9; }
+</style>
+</head>
+<body>
+
+<h2>The mixed version</h2>
+<p class="subtitle">Floating badge announces detection. Bottom sheet shows the full journey structure with the flight row built in.</p>
+
+<div class="phone">
+  <!-- map -->
+  <div class="map">
+    <div class="map-grid"></div>
+    <div class="road h" style="top:35%"></div>
+    <div class="road h" style="top:58%"></div>
+    <div class="road v" style="left:32%"></div>
+    <div class="road v" style="left:68%"></div>
+    <span class="city-label" style="top:13%;left:10%">Tokyo</span>
+    <div class="pin t" style="top:22%;left:22%">T</div>
+    <div class="pin t" style="top:28%;left:48%">T</div>
+    <div class="pin t" style="top:18%;left:70%">T</div>
+    <span class="city-label" style="top:42%;left:42%">Singapore</span>
+    <div class="pin s" style="top:50%;left:30%">S</div>
+    <div class="pin s" style="top:56%;left:58%">S</div>
+  </div>
+
+  <!-- top bar -->
+  <div class="topbar">
+    <span style="font-size:17px">🗺</span>
+    <span class="topbar-label">Multi-city journey</span>
+  </div>
+
+  <!-- floating badge -->
+  <div class="badge">
+    <div class="badge-dot"></div>
+    ✈ Multi-city detected — flight needed
+  </div>
+
+  <!-- bottom sheet -->
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-head">
+      <div class="flight-badge">✈</div>
+      <div>
+        <div class="sheet-title">Your journey needs a flight</div>
+        <div class="sheet-sub">5 places · 2 cities · ~3 days</div>
+      </div>
+    </div>
+
+    <div class="legs">
+      <div class="leg-row">
+        <div class="leg-dot t"></div>
+        <div class="leg-info">
+          <div class="leg-name">Tokyo</div>
+          <div class="leg-count">3 places selected</div>
+        </div>
+        <div class="leg-days">2 days</div>
+      </div>
+
+      <div class="flight-connector">
+        <span class="fc-icon">✈</span>
+        <div class="fc-text"><strong>Flight needed</strong> · Tokyo → Singapore · ~7 hrs</div>
+        <span class="fc-link">Find →</span>
+      </div>
+
+      <div class="leg-row">
+        <div class="leg-dot s"></div>
+        <div class="leg-info">
+          <div class="leg-name">Singapore</div>
+          <div class="leg-count">2 places selected</div>
+        </div>
+        <div class="leg-days">1 day</div>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <button class="btn-primary">✈ &nbsp;Build this journey</button>
+      <button class="btn-ghost">Later</button>
+    </div>
+  </div>
+</div>
+
+<p class="note"><strong>How detection works:</strong> the app compares the <code>_city</code> tag on each selected place. When 2+ distinct cities appear, the badge pulses and the sheet replaces the normal "Build itinerary" card.</p>
+
+</body>
+</html>

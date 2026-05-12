@@ -1,0 +1,43 @@
+{
+  "id": "paris",
+  "name": "Paris",
+  "tier": 1,
+  "center": [48.8566, 2.3522],
+  "timezone": "Europe/Paris",
+  "climate": {"heat_threshold_c": 35, "rain_months": [11, 12, 1, 2]},
+  "movement": {"walkability": 3, "transit": 3},
+  "culture": {"meal_times": {"lunch": "12:30", "dinner": "20:00"}, "siesta": false},
+  "neighborhoods": [
+    {
+      "id": "marais",
+      "name": "Le Marais",
+      "center": [48.8566, 2.3522],
+      "polygon": [],
+      "best_times": {"morning": 0.7, "afternoon": 1.0, "evening": 0.8},
+      "crowd_index": {"weekday": 0.5, "weekend": 0.85}
+    }
+  ],
+  "insert_candidates": [
+    {
+      "place_id": "coffee_marais_1",
+      "name": "Café de Flore",
+      "lat": 48.8540,
+      "lon": 2.3330,
+      "type": "coffee",
+      "time_cost_min": 25,
+      "persona_affinity": {"voyager": 1.0, "wanderer": 0.7},
+      "trigger": null,
+      "time_of_day_match": ["morning", "afternoon"]
+    }
+  ],
+  "scenic_routes": [],
+  "transit_edges": [],
+  "engine_modifiers": {
+    "siesta_window": null,
+    "lunch_window_strict": true,
+    "evening_end_time": "23:30",
+    "day_buffer_min": 30
+  },
+  "landmark_anchors": ["eiffel_tower", "louvre"],
+  "hidden_gems": ["canal_saint_martin", "buttes_chaumont"]
+}

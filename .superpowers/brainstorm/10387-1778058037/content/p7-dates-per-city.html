@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dates per city</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e14; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 24px 20px 80px; }
+  h2 { font-size: 18px; font-weight: 700; color: #f5f0ea; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #8b9ab0; margin-bottom: 24px; line-height: 1.5; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #e07854; margin-bottom: 12px; }
+  .cards { display: flex; flex-direction: column; gap: 14px; }
+  .card {
+    background: #131820; border: 1px solid #1e2535; border-radius: 14px; overflow: hidden;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .card:hover { border-color: #3a4258; }
+  .card.selected { border-color: #e07854; box-shadow: 0 0 0 1px #e07854; }
+  .card-image { padding: 16px; background: #0d1117; border-bottom: 1px solid #1e2535; }
+  .card-body { padding: 14px 16px; }
+  .card-body h3 { font-size: 14px; font-weight: 700; color: #f5f0ea; margin-bottom: 6px; }
+  .card-body p { font-size: 12px; color: #8b9ab0; line-height: 1.6; }
+
+  /* Phone mockup elements */
+  .chip-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .chip-active { background: rgba(224,120,84,.25); border: 1px solid rgba(224,120,84,.5); color: #f5a882; }
+  .chip-inactive { background: rgba(15,20,30,.75); border: 1px solid rgba(255,255,255,.12); color: rgba(193,198,215,.8); }
+  .chip-add { background: transparent; border: 1px dashed #3a4258; color: #6b7a93; }
+
+  .date-row { display: flex; gap: 6px; }
+  .date-pill {
+    flex: 1; background: #1a1f2e; border-radius: 8px; padding: 8px 10px;
+    text-align: center; border: 1px solid #2a3142;
+  }
+  .date-pill.active { border-color: #e07854; }
+  .date-pill .label { font-size: 9px; color: #6b7a93; text-transform: uppercase; letter-spacing: 0.5px; }
+  .date-pill .value { font-size: 12px; font-weight: 600; color: #f5f0ea; margin-top: 2px; }
+  .date-pill .empty { font-size: 11px; color: #4a5568; margin-top: 2px; }
+
+  .toast {
+    background: rgba(10,14,20,.96); border: 1px solid rgba(224,120,84,.3);
+    border-radius: 12px; padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .toast-icon { font-size: 18px; flex-shrink: 0; }
+  .toast-text h4 { font-size: 11px; font-weight: 700; color: #f5f0ea; }
+  .toast-text p { font-size: 10px; color: #8b9ab0; margin-top: 1px; }
+  .toast-action { margin-left: auto; background: #e07854; border-radius: 6px; padding: 4px 10px; font-size: 10px; font-weight: 700; color: #fff; white-space: nowrap; }
+
+  .journey-card {
+    background: #1a1f2e; border: 1px solid #2a3142; border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .journey-card .city-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .journey-card .city-name { font-size: 12px; font-weight: 700; color: #f5f0ea; }
+  .journey-card .pin-count { font-size: 10px; color: #6b7a93; }
+  .journey-card .dates-inline { font-size: 11px; color: #8b9ab0; }
+  .journey-card .add-dates { font-size: 10px; color: #e07854; font-weight: 600; }
+
+  .transit-divider {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; color: #6b7a93; font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h2>Phase 7 — Dates per city in multi-city flow</h2>
+<p class="subtitle">Tokyo has its own date range. Sydney has its own. How does the user set them?</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" onclick="this.classList.toggle('selected')" data-choice="a">
+    <div class="card-image">
+      <!-- Toast with inline date prompt per city -->
+      <div class="toast">
+        <div class="toast-icon">✈️</div>
+        <div class="toast-text">
+          <h4>Sydney added to your trip</h4>
+          <p>Flight from Tokyo · add dates to plan smarter</p>
+        </div>
+        <div class="toast-action">Add dates</div>
+      </div>
+      <!-- Date pills appear below toast after tapping "Add dates" -->
+      <div class="chip-row">
+        <div class="chip chip-inactive">🗼 Tokyo · Jun 14–18</div>
+        <div class="chip chip-active">🦘 Sydney · ?</div>
+      </div>
+      <div class="date-row">
+        <div class="date-pill active"><div class="label">Sydney from</div><div class="empty">Tap to set</div></div>
+        <div class="date-pill"><div class="label">Sydney to</div><div class="empty">Tap to set</div></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Toast CTA → inline date picker per city</h3>
+      <p>When a new city is detected, the toast has an "Add dates" CTA. Tapping it expands date pills for that city only — right there on the map, no navigation. Dates remain optional (dismiss toast to skip).</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" onclick="this.classList.toggle('selected')" data-choice="b">
+    <div class="card-image">
+      <!-- Journey screen cards with inline date edit -->
+      <div class="journey-card">
+        <div class="city-header">
+          <span>🗼</span>
+          <span class="city-name">Tokyo</span>
+          <span class="pin-count">· 4 pins</span>
+          <span class="dates-inline" style="margin-left:auto;">Jun 14–18</span>
+        </div>
+      </div>
+      <div class="transit-divider">✈️ Flight · ~9h</div>
+      <div class="journey-card" style="border-color:rgba(224,120,84,.3);">
+        <div class="city-header">
+          <span>🦘</span>
+          <span class="city-name">Sydney</span>
+          <span class="pin-count">· 1 pin</span>
+          <span class="add-dates" style="margin-left:auto;">+ Add dates</span>
+        </div>
+        <div style="font-size:10px;color:#4a5568;">When are you going? Tap to set dates</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Dates set from Journey screen city cards</h3>
+      <p>No date prompt on the map. Each city card on the Journey screen has a "+ Add dates" tap target. Dates are set from there. Journey screen is already the planning hub — keep all date editing there.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" onclick="this.classList.toggle('selected')" data-choice="c">
+    <div class="card-image">
+      <!-- Cascade: set Tokyo end date = Sydney start date automatically -->
+      <div style="background:#1a1f2e;border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="font-size:10px;color:#8b9ab0;margin-bottom:8px;">Set your Tokyo dates — we'll suggest Sydney after</div>
+        <div class="date-row" style="margin-bottom:6px;">
+          <div class="date-pill active"><div class="label">Tokyo from</div><div class="value">Jun 14</div></div>
+          <div class="date-pill active"><div class="label">Tokyo to</div><div class="value">Jun 18</div></div>
+        </div>
+        <div style="height:1px;background:#2a3142;margin:8px 0;"></div>
+        <div style="font-size:10px;color:#6366f1;margin-bottom:6px;">✦ Sydney arrives Jun 19 (day after Tokyo ends)</div>
+        <div class="date-row">
+          <div class="date-pill" style="border-color:#6366f1;"><div class="label">Sydney from</div><div class="value" style="color:#818cf8;">Jun 19</div></div>
+          <div class="date-pill"><div class="label">Sydney to</div><div class="empty">Tap to set</div></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#6b7a93;text-align:center;">Engine cascades: Tokyo end → Sydney start automatically</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Cascading date entry: set city 1, engine suggests city 2 start</h3>
+      <p>A date sheet opens showing all cities in sequence. Set Tokyo end date → Sydney start is auto-suggested as next day (accounting for flight day). User only needs to set each city's end date. Smart defaults, minimal input.</p>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

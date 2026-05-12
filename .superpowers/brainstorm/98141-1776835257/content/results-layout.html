@@ -1,0 +1,106 @@
+<h2>Where do the result cards appear?</h2>
+<p class="subtitle">After picking "Museums near Shinjuku" — pins drop on the map. Where do the cards show?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:0;border-radius:8px 8px 0 0;overflow:hidden;position:relative;height:200px">
+      <!-- Map area -->
+      <div style="background:linear-gradient(135deg,#1a2744 0%,#0f2027 100%);height:130px;position:relative;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:28px;opacity:0.3">🗺</span>
+        <!-- pins -->
+        <div style="position:absolute;top:30px;left:60px;font-size:16px">📍</div>
+        <div style="position:absolute;top:55px;left:110px;font-size:16px">📍</div>
+        <div style="position:absolute;top:40px;right:70px;font-size:16px">📍</div>
+        <!-- search bar -->
+        <div style="position:absolute;top:8px;left:12px;right:12px;background:#1e293b;border-radius:20px;padding:6px 12px;font-size:11px;color:#64748b">🔍 Museums near Shinjuku</div>
+      </div>
+      <!-- Bottom sheet peek -->
+      <div style="background:#0f172a;border-top:1px solid #1e293b;padding:8px;display:flex;gap:8px;overflow:hidden;height:70px">
+        <div style="min-width:140px;background:#1e293b;border-radius:10px;padding:8px;flex-shrink:0">
+          <div style="font-size:10px;color:#e2e8f0;font-weight:600">Tokyo Nat'l Museum</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">⭐ 4.8 · 0.3km</div>
+          <div style="margin-top:6px;background:#3b82f6;border-radius:6px;padding:3px 6px;font-size:8px;color:white;display:inline-block">+ Add</div>
+        </div>
+        <div style="min-width:140px;background:#1e293b;border-radius:10px;padding:8px;flex-shrink:0">
+          <div style="font-size:10px;color:#e2e8f0;font-weight:600">Shinjuku Art Space</div>
+          <div style="font-size:9px;color:#64748b;margin-top:2px">⭐ 4.5 · 0.8km</div>
+          <div style="margin-top:6px;background:#3b82f6;border-radius:6px;padding:3px 6px;font-size:8px;color:white;display:inline-block">+ Add</div>
+        </div>
+        <div style="min-width:140px;background:#1e293b;border-radius:10px;padding:8px;flex-shrink:0">
+          <div style="font-size:10px;color:#e2e8f0;font-weight:600">+5 more →</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Horizontal swipe strip</h3>
+      <p>A slim strip of cards peeks up from the bottom. Swipe left/right to browse. Tapping a card flies the map to that pin and shows the full place card. Map stays mostly visible.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:0;border-radius:8px 8px 0 0;overflow:hidden;position:relative;height:200px">
+      <!-- Map area (smaller) -->
+      <div style="background:linear-gradient(135deg,#1a2744 0%,#0f2027 100%);height:90px;position:relative;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:24px;opacity:0.3">🗺</span>
+        <div style="position:absolute;top:20px;left:55px;font-size:14px">📍</div>
+        <div style="position:absolute;top:45px;left:100px;font-size:14px">📍</div>
+        <div style="position:absolute;top:30px;right:65px;font-size:14px">📍</div>
+        <div style="position:absolute;top:8px;left:12px;right:12px;background:#1e293b;border-radius:20px;padding:5px 12px;font-size:10px;color:#64748b">🔍 Museums near Shinjuku</div>
+      </div>
+      <!-- Bottom sheet (tall) -->
+      <div style="background:#0f172a;border-top:2px solid #1e293b;padding:10px 10px 4px;height:110px;overflow:hidden">
+        <div style="font-size:10px;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">8 results</div>
+        <div style="background:#1e293b;border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div>
+            <div style="font-size:10px;color:#e2e8f0;font-weight:600">Tokyo Nat'l Museum</div>
+            <div style="font-size:9px;color:#64748b">⭐ 4.8 · Museum · 0.3km</div>
+          </div>
+          <div style="background:#3b82f6;border-radius:6px;padding:3px 8px;font-size:8px;color:white">+ Add</div>
+        </div>
+        <div style="background:#1e293b;border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:10px;color:#e2e8f0;font-weight:600">Shinjuku Art Space</div>
+            <div style="font-size:9px;color:#64748b">⭐ 4.5 · Museum · 0.8km</div>
+          </div>
+          <div style="background:#3b82f6;border-radius:6px;padding:3px 8px;font-size:8px;color:white">+ Add</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Draggable bottom sheet</h3>
+      <p>A bottom sheet slides up with a scrollable vertical list. Can be dragged to half-height (map + list) or full height (list only). Familiar pattern — same as Google Maps search results.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:0;border-radius:8px 8px 0 0;overflow:hidden;position:relative;height:200px">
+      <!-- Full map -->
+      <div style="background:linear-gradient(135deg,#1a2744 0%,#0f2027 100%);height:200px;position:relative;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:28px;opacity:0.3">🗺</span>
+        <!-- Numbered pins -->
+        <div style="position:absolute;top:60px;left:55px;background:#3b82f6;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</div>
+        <div style="position:absolute;top:85px;left:105px;background:#3b82f6;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</div>
+        <div style="position:absolute;top:50px;right:60px;background:#3b82f6;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</div>
+        <!-- Search bar -->
+        <div style="position:absolute;top:8px;left:12px;right:12px;background:#1e293b;border-radius:20px;padding:6px 12px;font-size:11px;color:#64748b">🔍 Museums near Shinjuku  ✕</div>
+        <!-- Floating card -->
+        <div style="position:absolute;bottom:12px;left:12px;right:12px;background:#1e293b;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;color:#e2e8f0;font-weight:600">① Tokyo Nat'l Museum</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">⭐ 4.8 · Free entry · 0.3km</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <div style="background:#1e3a5f;border-radius:8px;padding:5px 8px;font-size:10px;color:#60a5fa">←→</div>
+            <div style="background:#3b82f6;border-radius:8px;padding:5px 10px;font-size:10px;color:white">+ Add</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Floating card on full map</h3>
+      <p>Map stays full screen with numbered pins. A single floating card at the bottom shows the active result. Swipe the card left/right (or tap ←→) to cycle through results. Pins highlight as you swipe. Very immersive.</p>
+    </div>
+  </div>
+
+</div>

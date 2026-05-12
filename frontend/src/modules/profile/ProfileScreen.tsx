@@ -1,33 +1,63 @@
-import { useState } from 'react';
-import { useProfile } from './useProfile';
-import { RitualQuestion, MotivationQuestion, StyleQuestion, AttractionQuestion, PaceQuestion } from '../../shared/questionnaire';
-import type { Ritual, Sensory, TravelStyle, Attraction, Pace } from '../../shared/types';
-import {
-  ARCHETYPE_EMOJI,
-  ARCHETYPE_COLORS,
-  ARCHETYPE_SHORT,
-  VENUE_ICONS,
-  BIAS_ICONS,
-} from '../persona/types';
-import { supabase } from '../../shared/supabase';
+import React, { useState } from 'react';
 import { useAppStore } from '../../shared/store';
+import { useProfile } from './useProfile';
+import { supabase } from '../../shared/supabase';
+import { NotificationsScreen } from './sub-screens/NotificationsScreen';
+import { UnitsSheet } from './sub-screens/UnitsSheet';
+import { PrivacyScreen } from './sub-screens/PrivacyScreen';
+import { SubscriptionDetailsScreen } from './sub-screens/SubscriptionDetailsScreen';
+import { ARCHETYPE_COLORS } from '../persona/types';
 
-type Section = 'ritual' | 'motivation' | 'style' | 'attractions' | 'pace' | null;
+type ProfileView = 'main' | 'notifications' | 'units' | 'privacy' | 'subscription-details';
+
+// ── Archetype derivation from primary mood ─────────────────────
+const MOOD_ARCHETYPE: Record<string, string> = {
+  explore:   'explorer',
+  relax:     'slowtraveller',
+  eat_drink: 'epicurean',
+  culture:   'historian',
+};
+
+const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: string }> = {
+  explorer:      { name: 'The Explorer',       emoji: '◆', tagline: 'You thrive on discovery — no plan survives contact with a great street.' },
+  slowtraveller: { name: 'The Slow Traveller', emoji: '◇', tagline: 'One great café beats ten tourist spots. You\'re here to be, not to tick.' },
+  epicurean:     { name: 'The Epicurean',      emoji: '◉', tagline: 'You travel stomach-first. Markets and hidden tables are your map.' },
+  historian:     { name: 'The Scholar',        emoji: '◎', tagline: 'Every city has layers. You\'re the one who finds the story behind the sign.' },
+};
 
 export function ProfileScreen() {
-  const { dispatch } = useAppStore();
-  const { persona, editAnswers, updateAnswer, saveProfile, saving, saved, error } = useProfile();
-  const [openSection, setOpenSection] = useState<Section>(null);
+  const { dispatch, state } = useAppStore();
+  const { persona, userTier, generationCount, startOBRedo, goToSubscription } = useProfile();
+  const [view, setView] = useState<ProfileView>('main');
   const [signingOut, setSigningOut] = useState(false);
+  const [saved, setSaved] = React.useState(false);
 
-  // Load stored user info
+  const theme = state.theme;
+
   const rawUser = localStorage.getItem('ur_user');
   const user: { name: string; avatar: string | null; email: string } | null =
     rawUser ? JSON.parse(rawUser) : null;
 
-  function toggleSection(s: Section) {
-    setOpenSection(prev => (prev === s ? null : s));
-  }
+  const name = user?.name ?? 'Explorer';
+  const email = user?.email ?? '';
+  const initial = name[0].toUpperCase();
+  const isPro = userTier !== 'free';
+
+  // Derive archetype from raw OB answers or persona
+  const rawAnswers = state.rawOBAnswers;
+  const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
+  const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? (persona?.archetype ?? 'explorer');
+  const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
+  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' };
+  const hasArchetype = !!(state.personaProfile || persona);
+
+  const archetypeData = hasArchetype ? {
+    name: archetypeMeta.name,
+    tagline: archetypeMeta.tagline,
+    emoji: archetypeMeta.emoji,
+    primary: archetypeColor.primary,
+    glow: archetypeColor.glow,
+  } : null;
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -35,254 +65,307 @@ export function ProfileScreen() {
     localStorage.removeItem('ur_persona');
     localStorage.removeItem('ur_user');
     localStorage.removeItem('ur_saved_itineraries');
+    localStorage.removeItem('ur_user_tier');
+    localStorage.removeItem('ur_trip_packs');
+    localStorage.removeItem('ur_pack_count');
+    localStorage.removeItem('ur_gen_count');
+    localStorage.removeItem('ur_notif_prefs');
+    localStorage.removeItem('ur_units');
     dispatch({ type: 'GO_TO', screen: 'login' });
   }
 
-  const color    = persona ? (ARCHETYPE_COLORS[persona.archetype] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' }) : null;
-  const emoji    = persona ? (ARCHETYPE_EMOJI[persona.archetype] ?? '◆') : '◆';
+  function handleSave() {
+    // Save logic placeholder — persists any pending settings
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
 
-  const topMatches = persona?.top_matches ?? [];
+  function openUrl(url: string) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  // Sub-screen routing
+  if (view === 'notifications') return <NotificationsScreen onBack={() => setView('main')} />;
+  if (view === 'units') return <UnitsSheet onClose={() => setView('main')} />;
+  if (view === 'privacy') return <PrivacyScreen onBack={() => setView('main')} onSignOut={handleSignOut} />;
+  if (view === 'subscription-details') return <SubscriptionDetailsScreen onBack={() => setView('main')} />;
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
-
       {/* Header */}
-      <div
-        className="flex items-center gap-3 px-5 py-4 border-b border-white/6 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
-      >
-        <span className="font-heading font-bold text-text-1 text-lg">Profile</span>
+      <div className="px-4 pt-6 pb-4 flex items-center justify-between">
+        <h1 className="font-[family-name:var(--font-heading)] text-[18px] font-bold text-[var(--color-text-1)]">
+          Profile
+        </h1>
         <button
           onClick={handleSignOut}
           disabled={signingOut}
-          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(239,68,68,.10)' }}
+          className="text-[var(--color-text-3)] text-[13px]"
         >
-          {signingOut
-            ? <span className="ms animate-spin text-red-400 text-base">autorenew</span>
-            : <span className="ms fill text-red-400 text-base">logout</span>
-          }
+          {signingOut ? 'Signing out…' : 'Sign out'}
         </button>
       </div>
 
       {/* Body */}
       <div
-        className="flex-1 overflow-y-auto px-5"
-        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
+        className="flex-1 overflow-y-auto"
+        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
       >
 
-        {/* ── Account section ── */}
-        <div className="mt-5 mb-1">
-          <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-3">Account</p>
-
-          {/* User card */}
-          <div
-            className="flex items-center gap-4 px-4 py-4 rounded-2xl border border-white/8 mb-3"
-            style={{ background: 'rgba(255,255,255,.03)' }}
-          >
-            {/* Avatar */}
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
-              style={{ background: 'rgba(59,130,246,.15)', border: '1px solid rgba(59,130,246,.2)' }}
-            >
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-primary font-bold text-lg">
-                  {(user?.name ?? 'U')[0].toUpperCase()}
-                </span>
-              )}
-            </div>
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-semibold text-sm truncate">{user?.name ?? 'Explorer'}</p>
-              <p className="text-white/40 text-xs truncate">{user?.email ?? ''}</p>
-            </div>
-            {/* Free badge */}
-            <div
-              className="px-2.5 py-1 rounded-lg flex-shrink-0"
-              style={{ background: 'rgba(251,191,36,.1)', border: '1px solid rgba(251,191,36,.2)' }}
-            >
-              <span className="text-amber-400 text-[10px] font-bold">FREE</span>
-            </div>
+        {/* User card */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-4 mx-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center text-[var(--color-primary)] font-bold text-[18px] flex-shrink-0">
+            {initial}
           </div>
-
-          {/* Account options */}
-          <div className="rounded-2xl overflow-hidden border border-white/8" style={{ background: 'rgba(255,255,255,.03)' }}>
-            <AccountRow icon="card_membership" label="Subscription" sublabel="Free plan · Upgrade for unlimited trips" />
-            <AccountRow icon="notifications" label="Notifications" sublabel="Coming soon" divider />
-            <AccountRow icon="lock" label="Privacy" sublabel="Data & permissions" divider />
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-bold text-[var(--color-text-1)] truncate">{name}</div>
+            <div className="text-[11px] text-[var(--color-text-3)] truncate">{email}</div>
+          </div>
+          <div
+            className="px-2 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0"
+            style={isPro
+              ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
+              : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
+          >
+            {isPro ? 'PRO' : 'FREE'}
           </div>
         </div>
 
-        {/* ── Persona breakdown ── */}
-        {persona && color && (
-          <>
-            <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mt-6 mb-3">Travel Persona</p>
-
-            {/* Archetype hero card */}
+        {/* Archetype hero card */}
+        {archetypeData && (
+          <div className="mx-4 mt-4">
             <div
-              className="relative rounded-2xl overflow-hidden mb-3"
+              className="rounded-[20px] p-5 relative overflow-hidden"
               style={{
-                background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
-                border: `1px solid ${color.primary}28`,
+                background: `linear-gradient(150deg, ${archetypeData.glow}, rgba(255,255,255,.02))`,
+                border: `1px solid ${archetypeData.primary}28`,
               }}
             >
               <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse 70% 60% at 0% 50%, ${color.glow} 0%, transparent 65%)` }}
+                className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
+                style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}18, transparent 70%)` }}
               />
-              <div className="relative flex items-center gap-4 px-5 py-4">
-                <div className="text-4xl leading-none flex-shrink-0" style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}>
-                  {emoji}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-heading font-bold text-white text-base leading-tight">{persona.archetype_name}</div>
-                  <p className="text-white/55 text-xs mt-0.5 leading-relaxed line-clamp-2">{persona.archetype_desc}</p>
-                </div>
+              <span className="text-[42px] relative" style={{ filter: `drop-shadow(0 0 16px ${archetypeData.primary}70)` }}>
+                {archetypeData.emoji}
+              </span>
+              <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+                {archetypeData.name}
               </div>
+              <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
             </div>
-
-            {/* Archetype match bars */}
-            {topMatches.length > 0 && (
-              <div className="mb-3 bg-surface rounded-2xl px-4 py-4">
-                <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Archetype Match</p>
-                <div className="flex flex-col gap-3">
-                  {topMatches.map(({ arch, pct }, i) => {
-                    const c = ARCHETYPE_COLORS[arch] ?? { primary: '#3b82f6', glow: '' };
-                    return (
-                      <div key={arch} className="flex items-center gap-3">
-                        <div
-                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[9px] font-bold"
-                          style={{ background: i === 0 ? c.primary : `${c.primary}40`, color: i === 0 ? '#fff' : c.primary }}
-                        >
-                          {i + 1}
-                        </div>
-                        <span className="text-text-2 text-xs w-24 flex-shrink-0">{ARCHETYPE_SHORT[arch] ?? arch}</span>
-                        <div className="flex-1 h-1.5 bg-white/8 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: c.primary }} />
-                        </div>
-                        <span className="text-text-3 text-[10px] w-7 text-right flex-shrink-0">{pct}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Trip focus + venues */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              {persona.itinerary_bias && persona.itinerary_bias.length > 0 && (
-                <div className="bg-surface rounded-2xl px-4 py-4">
-                  <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Trip Focus</p>
-                  <div className="flex flex-col gap-2">
-                    {persona.itinerary_bias.map(bias => (
-                      <div key={bias} className="flex items-center gap-2">
-                        <span className="ms fill text-sm flex-shrink-0" style={{ color: color.primary }}>{BIAS_ICONS[bias] ?? 'label'}</span>
-                        <span className="text-text-2 text-xs capitalize">{bias}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {persona.venue_filters && persona.venue_filters.length > 0 && (
-                <div className="bg-surface rounded-2xl px-4 py-4">
-                  <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Venues</p>
-                  <div className="flex flex-col gap-2">
-                    {persona.venue_filters.map(v => (
-                      <div key={v} className="flex items-center gap-2">
-                        <span className="ms text-sm text-text-3 flex-shrink-0">{VENUE_ICONS[v] ?? 'place'}</span>
-                        <span className="text-text-2 text-xs capitalize">{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+          </div>
         )}
 
-        {/* ── Edit Preferences ── */}
-        <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mt-6 mb-3">Preferences</p>
+        {/* OB persona retune button */}
+        <button
+          onClick={startOBRedo}
+          className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl border mx-4 mt-4"
+          style={{
+            width: 'calc(100% - 2rem)',
+            background: 'rgba(255,255,255,.03)',
+            borderColor: userTier === 'free' ? 'rgba(249,115,22,.5)' : 'rgba(245,158,11,.5)',
+          }}
+        >
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-0.5">Travel Persona</p>
+            <p className="text-[11px]" style={{ color: '#f97316' }}>Retune your persona →</p>
+          </div>
+        </button>
 
-        <ProfileSection title="Morning Ritual" summary={editAnswers.ritual ?? 'Not set'} open={openSection === 'ritual'} onToggle={() => toggleSection('ritual')}>
-          <RitualQuestion value={editAnswers.ritual} onChange={v => updateAnswer('ritual', v as Ritual)} />
-        </ProfileSection>
-        <ProfileSection title="Travel Motivation" summary={editAnswers.sensory ?? 'Not set'} open={openSection === 'motivation'} onToggle={() => toggleSection('motivation')}>
-          <MotivationQuestion value={editAnswers.sensory} onChange={v => updateAnswer('sensory', v as Sensory)} />
-        </ProfileSection>
-        <ProfileSection title="Travel Style" summary={editAnswers.style ?? 'Not set'} open={openSection === 'style'} onToggle={() => toggleSection('style')}>
-          <StyleQuestion value={editAnswers.style} onChange={v => updateAnswer('style', v as TravelStyle)} />
-        </ProfileSection>
-        <ProfileSection title="Interests" summary={editAnswers.attractions.length > 0 ? editAnswers.attractions.join(', ') : 'Not set'} open={openSection === 'attractions'} onToggle={() => toggleSection('attractions')}>
-          <AttractionQuestion value={editAnswers.attractions} onChange={v => updateAnswer('attractions', v as Attraction[])} />
-        </ProfileSection>
-        <ProfileSection title="Preferred Pace" summary={editAnswers.pace ?? 'Not set'} open={openSection === 'pace'} onToggle={() => toggleSection('pace')}>
-          <PaceQuestion value={editAnswers.pace} onChange={v => updateAnswer('pace', v as Pace)} />
-        </ProfileSection>
+        {/* Itinerary attempts counter — free only */}
+        {userTier === 'free' && (
+          <div className="mx-4 mt-4">
+            <AttemptsCounter count={generationCount} />
+          </div>
+        )}
 
-        {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+        {/* Account section */}
+        <div className="mt-5 px-4">
+          <SectionLabel>Account</SectionLabel>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+          {userTier === 'free' ? (
+            <SettingsRow
+              label="Upgrade to Pro"
+              labelClass="font-bold text-white"
+              right={<span className="text-[11px] font-bold" style={{ color: '#f97316' }}>Unlock all →</span>}
+              rowStyle={{ background: 'rgba(249,115,22,.06)' }}
+              onTap={goToSubscription}
+            />
+          ) : (
+            <SettingsRow
+              label={userTier === 'pro' ? 'Pro Plan' : 'Unlimited Plan'}
+              sublabel={`Renews ${formatRenewal()}`}
+              right={<span className="text-[11px] font-semibold" style={{ color: '#f59e0b' }}>Active ›</span>}
+              onTap={() => setView('subscription-details')}
+            />
+          )}
+          <SettingsRow
+            label="Notifications"
+            divider
+            onTap={() => setView('notifications')}
+          />
+        </div>
 
-        {/* ── Save ── */}
-        <div className="mt-6 mb-4">
+        {/* App section */}
+        <div className="px-4">
+          <SectionLabel>App</SectionLabel>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+          <SettingsRow
+            label="Units"
+            sublabel={state.units === 'km' ? 'Kilometres' : 'Miles'}
+            onTap={() => setView('units')}
+          />
+          <SettingsRow
+            label="Privacy & Data"
+            divider
+            onTap={() => setView('privacy')}
+          />
+
+          {/* Appearance row */}
+          <div className="flex items-center justify-between py-3 px-4 border-t border-white/6">
+            <div className="flex items-center gap-3">
+              <span className="ms text-[var(--color-text-2)] text-[20px]">
+                {theme === 'dark' ? 'dark_mode' : 'light_mode'}
+              </span>
+              <div>
+                <div className="text-[14px] text-[var(--color-text-1)] font-medium">Appearance</div>
+                <div className="text-[11px] text-[var(--color-text-3)]">
+                  {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+                </div>
+              </div>
+            </div>
+
+            {/* 36×20px toggle pill */}
+            <button
+              onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
+              className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
+              style={{ background: theme === 'dark' ? '#e07854' : 'rgba(255,255,255,.15)' }}
+              aria-label="Toggle appearance"
+            >
+              <span
+                className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ transform: theme === 'dark' ? 'translateX(17px)' : 'translateX(2px)' }}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Save changes button */}
+        <div className="px-4 mb-4">
           <button
-            onClick={saveProfile}
-            disabled={saving}
-            className={`w-full h-14 rounded-2xl font-heading font-bold text-base transition-all ${
-              saved ? 'bg-green-600 text-white' : saving ? 'bg-surface text-text-3 cursor-not-allowed' : 'bg-primary text-white'
+            onClick={handleSave}
+            className={`w-full h-[52px] rounded-[18px] font-bold text-[15px] text-white transition-all active:scale-[.97] ${
+              saved
+                ? 'bg-green-600'
+                : 'bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)]'
             }`}
           >
-            {saved ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="ms fill text-base">check_circle</span>Saved!
-              </span>
-            ) : saving ? 'Saving…' : 'Save Preferences'}
+            {saved
+              ? <><span className="ms fill text-[20px] mr-2">check_circle</span>Saved</>
+              : 'Save changes'
+            }
           </button>
         </div>
 
-        {/* ── Contact ── */}
-        <div className="flex flex-col items-center gap-1 mb-8">
-          <p className="text-white/20 text-xs text-center">Feedback or business enquiry?</p>
+        {/* Legal */}
+        <div className="mt-2 px-4">
+          <p className="text-[11px] uppercase tracking-widest font-bold mb-2 px-1" style={{ color: '#5a4e47' }}>Legal</p>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+          <SettingsRow
+            label="Privacy Policy"
+            onTap={() => openUrl('https://uncoverroads.com/privacy')}
+          />
+          <SettingsRow
+            label="Terms & Conditions"
+            divider
+            onTap={() => openUrl('https://uncoverroads.com/terms')}
+          />
+        </div>
+
+        {/* Feedback */}
+        <div className="flex justify-center mt-2 mb-6">
           <a
-            href="mailto:sourav.bis93@gmail.com"
-            className="text-white/35 text-xs text-center hover:text-white/55 transition-colors"
+            href="mailto:sourav@uncoverroads.com?subject=Feedback on Uncover Roads"
+            className="flex items-center gap-2 text-white/25 text-xs hover:text-white/45 transition-colors"
           >
-            sourav.bis93@gmail.com · Sourav
+            <span className="ms text-sm">mail</span>
+            Send Feedback
           </a>
         </div>
+
       </div>
     </div>
   );
 }
 
-function AccountRow({ icon, label, sublabel, divider }: { icon: string; label: string; sublabel: string; divider?: boolean }) {
+// ── Sub-components ─────────────────────────────────────────────
+
+function AttemptsCounter({ count }: { count: number }) {
+  const used = Math.min(count, 3);
   return (
-    <div className={`flex items-center gap-3 px-4 py-3.5 ${divider ? 'border-t border-white/6' : ''}`}>
-      <span className="ms fill text-white/30 text-lg flex-shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-white/70 text-sm font-medium">{label}</p>
-        <p className="text-white/25 text-xs">{sublabel}</p>
+    <div className="rounded-2xl border border-white/8 px-4 py-3" style={{ background: 'rgba(255,255,255,.03)' }}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-white text-sm font-semibold">Itinerary Attempts</span>
+        <div className="flex gap-1.5">
+          {[0, 1, 2].map(i => (
+            <div
+              key={i}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ background: i < used ? '#f97316' : 'rgba(255,255,255,.12)' }}
+            />
+          ))}
+        </div>
       </div>
-      <span className="ms text-white/20 text-base flex-shrink-0">chevron_right</span>
+      <p className="text-white/30 text-[10px]">
+        {used} of 3 used · 1st–2nd: full · 3rd: no curation · 4th+: upgrade
+      </p>
     </div>
   );
 }
 
-function ProfileSection({ title, summary, open, onToggle, children }: {
-  title: string; summary: string; open: boolean; onToggle: () => void; children: React.ReactNode;
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-2 px-1">{children}</p>
+  );
+}
+
+function SettingsRow({
+  label,
+  sublabel,
+  labelClass = 'text-white/70',
+  right,
+  rowStyle,
+  divider,
+  onTap,
+}: {
+  label: string;
+  sublabel?: string;
+  labelClass?: string;
+  right?: React.ReactNode;
+  rowStyle?: React.CSSProperties;
+  divider?: boolean;
+  onTap?: () => void;
 }) {
   return (
-    <div className="bg-surface rounded-2xl mb-3 overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-4">
-        <div className="text-left">
-          <div className="font-semibold text-text-1 text-sm">{title}</div>
-          <div className="text-text-3 text-xs mt-0.5 capitalize">{summary}</div>
-        </div>
-        <span className={`ms text-text-3 text-base transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 border-t border-white/6 pt-4">{children}</div>
-      )}
-    </div>
+    <button
+      onClick={onTap}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${divider ? 'border-t border-white/6' : ''}`}
+      style={rowStyle}
+    >
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium ${labelClass}`}>{label}</p>
+        {sublabel && <p className="text-white/25 text-xs mt-0.5">{sublabel}</p>}
+      </div>
+      {right ?? <span className="ms text-white/20 text-base">chevron_right</span>}
+    </button>
   );
+}
+
+function formatRenewal(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }

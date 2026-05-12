@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walkthrough — Clean direction</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #f0f0f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 24px 16px 48px;
+    color: #0a0e14;
+  }
+  h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; color: #111; }
+  .subtitle { color: #666; font-size: 12px; margin-bottom: 28px; line-height: 1.5; }
+
+  .slides-row {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  /* Phone shell */
+  .phone-shell {
+    flex-shrink: 0;
+    width: 200px;
+    background: #111;
+    border-radius: 32px;
+    padding: 10px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.08);
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    position: relative;
+  }
+  .phone-shell:hover { transform: translateY(-3px); box-shadow: 0 32px 72px rgba(0,0,0,.3); }
+  .phone-shell.selected { outline: 2.5px solid #6366f1; outline-offset: 3px; }
+  .phone-shell.selected::after {
+    content: '✓ Selected';
+    position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; font-weight: 700; color: #6366f1; white-space: nowrap;
+  }
+
+  /* Notch */
+  .notch {
+    width: 60px; height: 8px;
+    background: #111;
+    border-radius: 0 0 8px 8px;
+    margin: 0 auto 6px;
+    position: relative; z-index: 2;
+  }
+
+  /* Screen */
+  .screen {
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    aspect-ratio: 9/19.5;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Skip row */
+  .skip-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 14px 0;
+    flex-shrink: 0;
+  }
+  .skip-btn {
+    font-size: 10px; font-weight: 600; color: #bbb;
+    background: none; border: none; cursor: pointer;
+  }
+
+  /* Animation area */
+  .anim-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Lottie placeholder */
+  .lottie-placeholder {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+
+  /* Text area */
+  .text-area {
+    padding: 0 18px 0;
+    flex-shrink: 0;
+  }
+  .slide-chip {
+    display: inline-block;
+    font-size: 9px; font-weight: 800;
+    letter-spacing: .12em; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 20px;
+    margin-bottom: 8px;
+  }
+  .slide-title {
+    font-size: 18px; font-weight: 800;
+    line-height: 1.2; color: #0a0e14;
+    margin-bottom: 7px;
+  }
+  .slide-desc {
+    font-size: 11px; line-height: 1.6; color: #777;
+  }
+
+  /* Dots + CTA */
+  .bottom-area {
+    padding: 12px 18px 16px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  .dots {
+    display: flex; gap: 5px; align-items: center; justify-content: center;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: #e0e0e0; }
+  .dot.active { width: 16px; border-radius: 3px; }
+  .cta-btn {
+    width: 100%; height: 36px; border-radius: 12px;
+    border: none; cursor: pointer;
+    font-size: 11px; font-weight: 700; color: white;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+
+  /* Meta label below phone */
+  .phone-label {
+    margin-top: 30px;
+    font-size: 12px; font-weight: 700; color: #333;
+    text-align: center;
+  }
+  .phone-sublabel {
+    font-size: 10px; color: #888; text-align: center; margin-top: 2px; line-height: 1.4; max-width: 200px;
+  }
+
+  /* Slide-specific animation placeholder fills */
+  /* Persona: purple gradient, silhouette hint */
+  .anim-persona { background: linear-gradient(135deg, #f3e8ff, #ede9fe); }
+  .anim-persona .icon { font-size: 44px; }
+
+  /* City: teal gradient, map vibe */
+  .anim-city { background: linear-gradient(135deg, #e0fdf4, #ccfbf1); }
+  .anim-city .icon { font-size: 44px; }
+
+  /* Recs: amber gradient */
+  .anim-recs { background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+  .anim-recs .icon { font-size: 44px; }
+
+  /* Multi-city: blue gradient */
+  .anim-multi { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+  .anim-multi .icon { font-size: 44px; }
+
+  /* Pricing: green gradient */
+  .anim-price { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+  .anim-price .icon { font-size: 44px; }
+</style>
+<script>
+function select(el) {
+  document.querySelectorAll('.phone-shell').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  if (window.__sp_record) window.__sp_record({ type:'click', choice: el.dataset.choice, text: el.querySelector('.slide-title')?.textContent || '' });
+}
+</script>
+</head>
+<body>
+
+<h2>Clean white — 5 slides</h2>
+<p class="subtitle">White screen, Lottie animation area (top), clean text (bottom). Scroll right to see all. Click to mark preference.</p>
+
+<div class="slides-row">
+
+  <!-- Slide 1: Persona -->
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="phone-shell" data-choice="s1" onclick="select(this)">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="skip-row"><span class="skip-btn">Skip</span></div>
+
+        <div class="anim-area" style="background:linear-gradient(160deg,#f5f0ff 0%,#ede9fe 100%);">
+          <!-- Lottie placeholder: persona silhouette assembling -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <!-- Animated silhouette sketch -->
+            <div style="width:64px;height:90px;position:relative;">
+              <!-- Head -->
+              <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#8b5cf6);margin:0 auto 0;box-shadow:0 4px 16px rgba(139,92,246,.3);"></div>
+              <!-- Body -->
+              <div style="width:44px;height:52px;background:linear-gradient(160deg,#8b5cf6,#6d28d9);border-radius:14px 14px 10px 10px;margin:3px auto 0;box-shadow:0 4px 16px rgba(139,92,246,.25);"></div>
+            </div>
+            <!-- Archetype badge -->
+            <div style="background:white;border-radius:20px;padding:4px 12px;box-shadow:0 2px 12px rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.15);">
+              <span style="color:#7c3aed;font-size:9px;font-weight:800;letter-spacing:.05em;">The Wanderer</span>
+            </div>
+            <!-- Lottie label -->
+            <div style="position:absolute;bottom:8px;right:8px;background:rgba(139,92,246,.08);border-radius:6px;padding:2px 6px;">
+              <span style="color:#7c3aed;font-size:7px;font-weight:600;">Lottie animation</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-area">
+          <div class="slide-chip" style="background:#f3e8ff;color:#7c3aed;">Persona</div>
+          <div class="slide-title">Discover your travel DNA</div>
+          <div class="slide-desc">9 quick questions. One archetype. Every recommendation tuned to who you are.</div>
+        </div>
+
+        <div class="bottom-area">
+          <div class="dots">
+            <div class="dot active" style="background:#7c3aed;"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <button class="cta-btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
+            Next <span style="font-size:13px;">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Slide 1 — Persona</div>
+    <div class="phone-sublabel" style="max-width:200px;">Silhouette assembles, archetype badge pops in</div>
+  </div>
+
+  <!-- Slide 2: Search any city -->
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="phone-shell" data-choice="s2" onclick="select(this)">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="skip-row"><span class="skip-btn">Skip</span></div>
+
+        <div class="anim-area" style="background:linear-gradient(160deg,#ecfdf5 0%,#d1fae5 100%);position:relative;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1;">
+            <!-- Globe / map animation placeholder -->
+            <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#059669,#0d9488);box-shadow:0 8px 24px rgba(5,150,105,.3);display:flex;align-items:center;justify-content:center;position:relative;">
+              <span style="font-family:'Material Symbols Rounded',sans-serif;font-variation-settings:'FILL' 1;font-size:36px;color:white;">travel_explore</span>
+              <!-- Orbit dots -->
+              <div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;background:#34d399;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(52,211,153,.5);"></div>
+              <div style="position:absolute;bottom:-2px;left:-6px;width:10px;height:10px;background:#f59e0b;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(245,158,11,.5);"></div>
+            </div>
+            <!-- City chips appearing -->
+            <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:130px;">
+              <div style="background:white;border-radius:12px;padding:3px 8px;font-size:8px;font-weight:700;color:#065f46;box-shadow:0 2px 8px rgba(0,0,0,.08);">Paris</div>
+              <div style="background:white;border-radius:12px;padding:3px 8px;font-size:8px;font-weight:700;color:#065f46;box-shadow:0 2px 8px rgba(0,0,0,.08);">Tokyo</div>
+              <div style="background:white;border-radius:12px;padding:3px 8px;font-size:8px;font-weight:700;color:#065f46;box-shadow:0 2px 8px rgba(0,0,0,.08);">Lisbon</div>
+              <div style="background:white;border-radius:12px;padding:3px 8px;font-size:8px;font-weight:700;color:#065f46;box-shadow:0 2px 8px rgba(0,0,0,.08);">NYC</div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(5,150,105,.08);border-radius:6px;padding:2px 6px;">
+            <span style="color:#059669;font-size:7px;font-weight:600;">Lottie animation</span>
+          </div>
+        </div>
+
+        <div class="text-area">
+          <div class="slide-chip" style="background:#d1fae5;color:#065f46;">Explore</div>
+          <div class="slide-title">Any city, anywhere</div>
+          <div class="slide-desc">Search any destination and step straight onto its map — Tokyo to Lisbon.</div>
+        </div>
+
+        <div class="bottom-area">
+          <div class="dots">
+            <div class="dot"></div>
+            <div class="dot active" style="background:#059669;"></div>
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          </div>
+          <button class="cta-btn" style="background:linear-gradient(135deg,#059669,#0d9488);">
+            Next <span style="font-size:13px;">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Slide 2 — Any city</div>
+    <div class="phone-sublabel">Globe spins, city chips fly in from different directions</div>
+  </div>
+
+  <!-- Slide 3: Smart recommendations -->
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="phone-shell" data-choice="s3" onclick="select(this)">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="skip-row"><span class="skip-btn">Skip</span></div>
+
+        <div class="anim-area" style="background:linear-gradient(160deg,#fffbeb 0%,#fef3c7 100%);position:relative;">
+          <div style="display:flex;flex-direction:column;gap:7px;width:130px;position:relative;z-index:1;">
+            <!-- Trending card -->
+            <div style="background:white;border-radius:10px;padding:7px 10px;box-shadow:0 2px 12px rgba(245,158,11,.15);border-left:3px solid #f59e0b;display:flex;align-items:center;gap:6px;">
+              <div style="width:8px;height:8px;background:#f59e0b;border-radius:50%;flex-shrink:0;"></div>
+              <div>
+                <div style="font-size:7px;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Trending now</div>
+                <div style="height:4px;background:#fde68a;border-radius:2px;width:70px;"></div>
+              </div>
+            </div>
+            <!-- Skip card -->
+            <div style="background:white;border-radius:10px;padding:7px 10px;box-shadow:0 2px 12px rgba(239,68,68,.12);border-left:3px solid #ef4444;display:flex;align-items:center;gap:6px;">
+              <div style="width:8px;height:8px;background:#ef4444;border-radius:50%;flex-shrink:0;"></div>
+              <div>
+                <div style="font-size:7px;font-weight:800;color:#991b1b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Skip this one</div>
+                <div style="height:4px;background:#fecaca;border-radius:2px;width:60px;"></div>
+              </div>
+            </div>
+            <!-- Hidden gem card -->
+            <div style="background:white;border-radius:10px;padding:7px 10px;box-shadow:0 2px 12px rgba(34,197,94,.12);border-left:3px solid #22c55e;display:flex;align-items:center;gap:6px;">
+              <div style="width:8px;height:8px;background:#22c55e;border-radius:50%;flex-shrink:0;"></div>
+              <div>
+                <div style="font-size:7px;font-weight:800;color:#14532d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Hidden gem</div>
+                <div style="height:4px;background:#bbf7d0;border-radius:2px;width:65px;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(245,158,11,.1);border-radius:6px;padding:2px 6px;">
+            <span style="color:#b45309;font-size:7px;font-weight:600;">Lottie animation</span>
+          </div>
+        </div>
+
+        <div class="text-area">
+          <div class="slide-chip" style="background:#fef3c7;color:#92400e;">Smart Picks</div>
+          <div class="slide-title">Knows what's worth it right now</div>
+          <div class="slide-desc">Tracks trends, flags what to skip, surfaces hidden gems — so you don't waste a meal or an afternoon.</div>
+        </div>
+
+        <div class="bottom-area">
+          <div class="dots">
+            <div class="dot"></div><div class="dot"></div>
+            <div class="dot active" style="background:#d97706;"></div>
+            <div class="dot"></div><div class="dot"></div>
+          </div>
+          <button class="cta-btn" style="background:linear-gradient(135deg,#d97706,#b45309);">
+            Next <span style="font-size:13px;">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Slide 3 — Smart recs</div>
+    <div class="phone-sublabel">Cards slide in with Trending / Skip / Gem labels staggered</div>
+  </div>
+
+  <!-- Slide 4: Multi-city -->
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="phone-shell" data-choice="s4" onclick="select(this)">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="skip-row"><span class="skip-btn">Skip</span></div>
+
+        <div class="anim-area" style="background:linear-gradient(160deg,#eff6ff 0%,#dbeafe 100%);position:relative;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:0;position:relative;z-index:1;width:120px;">
+            <!-- City 1 -->
+            <div style="background:white;border-radius:10px;padding:6px 10px;box-shadow:0 2px 12px rgba(59,130,246,.15);width:100%;display:flex;align-items:center;gap:6px;">
+              <div style="width:8px;height:8px;background:#3b82f6;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px rgba(59,130,246,.5);"></div>
+              <div style="height:5px;background:#bfdbfe;border-radius:2px;flex:1;"></div>
+            </div>
+            <!-- Connector -->
+            <div style="width:2px;height:12px;background:linear-gradient(to bottom,#3b82f6,#6366f1);"></div>
+            <!-- City 2 -->
+            <div style="background:white;border-radius:10px;padding:6px 10px;box-shadow:0 2px 12px rgba(99,102,241,.15);width:100%;display:flex;align-items:center;gap:6px;">
+              <div style="width:8px;height:8px;background:#6366f1;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px rgba(99,102,241,.5);"></div>
+              <div style="height:5px;background:#c7d2fe;border-radius:2px;flex:1;"></div>
+            </div>
+            <!-- Connector dashed -->
+            <div style="width:2px;height:12px;background:linear-gradient(to bottom,#6366f1,rgba(99,102,241,.2));"></div>
+            <!-- City 3 add -->
+            <div style="background:white;border-radius:10px;padding:6px 10px;box-shadow:0 2px 8px rgba(0,0,0,.06);width:100%;display:flex;align-items:center;gap:6px;border:1.5px dashed #c7d2fe;">
+              <div style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #6366f1;flex-shrink:0;"></div>
+              <div style="font-size:8px;color:#a5b4fc;font-weight:700;">+ Add city</div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(59,130,246,.08);border-radius:6px;padding:2px 6px;">
+            <span style="color:#1d4ed8;font-size:7px;font-weight:600;">Lottie animation</span>
+          </div>
+        </div>
+
+        <div class="text-area">
+          <div class="slide-chip" style="background:#dbeafe;color:#1e40af;">Multi-city</div>
+          <div class="slide-title">One trip, many cities</div>
+          <div class="slide-desc">Plan Paris then Rome then Barcelona — a full itinerary for every stop, in one place.</div>
+        </div>
+
+        <div class="bottom-area">
+          <div class="dots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot active" style="background:#2563eb;"></div>
+            <div class="dot"></div>
+          </div>
+          <button class="cta-btn" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);">
+            Next <span style="font-size:13px;">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Slide 4 — Multi-city</div>
+    <div class="phone-sublabel">Cities chain builds down, + Add city pulses</div>
+  </div>
+
+  <!-- Slide 5: Trip packages -->
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="phone-shell" data-choice="s5" onclick="select(this)">
+      <div class="notch"></div>
+      <div class="screen">
+        <div class="skip-row"><span class="skip-btn" style="opacity:0;pointer-events:none;">Skip</span></div>
+
+        <div class="anim-area" style="background:linear-gradient(160deg,#f0fdf4 0%,#dcfce7 100%);position:relative;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1;width:130px;">
+            <!-- Free badge with glow -->
+            <div style="background:white;border-radius:14px;padding:8px 14px;box-shadow:0 4px 20px rgba(34,197,94,.25);border:1.5px solid rgba(34,197,94,.3);text-align:center;width:100%;position:relative;">
+              <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#22c55e;border-radius:8px;padding:2px 10px;">
+                <span style="color:white;font-size:8px;font-weight:800;letter-spacing:.05em;">FREE</span>
+              </div>
+              <div style="margin-top:4px;font-size:9px;font-weight:700;color:#14532d;">First full trip</div>
+              <div style="font-size:8px;color:#4ade80;font-weight:600;margin-top:1px;">No credit card needed</div>
+            </div>
+            <!-- Then pay per trip -->
+            <div style="background:white;border-radius:14px;padding:8px 14px;box-shadow:0 2px 12px rgba(0,0,0,.06);border:1px solid #e5e7eb;text-align:center;width:100%;">
+              <div style="font-size:9px;font-weight:700;color:#374151;margin-bottom:2px;">After that</div>
+              <div style="font-size:8px;color:#6b7280;">Buy only the trips you need</div>
+              <div style="margin-top:5px;background:#f3f4f6;border-radius:8px;padding:3px 0;">
+                <span style="font-size:8px;font-weight:700;color:#374151;">Pay per trip</span>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:8px;right:8px;background:rgba(34,197,94,.08);border-radius:6px;padding:2px 6px;">
+            <span style="color:#15803d;font-size:7px;font-weight:600;">Lottie animation</span>
+          </div>
+        </div>
+
+        <div class="text-area">
+          <div class="slide-chip" style="background:#dcfce7;color:#14532d;">Trip Packages</div>
+          <div class="slide-title">First trip on us</div>
+          <div class="slide-desc">Your first full itinerary is free. After that, buy only the trips you need — no monthly fees.</div>
+        </div>
+
+        <div class="bottom-area">
+          <div class="dots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            <div class="dot active" style="background:#16a34a;"></div>
+          </div>
+          <button class="cta-btn" style="background:linear-gradient(135deg,#22c55e,#15803d);">
+            Get started <span style="font-size:13px;">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Slide 5 — Trip packages</div>
+    <div class="phone-sublabel">FREE badge drops in with a bounce, pay-per-trip fades below</div>
+  </div>
+
+</div>
+
+<div style="margin-top:36px;padding:16px;background:white;border-radius:14px;border:1px solid #e5e7eb;">
+  <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;">Transition idea</div>
+  <div style="font-size:11px;color:#6b7280;line-height:1.7;">
+    Each swipe: background colour cross-fades (purple → teal → amber → blue → green) + Lottie plays on entry.
+    Within each slide: chip appears (0.1s) → title slides up (0.2s) → description fades (0.3s) → CTA button rises (0.4s).
+    Dot active state morphs width with spring easing.
+  </div>
+</div>
+
+</body>
+</html>

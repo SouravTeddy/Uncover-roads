@@ -1,19 +1,29 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
+import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
-import { OB1Ritual, OB2Motivation, OB3Style, OB4LocationType, OB5Pace } from './modules/onboarding';
+import {
+  OB1Group, OB2Mood, OB3Pace, OB4DayOpen, OB5Dietary,
+  OB6Budget, OB7Evening, OB8KidFocus, OB9BudgetProtect,
+} from './modules/onboarding';
 import { PersonaScreen } from './modules/persona';
 import { DestinationScreen } from './modules/destination';
 import { MapScreen } from './modules/map';
+import { JourneyScreen } from './modules/journey';
 import { RouteScreen } from './modules/route';
+import { ItineraryReelScreen } from './modules/route/reel';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
-import { TripsScreen } from './modules/trips';
+import { TripsScreen, SavedScreen } from './modules/trips';
+import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
+import { InstallPrompt } from './modules/pwa/InstallPrompt';
+
+const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
@@ -28,6 +38,12 @@ function ScreenRouter() {
   if (isDesktop && state.currentScreen !== 'trips') return <DesktopGate />;
 
   async function handleSignedIn(user: User) {
+    if (!BETA_ALLOWLIST.includes(user.email ?? '')) {
+      await supabase.auth.signOut();
+      window.history.replaceState({}, '', '?beta_closed=1');
+      dispatch({ type: 'GO_TO', screen: 'login' });
+      return;
+    }
     // Persist user info for the welcome back screen
     localStorage.setItem('ur_user', JSON.stringify({
       name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',
@@ -50,7 +66,19 @@ function ScreenRouter() {
     const hasPersona = Boolean(localStorage.getItem('ur_persona'));
     const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
     if (hasPersona) {
-      dispatch({ type: 'GO_TO', screen: 'destination' });
+      // If the user had an active session in progress, restore them directly to
+      // that screen instead of the welcome screen. This handles iOS PWA restarts,
+      // session refreshes, and returning from external apps like Google Maps.
+      try {
+        const raw = localStorage.getItem('ur_ss_screen');
+        const savedScreen = raw ? (JSON.parse(raw) as string) : null;
+        const midSessionScreens = ['map', 'route', 'destination', 'journey', 'saved'];
+        if (savedScreen && midSessionScreens.includes(savedScreen)) {
+          dispatch({ type: 'GO_TO', screen: savedScreen as Screen });
+          return;
+        }
+      } catch { /* ignore */ }
+      dispatch({ type: 'GO_TO', screen: 'welcome' });
     } else if (hasSeenWalkthrough) {
       dispatch({ type: 'GO_TO', screen: 'ob1' });
     } else {
@@ -83,9 +111,30 @@ function ScreenRouter() {
       }
     });
 
+    // Screens that represent an active in-progress session — if the user is
+    // already on one of these, a spurious SIGNED_IN event (e.g. token refresh
+    // on Android app resume) must NOT kick them back to the welcome screen.
+    const activeMidSessionScreens = new Set([
+      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'saved', 'profile', 'subscription',
+    ]);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Handle fresh sign-ins AND initial session from OAuth code exchange
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && initialScreen === 'login') {
+      if (!session?.user) return;
+      if (event === 'SIGNED_IN') {
+        if (activeMidSessionScreens.has(initialScreen)) {
+          // Already on an active screen (e.g. restored from localStorage after
+          // Android app-resume or opening Google Maps). Just sync data silently.
+          loadUserProfile(session.user.id).then(profile => {
+            if (profile) {
+              dispatch({ type: 'SET_USER_ROLE', role: profile.role });
+              dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+            }
+            dispatch({ type: 'PROFILE_LOADED' });
+          }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
+        } else {
+          handleSignedIn(session.user);
+        }
+      } else if (event === 'INITIAL_SESSION' && initialScreen === 'login') {
         handleSignedIn(session.user);
       }
     });
@@ -103,19 +152,28 @@ function ScreenRouter() {
       {currentScreen === 'login'        && <LoginScreen />}
       {currentScreen === 'welcome'      && <WelcomeBackScreen />}
       {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
-      {currentScreen === 'ob1'          && <OB1Ritual />}
-      {currentScreen === 'ob2'         && <OB2Motivation />}
-      {currentScreen === 'ob3'         && <OB3Style />}
-      {currentScreen === 'ob4'         && <OB4LocationType />}
-      {currentScreen === 'ob5'         && <OB5Pace />}
+      {currentScreen === 'ob1'          && <OB1Group />}
+      {currentScreen === 'ob2'          && <OB2Mood />}
+      {currentScreen === 'ob3'          && <OB3Pace />}
+      {currentScreen === 'ob4'          && <OB4DayOpen />}
+      {currentScreen === 'ob5'          && <OB5Dietary />}
+      {currentScreen === 'ob6'          && <OB6Budget />}
+      {currentScreen === 'ob7'          && <OB7Evening />}
+      {currentScreen === 'ob8'          && <OB8KidFocus />}
+      {currentScreen === 'ob9'          && <OB9BudgetProtect />}
       {currentScreen === 'persona'     && <PersonaScreen />}
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}
-      {currentScreen === 'route'       && <RouteScreen />}
+      {currentScreen === 'journey'     && <JourneyScreen />}
+      {currentScreen === 'route'          && <RouteScreen />}
+      {currentScreen === 'itinerary-reel' && <ItineraryReelScreen />}
       {currentScreen === 'trips'       && <TripsScreen />}
+      {currentScreen === 'saved'       && <SavedScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
+      {currentScreen === 'subscription' && <SubscriptionScreen />}
 
+      <InstallPrompt />
       <BottomNav />
     </div>
   );
@@ -183,6 +241,14 @@ function DesktopGate() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    const saved = localStorage.getItem('ur_theme') as 'dark' | 'light' | null;
+    if (saved) {
+      document.documentElement.dataset.theme = saved;
+      useAppStore.getState().dispatch({ type: 'SET_THEME', theme: saved });
+    }
+  }, []);
+
   return (
     <AppProvider>
       <ScreenRouter />

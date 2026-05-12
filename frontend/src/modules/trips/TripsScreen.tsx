@@ -1,26 +1,11 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary } from '../../shared/types';
-
-const ARCHETYPE_COLORS: Record<string, { primary: string; bg: string }> = {
-  historian:     { primary: '#fbbf24', bg: 'rgba(251,191,36,.12)'  },
-  epicurean:     { primary: '#f87171', bg: 'rgba(248,113,113,.12)' },
-  wanderer:      { primary: '#34d399', bg: 'rgba(52,211,153,.12)'  },
-  voyager:       { primary: '#60a5fa', bg: 'rgba(96,165,250,.12)'  },
-  explorer:      { primary: '#86efac', bg: 'rgba(134,239,172,.12)' },
-  slowtraveller: { primary: '#c4b5fd', bg: 'rgba(196,181,253,.12)' },
-  pulse:         { primary: '#f9a8d4', bg: 'rgba(249,168,212,.12)' },
-};
-
-const ARCHETYPE_ICONS: Record<string, string> = {
-  historian:     'account_balance',
-  epicurean:     'restaurant',
-  wanderer:      'explore',
-  voyager:       'flight',
-  explorer:      'terrain',
-  slowtraveller: 'spa',
-  pulse:         'nightlife',
-};
+import { TripCountdown, getDaysUntilTravel } from './TripCountdown';
+import { SmartUpdates } from './SmartUpdates';
+import { ArrivalBanner } from './ArrivalBanner';
+import { RecalibrationStack } from './RecalibrationStack';
+import { ARCHETYPE_COLORS, ARCHETYPE_EMOJI, ARCHETYPE_SHORT } from '../persona/types';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -36,119 +21,186 @@ function groupByMonth(items: SavedItinerary[]): { label: string; items: SavedIti
   return Array.from(map.entries()).map(([label, items]) => ({ label, items }));
 }
 
-function TripCard({ item }: { item: SavedItinerary }) {
+function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
+  const { dispatch } = useAppStore();
   const [expanded, setExpanded] = useState(false);
-  const archetype = item.persona?.archetype ?? '';
-  const colors    = ARCHETYPE_COLORS[archetype] ?? { primary: '#60a5fa', bg: 'rgba(96,165,250,.12)' };
-  const icon      = ARCHETYPE_ICONS[archetype]  ?? 'explore';
-  const stops     = item.itinerary?.itinerary ?? [];
-  const preview   = stops.slice(0, 3);
-  const remaining = stops.length - preview.length;
+  const [autoRunRecalibration, setAutoRunRecalibration] = useState(false);
+
+  const archetypeKey    = item.persona?.archetype ?? '';
+  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
+  const archetypeEmoji  = ARCHETYPE_EMOJI[archetypeKey]  ?? '◆';
+  const archetypeName   = ARCHETYPE_SHORT[archetypeKey]  ?? (item.persona?.archetype_name ?? archetypeKey);
+
+  const days          = getDaysUntilTravel(item.travelDate);
+  const isToday       = days === 0;
+  const isPast        = days !== null && days < 0;
+  const hasUnresolved = (item.pendingSwapCards ?? []).some(c => !c.resolved);
+  const forceExpanded = isToday && hasUnresolved;
+
+  // Support both old flat itinerary and new engine itinerary (day-based)
+  const stops = (item.itinerary as any)?.days?.flatMap((d: any) => d.stops) ?? item.itinerary?.itinerary ?? [];
+  const cityName = item.city;
+  const date = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
+
+  // Up to 3 card images for the fan
+  const fanImages: (string | null)[] = stops
+    .filter((s: any) => s.imageUrl ?? s.photo_ref)
+    .slice(0, 3)
+    .map((s: any) => s.imageUrl ?? null);
+  while (fanImages.length < 3) fanImages.unshift(null);
+
+  const FAN_ROTATIONS = [-6, -3, 0];
+  const FAN_TRANSLATE = [8, 4, 0];
+
+  function handlePlay() {
+    dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
+    dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+  }
+
+  function handleArrivalCheck() {
+    setExpanded(true);
+    setAutoRunRecalibration(true);
+  }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden border border-white/8"
-      style={{ background: 'rgba(255,255,255,.03)' }}
-    >
-      {/* Card header */}
-      <button
-        className="w-full text-left px-4 pt-4 pb-3"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            {/* City */}
-            <h3 className="font-heading font-bold text-white text-lg leading-tight truncate">
-              {item.city}
-            </h3>
-            {/* Meta row */}
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-white/40 text-xs">{formatDate(item.date)}</span>
-              <span className="text-white/20 text-xs">·</span>
-              <span className="text-white/40 text-xs">{stops.length} stops</span>
-            </div>
-          </div>
+    <div style={{ marginBottom: 32, animation: `cardEntry 0.4s ease ${index * 0.09}s both` }}>
 
-          {/* Persona badge */}
+      {/* Card fan */}
+      <div style={{ position: 'relative', height: 240, marginBottom: 16 }}>
+        {fanImages.map((img, i) => (
           <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl flex-shrink-0"
-            style={{ background: colors.bg, border: `1px solid ${colors.primary}30` }}
+            key={i}
+            onClick={i === 2 ? handlePlay : undefined}
+            style={{
+              position: 'absolute',
+              width: 220, height: 280,
+              top: 0, left: '50%', marginLeft: -110,
+              borderRadius: 20, overflow: 'hidden',
+              boxShadow: '0 16px 48px rgba(0,0,0,.7)',
+              transform: `rotate(${FAN_ROTATIONS[i]}deg) translateY(${FAN_TRANSLATE[i]}px)`,
+              zIndex: i + 1,
+              cursor: i === 2 ? 'pointer' : 'default',
+              transition: 'transform .4s cubic-bezier(.16,1,.3,1)',
+            }}
           >
-            <span className="ms fill" style={{ fontSize: 13, color: colors.primary }}>{icon}</span>
-            <span className="font-semibold capitalize" style={{ fontSize: 10, color: colors.primary }}>
-              {item.persona?.archetype_name ?? archetype}
-            </span>
-          </div>
-        </div>
-
-        {/* Stop previews */}
-        <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-          {preview.map((stop, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg"
-              style={{ background: 'rgba(255,255,255,.06)' }}
-            >
-              <div
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ background: colors.primary }}
-              />
-              <span className="text-white/60 text-[10px] truncate max-w-[100px]">{stop.place}</span>
-            </div>
-          ))}
-          {remaining > 0 && (
-            <span className="text-white/30 text-[10px] px-1">+{remaining} more</span>
-          )}
-        </div>
-
-        {/* Expand toggle */}
-        <div className="flex items-center justify-end mt-2">
-          <span className={`ms text-white/30 text-base transition-transform ${expanded ? 'rotate-180' : ''}`}>
-            expand_more
-          </span>
-        </div>
-      </button>
-
-      {/* Expanded stop list */}
-      {expanded && (
-        <div className="border-t border-white/6 px-4 py-3">
-          <p className="text-white/30 text-[10px] uppercase tracking-widest font-semibold mb-3">
-            Full Itinerary
-          </p>
-          <div className="flex flex-col gap-0">
-            {stops.map((stop, i) => (
-              <div key={i} className="flex gap-3 py-2">
-                {/* Spine */}
-                <div className="flex flex-col items-center" style={{ width: 20 }}>
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
-                    style={{ background: i === 0 ? colors.primary : 'rgba(255,255,255,.2)' }}
-                  />
-                  {i < stops.length - 1 && (
-                    <div className="w-px flex-1 mt-1" style={{ background: 'rgba(255,255,255,.08)', minHeight: 16 }} />
-                  )}
+            {img
+              ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${archetypeColors.glow}, rgba(255,255,255,.02))` }} />
+            }
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.85))' }} />
+            {i === 2 && (
+              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>
+                  Stop 1
                 </div>
-                {/* Content */}
-                <div className="flex-1 min-w-0 pb-1">
-                  <p className="text-white/80 text-sm font-semibold leading-snug">{stop.place}</p>
-                  {stop.duration && (
-                    <p className="text-white/30 text-[10px] mt-0.5">{stop.duration}</p>
-                  )}
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#fff' }}>
+                  {(stops[0] as any)?.title ?? (stops[0] as any)?.place ?? cityName}
                 </div>
               </div>
-            ))}
+            )}
           </div>
+        ))}
+      </div>
 
-          {/* Pro tip if any */}
-          {item.itinerary?.summary?.pro_tip && (
-            <div
-              className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded-xl"
-              style={{ background: 'rgba(251,191,36,.06)', border: '1px solid rgba(251,191,36,.1)' }}
-            >
-              <span className="ms fill text-amber-400 flex-shrink-0" style={{ fontSize: 12 }}>lightbulb</span>
-              <p className="text-amber-200/60 text-[10px] leading-relaxed">{item.itinerary.summary.pro_tip}</p>
-            </div>
+      {/* Trip meta */}
+      <div style={{ textAlign: 'center', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)' }}>{cityName}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-3)', marginTop: 2 }}>{date} · {stops.length} stops{isPast ? ' · Completed' : ''}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
+            background: archetypeColors.glow,
+            border: `1px solid ${archetypeColors.primary}40`,
+            color: archetypeColors.primary,
+          }}>
+            {archetypeEmoji} {archetypeName}
+          </span>
+        </div>
+      </div>
+
+      {/* Countdown strip */}
+      <div style={{ marginBottom: 12 }}>
+        <TripCountdown travelDate={item.travelDate} />
+      </div>
+
+      {/* Play button */}
+      <button
+        onClick={handlePlay}
+        style={{
+          width: '100%', height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+          color: '#0c0c0e', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+          marginBottom: 12,
+        }}
+      >
+        <span className="ms fill" style={{ fontSize: 20 }}>play_arrow</span>
+        Play Itinerary
+      </button>
+
+      {/* Stop list — expandable */}
+      <button
+        onClick={() => { if (!forceExpanded) setExpanded(e => !e); }}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-3)' }}>
+          {stops.length} stops in order
+        </span>
+        <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-3)', transform: (forceExpanded || expanded) ? 'rotate(180deg)' : 'none', transition: 'transform .3s' }}>
+          expand_more
+        </span>
+      </button>
+
+      {(forceExpanded || expanded) && (
+        <div style={{ marginTop: 8 }}>
+          {/* Arrival banner */}
+          {isToday && !hasUnresolved && (
+            <ArrivalBanner tripId={item.id} travelDate={item.travelDate} city={item.city} onCheckNow={handleArrivalCheck} />
           )}
+          {/* Smart updates */}
+          {!isToday && !isPast && item.travelDate && <SmartUpdates trip={item} />}
+          {/* Recalibration */}
+          {isToday && <RecalibrationStack trip={item} autoRun={autoRunRecalibration} />}
+
+          {/* Stop list with why+consequence */}
+          {stops.map((stop: any, i: number) => {
+            const reason = stop.orderReason ?? stop.whyForYou ?? null;
+            const consequence = stop.orderConsequence ?? null;
+            const moved = stop.movedFrom !== null && stop.movedFrom !== undefined;
+            return (
+              <div key={stop.id ?? i} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                borderBottom: i < stops.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--color-primary-bg)',
+                  border: '1px solid rgba(212,168,83,.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
+                }}>{i + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
+                    {stop.title ?? stop.place}
+                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
+                  </div>
+                  {reason && (
+                    <div style={{ fontSize: 10, color: 'var(--color-text-3)', marginTop: 2 }}>
+                      {reason}{consequence ? ` · ${consequence}` : ''}
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)' }}>{stop.time ?? ''}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -170,7 +222,7 @@ export function TripsScreen() {
         className="flex-shrink-0 px-5 border-b border-white/6"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: '1rem' }}
       >
-        <h1 className="font-heading font-bold text-white text-xl">My Journeys</h1>
+        <h1 className="font-[family-name:var(--font-heading)] text-[16px] font-bold text-[var(--color-text-1)]">My Journeys</h1>
         <p className="text-white/40 text-sm mt-0.5">{sorted.length} trip{sorted.length !== 1 ? 's' : ''} saved</p>
       </div>
 
@@ -187,7 +239,7 @@ export function TripsScreen() {
             </div>
             <div className="text-center">
               <p className="text-white/50 font-semibold text-sm">No trips saved yet</p>
-              <p className="text-white/25 text-xs mt-1">Explore a city, build your itinerary,<br />and tap Save to record your journey.</p>
+              <p className="text-white/25 text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
             </div>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
@@ -202,12 +254,12 @@ export function TripsScreen() {
             {grouped.map(group => (
               <div key={group.label} className="mb-6">
                 {/* Month label */}
-                <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-3 px-1">
+                <p className="font-[family-name:var(--font-heading)] text-[16px] font-bold text-[var(--color-text-1)] mb-3 px-1">
                   {group.label}
                 </p>
-                <div className="flex flex-col gap-3">
-                  {group.items.map(item => (
-                    <TripCard key={item.id} item={item} />
+                <div className="flex flex-col gap-4">
+                  {group.items.map((item, idx) => (
+                    <TripCard key={item.id} item={item} index={idx} />
                   ))}
                 </div>
               </div>

@@ -1,0 +1,66 @@
+<h2>Soft Nudge — When query isn't understood</h2>
+<p class="subtitle">Appears below the search bar when no keywords match the dictionary</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline hint below input</h3>
+      <p>A small muted line appears directly under the search bar</p>
+      <div style="margin-top:12px;">
+        <div style="background:#1a1a2e;border-radius:12px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.04);">
+            <span style="color:#888;font-size:14px;">🔍</span>
+            <span style="color:#e0e0e0;font-size:13px;">I want something cozy for morning</span>
+            <span style="color:#555;font-size:14px;">✕</span>
+          </div>
+          <div style="padding:8px 14px 10px;display:flex;align-items:center;gap:6px;">
+            <span style="font-size:13px;">💡</span>
+            <span style="color:#888;font-size:12px;">Try: <span style="color:#9aa0f5;">"cafe"</span>, <span style="color:#9aa0f5;">"museum"</span>, <span style="color:#9aa0f5;">"parks"</span> — we're still learning!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Suggestion chips row</h3>
+      <p>Shows tappable example chips the user can tap to instantly run</p>
+      <div style="margin-top:12px;">
+        <div style="background:#1a1a2e;border-radius:12px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,.04);">
+            <span style="color:#888;font-size:14px;">🔍</span>
+            <span style="color:#e0e0e0;font-size:13px;">I want something cozy for morning</span>
+          </div>
+          <div style="padding:8px 14px 10px;">
+            <span style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">Did you mean?</span>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+              <span style="background:rgba(124,140,248,.15);border:1px solid rgba(124,140,248,.3);color:#9aa0f5;border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;">☕ cafe</span>
+              <span style="background:rgba(124,140,248,.15);border:1px solid rgba(124,140,248,.3);color:#9aa0f5;border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;">🏛️ museum</span>
+              <span style="background:rgba(124,140,248,.15);border:1px solid rgba(124,140,248,.3);color:#9aa0f5;border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;">🌿 park</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Toast / floating nudge</h3>
+      <p>A small floating pill appears briefly at the bottom of the screen, non-blocking</p>
+      <div style="margin-top:12px;position:relative;height:80px;">
+        <div style="background:#1a1a2e;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:13px;">
+          <span style="color:#888;">🔍</span>
+          <span style="color:#e0e0e0;">I want something cozy for morning</span>
+        </div>
+        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);background:#252540;border:1px solid rgba(124,140,248,.25);border-radius:20px;padding:6px 14px;white-space:nowrap;font-size:12px;color:#aaa;">
+          💡 Try a place type like "cafe" or "park"
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

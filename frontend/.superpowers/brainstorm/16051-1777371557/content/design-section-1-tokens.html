@@ -1,0 +1,134 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; }
+  .section { margin-bottom: 28px; }
+  h3 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 12px; color: #c0b0a4; }
+  .split { display: flex; gap: 16px; }
+  .half { flex: 1; border-radius: 14px; padding: 14px; border: 1px solid rgba(255,255,255,.08); }
+  .half-title { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+  .old .half-title { color: #64748b; }
+  .new-dark .half-title { color: #e07854; }
+  .new-light .half-title { color: #e07854; }
+
+  /* OLD theme */
+  .old { background: #0f172a; }
+  .new-dark { background: #1a1714; }
+  .new-light { background: #faf8f4; }
+
+  .swatch-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .swatch { width: 36px; height: 36px; border-radius: 8px; position: relative; border: 1px solid rgba(255,255,255,.06); }
+  .swatch .tip { display: none; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.85); color: #fff; font-size: 9px; white-space: nowrap; padding: 3px 6px; border-radius: 4px; pointer-events: none; }
+  .swatch:hover .tip { display: block; }
+
+  .type-row { display: flex; flex-direction: column; gap: 5px; }
+  .type-sample { line-height: 1.2; }
+  .font-label { font-size: 9px; color: #857268; margin-top: 2px; }
+
+  .diff-pill { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }
+  .changed { background: rgba(224,120,84,.18); color: #e07854; border: 1px solid rgba(224,120,84,.3); }
+  .same { background: rgba(107,148,112,.14); color: #6b9470; border: 1px solid rgba(107,148,112,.28); }
+
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .summary-table th { text-align: left; color: #857268; font-weight: 600; padding: 4px 8px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .summary-table td { padding: 6px 8px; color: #c0b0a4; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: top; }
+  .summary-table td:first-child { color: #f5f0ea; font-weight: 600; }
+  .arrow { color: #857268; padding: 0 4px; }
+</style>
+
+<h2>Section 1 — Design Token Layer</h2>
+<p class="subtitle">What's changing in <code>index.css</code> — the foundation everything else builds on</p>
+
+<div class="section">
+  <h3>Color palette — Current → New</h3>
+  <div class="split">
+    <!-- Current -->
+    <div class="half old">
+      <div class="half-title">Current (cool blue dark)</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#0f172a"><div class="tip">bg #0f172a</div></div>
+        <div class="swatch" style="background:#1e293b"><div class="tip">surface #1e293b</div></div>
+        <div class="swatch" style="background:#334155"><div class="tip">surf-hst #334155</div></div>
+        <div class="swatch" style="background:#3b82f6"><div class="tip">primary #3b82f6</div></div>
+        <div class="swatch" style="background:#f97316"><div class="tip">orange #f97316</div></div>
+        <div class="swatch" style="background:#f1f5f9"><div class="tip">text-1 #f1f5f9</div></div>
+        <div class="swatch" style="background:#cbd5e1"><div class="tip">text-2 #cbd5e1</div></div>
+        <div class="swatch" style="background:#8e9099"><div class="tip">text-3 #8e9099</div></div>
+      </div>
+      <div class="type-row">
+        <div class="type-sample" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:#f1f5f9">Plus Jakarta Sans</div>
+        <div class="type-sample" style="font-family:'Inter',sans-serif;font-size:12px;color:#cbd5e1">Inter — body text</div>
+        <div class="font-label">Headings: Plus Jakarta Sans · Body: Inter</div>
+      </div>
+    </div>
+    <!-- New dark -->
+    <div class="half new-dark">
+      <div class="half-title">New Dark</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#1a1714"><div class="tip">bg #1a1714</div></div>
+        <div class="swatch" style="background:#242018"><div class="tip">surface #242018</div></div>
+        <div class="swatch" style="background:#2e2a22"><div class="tip">surface2 #2e2a22</div></div>
+        <div class="swatch" style="background:#e07854"><div class="tip">primary #e07854</div></div>
+        <div class="swatch" style="background:#c4613d"><div class="tip">primary-dk #c4613d</div></div>
+        <div class="swatch" style="background:#6b9470"><div class="tip">sage #6b9470</div></div>
+        <div class="swatch" style="background:#4f8fab"><div class="tip">sky #4f8fab</div></div>
+        <div class="swatch" style="background:#c49840"><div class="tip">amber #c49840</div></div>
+        <div class="swatch" style="background:#f5f0ea"><div class="tip">text1 #f5f0ea</div></div>
+        <div class="swatch" style="background:#c0b0a4"><div class="tip">text2 #c0b0a4</div></div>
+        <div class="swatch" style="background:#857268"><div class="tip">text3 #857268</div></div>
+      </div>
+      <div class="type-row">
+        <div class="type-sample" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#f5f0ea">Playfair Display</div>
+        <div class="type-sample" style="font-family:'DM Sans',sans-serif;font-size:12px;color:#c0b0a4">DM Sans — body text</div>
+        <div class="font-label">Headings: Playfair Display · Body: DM Sans</div>
+      </div>
+    </div>
+    <!-- New light -->
+    <div class="half new-light" style="border-color:rgba(44,36,32,.1)">
+      <div class="half-title" style="color:#e07854">New Light</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#faf8f4;border-color:rgba(44,36,32,.12)"><div class="tip">bg #faf8f4</div></div>
+        <div class="swatch" style="background:#ffffff;border-color:rgba(44,36,32,.12)"><div class="tip">surface #fff</div></div>
+        <div class="swatch" style="background:#f8f4ef;border-color:rgba(44,36,32,.12)"><div class="tip">surface2 #f8f4ef</div></div>
+        <div class="swatch" style="background:#e07854"><div class="tip">primary #e07854</div></div>
+        <div class="swatch" style="background:#c4613d"><div class="tip">primary-dk #c4613d</div></div>
+        <div class="swatch" style="background:#6b9470"><div class="tip">sage #6b9470</div></div>
+        <div class="swatch" style="background:#4f8fab"><div class="tip">sky #4f8fab</div></div>
+        <div class="swatch" style="background:#2c2420"><div class="tip">text1 #2c2420</div></div>
+        <div class="swatch" style="background:#6b5e57"><div class="tip">text2 #6b5e57</div></div>
+        <div class="swatch" style="background:#a09085"><div class="tip">text3 #a09085</div></div>
+      </div>
+      <div class="type-row">
+        <div class="type-sample" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#2c2420">Playfair Display</div>
+        <div class="type-sample" style="font-family:'DM Sans',sans-serif;font-size:12px;color:#6b5e57">DM Sans — body text</div>
+        <div class="font-label">Same fonts, light backgrounds</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>What changes in <code>index.css</code></h3>
+  <table class="summary-table">
+    <tr><th>Token</th><th>From</th><th></th><th>To</th></tr>
+    <tr><td>Background</td><td style="color:#3b82f6">#0f172a cool blue</td><td class="arrow">→</td><td style="color:#e07854">#1a1714 warm brown</td></tr>
+    <tr><td>Surface</td><td style="color:#3b82f6">#1e293b</td><td class="arrow">→</td><td style="color:#e07854">#242018</td></tr>
+    <tr><td>Primary</td><td style="color:#3b82f6">#3b82f6 blue</td><td class="arrow">→</td><td style="color:#e07854">#e07854 terracotta</td></tr>
+    <tr><td>Heading font</td><td>Plus Jakarta Sans</td><td class="arrow">→</td><td>Playfair Display (serif)</td></tr>
+    <tr><td>Body font</td><td>Inter</td><td class="arrow">→</td><td>DM Sans</td></tr>
+    <tr><td>New tokens added</td><td>—</td><td class="arrow">→</td><td>sage, sky, amber, surface2, border, divider, shadow variants</td></tr>
+    <tr><td>Light theme</td><td>none</td><td class="arrow">→</td><td><code>[data-theme=light]</code> override block with warm light palette</td></tr>
+    <tr><td>Animations added</td><td>shimmer only</td><td class="arrow">→</td><td>springUp, cardEntry, pinPulse, confetti, bounceIn, spin</td></tr>
+  </table>
+</div>
+
+<div class="section" style="background:rgba(224,120,84,.06);border:1px solid rgba(224,120,84,.18);border-radius:14px;padding:14px;">
+  <h3 style="color:#e07854;margin-bottom:8px">How theme toggle works</h3>
+  <p style="font-size:12px;color:#c0b0a4;line-height:1.6">
+    Theme stored in <code>localStorage('ur_theme')</code> and in Zustand store.<br>
+    On mount, app reads preference and sets <code>document.documentElement.dataset.theme = 'light' | 'dark'</code>.<br>
+    Tailwind <code>@theme</code> holds dark defaults. A <code>[data-theme=light]</code> CSS block overrides every token.<br>
+    One attribute flip → entire app switches instantly, no re-render needed.
+  </p>
+</div>
+
+<p style="font-size:12px;color:#857268;margin-top:16px;text-align:center">Does this token layer look right? Reply in terminal to confirm or request changes.</p>
