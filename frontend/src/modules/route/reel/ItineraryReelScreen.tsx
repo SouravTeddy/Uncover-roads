@@ -91,7 +91,7 @@ export function ItineraryReelScreen() {
       type: 'SAVE_ITINERARY',
       saved: {
         id,
-        city: city || activeItinerary.city,
+        city: city || activeItinerary.city || activeItinerary.cities[0] || '',
         date: new Date().toISOString(),
         travelDate: state.travelStartDate,
         cityLat: state.cityGeo?.lat ?? null,
@@ -115,7 +115,7 @@ export function ItineraryReelScreen() {
   }
 
   const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit');
-  const activeDotIdx = dotCards.indexOf(cards[activeIdx]);
+  const activeDotIdx = dotCards.findIndex(c => c === cards[activeIdx]);
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { ReelIntroCard } from './types';
-import type { WeatherData } from '../../../shared/types';
 
 interface Props {
   card: ReelIntroCard;
@@ -8,21 +7,6 @@ interface Props {
 }
 
 const GRADIENT = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,.05) 40%, rgba(0,0,0,.5) 62%, rgba(0,0,0,.88) 82%, rgba(0,0,0,.97) 100%)';
-
-function WeatherPill({ weather }: { weather: WeatherData }) {
-  return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '6px 12px', borderRadius: 999,
-      background: 'rgba(18,18,22,.75)', backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(242,237,230,.07)',
-    }}>
-      <span className="ms fill" style={{ fontSize: 14, color: '#4a7fa0' }}>{weather.icon}</span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.8)' }}>{weather.temp}°</span>
-      <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)' }}>{weather.condition}</span>
-    </div>
-  );
-}
 
 export function ReelIntroCard({ card, active }: Props) {
   const [visible, setVisible] = useState(false);
