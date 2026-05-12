@@ -90,7 +90,9 @@ async def seed_cities_and_start_sync():
     """Seed Tokyo/Paris/NYC into city_data if not present; start weekly sync."""
     if _supabase is None:
         return
-    for city_id in ["tokyo", "paris", "nyc"]:
+    seed_dir = _Path("city/seed")
+    city_ids = [p.stem for p in sorted(seed_dir.glob("*.json"))] if seed_dir.exists() else []
+    for city_id in city_ids:
         try:
             existing = _supabase.table("city_data").select("id").eq("id", city_id).execute()
             if not existing.data:
@@ -2456,6 +2458,169 @@ async def build_itinerary_endpoint(
         ],
         "recommendations": result.recommendations,
     }
+
+
+# ── City search + map data (Phase 10) ────────────────────────────────────────
+
+class CitySearchResult(BaseModel):
+    city_id: str
+    name: str
+    country_code: str
+    tier: int
+    seeded: bool
+
+
+class MapPin(BaseModel):
+    place_id: str
+    name: str
+    lat: float
+    lon: float
+    category: str
+    neighborhood: Optional[str]
+    is_landmark: bool
+
+
+class PlacePick(BaseModel):
+    place_id: str
+    name: str
+    lat: float
+    lon: float
+    category: str
+    rating: Optional[float]
+    stage: str
+    badge: Optional[str]        # 'trending' | 'getting_busy' | 'hidden_gem' | None
+    badge_reason: Optional[str]
+
+
+@app.get("/api/cities/autocomplete", response_model=list[CitySearchResult])
+async def cities_autocomplete(q: str, _user=Depends(get_current_user)):
+    """Whitelist prefix search. Free tier. Min 2 chars, max 10 results."""
+    if len(q.strip()) < 2:
+        return []
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    rows = (
+        _supabase.table("city_whitelist")
+        .select("city_id, name, country_code, tier, seeded")
+        .ilike("name", f"{q}%")
+        .order("tier")
+        .limit(10)
+        .execute()
+    )
+    return [
+        CitySearchResult(
+            city_id=r["city_id"], name=r["name"],
+            country_code=r["country_code"], tier=r["tier"],
+            seeded=r.get("seeded", False),
+        )
+        for r in (rows.data or [])
+    ]
+
+
+@app.get("/api/cities/search", response_model=CitySearchResult)
+async def cities_search(city_id: str, _user=Depends(get_current_user)):
+    """Exact whitelist lookup. Free tier. Returns 404 if not whitelisted."""
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    row = (
+        _supabase.table("city_whitelist")
+        .select("city_id, name, country_code, tier, seeded")
+        .eq("city_id", city_id)
+        .maybe_single()
+        .execute()
+    )
+    if not row.data:
+        raise HTTPException(status_code=404, detail="city_not_in_whitelist")
+    r = row.data
+    return CitySearchResult(
+        city_id=r["city_id"], name=r["name"],
+        country_code=r["country_code"], tier=r["tier"],
+        seeded=r.get("seeded", False),
+    )
+
+
+@app.get("/api/cities/map-pins", response_model=list[MapPin])
+async def cities_map_pins(city_id: str, _user=Depends(get_current_user)):
+    """Pre-seeded basic map pins. Free tier. No live API calls.
+    Returns insert candidates from city_data seed.
+    If city is unseeded, triggers on-demand seeding (~3-4s first caller only).
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    try:
+        city = load_city(city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+    landmark_set = set(city.landmark_anchors)
+    return [
+        MapPin(
+            place_id=ic.place_id, name=ic.name,
+            lat=ic.lat, lon=ic.lon,
+            category=ic.type,
+            neighborhood=None,
+            is_landmark=ic.place_id in landmark_set,
+        )
+        for ic in city.insert_candidates
+    ]
+
+
+@app.get("/api/cities/picks", response_model=list[PlacePick])
+async def cities_picks(city_id: str, _user=Depends(require_pro)):
+    """Pro: curated picks with trend stage badges.
+    Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
+
+    Badge logic:
+      trending     — stage=rising AND velocity_ratio >= 2.0
+      getting_busy — stage=rising with crowd_ratio >= 0.4
+      hidden_gem   — stage=hidden_gem
+      None         — mainstream or no signal data
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    try:
+        city = load_city(city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+
+    place_ids = [ic.place_id for ic in city.insert_candidates]
+    profiles_row = (
+        _supabase.table("place_dynamic_profiles")
+        .select("place_id, stage, signals")
+        .in_("place_id", place_ids)
+        .execute()
+    )
+    profiles: dict[str, dict] = {
+        r["place_id"]: r for r in (profiles_row.data or [])
+    }
+
+    def _badge(place_id: str) -> tuple[Optional[str], Optional[str]]:
+        p = profiles.get(place_id)
+        if not p:
+            return None, None
+        stage = p.get("stage", "unknown")
+        signals = p.get("signals") or {}
+        velocity = float(signals.get("velocity_ratio", 1.0) or 1.0)
+        crowd = float(signals.get("crowd_ratio", 0.0) or 0.0)
+        if stage == "rising" and velocity >= 2.0:
+            return "trending", f"Reviews up {int(velocity)}x this month"
+        if stage == "rising" and crowd >= 0.4:
+            return "getting_busy", "Getting busy — locals say go early"
+        if stage == "hidden_gem":
+            return "hidden_gem", "Still off the tourist trail"
+        return None, None
+
+    picks = []
+    for ic in city.insert_candidates:
+        badge, badge_reason = _badge(ic.place_id)
+        p = profiles.get(ic.place_id, {})
+        picks.append(PlacePick(
+            place_id=ic.place_id, name=ic.name,
+            lat=ic.lat, lon=ic.lon,
+            category=ic.type, rating=None,
+            stage=p.get("stage", "unknown"),
+            badge=badge, badge_reason=badge_reason,
+        ))
+    return picks
 
 
 if __name__ == "__main__":
