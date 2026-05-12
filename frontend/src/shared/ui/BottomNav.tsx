@@ -39,7 +39,6 @@ export function BottomNav() {
         zIndex: 30,
         display: 'flex',
         alignItems: 'center',
-        gap: 0,
         background: 'rgba(12,12,14,.92)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
@@ -58,6 +57,7 @@ export function BottomNav() {
             key={item.screen}
             onClick={() => handleTap(item.screen)}
             disabled={muted}
+            aria-current={active && !muted ? 'page' : undefined}
             style={{
               display: 'flex',
               flexDirection: 'column',
