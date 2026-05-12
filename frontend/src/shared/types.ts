@@ -274,44 +274,6 @@ export interface SavedItinerary {
   pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
 }
 
-// ── Engine Itinerary (reel-compatible) ───────────────────────
-export interface EngineItineraryStop {
-  id: string;
-  placeId: string;
-  title: string;
-  area: string;
-  day: number;
-  time: string;
-  durationMin: number;
-  category: string;
-  lat: number;
-  lon: number;
-  whyForYou: string;
-  localTip: string;
-  imageUrl: string | null;
-  rating: number | null;
-  priceLevel: number | null;
-  openNow: boolean | null;
-  weekdayText: string | null;
-  orderReason: string | null;
-  orderConsequence: string | null;
-  movedFrom: number | null;
-}
-
-export interface EngineItineraryDay {
-  city: string;
-  date: string;
-  stops: EngineItineraryStop[];
-}
-
-export interface EngineItinerary {
-  id: string;
-  city: string;
-  days: EngineItineraryDay[];
-  summary: { pro_tip: string; total_places: number };
-  weights: Record<string, number>;
-}
-
 // ── City search ───────────────────────────────────────────────
 export interface CityResult {
   name: string;
@@ -599,13 +561,19 @@ export interface EngineItineraryStop {
   lon: number
   priceLevel: number | null   // 0–4 from Google Places (0 = free)
   rating: number | null       // from Google Places
-  weekdayText: string[]       // from Google Places opening hours
+  weekdayText: string[] | null  // from Google Places opening hours
   whyForYou: string           // LLM ✦ — persona tone only, no hours/prices/facts
   localTip: string | null     // LLM ✦ — atmosphere only
   googleMapsUrl: string | null
   website: string | null
   photoRef: string | null     // Google Places photo reference
   tags?: string[]
+  // Reel-specific fields (set by itinerary engine ordering pass)
+  imageUrl?: string | null
+  openNow?: boolean | null
+  orderReason?: string | null
+  orderConsequence?: string | null
+  movedFrom?: number | null
 }
 
 /**
@@ -634,6 +602,9 @@ export interface EngineItinerary {
   days: EngineItineraryDay[]
   personaSnapshot: EngineWeights   // weights at generation time
   archetypeSnapshot: ArchetypeId
+  // Optional reel-compat fields (single-city shorthand)
+  city?: string
+  summary?: { pro_tip: string; total_places: number }
 }
 
 // ── Saved events ──────────────────────────────────────────────

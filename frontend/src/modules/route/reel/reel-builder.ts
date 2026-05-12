@@ -5,7 +5,7 @@ import type {
   WeatherData,
 } from '../../../shared/types';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelTransitCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard } from './types';
 
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -74,9 +74,11 @@ export function buildReelCards(
   const allStops = itinerary.days.flatMap(d => d.stops);
   const stopCount = allStops.length;
 
+  const cityLabel = itinerary.city ?? itinerary.cities.join(' · ');
+
   cards.push({
     type: 'intro',
-    city: itinerary.city,
+    city: cityLabel,
     imageUrl: allStops[0]?.imageUrl ?? null,
     totalStops: stopCount,
     weather,
@@ -135,7 +137,7 @@ export function buildReelCards(
 
   cards.push({
     type: 'finale',
-    city: itinerary.city,
+    city: cityLabel,
     totalStops: stopCount,
     persona,
   });

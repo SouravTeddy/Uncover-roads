@@ -63,6 +63,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     activePinId: null,
     mapFilter: 'all',
     savedEvents: [],
+    reelSavedId: null,
     ...overrides,
   };
 }
