@@ -274,7 +274,6 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
-<<<<<<< HEAD
   savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: [],
@@ -341,7 +340,6 @@ export type Action =
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
   | { type: 'SET_THEME'; theme: 'dark' | 'light' }
-<<<<<<< HEAD
   | { type: 'SAVE_EVENT'; event: SavedEvent }
   | { type: 'REMOVE_EVENT'; id: string }
   // ── Phase 3: city context actions ────────────────────────────
@@ -646,7 +644,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, theme: action.theme };
     }
 
-<<<<<<< HEAD
     // ── Phase 3: city context cases ────────────────────────────
 
     case 'SET_CITY_CONTEXTS':
