@@ -90,7 +90,9 @@ async def seed_cities_and_start_sync():
     """Seed Tokyo/Paris/NYC into city_data if not present; start weekly sync."""
     if _supabase is None:
         return
-    for city_id in ["tokyo", "paris", "nyc"]:
+    seed_dir = _Path("city/seed")
+    city_ids = [p.stem for p in sorted(seed_dir.glob("*.json"))] if seed_dir.exists() else []
+    for city_id in city_ids:
         try:
             existing = _supabase.table("city_data").select("id").eq("id", city_id).execute()
             if not existing.data:
