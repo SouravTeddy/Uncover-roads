@@ -12,6 +12,7 @@ export type Screen =
   | 'map'
   | 'journey'
   | 'route'
+  | 'itinerary-reel'
   | 'trips'
   | 'saved'
   | 'nav'
@@ -271,6 +272,44 @@ export interface SavedItinerary {
   persona: Persona;
   lastUpdateCheck: string | null; // ISO datetime of last update check
   pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
+}
+
+// ── Engine Itinerary (reel-compatible) ───────────────────────
+export interface EngineItineraryStop {
+  id: string;
+  placeId: string;
+  title: string;
+  area: string;
+  day: number;
+  time: string;
+  durationMin: number;
+  category: string;
+  lat: number;
+  lon: number;
+  whyForYou: string;
+  localTip: string;
+  imageUrl: string | null;
+  rating: number | null;
+  priceLevel: number | null;
+  openNow: boolean | null;
+  weekdayText: string | null;
+  orderReason: string | null;
+  orderConsequence: string | null;
+  movedFrom: number | null;
+}
+
+export interface EngineItineraryDay {
+  city: string;
+  date: string;
+  stops: EngineItineraryStop[];
+}
+
+export interface EngineItinerary {
+  id: string;
+  city: string;
+  days: EngineItineraryDay[];
+  summary: { pro_tip: string; total_places: number };
+  weights: Record<string, number>;
 }
 
 // ── City search ───────────────────────────────────────────────

@@ -1,10 +1,11 @@
 import { useAppStore } from '../store';
 import type { Screen } from '../types';
 
-const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
-  { screen: 'destination', icon: 'explore',   label: 'Explore'  },
-  { screen: 'saved',       icon: 'bookmark',  label: 'Saved'    },
-  { screen: 'profile',     icon: 'person',    label: 'Profile'  },
+const NAV_ITEMS: { screen: Screen | 'community'; icon: string; label: string }[] = [
+  { screen: 'destination', icon: 'explore',     label: 'Explore'   },
+  { screen: 'trips',       icon: 'route',       label: 'Itinerary' },
+  { screen: 'community',   icon: 'diversity_3', label: 'Community' },
+  { screen: 'profile',     icon: 'person',      label: 'Profile'   },
 ];
 
 const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'ob6', 'ob7', 'ob8', 'ob9', 'persona', 'route', 'nav']);
@@ -21,25 +22,76 @@ export function BottomNav() {
     return currentScreen === screen;
   }
 
+  function handleTap(screen: Screen | 'community') {
+    if (screen === 'community') return;
+    dispatch({ type: 'GO_TO', screen });
+  }
+
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 bg-[var(--nav-bg)] [backdrop-filter:blur(12px)] border-t border-[var(--color-divider)] flex items-center justify-around"
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.25rem)',
-        height: 'calc(60px + env(safe-area-inset-bottom, 0px))',
+        position: 'fixed',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 30,
+        display: 'flex',
+        alignItems: 'center',
+        background: 'rgba(12,12,14,.92)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(242,237,230,.08)',
+        borderRadius: 999,
+        padding: '6px 8px',
+        width: 'max-content',
       }}
     >
       {NAV_ITEMS.map(item => {
-        const active = isActive(item.screen);
+        const active = isActive(item.screen as Screen);
+        const muted = item.screen === 'community';
+
         return (
           <button
             key={item.screen}
-            onClick={() => dispatch({ type: 'GO_TO', screen: item.screen })}
-            className="flex flex-col items-center gap-0.5 px-4 py-2 transition-colors"
+            onClick={() => handleTap(item.screen)}
+            disabled={muted}
+            aria-current={active && !muted ? 'page' : undefined}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              padding: '8px 14px',
+              borderRadius: 999,
+              border: 'none',
+              cursor: muted ? 'default' : 'pointer',
+              background: active && !muted ? 'var(--color-primary-bg)' : 'transparent',
+              opacity: muted ? 0.35 : 1,
+              transition: 'background 0.15s',
+            }}
           >
-            <span className={`ms ${active ? 'fill text-[var(--color-primary)]' : 'text-[var(--color-text-3)]'} text-2xl`}>{item.icon}</span>
-            <span className={`text-[10px] mt-0.5 font-semibold ${active ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-3)]'}`}>{item.label}</span>
+            <span
+              className={`ms${active && !muted ? ' fill' : ''}`}
+              style={{
+                fontSize: 20,
+                color: active && !muted ? 'var(--color-primary)' : 'var(--color-text-3)',
+                lineHeight: 1,
+              }}
+            >
+              {item.icon}
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: active && !muted ? 700 : 500,
+                color: active && !muted ? 'var(--color-primary)' : 'var(--color-text-3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                lineHeight: 1,
+              }}
+            >
+              {item.label}
+            </span>
           </button>
         );
       })}
