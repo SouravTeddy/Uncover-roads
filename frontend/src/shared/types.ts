@@ -172,7 +172,7 @@ export interface GeoData {
 
 // ── Places / Map ──────────────────────────────────────────────
 export type Category = 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism' | 'place' | 'event';
-export type MapFilter = Category | 'all' | 'recommended' | 'saved';
+export type MapFilter = Category | 'all' | 'recommended' | 'saved' | 'trending' | 'hidden_gems' | 'picks';
 
 export interface Place {
   id: string;
@@ -566,6 +566,7 @@ export interface EngineItineraryStop {
   googleMapsUrl: string | null
   website: string | null
   photoRef: string | null     // Google Places photo reference
+  tags?: string[]
 }
 
 /**
@@ -606,4 +607,17 @@ export interface SavedEvent {
   venue: string | null
   category: 'festival' | 'concert' | 'market' | 'sport' | 'exhibition' | 'other'
   savedAt: string           // ISO timestamp
+}
+
+export interface LiveEvent {
+  id: string
+  title: string
+  lat: number
+  lon: number
+  venueName: string
+  date: string
+  time: string
+  genre: string
+  url: string
+  imageUrl: string | null
 }
