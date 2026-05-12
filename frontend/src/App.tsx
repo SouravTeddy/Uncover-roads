@@ -147,7 +147,7 @@ function ScreenRouter() {
   return (
     <div
       className="relative w-full"
-      style={{ background: '#0f172a', minHeight: '100dvh' }}
+      style={{ background: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       {currentScreen === 'login'        && <LoginScreen />}
       {currentScreen === 'welcome'      && <WelcomeBackScreen />}
