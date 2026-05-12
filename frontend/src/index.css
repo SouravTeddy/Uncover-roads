@@ -268,3 +268,10 @@ html, body {
   0%   { transform: translateY(0) scale(1);    opacity: 1; }
   100% { transform: translateY(60px) scale(.1); opacity: 0; }
 }
+
+/* ── Reel snap alignment ──────────────────────────────── */
+.reel-card {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+}
