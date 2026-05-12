@@ -88,6 +88,7 @@ export interface AppState {
   favouritedPins: FavouritedPin[];
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
+  reelSavedId: string | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -258,6 +259,7 @@ export const initialState: AppState = {
   favouritedPins: ssGet<FavouritedPin[]>('ur_ss_favs') ?? [],
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
+  reelSavedId: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -313,7 +315,8 @@ export type Action =
   | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
-  | { type: 'SET_THEME'; theme: 'dark' | 'light' };
+  | { type: 'SET_THEME'; theme: 'dark' | 'light' }
+  | { type: 'SET_REEL_SAVED_ID'; id: string | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -599,6 +602,9 @@ export function reducer(state: AppState, action: Action): AppState {
       document.documentElement.dataset.theme = action.theme;
       return { ...state, theme: action.theme };
     }
+
+    case 'SET_REEL_SAVED_ID':
+      return { ...state, reelSavedId: action.id };
 
     default:
       return state;
