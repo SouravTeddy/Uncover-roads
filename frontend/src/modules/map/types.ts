@@ -1,19 +1,17 @@
-import type { Category } from '../../shared/types';
+import type { MapFilter } from '../../shared/types';
 
 export interface FilterChip {
-  key: Category | 'all' | 'recommended';
+  key: MapFilter;
   label: string;
   icon: string;
 }
 
 export const FILTER_CHIPS: FilterChip[] = [
-  { key: 'all',         label: 'All',       icon: 'layers' },
-  { key: 'recommended', label: 'Our Picks', icon: 'auto_awesome' },
-  { key: 'event',       label: 'Events',    icon: 'celebration' },
-  { key: 'museum',      label: 'Museums',   icon: 'museum' },
-  { key: 'park',        label: 'Parks',     icon: 'park' },
-  { key: 'restaurant',  label: 'Dining',    icon: 'restaurant' },
-  { key: 'historic',    label: 'Historic',  icon: 'account_balance' },
+  { key: 'all',         label: 'All',          icon: 'layers' },
+  { key: 'trending',    label: 'Trending',      icon: 'trending_up' },
+  { key: 'hidden_gems', label: 'Hidden Gems',   icon: 'diamond' },
+  { key: 'event',       label: 'Events',        icon: 'celebration' },
+  { key: 'picks',       label: 'Picks',         icon: 'auto_awesome' },
 ];
 
 export const CATEGORY_ICONS: Record<string, string> = {
