@@ -13,6 +13,7 @@ Usage:
 Requires: SUPABASE_URL and SUPABASE_SERVICE_KEY in environment.
 GeoNames data auto-downloaded from download.geonames.org (public domain).
 """
+
 from __future__ import annotations
 import argparse
 import csv
@@ -30,7 +31,7 @@ _MIN_POPULATION = 100_000
 _BATCH_SIZE = 500
 
 # GeoNames TSV column indices
-_COL_NAME = 1      # asciiname
+_COL_NAME = 1  # asciiname
 _COL_LAT = 4
 _COL_LON = 5
 _COL_COUNTRY = 8
@@ -41,7 +42,13 @@ _TIER1_IDS = {c["id"] for c in TIER1_CITIES}
 
 
 def _slugify(name: str) -> str:
-    slug = name.lower().replace(" ", "_").replace("-", "_").replace("'", "").replace(".", "")
+    slug = (
+        name.lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("'", "")
+        .replace(".", "")
+    )
     return "".join(c for c in slug if c.isalnum() or c == "_")
 
 
@@ -81,14 +88,16 @@ def _download_geonames() -> list[dict]:
             )
             if tier1_match:
                 city_id = tier1_match["id"]
-            cities.append({
-                "city_id": city_id,
-                "name": name,
-                "country_code": country,
-                "tier": 1 if city_id in _TIER1_IDS else 2,
-                "lat": lat,
-                "lon": lon,
-            })
+            cities.append(
+                {
+                    "city_id": city_id,
+                    "name": name,
+                    "country_code": country,
+                    "tier": 1 if city_id in _TIER1_IDS else 2,
+                    "lat": lat,
+                    "lon": lon,
+                }
+            )
     return cities
 
 
@@ -99,14 +108,23 @@ def _load_to_supabase(cities: list[dict]) -> None:
         print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY required", file=sys.stderr)
         sys.exit(1)
     from supabase import create_client
+
     sb = create_client(url, key)
+    # Deduplicate by city_id — keep highest-population entry (first occurrence after sort)
+    seen: dict[str, dict] = {}
+    for c in cities:
+        if c["city_id"] not in seen:
+            seen[c["city_id"]] = c
+    cities = list(seen.values())
+
     rows = [
         {
             "city_id": c["city_id"],
             "name": c["name"],
             "country_code": c["country_code"],
             "tier": c["tier"],
-            "coordinates": f"POINT({c['lon']} {c['lat']})",
+            "lat": c["lat"],
+            "lon": c["lon"],
             "seeded": False,
         }
         for c in cities
@@ -114,7 +132,7 @@ def _load_to_supabase(cities: list[dict]) -> None:
     total = len(rows)
     inserted = 0
     for i in range(0, total, _BATCH_SIZE):
-        batch = rows[i: i + _BATCH_SIZE]
+        batch = rows[i : i + _BATCH_SIZE]
         sb.table("city_whitelist").upsert(batch, on_conflict="city_id").execute()
         inserted += len(batch)
         print(f"  Upserted {inserted}/{total}...")
@@ -123,13 +141,17 @@ def _load_to_supabase(cities: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Load city whitelist into Supabase")
-    parser.add_argument("--dry-run", action="store_true", help="Print first 20 rows, no DB write")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print first 20 rows, no DB write"
+    )
     args = parser.parse_args()
     cities = _download_geonames()
     print(f"Parsed {len(cities)} cities with population >= {_MIN_POPULATION:,}")
     if args.dry_run:
         for c in cities[:20]:
-            print(f"  {c['city_id']:30s} {c['name']:25s} {c['country_code']} tier={c['tier']}")
+            print(
+                f"  {c['city_id']:30s} {c['name']:25s} {c['country_code']} tier={c['tier']}"
+            )
         print(f"  ... and {len(cities) - 20} more")
         return
     _load_to_supabase(cities)
