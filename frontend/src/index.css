@@ -67,7 +67,14 @@
   --color-border-m:   rgba(44,36,32,.14);
   --color-divider:    rgba(44,36,32,.06);
   --color-primary-bg: rgba(212,168,83,.10);
+  --color-primary-glow: rgba(212,168,83,.15);
+  --color-border-s:   rgba(44,36,32,.04);
+  --shadow-sm:        0 2px 8px rgba(44,36,32,.1);
   --shadow-md:        0 4px 24px rgba(44,36,32,.12);
+  --shadow-lg:        0 16px 40px rgba(44,36,32,.18);
+  --color-cobalt:     #3b6bce;
+  --color-cobalt-bg:  rgba(59,107,206,.08);
+  --color-cobalt-bdr: rgba(59,107,206,.18);
   --nav-bg:           rgba(250,248,244,.94);
 }
 
@@ -78,8 +85,8 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: #0c0c0e;
-  color: #f2ede6;
+  background: var(--color-bg);
+  color: var(--color-text-1);
   font-family: 'DM Sans', sans-serif;
 }
 #root { width: 100%; min-height: 100dvh; }
