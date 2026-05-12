@@ -1120,9 +1120,466 @@ Button style:
 
 ---
 
+## Task 17: Fix events — handle missing API key, unify loading paths
+
+**Files:**
+- Modify: `frontend/src/modules/map/MapScreen.tsx` (worktree: `.worktrees/google-maplibre/`)
+
+**Root cause:** Two conflicting event loading paths exist. The old `loadEvents()` merges events into `places` and sets `eventsLoaded`. The new `useEffect` (for `activeFilter === 'event'`) fetches from `/events` and sets `liveEvents` for `LiveEventPinsLayer`. These are not coordinated — `eventsLoaded` is never true in the new path, so the count chip always shows no number. Additionally, if `TICKETMASTER_KEY` is not configured on the backend, the endpoint returns `{"error": "..."}` (not an array), the toast disappears after 4s, and the user has no idea why events are empty.
+
+- [ ] **Step 1: Unify events loading into the `useEffect` path only**
+
+Remove the `loadEvents()` function call from `handleFilterSelect`. The `useEffect` for `activeFilter === 'event'` is the canonical path. Delete:
+
+```typescript
+// In handleFilterSelect — remove this block entirely:
+if (f === 'event' && !eventsLoaded) {
+  if (!state.tripContext.date) {
+    setEventsNoDate(true);
+    setTimeout(() => setEventsNoDate(false), 3000);
+    return;
+  }
+  loadEvents();
+}
+```
+
+- [ ] **Step 2: Update the events `useEffect` to handle missing dates gracefully**
+
+Replace the existing `useEffect` block for `activeFilter === 'event'` with:
+
+```typescript
+useEffect(() => {
+  if (!city || activeFilter !== 'event') { setLiveEvents([]); setEventsLoaded(false); return }
+
+  const startDate = state.travelStartDate
+  const endDate   = state.travelEndDate
+
+  // Need both dates — show no-date state, don't fetch
+  if (!startDate || !endDate) {
+    setEventsNoDate(true)
+    return
+  }
+  setEventsNoDate(false)
+
+  const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
+  if (cityGeo) {
+    params.set('lat', String(cityGeo.lat))
+    params.set('lon', String(cityGeo.lon))
+  }
+
+  setEventsLoading(true)
+  fetch(`/events?${params}`)
+    .then(r => r.ok ? r.json() : { places: [], error: 'unavailable' })
+    .then((data: { places?: Array<{ id: string; title: string; lat: number; lon: number; tags: Record<string, string>; imageUrl: string | null }>; error?: string }) => {
+      if (data.error || !data.places) {
+        setEventsError('Events unavailable — check back later')
+        setLiveEvents([])
+        setEventsLoaded(false)
+        return
+      }
+      const mapped = data.places.map(p => ({
+        id:        p.id,
+        title:     p.title,
+        lat:       p.lat,
+        lon:       p.lon,
+        venueName: p.tags?.venue   ?? '',
+        date:      p.tags?.event_date ?? '',
+        time:      p.tags?.event_time ?? '',
+        genre:     p.tags?.genre   ?? '',
+        url:       p.tags?.website ?? '',
+        imageUrl:  p.imageUrl ?? null,
+      }))
+      setLiveEvents(mapped)
+      setEventsLoaded(true)
+      setEventsError(null)
+    })
+    .catch(() => {
+      setEventsError('Events unavailable — check back later')
+      setEventsLoaded(false)
+    })
+    .finally(() => setEventsLoading(false))
+}, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
+```
+
+- [ ] **Step 3: Update `counts.event` to use `liveEvents.length`**
+
+Find the `counts` object and change the `event` entry:
+
+Old:
+```typescript
+event: eventsLoaded ? eventPlaces.length : undefined,
+```
+
+New:
+```typescript
+event: eventsLoaded ? liveEvents.length : undefined,
+```
+
+- [ ] **Step 4: Make the events error state persistent (not auto-dismissing)**
+
+The current `eventsError` toast auto-dismisses after 4s. When the API key is missing, the error should stay visible as long as the `event` filter is active. Remove the `setTimeout` calls that clear `eventsError` and instead clear it when the filter changes (Step 2 already handles this via `setEventsError(null)` on success and the useEffect cleanup).
+
+Remove these patterns from the old `loadEvents()` function (leave the function in place in case it's called elsewhere, but gut the auto-dismiss):
+```typescript
+// Remove: setTimeout(() => setEventsError(null), 4000)
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend
+git add src/modules/map/MapScreen.tsx
+git commit -m "fix(events): unify loading paths, persistent error state, correct count chip"
+```
+
+---
+
+## Task 18: Fix FilterBar — touch-action scroll, show category counts
+
+**Files:**
+- Modify: `frontend/src/modules/map/FilterBar.tsx` (worktree: `.worktrees/google-maplibre/`)
+- Modify: `frontend/src/modules/map/MapScreen.tsx` (worktree: `.worktrees/google-maplibre/`)
+
+**Root cause:** On mobile, MapLibre captures horizontal swipe gestures for map panning. The `overflow-x-auto` chip row in the expanded `FilterBar` relies on horizontal swipe to scroll, which MapLibre intercepts — chips beyond the first 2–3 are unreachable. Fix: add `touch-action: pan-x` to the scrollable container so the browser knows to route horizontal touches to the chip row, not the map.
+
+- [ ] **Step 1: Add `touch-action: pan-x` to the scrollable chip row in `FilterBar`**
+
+In `frontend/src/modules/map/FilterBar.tsx`, find the inner scrollable div:
+
+```tsx
+<div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+```
+
+Add `touchAction: 'pan-x'` to its style:
+
+```tsx
+<div
+  className="flex gap-1.5 overflow-x-auto no-scrollbar"
+  style={{ touchAction: 'pan-x' }}
+>
+```
+
+- [ ] **Step 2: Add category counts from `places` to `MapScreen`**
+
+In `MapScreen.tsx`, update the `counts` object to include per-category counts so the chips show numbers when places of that category exist:
+
+```typescript
+const categoryCounts: Partial<Record<string, number>> = {}
+for (const p of places) {
+  if (p.category) categoryCounts[p.category] = (categoryCounts[p.category] ?? 0) + 1
+}
+
+const counts: Partial<Record<string, number>> = {
+  all:         places.length,
+  trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
+  hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
+  event:       eventsLoaded ? liveEvents.length : undefined,
+  picks:       ourPicks.length || undefined,
+  ...categoryCounts,
+}
+```
+
+- [ ] **Step 3: Widen the FilterBar container so more chips are visible before scrolling**
+
+In `MapScreen.tsx`, the FilterBar wrapper currently sits inside a flex row with a back button. On small screens, the chip area is very narrow. Remove the `flex-1 overflow-hidden` constraint on the FilterBar wrapper so it can use full width:
+
+Find the expanded FilterBar container div in `FilterBar.tsx`:
+
+```tsx
+<div className="relative flex-1 overflow-hidden">
+```
+
+Change to:
+
+```tsx
+<div className="relative flex-1 overflow-x-hidden">
+```
+
+This keeps the fade gradient clipping but allows the touch-action scroll to work naturally.
+
+- [ ] **Step 4: Commit**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend
+git add src/modules/map/FilterBar.tsx src/modules/map/MapScreen.tsx
+git commit -m "fix(map): FilterBar touch-action scroll, add per-category counts"
+```
+
+---
+
+## Task 19: Wire Build Itinerary — call `engine-itinerary` API before navigating
+
+**Files:**
+- Modify: `frontend/src/modules/map/MapScreen.tsx` (worktree: `.worktrees/google-maplibre/`)
+- Modify: `frontend/src/modules/map/BuildItineraryBar.tsx` (worktree: `.worktrees/google-maplibre/`)
+
+**Root cause:** `BuildItineraryBar.onBuild` fires `dispatch({ type: 'GO_TO', screen: 'route' })` with no API call. `RouteScreen` reads `state.engineItinerary` which is null, so it shows "No itinerary yet". The `api.engineItinerary()` function exists in `api.ts` and is the correct call — it just isn't wired up.
+
+- [ ] **Step 1: Add `loading` prop to `BuildItineraryBar`**
+
+In `frontend/src/modules/map/BuildItineraryBar.tsx`, extend the `Props` interface and render a spinner when loading:
+
+```typescript
+interface Props {
+  itineraryPlaces: Place[]
+  days: number
+  onBuild: () => void
+  loading?: boolean    // ← add this
+}
+
+export function BuildItineraryBar({ itineraryPlaces, days, onBuild, loading = false }: Props) {
+  if (itineraryPlaces.length === 0) return null
+
+  const pinWord  = itineraryPlaces.length === 1 ? 'place' : 'places'
+  const dayPart  = days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''
+  const label    = loading
+    ? 'Building itinerary…'
+    : `Build itinerary · ${itineraryPlaces.length} ${pinWord}${dayPart}`
+
+  const bar = (
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60, padding: '12px 16px', background: 'rgba(26,23,20,0.95)', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <button
+        disabled={loading}
+        onClick={onBuild}
+        style={{
+          width: '100%', padding: '14px 0', borderRadius: 14,
+          background: loading
+            ? 'linear-gradient(135deg, #6b9470, #3d6642)'
+            : 'linear-gradient(135deg, #e07854, #c4613d)',
+          border: 'none', color: '#fff', fontSize: '0.95rem', fontWeight: 700,
+          cursor: loading ? 'default' : 'pointer', letterSpacing: '0.01em',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          transition: 'background 0.3s ease',
+        }}
+      >
+        {loading && (
+          <span className="ms animate-spin" style={{ fontSize: 18 }}>autorenew</span>
+        )}
+        {label} {!loading && '→'}
+      </button>
+    </div>
+  )
+
+  return createPortal(bar, document.body)
+}
+```
+
+- [ ] **Step 2: Replace the `onBuild` handler in `MapScreen` with an async generator**
+
+In `MapScreen.tsx`, add a `buildLoading` state and replace the inline `onBuild` prop:
+
+Add state near other state declarations:
+```typescript
+const [buildLoading, setBuildLoading] = useState(false)
+```
+
+Add the handler (near `handleSurprise`):
+```typescript
+const handleBuild = useCallback(async () => {
+  if (buildLoading || selectedPlaces.length === 0) return
+  setBuildLoading(true)
+  try {
+    const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
+    const days      = state.tripContext.days > 0 ? state.tripContext.days : 1
+    const result    = await api.engineItinerary({
+      city:              city ?? '',
+      lat:               cityGeo?.lat ?? 0,
+      lon:               cityGeo?.lon ?? 0,
+      days,
+      startDate,
+      selectedPlaceIds:  selectedPlaces.map(p => p.id),
+      personaArchetype:  personaProfile?.archetype ?? 'explorer',
+      engineWeights:     state.personaProfile?.engineWeights ?? null,
+    })
+    dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+    dispatch({ type: 'GO_TO', screen: 'route' })
+  } catch (err) {
+    console.error('[MapScreen] handleBuild failed:', err)
+    // Show a brief error — reuse the eventsError state or add a dedicated one
+    setEventsError('Could not build itinerary — try again')
+    setTimeout(() => setEventsError(null), 4000)
+  } finally {
+    setBuildLoading(false)
+  }
+}, [buildLoading, selectedPlaces, state, city, cityGeo, personaProfile, dispatch])
+```
+
+- [ ] **Step 3: Wire the new handler and loading state to `BuildItineraryBar`**
+
+Find the `BuildItineraryBar` usage in the JSX and update:
+
+Old:
+```tsx
+<BuildItineraryBar
+  itineraryPlaces={selectedPlaces}
+  days={activeCityDays}
+  onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
+/>
+```
+
+New:
+```tsx
+<BuildItineraryBar
+  itineraryPlaces={selectedPlaces}
+  days={activeCityDays}
+  onBuild={handleBuild}
+  loading={buildLoading}
+/>
+```
+
+- [ ] **Step 4: Add `engineWeights` to the `PersonaProfile` type check**
+
+Before committing, confirm that `state.personaProfile?.engineWeights` exists on the type. Run:
+
+```bash
+cd /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend
+npx tsc --noEmit 2>&1 | grep -i "engineWeights\|engineItinerary" | head -10
+```
+
+If `engineWeights` doesn't exist on `PersonaProfile`, pass `null`:
+```typescript
+engineWeights: null,
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/modules/map/MapScreen.tsx src/modules/map/BuildItineraryBar.tsx
+git commit -m "fix(map): wire Build Itinerary to engine-itinerary API, add loading state"
+```
+
+---
+
+## Task 20: Fix Surprise Me — correct URL, auth, user feedback
+
+**Files:**
+- Modify: `frontend/src/modules/map/MapScreen.tsx` (worktree: `.worktrees/google-maplibre/`)
+
+**Root causes:**
+1. `_runSurprise` calls `fetch('/api/surprise-me', ...)` — a relative URL that hits the Vercel frontend server, not the Python backend. Should use `api.post('/api/surprise-me', ...)` which prefixes `VITE_API_URL`.
+2. Guard `if (!city || !personaProfile) return` fails silently when persona not loaded — no feedback.
+3. All errors are swallowed: `} catch { /* silence */ }` — user sees nothing.
+
+- [ ] **Step 1: Replace the `_runSurprise` raw fetch with `api.post`**
+
+In `MapScreen.tsx`, find `_runSurprise` and replace the `fetch(...)` block:
+
+Old:
+```typescript
+const res = await fetch('/api/surprise-me', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    start_city_id: startCityContext?.city ?? city,
+    end_city_id:   endCityContext?.city ?? city,
+    start_date:    state.travelStartDate ?? undefined,
+    end_date:      state.travelEndDate ?? undefined,
+    persona:       personaProfile.archetype ?? 'explorer',
+  }),
+})
+if (res.ok) {
+  const result = await res.json()
+  dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+  dispatch({ type: 'GO_TO', screen: 'route' })
+}
+```
+
+New:
+```typescript
+const result = await api.post<EngineItinerary>('/api/surprise-me', {
+  start_city_id: startCityContext?.city ?? city,
+  end_city_id:   endCityContext?.city ?? city,
+  start_date:    state.travelStartDate ?? undefined,
+  end_date:      state.travelEndDate ?? undefined,
+  persona:       personaProfile?.archetype ?? 'explorer',
+})
+dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+dispatch({ type: 'GO_TO', screen: 'route' })
+```
+
+> `api.post` is not exported directly. Since the module exports `api.engineItinerary` etc. via the `api` object, add a thin export at the bottom of `api.ts` OR inline the fetch with `${VITE_API_URL}`. The cleanest approach: add a `surpriseMe` method to the `api` object in `api.ts`:
+
+In `frontend/src/shared/api.ts`, add to the `api` object:
+```typescript
+surpriseMe: (body: {
+  start_city_id: string
+  end_city_id:   string
+  start_date?:   string
+  end_date?:     string
+  persona:       string
+}) =>
+  post<EngineItinerary>('/api/surprise-me', body),
+```
+
+Then in `_runSurprise`:
+```typescript
+const result = await api.surpriseMe({
+  start_city_id: startCityContext?.city ?? city,
+  end_city_id:   endCityContext?.city ?? city,
+  start_date:    state.travelStartDate ?? undefined,
+  end_date:      state.travelEndDate ?? undefined,
+  persona:       personaProfile?.archetype ?? 'explorer',
+})
+dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+dispatch({ type: 'GO_TO', screen: 'route' })
+```
+
+- [ ] **Step 2: Replace the silent guard with user-visible feedback**
+
+Old:
+```typescript
+const handleSurprise = useCallback(async () => {
+  if (!city || !personaProfile) return
+```
+
+New:
+```typescript
+const handleSurprise = useCallback(async () => {
+  if (!city) return
+  if (!personaProfile) {
+    setEventsError('Complete your persona first to use Surprise Me')
+    setTimeout(() => setEventsError(null), 3500)
+    return
+  }
+```
+
+- [ ] **Step 3: Replace the silent catch with user-visible error**
+
+Old:
+```typescript
+} catch { /* silence */ }
+```
+
+New:
+```typescript
+} catch (err) {
+  console.error('[MapScreen] Surprise Me failed:', err)
+  setEventsError('Surprise Me failed — try again')
+  setTimeout(() => setEventsError(null), 4000)
+}
+```
+
+- [ ] **Step 4: Type-check**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend
+npx tsc --noEmit 2>&1 | grep "surprise\|api\." | head -10
+```
+
+Fix any type errors before committing.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/modules/map/MapScreen.tsx src/shared/api.ts
+git commit -m "fix(map): Surprise Me — correct API URL via api.surpriseMe(), add error feedback"
+```
+
+---
+
 ## Self-Review Checklist
 
-- [x] **Spec coverage:** All 9 screenshot problems addressed — rotating bg, consistent font, OB visual journey, persona reveal, correct colours, map tiles, full-bleed cards, scroll overflow, floating icons
+- [x] **Spec coverage:** All 9 visual screenshot problems addressed (Tasks 1–16) + 4 functional bugs (Tasks 17–20): events, filter scroll, build itinerary, Surprise Me
 - [x] **Placeholder scan:** No TBD/TODO in plan — all steps have exact code
 - [x] **Type consistency:** `getLayerUpdatesForAnswer`, `resolveLayerState`, `INITIAL_LAYER_STATE` named consistently across Tasks 7 and sub-plan
 - [x] **Unsplash legality:** All images use `images.unsplash.com` CDN with specific photo IDs — free to use under Unsplash License for product use
