@@ -195,7 +195,8 @@ export function JourneyScreen() {
         flightTime:   null,
       },
     });
-    dispatch({ type: 'GO_TO', screen: 'route' });
+    dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
+    dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
   }
 
   const handleBuild = () => {
