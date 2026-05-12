@@ -2382,6 +2382,7 @@ async def build_itinerary_endpoint(
                         "type": s.type,
                         "is_user_added": s.is_user_added,
                         "outdoor": s.outdoor,
+                        "tags": s.tags or [],
                     }
                     for s in day.stops
                 ],
