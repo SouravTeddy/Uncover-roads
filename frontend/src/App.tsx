@@ -16,6 +16,7 @@ import { DestinationScreen } from './modules/destination';
 import { MapScreen } from './modules/map';
 import { JourneyScreen } from './modules/journey';
 import { RouteScreen } from './modules/route';
+import { ItineraryReelScreen } from './modules/route/reel';
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen } from './modules/trips';
@@ -163,7 +164,8 @@ function ScreenRouter() {
       {currentScreen === 'destination' && <DestinationScreen />}
       {currentScreen === 'map'         && <MapScreen />}
       {currentScreen === 'journey'     && <JourneyScreen />}
-      {currentScreen === 'route'       && <RouteScreen />}
+      {currentScreen === 'route'          && <RouteScreen />}
+      {currentScreen === 'itinerary-reel' && <ItineraryReelScreen />}
       {currentScreen === 'trips'       && <TripsScreen />}
       {currentScreen === 'nav'         && <NavScreen />}
       {currentScreen === 'profile'     && <ProfileScreen />}
