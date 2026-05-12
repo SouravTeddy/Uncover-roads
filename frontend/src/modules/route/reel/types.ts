@@ -24,7 +24,7 @@ export interface ReelStopCard {
 
 export interface ReelRecoCard {
   type: 'reco';
-  trigger: 'lunch' | 'dinner' | 'coffee' | 'persona';
+  trigger: 'lunch' | 'dinner';
   label: string;
   consequence: string;
   nearbyCity: string;
