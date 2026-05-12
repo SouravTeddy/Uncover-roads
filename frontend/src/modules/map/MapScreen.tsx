@@ -19,7 +19,6 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { useSimilarPins } from './SimilarPins';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
@@ -129,7 +128,6 @@ export function MapScreen() {
     [favouritedPins],
   );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
-  const { triggerSimilar } = useSimilarPins();
 
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const clusterSheetRef    = useRef<HTMLDivElement>(null);
@@ -842,17 +840,6 @@ export function MapScreen() {
           onClose={handlePinCardClose}
           details={details}
           isFavourited={isFavourited}
-          onSimilar={() => {
-            if (!activePlace) return;
-            triggerSimilar({
-              id: activePlace.id,
-              title: activePlace.title,
-              lat: activePlace.lat,
-              lon: activePlace.lon,
-              category: activePlace.category,
-            });
-            dispatch({ type: 'GO_TO', screen: 'route' });
-          }}
           onFavourite={() => {
             if (!activePlace) return;
             dispatch({
