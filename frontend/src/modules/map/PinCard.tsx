@@ -30,7 +30,6 @@ interface Props {
   isFavourited: boolean
   onAdd: () => void
   onClose: () => void
-  onSimilar: () => void
   onFavourite: () => void
   details?: PlaceDetails | null
   referencePin?: ReferencePin | null
@@ -50,7 +49,7 @@ const linkStyle: React.CSSProperties = {
 
 export function PinCard({
   place, city, isSelected, isFavourited,
-  onAdd, onClose, onSimilar, onFavourite,
+  onAdd, onClose, onFavourite,
   details, referencePin, travelDate,
   persona, personaProfile, insightCache,
 }: Props) {
@@ -270,20 +269,13 @@ export function PinCard({
               {isFavourited ? '❤️ Saved' : '🤍 Save'}
             </button>
             <button onClick={onAdd} style={{
-              flex: 2, padding: '10px 0', borderRadius: 12,
+              flex: 1, padding: '10px 0', borderRadius: 12,
               background: isSelected ? 'rgba(59,130,246,.15)' : ACCENT,
               border: `1px solid ${isSelected ? 'rgba(59,130,246,.4)' : 'transparent'}`,
               color: isSelected ? '#60a5fa' : '#fff',
               fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
             }}>
               {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
-            </button>
-            <button onClick={() => { onSimilar(); setExpanded(false) }} style={{
-              flex: 1, padding: '10px 0', borderRadius: 12,
-              background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`,
-              color: AI_MARK, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
-            }}>
-              ✦ Similar
             </button>
           </div>
 
