@@ -22,42 +22,39 @@ function groupByMonth(items: SavedItinerary[]): { label: string; items: SavedIti
 }
 
 function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
+  const { dispatch } = useAppStore();
   const [expanded, setExpanded] = useState(false);
   const [autoRunRecalibration, setAutoRunRecalibration] = useState(false);
 
-  const archetypeKey  = item.persona?.archetype ?? '';
-  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#60a5fa', glow: 'rgba(96,165,250,.22)' };
+  const archetypeKey    = item.persona?.archetype ?? '';
+  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
   const archetypeEmoji  = ARCHETYPE_EMOJI[archetypeKey]  ?? '◆';
   const archetypeName   = ARCHETYPE_SHORT[archetypeKey]  ?? (item.persona?.archetype_name ?? archetypeKey);
 
-  const archetype = {
-    primary: archetypeColors.primary,
-    glow:    archetypeColors.glow,
-    emoji:   archetypeEmoji,
-    name:    archetypeName,
-  };
+  const days          = getDaysUntilTravel(item.travelDate);
+  const isToday       = days === 0;
+  const isPast        = days !== null && days < 0;
+  const hasUnresolved = (item.pendingSwapCards ?? []).some(c => !c.resolved);
+  const forceExpanded = isToday && hasUnresolved;
 
-  const stops     = item.itinerary?.itinerary ?? [];
-  const preview   = stops.slice(0, 3);
-  const remaining = stops.length - preview.length;
-
-  const days           = getDaysUntilTravel(item.travelDate);
-  const isToday        = days === 0;
-  const isPast         = days !== null && days < 0;
-  const hasUnresolved  = (item.pendingSwapCards ?? []).some(c => !c.resolved);
-
-  const forceExpanded  = isToday && hasUnresolved;
-  const effectiveOpen  = forceExpanded || expanded;
-
-  // Background image from first selectedPlace with imageUrl
-  const coverImage = item.selectedPlaces?.find(p => p.imageUrl)?.imageUrl ?? null;
-
+  // Support both old flat itinerary and new engine itinerary (day-based)
+  const stops = (item.itinerary as any)?.days?.flatMap((d: any) => d.stops) ?? item.itinerary?.itinerary ?? [];
   const cityName = item.city;
-  const date     = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
+  const date = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
 
-  function handleToggle() {
-    if (forceExpanded) return;
-    setExpanded(e => !e);
+  // Up to 3 card images for the fan
+  const fanImages: (string | null)[] = stops
+    .filter((s: any) => s.imageUrl ?? s.photo_ref)
+    .slice(0, 3)
+    .map((s: any) => s.imageUrl ?? null);
+  while (fanImages.length < 3) fanImages.unshift(null);
+
+  const FAN_ROTATIONS = [-6, -3, 0];
+  const FAN_TRANSLATE = [8, 4, 0];
+
+  function handlePlay() {
+    dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
+    dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
   }
 
   function handleArrivalCheck() {
@@ -66,156 +63,144 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   }
 
   return (
-    <div>
-      {/* Image card header */}
-      <button
-        className="w-full text-left"
-        onClick={handleToggle}
-      >
-        <div
-          className="relative h-[145px] rounded-[22px] overflow-hidden"
-          style={{ animation: `cardEntry 0.4s ease ${index * 0.09}s both` }}
-        >
-          {/* Background image */}
-          {coverImage ? (
-            <img
-              src={coverImage}
-              alt={cityName}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(135deg, rgba(20,16,12,.9) 0%, ${archetypeColors.glow} 100%)` }}
-            />
-          )}
+    <div style={{ marginBottom: 32, animation: `cardEntry 0.4s ease ${index * 0.09}s both` }}>
 
-          {/* Gradient overlay */}
+      {/* Card fan */}
+      <div style={{ position: 'relative', height: 240, marginBottom: 16 }}>
+        {fanImages.map((img, i) => (
           <div
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(160deg, rgba(20,16,12,.22) 0%, rgba(20,16,12,.8) 100%)' }}
-          />
-
-          {/* Top-left: city + meta */}
-          <div className="absolute top-3 left-4">
-            <div className="font-[family-name:var(--font-heading)] text-white text-[22px] font-bold leading-tight">
-              {cityName}
-            </div>
-            <div className="text-[11px] text-white/70 mt-0.5">{date} · {stops.length} stops{isPast ? ' · Completed' : ''}</div>
-          </div>
-
-          {/* Top-right: archetype badge */}
-          <div
-            className="absolute top-3 right-4 flex items-center gap-1 px-2 py-1 rounded-full"
-            style={{ background: archetype.glow, border: `1px solid ${archetype.primary}40` }}
+            key={i}
+            onClick={i === 2 ? handlePlay : undefined}
+            style={{
+              position: 'absolute',
+              width: 220, height: 280,
+              top: 0, left: '50%', marginLeft: -110,
+              borderRadius: 20, overflow: 'hidden',
+              boxShadow: '0 16px 48px rgba(0,0,0,.7)',
+              transform: `rotate(${FAN_ROTATIONS[i]}deg) translateY(${FAN_TRANSLATE[i]}px)`,
+              zIndex: i + 1,
+              cursor: i === 2 ? 'pointer' : 'default',
+              transition: 'transform .4s cubic-bezier(.16,1,.3,1)',
+            }}
           >
-            <span className="text-[12px]">{archetype.emoji}</span>
-            <span className="text-[10px] font-bold" style={{ color: archetype.primary }}>{archetype.name}</span>
+            {img
+              ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${archetypeColors.glow}, rgba(255,255,255,.02))` }} />
+            }
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.85))' }} />
+            {i === 2 && (
+              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>
+                  Stop 1
+                </div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#fff' }}>
+                  {(stops[0] as any)?.title ?? (stops[0] as any)?.place ?? cityName}
+                </div>
+              </div>
+            )}
           </div>
+        ))}
+      </div>
 
-          {/* Bottom-left: Continue pill */}
-          <div
-            className="absolute bottom-3 left-4 flex items-center gap-1 px-3 py-1.5 rounded-full"
-            style={{ background: 'rgba(255,255,255,.12)', backdropFilter: 'blur(8px)' }}
-          >
-            <span className="ms text-white text-[16px]">play_arrow</span>
-            <span className="text-white text-[12px] font-semibold">Continue trip</span>
-          </div>
-
-          {/* Bottom-right: expand chevron */}
-          {!forceExpanded && (
-            <div className="absolute bottom-3 right-4">
-              <span className={`ms text-white/50 text-base transition-transform ${effectiveOpen ? 'rotate-180' : ''}`}>
-                expand_more
-              </span>
-            </div>
-          )}
-          {forceExpanded && (
-            <p className="absolute bottom-3 right-4 text-amber-400/60 text-[10px]">
-              Review ↓
-            </p>
-          )}
+      {/* Trip meta */}
+      <div style={{ textAlign: 'center', marginBottom: 14 }}>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)' }}>{cityName}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-3)', marginTop: 2 }}>{date} · {stops.length} stops{isPast ? ' · Completed' : ''}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
+            background: archetypeColors.glow,
+            border: `1px solid ${archetypeColors.primary}40`,
+            color: archetypeColors.primary,
+          }}>
+            {archetypeEmoji} {archetypeName}
+          </span>
         </div>
-      </button>
+      </div>
 
       {/* Countdown strip */}
-      <div className="px-1 mt-1">
+      <div style={{ marginBottom: 12 }}>
         <TripCountdown travelDate={item.travelDate} />
       </div>
 
-      {/* Expandable detail section */}
-      {effectiveOpen && (
-        <div
-          className="rounded-[18px] overflow-hidden mt-1 border border-white/6"
-          style={{ background: 'rgba(255,255,255,.03)' }}
-        >
-          <div className="px-4 py-3">
+      {/* Play button */}
+      <button
+        onClick={handlePlay}
+        style={{
+          width: '100%', height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
+          background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+          color: '#0c0c0e', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+          marginBottom: 12,
+        }}
+      >
+        <span className="ms fill" style={{ fontSize: 20 }}>play_arrow</span>
+        Play Itinerary
+      </button>
 
-            {/* Arrival banner — only on travel day, only before recalibration */}
-            {isToday && !hasUnresolved && (
-              <ArrivalBanner
-                tripId={item.id}
-                travelDate={item.travelDate}
-                city={item.city}
-                onCheckNow={handleArrivalCheck}
-              />
-            )}
+      {/* Stop list — expandable */}
+      <button
+        onClick={() => { if (!forceExpanded) setExpanded(e => !e); }}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-3)' }}>
+          {stops.length} stops in order
+        </span>
+        <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-3)', transform: (forceExpanded || expanded) ? 'rotate(180deg)' : 'none', transition: 'transform .3s' }}>
+          expand_more
+        </span>
+      </button>
 
-            {/* Smart updates chip + cards — only for future trips */}
-            {!isToday && !isPast && item.travelDate && (
-              <SmartUpdates trip={item} />
-            )}
+      {(forceExpanded || expanded) && (
+        <div style={{ marginTop: 8 }}>
+          {/* Arrival banner */}
+          {isToday && !hasUnresolved && (
+            <ArrivalBanner tripId={item.id} travelDate={item.travelDate} city={item.city} onCheckNow={handleArrivalCheck} />
+          )}
+          {/* Smart updates */}
+          {!isToday && !isPast && item.travelDate && <SmartUpdates trip={item} />}
+          {/* Recalibration */}
+          {isToday && <RecalibrationStack trip={item} autoRun={autoRunRecalibration} />}
 
-            {/* Recalibration stack — pending swap cards (day-of) */}
-            {isToday && (
-              <RecalibrationStack trip={item} autoRun={autoRunRecalibration} />
-            )}
-
-            {/* Full stop list */}
-            <p className="text-white/30 text-[10px] uppercase tracking-widest font-semibold mb-3 mt-4">
-              Full Itinerary
-            </p>
-            <div className="flex flex-col gap-0">
-              {stops.map((stop, i) => (
-                <div key={i} className="flex gap-3 py-2">
-                  <div className="flex flex-col items-center" style={{ width: 20 }}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: i === 0 ? archetypeColors.primary : 'rgba(255,255,255,.2)' }} />
-                    {i < stops.length - 1 && (
-                      <div className="w-px flex-1 mt-1" style={{ background: 'rgba(255,255,255,.08)', minHeight: 16 }} />
-                    )}
+          {/* Stop list with why+consequence */}
+          {stops.map((stop: any, i: number) => {
+            const reason = stop.orderReason ?? stop.whyForYou ?? null;
+            const consequence = stop.orderConsequence ?? null;
+            const moved = stop.movedFrom !== null && stop.movedFrom !== undefined;
+            return (
+              <div key={stop.id ?? i} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                borderBottom: i < stops.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--color-primary-bg)',
+                  border: '1px solid rgba(212,168,83,.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
+                }}>{i + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
+                    {stop.title ?? stop.place}
+                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
                   </div>
-                  <div className="flex-1 min-w-0 pb-1">
-                    <p className="text-white/80 text-sm font-semibold leading-snug">{stop.place}</p>
-                    {stop.duration && <p className="text-white/30 text-[10px] mt-0.5">{stop.duration}</p>}
-                    {stop.time && <p className="text-white/25 text-[10px]">{stop.time}</p>}
-                  </div>
+                  {reason && (
+                    <div style={{ fontSize: 10, color: 'var(--color-text-3)', marginTop: 2 }}>
+                      {reason}{consequence ? ` · ${consequence}` : ''}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-
-            {/* Stop previews */}
-            {stops.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                {preview.map((stop, i) => (
-                  <div key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: 'rgba(255,255,255,.06)' }}>
-                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: archetypeColors.primary }} />
-                    <span className="text-white/60 text-[10px] truncate max-w-[100px]">{stop.place}</span>
-                  </div>
-                ))}
-                {remaining > 0 && <span className="text-white/30 text-[10px] px-1">+{remaining} more</span>}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)' }}>{stop.time ?? ''}</div>
+                </div>
               </div>
-            )}
-
-            {item.itinerary?.summary?.pro_tip && (
-              <div
-                className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded-xl"
-                style={{ background: 'rgba(251,191,36,.06)', border: '1px solid rgba(251,191,36,.1)' }}
-              >
-                <span className="ms fill text-amber-400 flex-shrink-0" style={{ fontSize: 12 }}>lightbulb</span>
-                <p className="text-amber-200/60 text-[10px] leading-relaxed">{item.itinerary.summary.pro_tip}</p>
-              </div>
-            )}
-          </div>
+            );
+          })}
         </div>
       )}
     </div>
