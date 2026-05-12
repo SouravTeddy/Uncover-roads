@@ -1577,6 +1577,238 @@ git commit -m "fix(map): Surprise Me — correct API URL via api.surpriseMe(), a
 
 ---
 
+## Task 21: Redesign FilterBar — two chips only (All · count + Curated ✦)
+
+**Files:**
+- Modify: `frontend/src/modules/map/FilterBar.tsx` (worktree: `.worktrees/google-maplibre/`)
+- Modify: `frontend/src/modules/map/types.ts` (worktree: `.worktrees/google-maplibre/`)
+- Modify: `frontend/src/shared/types.ts` (worktree: `.worktrees/google-maplibre/`)
+- Modify: `frontend/src/modules/map/MapScreen.tsx` (worktree: `.worktrees/google-maplibre/`)
+
+**Design decision:** Trending, Hidden Gems, Events, and Our Picks collapse into a single **Curated ✦** chip. All curated content (editorial picks + live events, all scored by the logic engine) appears together when the chip is active. Free users tapping Curated → SubscriptionScreen. The All chip shows the place count inline. No expand/collapse; both chips are always visible.
+
+> **Note:** This task supersedes the FilterBar-specific changes in Task 18. Task 18's `touch-action` fix is no longer needed (no horizontal scroll). Task 18's MapScreen `counts` changes are superseded by Step 4 below.
+
+- [ ] **Step 1: Update `MapFilter` type in `shared/types.ts`**
+
+Find the `MapFilter` type (likely a union string type). Replace with:
+
+```typescript
+export type MapFilter = 'all' | 'curated'
+```
+
+Remove: `'trending'`, `'hidden_gems'`, `'event'`, `'picks'`, `'recommended'`, `'saved'` — or keep `'saved'` if it's used by the saved-pins chip separately. Check for the saved chip usage first:
+
+```bash
+grep -n "'saved'" /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend/src/modules/map/MapScreen.tsx | head -5
+```
+
+If `saved` is used as a filter value elsewhere (the saved-pins chip), keep it in the union: `export type MapFilter = 'all' | 'curated' | 'saved'`.
+
+- [ ] **Step 2: Replace `FILTER_CHIPS` in `map/types.ts`**
+
+In `frontend/src/modules/map/types.ts`, replace the `FILTER_CHIPS` array with:
+
+```typescript
+export const FILTER_CHIPS: FilterChip[] = [
+  { key: 'all',     label: 'All',     icon: 'layers' },
+  { key: 'curated', label: 'Curated', icon: 'auto_awesome' },
+]
+```
+
+Remove the old chip entries (`trending`, `hidden_gems`, `event`, `picks`, `recommended`).
+
+- [ ] **Step 3: Rewrite `FilterBar.tsx` as a simple always-visible 2-chip bar**
+
+Replace the entire `FilterBar` component with:
+
+```typescript
+import type { MapFilter } from '../../shared/types'
+
+interface Props {
+  active: MapFilter
+  allCount: number
+  curatedCount: number
+  curatedLocked: boolean
+  onSelect: (filter: MapFilter) => void
+  onLockedTap: () => void
+}
+
+export function FilterBar({ active, allCount, curatedCount, curatedLocked, onSelect, onLockedTap }: Props) {
+  return (
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      {/* All chip */}
+      <button
+        onClick={() => onSelect('all')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 12px', height: 28, borderRadius: 999,
+          background: active === 'all' ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
+          border: active === 'all'
+            ? '1px solid var(--color-primary)'
+            : '1px solid rgba(255,255,255,.12)',
+          color: active === 'all' ? '#fff' : 'rgba(255,255,255,.65)',
+          fontSize: '0.72rem', fontWeight: 700,
+          backdropFilter: 'blur(8px)',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'all 0.15s ease',
+        }}
+      >
+        All
+        {allCount > 0 && (
+          <span style={{ opacity: 0.7, fontSize: '0.68rem' }}>· {allCount}</span>
+        )}
+      </button>
+
+      {/* Curated chip */}
+      <button
+        onClick={() => curatedLocked ? onLockedTap() : onSelect('curated')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 12px', height: 28, borderRadius: 999,
+          background: active === 'curated'
+            ? 'var(--color-primary-bg)'
+            : 'rgba(15,20,30,.82)',
+          border: active === 'curated'
+            ? '1px solid var(--color-primary)'
+            : curatedLocked
+            ? '1px solid rgba(255,255,255,.1)'
+            : '1px solid rgba(224,120,84,.3)',
+          color: active === 'curated'
+            ? 'var(--color-primary)'
+            : curatedLocked
+            ? 'rgba(255,255,255,.35)'
+            : 'rgba(224,120,84,.85)',
+          fontSize: '0.72rem', fontWeight: 700,
+          backdropFilter: 'blur(8px)',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'all 0.15s ease',
+          opacity: curatedLocked ? 0.75 : 1,
+        }}
+      >
+        <span style={{ fontSize: 10 }}>✦</span>
+        Curated
+        {!curatedLocked && curatedCount > 0 && (
+          <span style={{ opacity: 0.65, fontSize: '0.68rem' }}>· {curatedCount}</span>
+        )}
+        {curatedLocked && (
+          <span className="ms" style={{ fontSize: 12, marginLeft: 1 }}>lock</span>
+        )}
+      </button>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: Update `MapScreen.tsx` to wire the new FilterBar**
+
+**4a — Update the `ourPicks` useEffect** to trigger on `curated` instead of `picks`:
+
+Old:
+```typescript
+if (!city || activeFilter !== 'picks') { setOurPicks([]); return }
+```
+New:
+```typescript
+if (!city || activeFilter !== 'curated') { setOurPicks([]); return }
+```
+
+**4b — Update the `liveEvents` useEffect** (as redesigned in Task 17) to trigger on `curated` instead of `event`:
+
+```typescript
+if (!city || activeFilter !== 'curated') { setLiveEvents([]); setEventsLoaded(false); return }
+```
+
+**4c — Replace the `counts` object:**
+
+```typescript
+const curatedCount = ourPicks.length + liveEvents.length
+const counts = {
+  all:     places.length,
+  curated: curatedCount || undefined,
+}
+```
+
+**4d — Update the `<FilterBar>` JSX in the render:**
+
+Old:
+```tsx
+<FilterBar
+  active={activeFilter as MapFilter}
+  counts={counts}
+  onSelect={handleFilterSelect}
+  lockedFilters={isCurationLocked(state) ? ['picks', 'trending'] : []}
+  onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
+/>
+```
+
+New:
+```tsx
+<FilterBar
+  active={activeFilter as MapFilter}
+  allCount={places.length}
+  curatedCount={curatedCount}
+  curatedLocked={isCurationLocked(state)}
+  onSelect={handleFilterSelect}
+  onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
+/>
+```
+
+**4e — Update `handleFilterSelect`** — remove the old event/picks-specific branches:
+
+```typescript
+function handleFilterSelect(f: MapFilter) {
+  setFilter(f)
+  // Both data layers (ourPicks + liveEvents) load via useEffect when activeFilter === 'curated'
+}
+```
+
+**4f — Update the map pin layer visibility conditions:**
+
+Old:
+```tsx
+{activeFilter === 'picks' && <OurPicksPinsLayer ... />}
+{activeFilter === 'event' && <LiveEventPinsLayer ... />}
+```
+
+New:
+```tsx
+{activeFilter === 'curated' && <OurPicksPinsLayer ... />}
+{activeFilter === 'curated' && <LiveEventPinsLayer ... />}
+```
+
+- [ ] **Step 5: Remove stale filter-related state**
+
+Remove these state variables that are no longer needed (the old events toast mechanism is replaced by the unified `eventsError` from Task 17):
+
+```typescript
+// Remove:
+const [eventsLoaded, setEventsLoaded] = useState(false)  // keep for Task 17 counts
+const [eventsNoDate, setEventsNoDate] = useState(false)   // keep — still used for "set a date" feedback
+```
+
+Actually keep both — `eventsLoaded` is still used in Task 17's count, and `eventsNoDate` still shows the "set a travel date" message.
+
+Remove only references to the old filter values. Search for any remaining `'picks'`, `'trending'`, `'hidden_gems'`, `'event'`, `'recommended'` string literals in `MapScreen.tsx` and update or remove them.
+
+- [ ] **Step 6: Type-check the whole module**
+
+```bash
+cd /Users/souravbiswas/uncover-roads/.worktrees/google-maplibre/frontend
+npx tsc --noEmit 2>&1 | grep -v "node_modules" | head -30
+```
+
+Fix any errors — most will be stale references to removed `MapFilter` values.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/modules/map/FilterBar.tsx src/modules/map/types.ts src/shared/types.ts src/modules/map/MapScreen.tsx
+git commit -m "feat(map): consolidate filter chips — All·count + Curated ✦ (replaces 5 separate chips)"
+```
+
+---
+
 ## Self-Review Checklist
 
 - [x] **Spec coverage:** All 9 visual screenshot problems addressed (Tasks 1–16) + 4 functional bugs (Tasks 17–20): events, filter scroll, build itinerary, Surprise Me
