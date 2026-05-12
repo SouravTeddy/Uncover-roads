@@ -80,6 +80,10 @@ export function ProfileScreen() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  function openUrl(url: string) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   // Sub-screen routing
   if (view === 'notifications') return <NotificationsScreen onBack={() => setView('main')} />;
   if (view === 'units') return <UnitsSheet onClose={() => setView('main')} />;
@@ -263,6 +267,22 @@ export function ProfileScreen() {
               : 'Save changes'
             }
           </button>
+        </div>
+
+        {/* Legal */}
+        <div className="mt-2 px-4">
+          <p className="text-[11px] uppercase tracking-widest font-bold mb-2 px-1" style={{ color: '#5a4e47' }}>Legal</p>
+        </div>
+        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+          <SettingsRow
+            label="Privacy Policy"
+            onTap={() => openUrl('https://uncoverroads.com/privacy')}
+          />
+          <SettingsRow
+            label="Terms & Conditions"
+            divider
+            onTap={() => openUrl('https://uncoverroads.com/terms')}
+          />
         </div>
 
         {/* Feedback */}

@@ -20,6 +20,7 @@ import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen, SavedScreen } from './modules/trips';
 import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
+import { InstallPrompt } from './modules/pwa/InstallPrompt';
 
 const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 
@@ -170,6 +171,7 @@ function ScreenRouter() {
       {currentScreen === 'profile'     && <ProfileScreen />}
       {currentScreen === 'subscription' && <SubscriptionScreen />}
 
+      <InstallPrompt />
       <BottomNav />
     </div>
   );
