@@ -27,7 +27,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
           {arrivalDate ? fmtDate(arrivalDate) : 'City'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] text-[15px] font-semibold" style={{ fontSize: 24 }}>{city}</span>
+          <span className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] font-semibold" style={{ fontSize: 18 }}>{city}</span>
           {countryCode && <span style={{ fontSize: 20 }}>{countryFlag(countryCode)}</span>}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
