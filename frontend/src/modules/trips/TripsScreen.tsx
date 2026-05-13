@@ -219,11 +219,11 @@ export function TripsScreen() {
 
       {/* Header */}
       <div
-        className="flex-shrink-0 px-5 border-b border-white/6"
+        className="flex-shrink-0 px-5 border-b border-[var(--color-divider)]"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: '1rem' }}
       >
         <h1 className="font-[family-name:var(--font-heading)] text-[16px] font-bold text-[var(--color-text-1)]">My Journeys</h1>
-        <p className="text-white/40 text-sm mt-0.5">{sorted.length} trip{sorted.length !== 1 ? 's' : ''} saved</p>
+        <p className="text-[var(--color-text-3)] text-sm mt-0.5">{sorted.length} trip{sorted.length !== 1 ? 's' : ''} saved</p>
       </div>
 
       {/* Body */}
@@ -233,13 +233,13 @@ export function TripsScreen() {
           <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
             >
-              <span className="ms text-white/20 text-3xl">route</span>
+              <span className="ms text-[var(--color-text-4)] text-3xl">route</span>
             </div>
             <div className="text-center">
-              <p className="text-white/50 font-semibold text-sm">No trips saved yet</p>
-              <p className="text-white/25 text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
+              <p className="text-[var(--color-text-2)] font-semibold text-sm">No trips saved yet</p>
+              <p className="text-[var(--color-text-4)] text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
             </div>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}

@@ -316,7 +316,7 @@ export function JourneyScreen() {
       </div>
 
       {/* Bottom 42% — card deck */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', overflow: 'hidden' }}>
         {/* Progress strip */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 16px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {legs.map((leg, i) => {
