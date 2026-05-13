@@ -68,11 +68,13 @@ const PLACEHOLDER_EXAMPLES = [
 ];
 
 export function MapScreen() {
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory, goBack,
-  } = useMap();
+  } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
@@ -370,6 +372,7 @@ export function MapScreen() {
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
+    if (f !== 'all') setActiveCategory(null);
   }
 
   function handleSearchInput(val: string) {
@@ -776,10 +779,12 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
+            activeCategory={activeCategory}
             allCount={places.length}
             curatedCount={curatedCount}
             curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
+            onCategorySelect={setActiveCategory}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>

@@ -18,7 +18,7 @@ const VENUE_TO_CATEGORY: Record<string, string> = {
   nightlife:  'place',      club: 'place',        events: 'place',
 };
 
-export function useMap() {
+export function useMap(activeCategory: string | null = null) {
   const { state, dispatch } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -134,8 +134,8 @@ export function useMap() {
   const filteredPlaces: Place[] =
     activeFilter === 'saved'
       ? places.filter(p => favouritedPins.some(f => f.placeId === p.id))
-      : activeFilter === 'all'
-      ? places
+      : activeFilter === 'all' && activeCategory !== null
+      ? places.filter(p => p.category === activeCategory)
       : places;
 
   function togglePlace(place: Place) {
