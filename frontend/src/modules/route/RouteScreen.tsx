@@ -46,8 +46,14 @@ export function RouteScreen() {
       <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
-          className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+          className="flex items-center justify-center flex-shrink-0"
           aria-label="Back"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'rgba(26,23,20,.82)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid var(--color-border-m)',
+          }}
         >
           <span className="ms text-[var(--color-text-2)]">arrow_back</span>
         </button>

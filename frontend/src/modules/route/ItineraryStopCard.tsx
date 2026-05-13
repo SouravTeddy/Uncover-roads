@@ -22,10 +22,10 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
       {/* Header row */}
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-[var(--color-primary)] uppercase tracking-wide">
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(224,120,84,.14)', padding: '2px 8px', borderRadius: 999, display: 'inline-block', marginBottom: 4 }}>
             Stop {stopNumber} · {formatTime(stop.time)}
-          </p>
-          <p className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mt-0.5 leading-tight">
+          </span>
+          <p className="font-[family-name:var(--font-heading)] mt-0.5 leading-tight" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)' }}>
             {stop.title}
           </p>
           <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">{stop.area}</p>

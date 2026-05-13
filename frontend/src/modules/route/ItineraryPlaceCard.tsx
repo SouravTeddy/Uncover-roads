@@ -130,13 +130,13 @@ export function ItineraryPlaceCard({
 
         {/* Stop number + time badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span className="text-[11px] text-[var(--color-primary)] font-semibold bg-[var(--color-primary-bg)] px-2 py-0.5 rounded-full">
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(224,120,84,.14)', padding: '2px 8px', borderRadius: 999 }}>
             Stop {activeIdx + 1} of {stops.length}{stop.time ? ` · ${stop.time}` : ''}
           </span>
         </div>
 
         {/* Place name */}
-        <h3 className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] text-[17px] font-semibold mt-2">
+        <h3 className="font-[family-name:var(--font-heading)] mt-2" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)' }}>
           {stop.place}
         </h3>
 
@@ -245,7 +245,7 @@ export function ItineraryPlaceCard({
         )}
 
         {/* CTA */}
-        <Button variant="primary" className="w-full mt-4">Start navigating</Button>
+        <Button variant="primary" className="w-full mt-4" style={{ background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 50, borderRadius: 16 }}>Start navigating</Button>
 
         </div>{/* end card container */}
 
