@@ -27,7 +27,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const [autoRunRecalibration, setAutoRunRecalibration] = useState(false);
 
   const archetypeKey    = item.persona?.archetype ?? '';
-  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
+  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#e07854', glow: 'rgba(224,120,84,.22)' };
   const archetypeEmoji  = ARCHETYPE_EMOJI[archetypeKey]  ?? '◆';
   const archetypeName   = ARCHETYPE_SHORT[archetypeKey]  ?? (item.persona?.archetype_name ?? archetypeKey);
 
@@ -129,10 +129,10 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
         onClick={handlePlay}
         style={{
           width: '100%', height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-          color: '#0c0c0e', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+          background: 'linear-gradient(135deg, #e07854, #c4613d)',
+          color: '#ffffff', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+          boxShadow: '0 6px 28px rgba(224,120,84,.25)',
           marginBottom: 12,
         }}
       >
@@ -180,7 +180,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--color-primary-bg)',
-                  border: '1px solid rgba(212,168,83,.25)',
+                  border: '1px solid rgba(224,120,84,.25)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
                 }}>{i + 1}</div>
