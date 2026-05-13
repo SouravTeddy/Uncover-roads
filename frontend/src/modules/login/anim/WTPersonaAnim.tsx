@@ -18,8 +18,8 @@ export function WTPersonaAnim() {
         transition={{ delay: 0.2, duration: 0.6 }}
       >
         <div className="relative w-12">
-          <div className="w-6 h-6 rounded-full mx-auto" style={{ background: 'linear-gradient(160deg,#e07854,#c4613d)', boxShadow: '0 4px 16px rgba(224,120,84,.4)' }} />
-          <div className="w-11 h-12 rounded-[14px_14px_10px_10px] mt-0.5 mx-auto" style={{ background: 'linear-gradient(160deg,#c4613d,#8b3d22)', boxShadow: '0 6px 20px rgba(196,97,61,.35)' }}>
+          <div className="w-6 h-6 rounded-full mx-auto" style={{ background: 'linear-gradient(160deg,#d4a853,#b8893a)', boxShadow: '0 4px 16px rgba(212,168,83,.4)' }} />
+          <div className="w-11 h-12 rounded-[14px_14px_10px_10px] mt-0.5 mx-auto" style={{ background: 'linear-gradient(160deg,#b8893a,#6b5a1f)', boxShadow: '0 6px 20px rgba(184,137,58,.35)' }}>
             <motion.div
               className="absolute top-2.5 -right-2.5 w-3 h-2.5 rounded bg-[var(--color-surface2)] border border-white/10"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}

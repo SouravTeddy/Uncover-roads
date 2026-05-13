@@ -213,7 +213,7 @@ export function ItineraryReelScreen() {
           </span>
           <button
             onClick={handleUndo}
-            style={{ fontSize: 13, fontWeight: 700, color: '#e07854', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontSize: 13, fontWeight: 700, color: '#d4a853', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             Undo
           </button>

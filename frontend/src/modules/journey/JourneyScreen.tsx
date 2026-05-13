@@ -282,7 +282,7 @@ export function JourneyScreen() {
                       width: isActive ? 14 : 9,
                       height: isActive ? 14 : 9,
                       borderRadius: '50%',
-                      background: isActive ? '#e07854' : 'rgba(255,255,255,.35)',
+                      background: isActive ? '#d4a853' : 'rgba(255,255,255,.35)',
                       border: isActive ? '2px solid white' : 'none',
                       position: 'relative',
                       zIndex: 1,
@@ -400,7 +400,7 @@ export function JourneyScreen() {
             className="w-full font-bold text-[15px] text-white transition-all active:scale-[.97]"
             style={building
               ? { background: 'linear-gradient(135deg, #6b9470, #3d6642)', height: 50, borderRadius: 16 }
-              : { background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 50, borderRadius: 16, boxShadow: 'var(--shadow-primary)' }
+              : { background: 'linear-gradient(135deg, #d4a853, #b8893a)', height: 50, borderRadius: 16, boxShadow: 'var(--shadow-primary)' }
             }
           >
             {building

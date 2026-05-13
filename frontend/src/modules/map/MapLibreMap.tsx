@@ -22,6 +22,7 @@ interface Props {
   zoom?: number;
   places: Place[];
   selectedPlace: Place | null;
+  selectedPlaces?: Place[];
   highlightIds?: Set<string>;
   onPlaceClick: (place: Place) => void;
   /** Called on every map move end. bbox = [south, north, west, east] */
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
-  { center, zoom = 13, places, selectedPlace, highlightIds, onPlaceClick, onMoveEnd, onClick, routeGeojson, pinDropResult, children },
+  { center, zoom = 13, places, selectedPlace, selectedPlaces, highlightIds, onPlaceClick, onMoveEnd, onClick, routeGeojson, pinDropResult, children },
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
@@ -79,6 +80,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       <MapLibreMarkers
         places={places}
         selectedPlace={selectedPlace}
+        selectedPlaces={selectedPlaces ?? []}
         highlightIds={highlightIds ?? new Set()}
         onPlaceClick={onPlaceClick}
       />

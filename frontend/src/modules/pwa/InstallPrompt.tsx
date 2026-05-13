@@ -43,7 +43,7 @@ export function InstallPrompt() {
 
       <h2
         style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
           fontSize: 17,
           fontWeight: 600,
           color: '#f5e6d6',
@@ -71,13 +71,13 @@ export function InstallPrompt() {
             flex: 1,
             height: 44,
             borderRadius: 14,
-            background: 'linear-gradient(135deg, #e07854, #c4613d)',
+            background: 'linear-gradient(135deg, #d4a853, #b8893a)',
             color: '#fff8f0',
             fontSize: 14,
             fontWeight: 600,
             border: 'none',
             cursor: 'pointer',
-            boxShadow: '0 0 20px rgba(224,120,84,0.25)',
+            boxShadow: '0 0 20px rgba(212,168,83,0.25)',
           }}
         >
           Add to home screen

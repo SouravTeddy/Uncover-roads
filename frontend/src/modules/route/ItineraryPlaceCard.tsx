@@ -130,7 +130,7 @@ export function ItineraryPlaceCard({
 
         {/* Stop number + time badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(224,120,84,.14)', padding: '2px 8px', borderRadius: 999 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(212,168,83,.14)', padding: '2px 8px', borderRadius: 999 }}>
             Stop {activeIdx + 1} of {stops.length}{stop.time ? ` · ${stop.time}` : ''}
           </span>
         </div>
@@ -245,7 +245,7 @@ export function ItineraryPlaceCard({
         )}
 
         {/* CTA */}
-        <Button variant="primary" className="w-full mt-4" style={{ background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 50, borderRadius: 16 }}>Start navigating</Button>
+        <Button variant="primary" className="w-full mt-4" style={{ background: 'linear-gradient(135deg, #d4a853, #b8893a)', height: 50, borderRadius: 16 }}>Start navigating</Button>
 
         </div>{/* end card container */}
 
@@ -273,8 +273,8 @@ export function ItineraryPlaceCard({
             disabled={activeIdx === stops.length - 1}
             style={{
               flex: 1, padding: '10px 0',
-              background: activeIdx < stops.length - 1 ? 'rgba(224,120,84,.15)' : 'rgba(255,255,255,.05)',
-              border: activeIdx < stops.length - 1 ? '1px solid rgba(224,120,84,.3)' : '1px solid rgba(255,255,255,.08)',
+              background: activeIdx < stops.length - 1 ? 'rgba(212,168,83,.15)' : 'rgba(255,255,255,.05)',
+              border: activeIdx < stops.length - 1 ? '1px solid rgba(212,168,83,.3)' : '1px solid rgba(255,255,255,.08)',
               borderRadius: 12,
               color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : '#94a3b8',
               fontSize: '0.78rem', fontWeight: 600,

@@ -68,11 +68,13 @@ const PLACEHOLDER_EXAMPLES = [
 ];
 
 export function MapScreen() {
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory, goBack,
-  } = useMap();
+  } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
@@ -178,6 +180,9 @@ export function MapScreen() {
 
   // Phase 11: Surprise Me confirmation
   const [surpriseConfirm, setSurpriseConfirm] = useState(false)
+
+  // Surprise Me error state
+  const [surpriseError, setSurpriseError] = useState<string | null>(null)
 
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
@@ -370,6 +375,7 @@ export function MapScreen() {
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
+    if (f !== 'all') setActiveCategory(null);
   }
 
   function handleSearchInput(val: string) {
@@ -539,8 +545,8 @@ export function MapScreen() {
       dispatch({ type: 'GO_TO', screen: 'route' })
     } catch (err) {
       console.error('[MapScreen] Surprise Me failed:', err)
-      setEventsError('Surprise Me failed — try again')
-      setTimeout(() => setEventsError(null), 4000)
+      setSurpriseError("Couldn't generate — try again")
+      setTimeout(() => setSurpriseError(null), 3000)
     }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
 
@@ -597,6 +603,7 @@ export function MapScreen() {
         zoom={cityGeo ? 13 : 2}
         places={[]}
         selectedPlace={null}
+        selectedPlaces={selectedPlaces}
         highlightIds={highlightIds}
         onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
@@ -776,10 +783,12 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
+            activeCategory={activeCategory}
             allCount={places.length}
             curatedCount={curatedCount}
             curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
+            onCategorySelect={setActiveCategory}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
@@ -930,7 +939,7 @@ export function MapScreen() {
       {/* Surprise Me (bottom-right) */}
       {city && (
         <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, right: 12, zIndex: 19 }}>
-          <SurpriseMeButton onSurprise={handleSurprise} />
+          <SurpriseMeButton onSurprise={handleSurprise} disabled={!city || !personaProfile} />
         </div>
       )}
 
@@ -970,7 +979,6 @@ export function MapScreen() {
         itineraryPlaces={selectedPlaces}
         days={activeCityDays}
         onBuild={handleBuild}
-        loading={buildLoading}
       />
 
       {/* Search results strip */}
@@ -1049,6 +1057,21 @@ export function MapScreen() {
           storyCards={[]}
           onDone={() => setPendingNewCity(null)}
         />
+      )}
+
+      {/* Surprise Me error toast */}
+      {surpriseError && (
+        <div style={{
+          position: 'fixed', bottom: 120, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 50, padding: '10px 18px', borderRadius: 999,
+          background: 'rgba(220,60,60,.12)', border: '1px solid rgba(220,60,60,.3)',
+          backdropFilter: 'blur(12px)',
+          color: '#e05050', fontSize: '0.78rem', fontWeight: 600,
+          whiteSpace: 'nowrap',
+          animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
+        }}>
+          {surpriseError}
+        </div>
       )}
     </div>
   );

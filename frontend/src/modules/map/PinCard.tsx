@@ -39,22 +39,13 @@ interface Props {
   insightCache?: MutableRefObject<Map<string, string>>
 }
 
-const linkStyle: React.CSSProperties = {
-  flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5,
-  height: 36, padding: '0 14px', borderRadius: 999,
-  background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)',
-  fontSize: '0.72rem', fontWeight: 700, color: 'rgba(193,198,215,.8)',
-  textDecoration: 'none', WebkitTapHighlightColor: 'transparent',
-}
-
 export function PinCard({
   place, city, isSelected, isFavourited,
   onAdd, onClose, onFavourite,
-  details, referencePin, travelDate,
+  details, travelDate,
   persona, personaProfile, insightCache,
 }: Props) {
   const [visible, setVisible]   = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const [imgSrc, setImgSrc]     = useState<string | null>(null)
   const sheetRef    = useRef<HTMLDivElement>(null)
   const touchStartY = useRef(0)
@@ -138,10 +129,6 @@ export function PinCard({
   const catColor    = CATEGORY_COLORS[place.category] ?? '#6b7280'
   const catIcon     = CATEGORY_ICONS[place.category]  ?? 'location_on'
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
-  const websiteUrl  = details?.website ?? place.tags?.website ?? null
-  const mapsUrl     = details?.place_id
-    ? `https://www.google.com/maps/place/?q=place_id:${details.place_id}`
-    : `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lon}`
 
   return (
     <>
@@ -162,8 +149,8 @@ export function PinCard({
           background: SURFACE, borderRadius: '20px 20px 0 0',
           border: `1px solid ${BORDER}`, borderBottom: 'none',
           backdropFilter: 'blur(20px)',
-          maxHeight: expanded ? '92vh' : '48vh',
-          overflow: expanded ? 'auto' : 'hidden',
+          maxHeight: '52vh',
+          overflow: 'hidden',
           transform: visible ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1), max-height 0.3s ease',
           willChange: 'transform',
@@ -278,48 +265,6 @@ export function PinCard({
               {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
             </button>
           </div>
-
-          {/* Expand toggle */}
-          {!expanded && (
-            <button onClick={() => setExpanded(true)} style={{
-              width: '100%', marginTop: 8, padding: '8px 0',
-              background: 'transparent', border: 'none', color: TEXT3, fontSize: '0.72rem', cursor: 'pointer',
-            }}>
-              More details ↓
-            </button>
-          )}
-
-          {/* Expanded content */}
-          {expanded && (
-            <div>
-              {referencePin?.localTip && (
-                <div style={{
-                  marginTop: 12, padding: '10px 12px', borderRadius: 10,
-                  background: 'rgba(139,92,246,.08)', border: '1px solid rgba(139,92,246,.2)',
-                }}>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: TEXT3, lineHeight: 1.5 }}>
-                    <span style={{ color: AI_MARK, marginRight: 4 }}>✦</span>{referencePin.localTip}
-                  </p>
-                </div>
-              )}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                  <span className="ms" style={{ fontSize: 14 }}>map</span> Google Maps
-                </a>
-                {websiteUrl && (
-                  <a href={websiteUrl} target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                    <span className="ms" style={{ fontSize: 14 }}>language</span> Website
-                  </a>
-                )}
-              </div>
-              <button onClick={() => setExpanded(false)} style={{
-                width: '100%', marginTop: 12, padding: '8px 0',
-                background: 'transparent', border: 'none', color: TEXT3, fontSize: '0.72rem', cursor: 'pointer',
-              }}>
-                Show less ↑
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </>

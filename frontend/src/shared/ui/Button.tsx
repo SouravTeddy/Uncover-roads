@@ -25,9 +25,9 @@ const baseStyle: React.CSSProperties = {
 
 const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
-    background: 'linear-gradient(135deg, #e07854, #c4613d)',
+    background: 'linear-gradient(135deg, #d4a853, #b8893a)',
     color: '#ffffff',
-    boxShadow: '0 6px 28px rgba(224,120,84,.25)',
+    boxShadow: '0 6px 28px rgba(212,168,83,.25)',
   },
   ghost: {
     background: 'transparent',
