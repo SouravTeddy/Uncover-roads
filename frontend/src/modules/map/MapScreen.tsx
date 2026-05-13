@@ -19,7 +19,7 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { mapData, api } from '../../shared/api';
+import { mapData } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
@@ -236,9 +236,6 @@ export function MapScreen() {
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
-    if (state.tripContext.date) {
-      loadEvents();
-    }
   }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
@@ -275,42 +272,6 @@ export function MapScreen() {
         .catch(() => {});
     }
   }, [handleMoveEnd, activeSearchTypes, searchQuery]);
-
-  async function loadEvents() {
-    const date = state.tripContext.date;
-    if (!date || !city) return;
-    // Compute end date = start + (days - 1)
-    const days    = Math.max(1, state.tripContext.days ?? 1);
-    const start   = new Date(date);
-    const end     = new Date(start);
-    end.setDate(end.getDate() + days - 1);
-    const endDate = end.toISOString().slice(0, 10);
-    setEventsLoading(true);
-    try {
-      const data = await api.events(city, date, endDate, cityGeo?.lat, cityGeo?.lon);
-      // Backend returns {"error": "..."} when API key is missing
-      if (!Array.isArray(data)) {
-        setEventsError('Events unavailable right now');
-        setTimeout(() => setEventsError(null), 4000);
-        return;
-      }
-      const withIds = data.map((p, i) => ({ ...p, id: p.id ?? `event-${i}` }));
-      if (withIds.length === 0) {
-        setEventsError(`No events found in ${city} for your dates`);
-        setTimeout(() => setEventsError(null), 4000);
-      } else {
-        setEventsError(null);
-      }
-      dispatch({ type: 'MERGE_PLACES', places: withIds });
-      setEventsLoaded(true);
-    } catch (e) {
-      console.error('[MapScreen] loadEvents failed:', e);
-      setEventsError('Events unavailable right now');
-      setTimeout(() => setEventsError(null), 4000);
-    } finally {
-      setEventsLoading(false);
-    }
-  }
 
   // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
   useEffect(() => {
@@ -366,44 +327,58 @@ export function MapScreen() {
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'event') { setLiveEvents([]); return }
+    if (!city || activeFilter !== 'event') { setLiveEvents([]); setEventsLoaded(false); return }
+
     const startDate = state.travelStartDate
-    const endDate = state.travelEndDate
-    if (!startDate || !endDate) return
+    const endDate   = state.travelEndDate
+
+    if (!startDate || !endDate) {
+      setEventsNoDate(true)
+      return
+    }
+    setEventsNoDate(false)
+
     const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
     if (cityGeo) {
       params.set('lat', String(cityGeo.lat))
       params.set('lon', String(cityGeo.lon))
     }
+
+    setEventsLoading(true)
     fetch(`/events?${params}`)
-      .then(r => r.ok ? r.json() : { places: [] })
-      .then((data: { places: Array<{ id: string; title: string; lat: number; lon: number; tags: { event_date?: string; event_time?: string; venue?: string; genre?: string; website?: string }; imageUrl: string | null }> }) => {
-        setLiveEvents(data.places.map(p => ({
-          id: p.id,
-          title: p.title,
-          lat: p.lat,
-          lon: p.lon,
-          venueName: p.tags?.venue ?? '',
-          date: p.tags?.event_date ?? '',
-          time: p.tags?.event_time ?? '',
-          genre: p.tags?.genre ?? '',
-          url: p.tags?.website ?? '',
-          imageUrl: p.imageUrl ?? null,
-        })))
+      .then(r => r.ok ? r.json() : { places: [], error: 'unavailable' })
+      .then((data: { places?: Array<{ id: string; title: string; lat: number; lon: number; tags: Record<string, string>; imageUrl: string | null }>; error?: string }) => {
+        if (data.error || !data.places) {
+          setEventsError('Events unavailable — check back later')
+          setLiveEvents([])
+          setEventsLoaded(false)
+          return
+        }
+        const mapped = data.places.map(p => ({
+          id:        p.id,
+          title:     p.title,
+          lat:       p.lat,
+          lon:       p.lon,
+          venueName: p.tags?.venue   ?? '',
+          date:      p.tags?.event_date ?? '',
+          time:      p.tags?.event_time ?? '',
+          genre:     p.tags?.genre   ?? '',
+          url:       p.tags?.website ?? '',
+          imageUrl:  p.imageUrl ?? null,
+        }))
+        setLiveEvents(mapped)
+        setEventsLoaded(true)
+        setEventsError(null)
       })
-      .catch(() => setLiveEvents([]))
+      .catch(() => {
+        setEventsError('Events unavailable — check back later')
+        setEventsLoaded(false)
+      })
+      .finally(() => setEventsLoading(false))
   }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
-    if (f === 'event' && !eventsLoaded) {
-      if (!state.tripContext.date) {
-        setEventsNoDate(true);
-        setTimeout(() => setEventsNoDate(false), 3000);
-        return;
-      }
-      loadEvents();
-    }
   }
 
   function handleSearchInput(val: string) {
@@ -580,12 +555,11 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const eventPlaces = places.filter(p => p.category === 'event');
   const counts: Partial<Record<string, number>> = {
     all:         places.length,
     trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
     hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
-    event:       eventsLoaded ? eventPlaces.length : undefined,
+    event:       eventsLoaded ? liveEvents.length : undefined,
     picks:       ourPicks.length || undefined,
   };
 
