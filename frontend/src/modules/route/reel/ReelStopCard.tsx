@@ -115,7 +115,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
               </span>
             )}
             {movedFrom !== null && (
-              <span style={{ padding: '4px 9px', borderRadius: 999, background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.18)', fontSize: 11, color: '#d4a853', fontWeight: 700 }}>
+              <span style={{ padding: '4px 9px', borderRadius: 999, background: 'rgba(224,120,84,.08)', border: '1px solid rgba(224,120,84,.18)', fontSize: 11, color: '#e07854', fontWeight: 700 }}>
                 ↑ moved
               </span>
             )}

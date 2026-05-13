@@ -212,7 +212,7 @@ export function JourneyScreen() {
       {/* Top 58% — map or transit background */}
       <div
         className="relative overflow-hidden"
-        style={{ height: '58%', background: 'radial-gradient(ellipse at center, #0c1020 0%, #060c1a 100%)' }}
+        style={{ height: '58%', background: 'radial-gradient(ellipse at 50% 30%, #0c1020 0%, #060c1a 100%)' }}
       >
         {/* SVG grid overlay */}
         <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
@@ -226,6 +226,73 @@ export function JourneyScreen() {
 
         {/* Keep existing city dots + route SVG — do NOT remove them */}
         {renderTopPanel()}
+
+        {/* City dots + dashed route overlay */}
+        {(() => {
+          const cityLegs = legs.filter(l => l.type === 'city') as Extract<JourneyLeg, { type: 'city' }>[];
+          if (cityLegs.length === 0) return null;
+          const count = cityLegs.length;
+          const pad = 18; // percent padding from edge
+          const positions = cityLegs.map((_, i) =>
+            count === 1
+              ? { x: 50, y: 50 }
+              : { x: pad + (i / (count - 1)) * (100 - 2 * pad), y: 42 + Math.sin(i * Math.PI / Math.max(count - 1, 1)) * -18 }
+          );
+          return (
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+              {/* Route polyline */}
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                {positions.length > 1 && (
+                  <polyline
+                    points={positions.map(p => `${p.x},${p.y}`).join(' ')}
+                    fill="none"
+                    stroke="rgba(224,120,84,.35)"
+                    strokeWidth="0.8"
+                    strokeDasharray="5 4"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+              </svg>
+              {/* City dots */}
+              {positions.map((pos, i) => {
+                const activeCityName = activeLeg?.type === 'city' ? activeLeg.city : null;
+                const isActive = cityLegs[i]?.city === activeCityName;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      left: `${pos.x}%`,
+                      top: `${pos.y}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  >
+                    {isActive && (
+                      <div style={{
+                        position: 'absolute',
+                        width: 28, height: 28,
+                        borderRadius: '50%',
+                        background: 'rgba(224,120,84,.4)',
+                        top: '50%', left: '50%',
+                        transform: 'translate(-50%,-50%)',
+                        animation: 'pinPulse 1.8s ease-out infinite',
+                      }} />
+                    )}
+                    <div style={{
+                      width: isActive ? 14 : 9,
+                      height: isActive ? 14 : 9,
+                      borderRadius: '50%',
+                      background: isActive ? '#e07854' : 'rgba(255,255,255,.35)',
+                      border: isActive ? '2px solid white' : 'none',
+                      position: 'relative',
+                      zIndex: 1,
+                    }} />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Back button */}
         <button
@@ -250,7 +317,7 @@ export function JourneyScreen() {
       </div>
 
       {/* Bottom 42% — card deck */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0d1117', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', overflow: 'hidden' }}>
         {/* Progress strip */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 16px 0', overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0 }}>
           {legs.map((leg, i) => {
@@ -330,11 +397,11 @@ export function JourneyScreen() {
           <JourneyAdvisorThread />
           <button
             onClick={handleBuild}
-            className={`w-full h-[50px] rounded-2xl font-bold text-[15px] text-white transition-all active:scale-[.97] ${
-              building
-                ? 'bg-green-600'
-                : 'bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)]'
-            }`}
+            className="w-full font-bold text-[15px] text-white transition-all active:scale-[.97]"
+            style={building
+              ? { background: 'linear-gradient(135deg, #6b9470, #3d6642)', height: 50, borderRadius: 16 }
+              : { background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 50, borderRadius: 16, boxShadow: 'var(--shadow-primary)' }
+            }
           >
             {building
               ? <span className="ms text-[20px]" style={{ animation: 'spin 0.8s linear infinite' }}>autorenew</span>

@@ -108,7 +108,7 @@ export function ItineraryReelScreen() {
 
   if (!activeItinerary) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span className="ms" style={{ fontSize: 32, color: 'rgba(255,255,255,.2)', animation: 'spin 1s linear infinite' }}>autorenew</span>
       </div>
     );
@@ -213,7 +213,7 @@ export function ItineraryReelScreen() {
           </span>
           <button
             onClick={handleUndo}
-            style={{ fontSize: 13, fontWeight: 700, color: '#d4a853', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontSize: 13, fontWeight: 700, color: '#e07854', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             Undo
           </button>

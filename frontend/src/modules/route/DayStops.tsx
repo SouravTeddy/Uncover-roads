@@ -17,10 +17,10 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: 'rgba(59,130,246,.12)',
+              background: 'rgba(224,120,84,.12)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <span className="ms" style={{ fontSize: 17, color: '#3b82f6' }}>place</span>
+              <span className="ms" style={{ fontSize: 17, color: 'var(--color-primary)' }}>place</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
