@@ -320,7 +320,7 @@ export function MapScreen() {
   }, [clusterGroup]);
 
   useEffect(() => {
-    if (!city || activeFilter !== 'picks') { setOurPicks([]); return }
+    if (!city || activeFilter !== 'curated') { setOurPicks([]); return }
     const activeCityContext = cityContexts[activeCityIndex]
     const cityId = activeCityContext?.city ?? city
     fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
@@ -330,7 +330,7 @@ export function MapScreen() {
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'event') { setLiveEvents([]); setEventsLoaded(false); return }
+    if (!city || activeFilter !== 'curated') { setLiveEvents([]); setEventsLoaded(false); return }
 
     const startDate = state.travelStartDate
     const endDate   = state.travelEndDate
@@ -587,13 +587,7 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const counts: Partial<Record<string, number>> = {
-    all:         places.length,
-    trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
-    hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
-    event:       eventsLoaded ? liveEvents.length : undefined,
-    picks:       ourPicks.length || undefined,
-  };
+  const curatedCount = ourPicks.length + liveEvents.length;
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
@@ -638,7 +632,7 @@ export function MapScreen() {
           onPinClick={handlePinClick}
         />
         {/* Our Picks layer */}
-        {activeFilter === 'picks' && (
+        {activeFilter === 'curated' && (
           <OurPicksPinsLayer
             picks={ourPicks}
             activePinId={activePinId ?? null}
@@ -647,7 +641,7 @@ export function MapScreen() {
         )}
 
         {/* Live Events layer */}
-        {activeFilter === 'event' && (
+        {activeFilter === 'curated' && (
           <LiveEventPinsLayer
             events={liveEvents}
             activePinId={activePinId ?? null}
@@ -794,9 +788,10 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
-            counts={counts}
+            allCount={places.length}
+            curatedCount={curatedCount}
+            curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
-            lockedFilters={isCurationLocked(state) ? ['picks', 'trending'] : []}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>

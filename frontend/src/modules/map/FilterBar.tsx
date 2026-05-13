@@ -1,104 +1,75 @@
-import { useState } from 'react';
-import type { MapFilter } from '../../shared/types';
-import { FILTER_CHIPS } from './types';
+import type { MapFilter } from '../../shared/types'
 
 interface Props {
-  active: MapFilter;
-  counts: Partial<Record<string, number>>;
-  onSelect: (filter: MapFilter) => void;
-  lockedFilters?: string[];
-  onLockedTap?: () => void;
+  active: MapFilter
+  allCount: number
+  curatedCount: number
+  curatedLocked: boolean
+  onSelect: (filter: MapFilter) => void
+  onLockedTap: () => void
 }
 
-export function FilterBar({ active, counts, onSelect, lockedFilters = [], onLockedTap }: Props) {
-  const [expanded, setExpanded] = useState(false);
-
-  function handleSelect(key: MapFilter) {
-    if (lockedFilters.includes(key)) {
-      onLockedTap?.();
-      return;
-    }
-    onSelect(key);
-    setExpanded(false);
-  }
-
-  const activeChip = FILTER_CHIPS.find(c => c.key === active) ?? FILTER_CHIPS[0];
-  const activeCount = counts[active];
-
-  if (!expanded) {
-    return (
-      <button
-        onClick={() => setExpanded(true)}
-        className="flex items-center gap-1.5 px-3 h-7 rounded-full bg-primary text-white text-[11px] font-medium"
-      >
-        {activeChip.label}
-        {activeCount !== undefined && (
-          <span className="text-white/65 text-[10px]">{activeCount}</span>
-        )}
-        <span className="ms text-[13px] text-white/60">chevron_right</span>
-      </button>
-    );
-  }
-
+export function FilterBar({ active, allCount, curatedCount, curatedLocked, onSelect, onLockedTap }: Props) {
   return (
-    <div className="flex items-center gap-2">
+    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      {/* All chip */}
       <button
-        onClick={() => setExpanded(false)}
-        className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-text-3"
-        style={{ background: 'rgba(15,20,30,.8)', border: '1px solid rgba(255,255,255,.1)' }}
+        onClick={() => onSelect('all')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 12px', height: 28, borderRadius: 999,
+          background: active === 'all' ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
+          border: active === 'all'
+            ? '1px solid var(--color-primary)'
+            : '1px solid rgba(255,255,255,.12)',
+          color: active === 'all' ? '#fff' : 'rgba(255,255,255,.65)',
+          fontSize: '0.72rem', fontWeight: 700,
+          backdropFilter: 'blur(8px)',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'all 0.15s ease',
+        }}
       >
-        <span className="ms text-sm">chevron_left</span>
+        All
+        {allCount > 0 && (
+          <span style={{ opacity: 0.7, fontSize: '0.68rem' }}>· {allCount}</span>
+        )}
       </button>
 
-      <div className="relative flex-1 overflow-hidden">
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-          {FILTER_CHIPS.map(chip => {
-            const isActive = active === chip.key;
-            const count = counts[chip.key];
-            const isLocked = lockedFilters.includes(chip.key);
-
-            let cls = `flex-shrink-0 flex items-center gap-1 px-2.5 h-7 rounded-full text-[12px] font-medium border transition-all whitespace-nowrap relative `;
-            let style: React.CSSProperties = {};
-
-            if (isLocked) {
-              cls += 'bg-[var(--color-surface2)] border-[var(--color-border)] text-[var(--color-text-2)] opacity-50';
-            } else if (isActive) {
-              cls += 'bg-[var(--color-primary-bg)] border-[var(--color-primary)] text-[var(--color-primary)]';
-            } else if (chip.key === 'recommended') {
-              cls += 'text-amber-400';
-              style = { background: 'rgba(35,22,4,.88)', border: '1px solid rgba(245,158,11,.35)' };
-            } else if (chip.key === 'event') {
-              cls += 'text-violet-400';
-              style = { background: 'rgba(22,14,38,.88)', border: '1px solid rgba(167,139,250,.35)' };
-            } else {
-              cls += 'bg-[var(--color-surface2)] border-[var(--color-border)] text-[var(--color-text-2)]';
-            }
-
-            return (
-              <button
-                key={chip.key}
-                onClick={() => handleSelect(chip.key as MapFilter)}
-                className={cls}
-                style={style}
-              >
-                {chip.label}
-                {!isLocked && count !== undefined && (
-                  <span className="text-[10px] opacity-55">{count}</span>
-                )}
-                {isLocked && (
-                  <span className="ms text-xs">lock</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Fade indicator — signals more chips off-screen */}
-        <div
-          className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, transparent, rgba(13,17,23,.88))' }}
-        />
-      </div>
+      {/* Curated chip */}
+      <button
+        onClick={() => curatedLocked ? onLockedTap() : onSelect('curated')}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '5px 12px', height: 28, borderRadius: 999,
+          background: active === 'curated'
+            ? 'var(--color-primary-bg)'
+            : 'rgba(15,20,30,.82)',
+          border: active === 'curated'
+            ? '1px solid var(--color-primary)'
+            : curatedLocked
+            ? '1px solid rgba(255,255,255,.1)'
+            : '1px solid rgba(224,120,84,.3)',
+          color: active === 'curated'
+            ? 'var(--color-primary)'
+            : curatedLocked
+            ? 'rgba(255,255,255,.35)'
+            : 'rgba(224,120,84,.85)',
+          fontSize: '0.72rem', fontWeight: 700,
+          backdropFilter: 'blur(8px)',
+          cursor: 'pointer', whiteSpace: 'nowrap',
+          transition: 'all 0.15s ease',
+          opacity: curatedLocked ? 0.75 : 1,
+        }}
+      >
+        <span style={{ fontSize: 10 }}>✦</span>
+        Curated
+        {!curatedLocked && curatedCount > 0 && (
+          <span style={{ opacity: 0.65, fontSize: '0.68rem' }}>· {curatedCount}</span>
+        )}
+        {curatedLocked && (
+          <span className="ms" style={{ fontSize: 12, marginLeft: 1 }}>lock</span>
+        )}
+      </button>
     </div>
-  );
+  )
 }
