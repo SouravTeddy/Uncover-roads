@@ -1,11 +1,10 @@
 import { useAppStore } from '../store';
 import type { Screen } from '../types';
 
-const NAV_ITEMS: { screen: Screen | 'community'; icon: string; label: string }[] = [
-  { screen: 'destination', icon: 'explore',     label: 'Explore'   },
-  { screen: 'trips',       icon: 'route',       label: 'Itinerary' },
-  { screen: 'community',   icon: 'diversity_3', label: 'Community' },
-  { screen: 'profile',     icon: 'person',      label: 'Profile'   },
+const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
+  { screen: 'destination', icon: 'explore', label: 'Explore'   },
+  { screen: 'trips',       icon: 'route',   label: 'Itinerary' },
+  { screen: 'profile',     icon: 'person',  label: 'Profile'   },
 ];
 
 const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'ob6', 'ob7', 'ob8', 'ob9', 'persona', 'route', 'nav']);
@@ -22,8 +21,7 @@ export function BottomNav() {
     return currentScreen === screen;
   }
 
-  function handleTap(screen: Screen | 'community') {
-    if (screen === 'community') return;
+  function handleTap(screen: Screen) {
     dispatch({ type: 'GO_TO', screen });
   }
 
@@ -47,15 +45,13 @@ export function BottomNav() {
       }}
     >
       {NAV_ITEMS.map(item => {
-        const active = isActive(item.screen as Screen);
-        const muted = item.screen === 'community';
+        const active = isActive(item.screen);
 
         return (
           <button
             key={item.screen}
             onClick={() => handleTap(item.screen)}
-            disabled={muted}
-            aria-current={active && !muted ? 'page' : undefined}
+            aria-current={active ? 'page' : undefined}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -64,17 +60,16 @@ export function BottomNav() {
               padding: '8px 14px',
               borderRadius: 999,
               border: 'none',
-              cursor: muted ? 'default' : 'pointer',
-              background: active && !muted ? 'var(--color-primary-bg)' : 'transparent',
-              opacity: muted ? 0.35 : 1,
+              cursor: 'pointer',
+              background: active ? 'var(--color-primary-bg)' : 'transparent',
               transition: 'background 0.15s',
             }}
           >
             <span
-              className={`ms${active && !muted ? ' fill' : ''}`}
+              className={`ms${active ? ' fill' : ''}`}
               style={{
                 fontSize: 20,
-                color: active && !muted ? 'var(--color-primary)' : 'var(--color-text-3)',
+                color: active ? 'var(--color-primary)' : 'var(--color-text-3)',
                 lineHeight: 1,
               }}
             >
@@ -83,8 +78,8 @@ export function BottomNav() {
             <span
               style={{
                 fontSize: 9,
-                fontWeight: active && !muted ? 700 : 500,
-                color: active && !muted ? 'var(--color-primary)' : 'var(--color-text-3)',
+                fontWeight: active ? 700 : 500,
+                color: active ? 'var(--color-primary)' : 'var(--color-text-3)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 lineHeight: 1,
