@@ -2,19 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 
-const BG_PHOTOS = [
-  'photo-1469854523086-cc02fe5d8800', // open road at sunset
-  'photo-1476514525405-09b77a9d1f66', // aerial mountain valley
-  'photo-1488085061387-422e29b40080', // night train journey
-  'photo-1507608616759-54f48f0af0ee', // city lights from above
-  'photo-1500835556395-d53988b8c5e2', // sea travel, boat deck
-];
-
-const FLOATING_ICONS = [
-  'flight','place','map','luggage','camera_alt',
-  'restaurant','beach_access','explore','directions_walk',
-];
-
 export function LoginScreen() {
   const { dispatch } = useAppStore();
   const [checking, setChecking]     = useState(true);
@@ -74,15 +61,6 @@ export function LoginScreen() {
     }
   }
 
-  const [bgIndex, setBgIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setBgIndex(i => (i + 1) % BG_PHOTOS.length);
-    }, 5000);
-    return () => clearInterval(id);
-  }, []);
-  const bgUrl = `https://images.unsplash.com/${BG_PHOTOS[bgIndex]}?w=900&q=80`;
-
   if (checking) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
@@ -93,39 +71,13 @@ export function LoginScreen() {
 
   return (
     <div
-      className="relative min-h-screen w-full flex items-center justify-center px-6 py-8"
+      className="min-h-screen w-full flex items-center justify-center px-6 py-8"
       style={{
-        background: `url('${bgUrl}') center/cover no-repeat`,
-        transition: 'background-image 1.2s ease-in-out',
+        background:
+          "linear-gradient(rgba(15,12,10,.55), rgba(15,12,10,.96)), url('https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80') center/cover no-repeat",
       }}
     >
-      {/* Gradient overlay */}
-      <div
-        className="absolute inset-0"
-        style={{ background: 'linear-gradient(rgba(15,12,10,.55), rgba(15,12,10,.96))' }}
-      />
-
-      {/* Floating icons */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {FLOATING_ICONS.map((icon, i) => (
-          <span
-            key={icon}
-            className="ms absolute text-white/25 text-[28px]"
-            style={{
-              left: `${10 + (i * 10) % 80}%`,
-              bottom: '-10%',
-              animation: `floatUp ${8 + (i % 3) * 2}s ${i * 0.8}s ease-in-out infinite`,
-            }}
-          >
-            {icon}
-          </span>
-        ))}
-      </div>
-
-      <div
-        className="relative w-full max-w-[380px]"
-        style={{ animation: 'cardEntry 0.6s ease 0.2s both' }}
-      >
+      <div className="w-full max-w-[380px]">
 
         {/* Brand mark */}
         <div className="text-center mb-10">
