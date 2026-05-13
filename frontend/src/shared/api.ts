@@ -269,6 +269,15 @@ export const api = {
   }) =>
     post<EngineItinerary>('/engine-itinerary', body),
 
+  surpriseMe: (body: {
+    start_city_id: string
+    end_city_id: string
+    start_date?: string
+    end_date?: string
+    persona: string
+  }) =>
+    post<EngineItinerary>('/surprise-me', body),
+
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),
 

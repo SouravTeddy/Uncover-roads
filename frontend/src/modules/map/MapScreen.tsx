@@ -19,7 +19,7 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { mapData } from '../../shared/api';
+import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
@@ -178,6 +178,9 @@ export function MapScreen() {
 
   // Phase 11: Surprise Me confirmation
   const [surpriseConfirm, setSurpriseConfirm] = useState(false)
+
+  // Build Itinerary loading state
+  const [buildLoading, setBuildLoading] = useState(false)
 
   // Rotating placeholder
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -517,7 +520,12 @@ export function MapScreen() {
 
   // Surprise Me — calls backend, navigates to route screen
   const handleSurprise = useCallback(async () => {
-    if (!city || !personaProfile) return
+    if (!city) return
+    if (!personaProfile) {
+      setEventsError('Complete your persona first to use Surprise Me')
+      setTimeout(() => setEventsError(null), 3500)
+      return
+    }
     if (state.engineItinerary) {
       setSurpriseConfirm(true)
       return
@@ -532,23 +540,20 @@ export function MapScreen() {
     const startCityContext = cityContexts[0]
     const endCityContext   = cityContexts[cityContexts.length - 1]
     try {
-      const res = await fetch('/api/surprise-me', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start_city_id: startCityContext?.city ?? city,
-          end_city_id:   endCityContext?.city ?? city,
-          start_date:    state.travelStartDate ?? undefined,
-          end_date:      state.travelEndDate ?? undefined,
-          persona:       personaProfile.archetype ?? 'explorer',
-        }),
+      const result = await api.surpriseMe({
+        start_city_id: startCityContext?.city ?? city,
+        end_city_id:   endCityContext?.city ?? city,
+        start_date:    state.travelStartDate ?? undefined,
+        end_date:      state.travelEndDate ?? undefined,
+        persona:       personaProfile.archetype ?? 'explorer',
       })
-      if (res.ok) {
-        const result = await res.json()
-        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-        dispatch({ type: 'GO_TO', screen: 'route' })
-      }
-    } catch { /* silence */ }
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+      dispatch({ type: 'GO_TO', screen: 'route' })
+    } catch (err) {
+      console.error('[MapScreen] Surprise Me failed:', err)
+      setEventsError('Surprise Me failed — try again')
+      setTimeout(() => setEventsError(null), 4000)
+    }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
 
   const isFavourited = activePlace
