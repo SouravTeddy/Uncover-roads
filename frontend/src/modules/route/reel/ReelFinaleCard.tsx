@@ -8,7 +8,7 @@ interface Props {
   saved: boolean;
 }
 
-const CONFETTI_COLORS = ['#e07854', '#5a8a60', '#4a7fa0', '#8878b8', '#a06070'];
+const CONFETTI_COLORS = ['#d4a853', '#5a8a60', '#4a7fa0', '#8878b8', '#a06070'];
 
 export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
   const confettiRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
       </span>
 
       <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: '#fff', textAlign: 'center', marginBottom: 8, animation: active ? 'fadeUp .5s .15s both' : 'none' }}>
-        {card.city}, done.
+        {card.city ?? 'Your trip'} awaits
       </h2>
 
       <p style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
@@ -61,11 +61,11 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         onClick={onSave}
         style={{
           width: '100%', height: 54, borderRadius: 16, border: 'none', cursor: 'pointer',
-          background: saved ? '#16a34a' : 'linear-gradient(135deg, #e07854, #c4613d)',
+          background: saved ? '#16a34a' : 'linear-gradient(135deg, #d4a853, #b8893a)',
           color: '#fff',
           fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: saved ? '0 4px 20px rgba(22,163,74,.3)' : '0 6px 28px rgba(224,120,84,.25)',
+          boxShadow: saved ? '0 4px 20px rgba(22,163,74,.3)' : '0 6px 28px rgba(212,168,83,.25)',
           transition: 'background .3s ease, box-shadow .3s ease',
           marginBottom: 12,
           animation: active ? 'fadeUp .5s .35s both' : 'none',

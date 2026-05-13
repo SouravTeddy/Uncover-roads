@@ -70,6 +70,7 @@ export function buildReelCards(
   weather: WeatherData | null,
   persona: string,
 ): ReelCard[] {
+  if (!itinerary?.days?.length) return [];
   const cards: ReelCard[] = [];
   const allStops = itinerary.days.flatMap(d => d.stops);
   const stopCount = allStops.length;
