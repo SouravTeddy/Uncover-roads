@@ -255,7 +255,8 @@ export function JourneyScreen() {
               </svg>
               {/* City dots */}
               {positions.map((pos, i) => {
-                const isActive = cityLegs[i]?.city === activeLeg?.city && activeLeg?.type === 'city';
+                const activeCityName = activeLeg?.type === 'city' ? activeLeg.city : null;
+                const isActive = cityLegs[i]?.city === activeCityName;
                 return (
                   <div
                     key={i}
