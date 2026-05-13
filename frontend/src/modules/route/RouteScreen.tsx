@@ -50,7 +50,7 @@ export function RouteScreen() {
           aria-label="Back"
           style={{
             width: 36, height: 36, borderRadius: '50%',
-            background: 'rgba(26,23,20,.82)',
+            background: 'var(--color-surface)',
             backdropFilter: 'blur(12px)',
             border: '1px solid var(--color-border-m)',
           }}
@@ -137,7 +137,7 @@ export function RouteScreen() {
       )}
 
       {/* Scroll area */}
-      <div className="flex-1 overflow-y-auto pb-8">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
         {!engineItinerary ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-[var(--color-text-3)] px-8 text-center">

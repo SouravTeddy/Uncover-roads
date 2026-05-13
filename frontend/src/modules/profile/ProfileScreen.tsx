@@ -162,7 +162,7 @@ export function ProfileScreen() {
           className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl border mx-4 mt-4"
           style={{
             width: 'calc(100% - 2rem)',
-            background: 'rgba(255,255,255,.03)',
+            background: 'var(--color-surface)',
             borderColor: userTier === 'free' ? 'rgba(249,115,22,.5)' : 'rgba(245,158,11,.5)',
           }}
         >
@@ -183,7 +183,7 @@ export function ProfileScreen() {
         <div className="mt-5 px-4">
           <SectionLabel>Account</SectionLabel>
         </div>
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
           {userTier === 'free' ? (
             <SettingsRow
               label="Upgrade to Pro"
@@ -211,7 +211,7 @@ export function ProfileScreen() {
         <div className="px-4">
           <SectionLabel>App</SectionLabel>
         </div>
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
           <SettingsRow
             label="Units"
             sublabel={state.units === 'km' ? 'Kilometres' : 'Miles'}
@@ -224,7 +224,7 @@ export function ProfileScreen() {
           />
 
           {/* Appearance row */}
-          <div className="flex items-center justify-between py-3 px-4 border-t border-white/6">
+          <div className="flex items-center justify-between py-3 px-4 border-t border-[var(--color-divider)]">
             <div className="flex items-center gap-3">
               <span className="ms text-[var(--color-text-2)] text-[20px]">
                 {theme === 'dark' ? 'dark_mode' : 'light_mode'}
@@ -271,9 +271,9 @@ export function ProfileScreen() {
 
         {/* Legal */}
         <div className="mt-2 px-4">
-          <p className="text-[11px] uppercase tracking-widest font-bold mb-2 px-1" style={{ color: '#5a4e47' }}>Legal</p>
+          <p className="text-[11px] uppercase tracking-widest font-bold mb-2 px-1" style={{ color: 'var(--color-text-4)' }}>Legal</p>
         </div>
-        <div className="rounded-2xl overflow-hidden border border-white/8 mb-4 mx-4" style={{ background: 'rgba(255,255,255,.03)' }}>
+        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
           <SettingsRow
             label="Privacy Policy"
             onTap={() => openUrl('https://uncoverroads.com/privacy')}
@@ -289,7 +289,7 @@ export function ProfileScreen() {
         <div className="flex justify-center mt-2 mb-6">
           <a
             href="mailto:sourav@uncoverroads.com?subject=Feedback on Uncover Roads"
-            className="flex items-center gap-2 text-white/25 text-xs hover:text-white/45 transition-colors"
+            className="flex items-center gap-2 text-[var(--color-text-4)] text-xs hover:text-[var(--color-text-3)] transition-colors"
           >
             <span className="ms text-sm">mail</span>
             Send Feedback
@@ -306,9 +306,9 @@ export function ProfileScreen() {
 function AttemptsCounter({ count }: { count: number }) {
   const used = Math.min(count, 3);
   return (
-    <div className="rounded-2xl border border-white/8 px-4 py-3" style={{ background: 'rgba(255,255,255,.03)' }}>
+    <div className="rounded-2xl border border-[var(--color-border)] px-4 py-3" style={{ background: 'var(--color-surface)' }}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-white text-sm font-semibold">Itinerary Attempts</span>
+        <span className="text-[var(--color-text-1)] text-sm font-semibold">Itinerary Attempts</span>
         <div className="flex gap-1.5">
           {[0, 1, 2].map(i => (
             <div
@@ -319,7 +319,7 @@ function AttemptsCounter({ count }: { count: number }) {
           ))}
         </div>
       </div>
-      <p className="text-white/30 text-[10px]">
+      <p className="text-[var(--color-text-3)] text-[10px]">
         {used} of 3 used · 1st–2nd: full · 3rd: no curation · 4th+: upgrade
       </p>
     </div>
@@ -352,14 +352,14 @@ function SettingsRow({
   return (
     <button
       onClick={onTap}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${divider ? 'border-t border-white/6' : ''}`}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${divider ? 'border-t border-[var(--color-divider)]' : ''}`}
       style={rowStyle}
     >
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${labelClass}`} style={!labelClass ? { color: 'var(--color-text-2)' } : {}}>{label}</p>
         {sublabel && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-3)' }}>{sublabel}</p>}
       </div>
-      {right ?? <span className="ms text-white/20 text-base">chevron_right</span>}
+      {right ?? <span className="ms text-[var(--color-text-4)] text-base">chevron_right</span>}
     </button>
   );
 }
