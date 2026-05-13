@@ -62,12 +62,12 @@
   --color-border:     rgba(44,36,32,.08);
   --color-border-m:   rgba(44,36,32,.14);
   --color-divider:    rgba(44,36,32,.06);
-  --color-primary-bg: rgba(224,120,84,.10);
-  --color-primary-glow: rgba(224,120,84,.15);
+  --color-primary-bg: rgba(212,168,83,.10);
+  --color-primary-glow: rgba(212,168,83,.15);
   --shadow-sm:        0 2px 8px rgba(44,36,32,.1);
   --shadow-md:        0 4px 24px rgba(44,36,32,.12);
   --shadow-lg:        0 16px 40px rgba(44,36,32,.18);
-  --shadow-primary:   0 6px 20px rgba(224,120,84,.20);
+  --shadow-primary:   0 6px 20px rgba(212,168,83,.20);
   --nav-bg:           rgba(250,248,244,.94);
 }
 
