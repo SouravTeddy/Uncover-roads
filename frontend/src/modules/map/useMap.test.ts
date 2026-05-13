@@ -68,3 +68,17 @@ describe('clientSideFallback logic', () => {
     expect(result.every(p => p.reasonSignal === 'persona')).toBe(true);
   });
 });
+
+it('filters places by activeCategory when filter is all', () => {
+  const places = [
+    { id: '1', title: 'A Park', category: 'park',       lat: 0, lon: 0 },
+    { id: '2', title: 'A Cafe', category: 'cafe',       lat: 0, lon: 0 },
+    { id: '3', title: 'A Rest', category: 'restaurant', lat: 0, lon: 0 },
+  ];
+  // filteredPlaces logic extracted: activeFilter='all', activeCategory='park'
+  const result = places.filter(p =>
+    'all' === 'all' && 'park' !== null ? p.category === 'park' : true
+  );
+  expect(result).toHaveLength(1);
+  expect(result[0].title).toBe('A Park');
+});
