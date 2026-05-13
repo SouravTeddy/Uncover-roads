@@ -556,6 +556,33 @@ export function MapScreen() {
     }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
 
+  const handleBuild = useCallback(async () => {
+    if (buildLoading || selectedPlaces.length === 0) return
+    setBuildLoading(true)
+    try {
+      const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
+      const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
+      const result = await api.engineItinerary({
+        city: city ?? '',
+        lat: cityGeo?.lat ?? 0,
+        lon: cityGeo?.lon ?? 0,
+        days,
+        startDate,
+        selectedPlaceIds: selectedPlaces.map(p => p.id),
+        personaArchetype: personaProfile?.archetype ?? 'explorer',
+        engineWeights: null,
+      })
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+      dispatch({ type: 'GO_TO', screen: 'route' })
+    } catch (err) {
+      console.error('[MapScreen] handleBuild failed:', err)
+      setEventsError('Could not build itinerary — try again')
+      setTimeout(() => setEventsError(null), 4000)
+    } finally {
+      setBuildLoading(false)
+    }
+  }, [buildLoading, selectedPlaces, state, city, cityGeo, personaProfile, dispatch])
+
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
     : false;
@@ -959,7 +986,8 @@ export function MapScreen() {
       <BuildItineraryBar
         itineraryPlaces={selectedPlaces}
         days={activeCityDays}
-        onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
+        onBuild={handleBuild}
+        loading={buildLoading}
       />
 
       {/* Search results strip */}
