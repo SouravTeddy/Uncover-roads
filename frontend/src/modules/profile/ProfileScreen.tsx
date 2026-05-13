@@ -48,7 +48,7 @@ export function ProfileScreen() {
   const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
   const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? (persona?.archetype ?? 'explorer');
   const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
-  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#e07854', glow: 'rgba(224,120,84,.22)' };
+  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
   const hasArchetype = !!(state.personaProfile || persona);
 
   const archetypeData = hasArchetype ? {
@@ -241,7 +241,7 @@ export function ProfileScreen() {
             <button
               onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
               className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
-              style={{ background: theme === 'dark' ? '#e07854' : 'rgba(255,255,255,.15)' }}
+              style={{ background: theme === 'dark' ? 'var(--color-primary)' : 'rgba(255,255,255,.15)' }}
               aria-label="Toggle appearance"
             >
               <span
@@ -259,7 +259,7 @@ export function ProfileScreen() {
             className={`w-full h-[52px] rounded-[18px] font-bold text-[15px] text-white transition-all active:scale-[.97] ${
               saved
                 ? 'bg-green-600'
-                : 'bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)]'
+                : 'bg-gradient-to-br from-[#d4a853] to-[#b8893a] [box-shadow:var(--shadow-primary)]'
             }`}
           >
             {saved
