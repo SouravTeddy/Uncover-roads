@@ -979,7 +979,6 @@ export function MapScreen() {
         itineraryPlaces={selectedPlaces}
         days={activeCityDays}
         onBuild={handleBuild}
-        loading={buildLoading}
       />
 
       {/* Search results strip */}

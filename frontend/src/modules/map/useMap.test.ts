@@ -84,15 +84,15 @@ it('filters places by activeCategory when filter is all', () => {
 });
 
 it('BuildItineraryBar canBuild is false with 1 place', () => {
-  const places: Place[] = [{ id: '1', title: 'A', category: 'park', lat: 0, lon: 0, _city: 'x' }];
+  const places: Place[] = [{ id: '1', title: 'A', category: 'park', lat: 0, lon: 0 }];
   const canBuild = places.length >= 2;
   expect(canBuild).toBe(false);
 });
 
 it('BuildItineraryBar canBuild is true with 2 places', () => {
   const places: Place[] = [
-    { id: '1', title: 'A', category: 'park',       lat: 0, lon: 0, _city: 'x' },
-    { id: '2', title: 'B', category: 'restaurant', lat: 0, lon: 0, _city: 'x' },
+    { id: '1', title: 'A', category: 'park',       lat: 0, lon: 0 },
+    { id: '2', title: 'B', category: 'restaurant', lat: 0, lon: 0 },
   ];
   const canBuild = places.length >= 2;
   expect(canBuild).toBe(true);
