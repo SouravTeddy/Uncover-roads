@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, fireEvent, cleanup } from '@testing-library/react';
 import { FilterBar } from './FilterBar';
 import type { MapFilter } from '../../shared/types';
 
@@ -7,113 +7,88 @@ afterEach(() => cleanup());
 
 const defaultProps = {
   active: 'all' as MapFilter,
-  counts: { all: 10, picks: 3, event: 2 },
+  allCount: 10,
+  curatedCount: 3,
+  curatedLocked: false,
   onSelect: vi.fn(),
+  onLockedTap: vi.fn(),
 };
 
-// Helper: render FilterBar already in expanded state
-// The component starts collapsed; click the collapsed pill to open the full chip list.
-function renderExpanded(props: Parameters<typeof FilterBar>[0]) {
-  const { container } = render(<FilterBar {...props} />);
-  // The collapsed view shows a single button — click it to expand
-  const buttons = container.querySelectorAll('button');
-  // In collapsed state there should be one button (the pill)
-  if (buttons.length === 1) {
-    fireEvent.click(buttons[0]);
-  }
-  return within(container);
-}
-
-describe('FilterBar — locked filter chips', () => {
-  it('shows lock icon on locked filter chips', () => {
-    const q = renderExpanded({
-      ...defaultProps,
-      lockedFilters: ['picks', 'trending'],
-    });
-
-    // Both locked chips should render a lock icon
-    const lockIcons = q.getAllByText('lock');
-    expect(lockIcons.length).toBeGreaterThanOrEqual(2);
+describe('FilterBar', () => {
+  it('renders the All chip', () => {
+    const { container } = render(<FilterBar {...defaultProps} />);
+    const buttons = container.querySelectorAll('button');
+    const allBtn = Array.from(buttons).find(b => b.textContent?.includes('All'));
+    expect(allBtn).toBeDefined();
   });
 
-  it('tapping a locked chip calls onLockedTap, NOT onSelect', () => {
+  it('renders the Curated chip', () => {
+    const { container } = render(<FilterBar {...defaultProps} />);
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'));
+    expect(curatedBtn).toBeDefined();
+  });
+
+  it('clicking All calls onSelect("all")', () => {
+    const onSelect = vi.fn();
+    const { container } = render(<FilterBar {...defaultProps} onSelect={onSelect} />);
+    const buttons = container.querySelectorAll('button');
+    const allBtn = Array.from(buttons).find(b => b.textContent?.includes('All'))!;
+    fireEvent.click(allBtn);
+    expect(onSelect).toHaveBeenCalledWith('all');
+  });
+
+  it('clicking Curated calls onSelect("curated") when not locked', () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <FilterBar {...defaultProps} onSelect={onSelect} curatedLocked={false} />
+    );
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'))!;
+    fireEvent.click(curatedBtn);
+    expect(onSelect).toHaveBeenCalledWith('curated');
+  });
+
+  it('clicking Curated calls onLockedTap (not onSelect) when curatedLocked=true', () => {
     const onSelect = vi.fn();
     const onLockedTap = vi.fn();
-
-    const q = renderExpanded({
-      ...defaultProps,
-      onSelect,
-      lockedFilters: ['picks'],
-      onLockedTap,
-    });
-
-    // "Picks" chip is locked — find it among all buttons
-    const allButtons = q.getAllByRole('button');
-    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Picks'));
-    expect(ourPicksBtn).toBeDefined();
-    fireEvent.click(ourPicksBtn!);
-
+    const { container } = render(
+      <FilterBar {...defaultProps} onSelect={onSelect} onLockedTap={onLockedTap} curatedLocked={true} />
+    );
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'))!;
+    fireEvent.click(curatedBtn);
     expect(onLockedTap).toHaveBeenCalledTimes(1);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('unlocked chips still call onSelect normally', () => {
-    const onSelect = vi.fn();
-    const onLockedTap = vi.fn();
-
-    const q = renderExpanded({
-      ...defaultProps,
-      onSelect,
-      lockedFilters: ['picks'],
-      onLockedTap,
-    });
-
-    // "All" is not locked — find it and click it
-    const allButtons = q.getAllByRole('button');
-    // The "All" chip text starts with "All" (may include count)
-    const allChipBtn = allButtons.find(b => /^All/.test(b.textContent ?? ''));
-    expect(allChipBtn).toBeDefined();
-    fireEvent.click(allChipBtn!);
-
-    expect(onSelect).toHaveBeenCalledWith('all');
-    expect(onLockedTap).not.toHaveBeenCalled();
+  it('displays allCount in the All chip', () => {
+    const { container } = render(<FilterBar {...defaultProps} allCount={42} />);
+    const buttons = container.querySelectorAll('button');
+    const allBtn = Array.from(buttons).find(b => b.textContent?.includes('All'))!;
+    expect(allBtn.textContent).toContain('42');
   });
 
-  it('shows no lock icons when lockedFilters is empty', () => {
-    const q = renderExpanded({
-      ...defaultProps,
-      lockedFilters: [],
-    });
-
-    const lockIcons = q.queryAllByText('lock');
-    expect(lockIcons).toHaveLength(0);
+  it('displays curatedCount in the Curated chip when not locked', () => {
+    const { container } = render(
+      <FilterBar {...defaultProps} curatedCount={7} curatedLocked={false} />
+    );
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'))!;
+    expect(curatedBtn.textContent).toContain('7');
   });
 
-  it('shows no lock icons when lockedFilters prop is omitted', () => {
-    const q = renderExpanded({ ...defaultProps });
-
-    const lockIcons = q.queryAllByText('lock');
-    expect(lockIcons).toHaveLength(0);
+  it('shows a lock icon in the Curated chip when curatedLocked=true', () => {
+    const { container } = render(<FilterBar {...defaultProps} curatedLocked={true} />);
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'))!;
+    expect(curatedBtn.textContent).toContain('lock');
   });
 
-  it('locked chip does not change active state when tapped', () => {
-    const onSelect = vi.fn();
-    const onLockedTap = vi.fn();
-
-    const q = renderExpanded({
-      ...defaultProps,
-      active: 'all' as MapFilter,
-      onSelect,
-      lockedFilters: ['picks'],
-      onLockedTap,
-    });
-
-    const allButtons = q.getAllByRole('button');
-    const ourPicksBtn = allButtons.find(b => b.textContent?.includes('Picks'));
-    expect(ourPicksBtn).toBeDefined();
-    fireEvent.click(ourPicksBtn!);
-
-    // onSelect was not called, so active state remains 'all' (not 'picks')
-    expect(onSelect).not.toHaveBeenCalled();
+  it('does not show a lock icon in the Curated chip when curatedLocked=false', () => {
+    const { container } = render(<FilterBar {...defaultProps} curatedLocked={false} />);
+    const buttons = container.querySelectorAll('button');
+    const curatedBtn = Array.from(buttons).find(b => b.textContent?.includes('Curated'))!;
+    expect(curatedBtn.textContent).not.toContain('lock');
   });
 });
