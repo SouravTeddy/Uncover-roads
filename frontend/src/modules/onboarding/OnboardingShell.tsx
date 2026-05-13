@@ -51,14 +51,14 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
 
       {/* Existing question content — above layers */}
       <div className="relative z-10">
-        <div className="fixed inset-0 flex flex-col bg-[var(--color-bg)]" style={{ zIndex: 20 }}>
+        <div className="fixed inset-0 flex flex-col" style={{ zIndex: 20, background: 'rgba(12,12,14,.82)', backdropFilter: 'blur(0px)' }}>
           {/* Header */}
           <div
             className="flex-shrink-0 flex items-center justify-between px-5 border-b border-white/6"
             style={{
               paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
               paddingBottom: '1rem',
-              background: 'rgba(15,23,42,.95)',
+              background: 'rgba(12,12,14,.88)',
               position: 'sticky',
               top: 0,
               zIndex: 10,
