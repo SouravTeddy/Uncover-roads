@@ -6,33 +6,11 @@ import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
 import { MapLibreRoute } from './MapLibreRoute';
 
-function getTileUrl(): string {
-  return document.documentElement.dataset.theme === 'light'
-    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png';
-}
-
-function buildMapStyle(tileUrl: string) {
-  return {
-    version: 8 as const,
-    sources: {
-      'carto-tiles': {
-        type: 'raster' as const,
-        tiles: [tileUrl.replace('{s}', 'a'), tileUrl.replace('{s}', 'b'), tileUrl.replace('{s}', 'c')],
-        tileSize: 256,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      },
-    },
-    layers: [
-      {
-        id: 'carto-tiles',
-        type: 'raster' as const,
-        source: 'carto-tiles',
-        minzoom: 0,
-        maxzoom: 22,
-      },
-    ],
-  };
+function getMapStyle(): string {
+  const isDark = document.documentElement.dataset.theme !== 'light'
+  return isDark
+    ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+    : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
 }
 
 export interface MapHandle {
@@ -59,7 +37,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
-  const [mapStyle, setMapStyle] = useState(() => buildMapStyle(getTileUrl()));
+  const [mapStyle, setMapStyle] = useState(() => getMapStyle());
 
   useImperativeHandle(ref, () => ({
     flyTo(lat: number, lon: number, targetZoom = 15) {
@@ -82,7 +60,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setMapStyle(buildMapStyle(getTileUrl()));
+      setMapStyle(getMapStyle());
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
