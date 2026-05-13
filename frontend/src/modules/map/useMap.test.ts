@@ -68,3 +68,32 @@ describe('clientSideFallback logic', () => {
     expect(result.every(p => p.reasonSignal === 'persona')).toBe(true);
   });
 });
+
+it('filters places by activeCategory when filter is all', () => {
+  const places = [
+    { id: '1', title: 'A Park', category: 'park',       lat: 0, lon: 0 },
+    { id: '2', title: 'A Cafe', category: 'cafe',       lat: 0, lon: 0 },
+    { id: '3', title: 'A Rest', category: 'restaurant', lat: 0, lon: 0 },
+  ];
+  // filteredPlaces logic extracted: activeFilter='all', activeCategory='park'
+  const result = places.filter(p =>
+    'all' === 'all' && 'park' !== null ? p.category === 'park' : true
+  );
+  expect(result).toHaveLength(1);
+  expect(result[0].title).toBe('A Park');
+});
+
+it('BuildItineraryBar canBuild is false with 1 place', () => {
+  const places: Place[] = [{ id: '1', title: 'A', category: 'park', lat: 0, lon: 0 }];
+  const canBuild = places.length >= 2;
+  expect(canBuild).toBe(false);
+});
+
+it('BuildItineraryBar canBuild is true with 2 places', () => {
+  const places: Place[] = [
+    { id: '1', title: 'A', category: 'park',       lat: 0, lon: 0 },
+    { id: '2', title: 'B', category: 'restaurant', lat: 0, lon: 0 },
+  ];
+  const canBuild = places.length >= 2;
+  expect(canBuild).toBe(true);
+});

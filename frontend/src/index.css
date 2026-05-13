@@ -8,11 +8,11 @@
   --color-surface:    #242018;
   --color-surface2:   #2e2a22;
 
-  /* Primary — terracotta */
-  --color-primary:    #e07854;
-  --color-primary-dk: #c4613d;
-  --color-primary-bg: rgba(224,120,84,.14);
-  --color-primary-glow: rgba(224,120,84,.22);
+  /* Primary — amber/gold */
+  --color-primary:    #d4a853;
+  --color-primary-dk: #b8893a;
+  --color-primary-bg: rgba(212,168,83,.14);
+  --color-primary-glow: rgba(212,168,83,.22);
 
   /* Semantic accents */
   --color-sage:       #6b9470;
@@ -40,11 +40,11 @@
   --shadow-sm:        0 2px 12px rgba(0,0,0,.4);
   --shadow-md:        0 4px 24px rgba(0,0,0,.45);
   --shadow-lg:        0 16px 56px rgba(0,0,0,.7);
-  --shadow-primary:   0 6px 24px rgba(224,120,84,.25);
+  --shadow-primary:   0 6px 24px rgba(212,168,83,.25);
 
   /* Fonts */
   --font-sans:        'DM Sans', sans-serif;
-  --font-heading:     'Playfair Display', serif;
+  --font-heading:     'Cormorant Garamond', serif;
 
   /* Nav bg */
   --nav-bg:           rgba(26,23,20,.92);
@@ -62,12 +62,12 @@
   --color-border:     rgba(44,36,32,.08);
   --color-border-m:   rgba(44,36,32,.14);
   --color-divider:    rgba(44,36,32,.06);
-  --color-primary-bg: rgba(224,120,84,.10);
-  --color-primary-glow: rgba(224,120,84,.15);
+  --color-primary-bg: rgba(212,168,83,.10);
+  --color-primary-glow: rgba(212,168,83,.15);
   --shadow-sm:        0 2px 8px rgba(44,36,32,.1);
   --shadow-md:        0 4px 24px rgba(44,36,32,.12);
   --shadow-lg:        0 16px 40px rgba(44,36,32,.18);
-  --shadow-primary:   0 6px 20px rgba(224,120,84,.20);
+  --shadow-primary:   0 6px 20px rgba(212,168,83,.20);
   --nav-bg:           rgba(250,248,244,.94);
 }
 
@@ -262,6 +262,12 @@ html, body {
 @keyframes collapseToFan {
   0%   { transform: translateY(0) scale(1);    opacity: 1; }
   100% { transform: translateY(60px) scale(.1); opacity: 0; }
+}
+
+@keyframes pinBounce {
+  0%, 100% { transform: translateY(0); }
+  45%       { transform: translateY(-5px); }
+  65%       { transform: translateY(-2px); }
 }
 
 /* ── Reel snap alignment ──────────────────────────────── */

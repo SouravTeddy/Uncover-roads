@@ -18,10 +18,10 @@ export const TRAIT_COLORS = {
 /** Per-archetype accent color + glow — warm editorial palette */
 export const ARCHETYPE_COLORS: Record<string, { primary: string; glow: string }> = {
   voyager:       { primary: '#4f8fab', glow: 'rgba(79,143,171,.22)'   },  // sky
-  wanderer:      { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  wanderer:      { primary: '#d4a853', glow: 'rgba(212,168,83,.22)'   },  // amber/gold primary
   epicurean:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
   historian:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
-  pulse:         { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  pulse:         { primary: '#d4a853', glow: 'rgba(212,168,83,.22)'   },  // amber/gold primary
   slowtraveller: { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
   explorer:      { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
 };

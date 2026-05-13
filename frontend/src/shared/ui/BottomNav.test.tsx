@@ -26,13 +26,13 @@ function renderInProvider() {
 }
 
 describe('BottomNav', () => {
-  it('renders 4 tabs: Explore, Itinerary, Community, Profile', async () => {
+  it('renders 3 tabs: Explore, Itinerary, Profile', async () => {
     renderInProvider();
     await waitFor(() => {
       expect(screen.getByText('Explore')).toBeTruthy();
     });
     expect(screen.getByText('Itinerary')).toBeTruthy();
-    expect(screen.getByText('Community')).toBeTruthy();
+    expect(screen.queryByText('Community')).toBeNull();
     expect(screen.getByText('Profile')).toBeTruthy();
   });
 
@@ -47,14 +47,4 @@ describe('BottomNav', () => {
     expect(exploreBtn?.getAttribute('aria-current')).toBe('page');
   });
 
-  it('renders Community tab as disabled (muted)', async () => {
-    renderInProvider();
-    await waitFor(() => {
-      expect(screen.getByText('Community')).toBeTruthy();
-    });
-    const buttons = screen.getAllByRole('button', { hidden: true });
-    const communityBtn = buttons.find(b => b.textContent?.includes('Community'));
-    expect(communityBtn).toBeDefined();
-    expect(communityBtn?.hasAttribute('disabled')).toBe(true);
-  });
 });
