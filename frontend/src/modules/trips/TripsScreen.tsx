@@ -187,7 +187,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
                     {stop.title ?? stop.place}
-                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
+                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(224,120,84,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
                   </div>
                   {reason && (
                     <div style={{ fontSize: 10, color: 'var(--color-text-3)', marginTop: 2 }}>
