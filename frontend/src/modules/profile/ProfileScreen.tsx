@@ -48,7 +48,7 @@ export function ProfileScreen() {
   const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
   const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? (persona?.archetype ?? 'explorer');
   const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
-  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' };
+  const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#e07854', glow: 'rgba(224,120,84,.22)' };
   const hasArchetype = !!(state.personaProfile || persona);
 
   const archetypeData = hasArchetype ? {
@@ -314,7 +314,7 @@ function AttemptsCounter({ count }: { count: number }) {
             <div
               key={i}
               className="w-2.5 h-2.5 rounded-full"
-              style={{ background: i < used ? '#f97316' : 'rgba(255,255,255,.12)' }}
+              style={{ background: i < used ? 'var(--color-primary)' : 'var(--color-surface2)' }}
             />
           ))}
         </div>
@@ -328,14 +328,14 @@ function AttemptsCounter({ count }: { count: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold mb-2 px-1">{children}</p>
+    <p style={{ color: 'var(--color-text-3)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
   );
 }
 
 function SettingsRow({
   label,
   sublabel,
-  labelClass = 'text-white/70',
+  labelClass = '',
   right,
   rowStyle,
   divider,
@@ -356,8 +356,8 @@ function SettingsRow({
       style={rowStyle}
     >
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${labelClass}`}>{label}</p>
-        {sublabel && <p className="text-white/25 text-xs mt-0.5">{sublabel}</p>}
+        <p className={`text-sm font-medium ${labelClass}`} style={!labelClass ? { color: 'var(--color-text-2)' } : {}}>{label}</p>
+        {sublabel && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-3)' }}>{sublabel}</p>}
       </div>
       {right ?? <span className="ms text-white/20 text-base">chevron_right</span>}
     </button>
