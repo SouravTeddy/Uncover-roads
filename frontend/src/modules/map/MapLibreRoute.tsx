@@ -15,7 +15,7 @@ const routeLineStyle: LineLayerSpecification = {
     'line-cap': 'round',
   },
   paint: {
-    'line-color': '#e07854',
+    'line-color': '#d4a853',
     'line-width': 3.5,
   },
 };

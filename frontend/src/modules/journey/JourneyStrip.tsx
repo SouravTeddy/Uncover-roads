@@ -97,7 +97,7 @@ export function JourneyStrip({ onDurationChange }: Props) {
                 onDurationChange?.(draftDays);
                 setPickerOpen(false);
               }}
-              className="w-full h-[54px] bg-gradient-to-br from-[#e07854] to-[#c4613d] [box-shadow:var(--shadow-primary)] border-none rounded-2xl cursor-pointer font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white"
+              className="w-full h-[54px] bg-gradient-to-br from-[#d4a853] to-[#b8893a] [box-shadow:var(--shadow-primary)] border-none rounded-2xl cursor-pointer font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white"
             >
               Set {draftDays} days
             </button>
