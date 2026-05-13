@@ -145,7 +145,7 @@ export function MapScreen() {
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
   // Events
-  const [eventsLoaded, setEventsLoaded]         = useState(false);
+  const [, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
   const [eventsError, setEventsError]           = useState<string | null>(null);

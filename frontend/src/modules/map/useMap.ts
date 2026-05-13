@@ -132,13 +132,11 @@ export function useMap() {
   }
 
   const filteredPlaces: Place[] =
-    activeFilter === 'recommended'
-      ? recommendedPlaces
-      : activeFilter === 'saved'
+    activeFilter === 'saved'
       ? places.filter(p => favouritedPins.some(f => f.placeId === p.id))
       : activeFilter === 'all'
       ? places
-      : places.filter(p => p.category === (activeFilter as string));
+      : places;
 
   function togglePlace(place: Place) {
     dispatch({ type: 'TOGGLE_PLACE', place });
