@@ -27,7 +27,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const [autoRunRecalibration, setAutoRunRecalibration] = useState(false);
 
   const archetypeKey    = item.persona?.archetype ?? '';
-  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
+  const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#e07854', glow: 'rgba(224,120,84,.22)' };
   const archetypeEmoji  = ARCHETYPE_EMOJI[archetypeKey]  ?? '◆';
   const archetypeName   = ARCHETYPE_SHORT[archetypeKey]  ?? (item.persona?.archetype_name ?? archetypeKey);
 
@@ -129,10 +129,10 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
         onClick={handlePlay}
         style={{
           width: '100%', height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-          color: '#0c0c0e', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+          background: 'linear-gradient(135deg, #e07854, #c4613d)',
+          color: '#ffffff', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+          boxShadow: '0 6px 28px rgba(224,120,84,.25)',
           marginBottom: 12,
         }}
       >
@@ -180,14 +180,14 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                 <div style={{
                   width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--color-primary-bg)',
-                  border: '1px solid rgba(212,168,83,.25)',
+                  border: '1px solid rgba(224,120,84,.25)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
                 }}>{i + 1}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
                     {stop.title ?? stop.place}
-                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
+                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(224,120,84,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
                   </div>
                   {reason && (
                     <div style={{ fontSize: 10, color: 'var(--color-text-3)', marginTop: 2 }}>
@@ -219,11 +219,11 @@ export function TripsScreen() {
 
       {/* Header */}
       <div
-        className="flex-shrink-0 px-5 border-b border-white/6"
+        className="flex-shrink-0 px-5 border-b border-[var(--color-divider)]"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)', paddingBottom: '1rem' }}
       >
         <h1 className="font-[family-name:var(--font-heading)] text-[16px] font-bold text-[var(--color-text-1)]">My Journeys</h1>
-        <p className="text-white/40 text-sm mt-0.5">{sorted.length} trip{sorted.length !== 1 ? 's' : ''} saved</p>
+        <p className="text-[var(--color-text-3)] text-sm mt-0.5">{sorted.length} trip{sorted.length !== 1 ? 's' : ''} saved</p>
       </div>
 
       {/* Body */}
@@ -233,13 +233,13 @@ export function TripsScreen() {
           <div className="flex flex-col items-center justify-center h-full gap-4 py-16">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
             >
-              <span className="ms text-white/20 text-3xl">route</span>
+              <span className="ms text-[var(--color-text-4)] text-3xl">route</span>
             </div>
             <div className="text-center">
-              <p className="text-white/50 font-semibold text-sm">No trips saved yet</p>
-              <p className="text-white/25 text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
+              <p className="text-[var(--color-text-2)] font-semibold text-sm">No trips saved yet</p>
+              <p className="text-[var(--color-text-4)] text-xs mt-1">Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
             </div>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}

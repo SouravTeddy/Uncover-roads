@@ -46,8 +46,14 @@ export function RouteScreen() {
       <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
-          className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+          className="flex items-center justify-center flex-shrink-0"
           aria-label="Back"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'var(--color-surface)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid var(--color-border-m)',
+          }}
         >
           <span className="ms text-[var(--color-text-2)]">arrow_back</span>
         </button>
@@ -131,7 +137,7 @@ export function RouteScreen() {
       )}
 
       {/* Scroll area */}
-      <div className="flex-1 overflow-y-auto pb-8">
+      <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
         {!engineItinerary ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-[var(--color-text-3)] px-8 text-center">

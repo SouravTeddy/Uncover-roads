@@ -145,7 +145,7 @@ export function MapScreen() {
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
   // Events
-  const [eventsLoaded, setEventsLoaded]         = useState(false);
+  const [, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
   const [eventsError, setEventsError]           = useState<string | null>(null);
@@ -178,6 +178,9 @@ export function MapScreen() {
 
   // Phase 11: Surprise Me confirmation
   const [surpriseConfirm, setSurpriseConfirm] = useState(false)
+
+  // Build Itinerary loading state
+  const [buildLoading, setBuildLoading] = useState(false)
 
   // Rotating placeholder
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -236,9 +239,6 @@ export function MapScreen() {
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
-    if (state.tripContext.date) {
-      loadEvents();
-    }
   }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
@@ -275,42 +275,6 @@ export function MapScreen() {
         .catch(() => {});
     }
   }, [handleMoveEnd, activeSearchTypes, searchQuery]);
-
-  async function loadEvents() {
-    const date = state.tripContext.date;
-    if (!date || !city) return;
-    // Compute end date = start + (days - 1)
-    const days    = Math.max(1, state.tripContext.days ?? 1);
-    const start   = new Date(date);
-    const end     = new Date(start);
-    end.setDate(end.getDate() + days - 1);
-    const endDate = end.toISOString().slice(0, 10);
-    setEventsLoading(true);
-    try {
-      const data = await api.events(city, date, endDate, cityGeo?.lat, cityGeo?.lon);
-      // Backend returns {"error": "..."} when API key is missing
-      if (!Array.isArray(data)) {
-        setEventsError('Events unavailable right now');
-        setTimeout(() => setEventsError(null), 4000);
-        return;
-      }
-      const withIds = data.map((p, i) => ({ ...p, id: p.id ?? `event-${i}` }));
-      if (withIds.length === 0) {
-        setEventsError(`No events found in ${city} for your dates`);
-        setTimeout(() => setEventsError(null), 4000);
-      } else {
-        setEventsError(null);
-      }
-      dispatch({ type: 'MERGE_PLACES', places: withIds });
-      setEventsLoaded(true);
-    } catch (e) {
-      console.error('[MapScreen] loadEvents failed:', e);
-      setEventsError('Events unavailable right now');
-      setTimeout(() => setEventsError(null), 4000);
-    } finally {
-      setEventsLoading(false);
-    }
-  }
 
   // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
   useEffect(() => {
@@ -356,7 +320,7 @@ export function MapScreen() {
   }, [clusterGroup]);
 
   useEffect(() => {
-    if (!city || activeFilter !== 'picks') { setOurPicks([]); return }
+    if (!city || activeFilter !== 'curated') { setOurPicks([]); return }
     const activeCityContext = cityContexts[activeCityIndex]
     const cityId = activeCityContext?.city ?? city
     fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
@@ -366,44 +330,46 @@ export function MapScreen() {
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'event') { setLiveEvents([]); return }
+    if (!city || activeFilter !== 'curated') { setLiveEvents([]); setEventsLoaded(false); return }
+
     const startDate = state.travelStartDate
-    const endDate = state.travelEndDate
-    if (!startDate || !endDate) return
-    const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
-    if (cityGeo) {
-      params.set('lat', String(cityGeo.lat))
-      params.set('lon', String(cityGeo.lon))
+    const endDate   = state.travelEndDate
+
+    if (!startDate || !endDate) {
+      setEventsNoDate(true)
+      return
     }
-    fetch(`/events?${params}`)
-      .then(r => r.ok ? r.json() : { places: [] })
-      .then((data: { places: Array<{ id: string; title: string; lat: number; lon: number; tags: { event_date?: string; event_time?: string; venue?: string; genre?: string; website?: string }; imageUrl: string | null }> }) => {
-        setLiveEvents(data.places.map(p => ({
-          id: p.id,
-          title: p.title,
-          lat: p.lat,
-          lon: p.lon,
-          venueName: p.tags?.venue ?? '',
-          date: p.tags?.event_date ?? '',
-          time: p.tags?.event_time ?? '',
-          genre: p.tags?.genre ?? '',
-          url: p.tags?.website ?? '',
-          imageUrl: p.imageUrl ?? null,
-        })))
+    setEventsNoDate(false)
+
+    setEventsLoading(true)
+    api.events(city, startDate, endDate, cityGeo?.lat, cityGeo?.lon)
+      .then((places) => {
+        const mapped = places.map(p => ({
+          id:        p.id,
+          title:     p.title,
+          lat:       p.lat,
+          lon:       p.lon,
+          venueName: p.tags?.venue      ?? '',
+          date:      p.tags?.event_date ?? '',
+          time:      p.tags?.event_time ?? '',
+          genre:     p.tags?.genre      ?? '',
+          url:       p.tags?.website    ?? '',
+          imageUrl:  (p as Place & { imageUrl?: string | null }).imageUrl ?? null,
+        }))
+        setLiveEvents(mapped)
+        setEventsLoaded(true)
+        setEventsError(null)
       })
-      .catch(() => setLiveEvents([]))
+      .catch(() => {
+        setEventsError('Events unavailable — check back later')
+        setLiveEvents([])
+        setEventsLoaded(false)
+      })
+      .finally(() => setEventsLoading(false))
   }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
-    if (f === 'event' && !eventsLoaded) {
-      if (!state.tripContext.date) {
-        setEventsNoDate(true);
-        setTimeout(() => setEventsNoDate(false), 3000);
-        return;
-      }
-      loadEvents();
-    }
   }
 
   function handleSearchInput(val: string) {
@@ -542,7 +508,12 @@ export function MapScreen() {
 
   // Surprise Me — calls backend, navigates to route screen
   const handleSurprise = useCallback(async () => {
-    if (!city || !personaProfile) return
+    if (!city) return
+    if (!personaProfile) {
+      setEventsError('Complete your persona first to use Surprise Me')
+      setTimeout(() => setEventsError(null), 3500)
+      return
+    }
     if (state.engineItinerary) {
       setSurpriseConfirm(true)
       return
@@ -557,37 +528,54 @@ export function MapScreen() {
     const startCityContext = cityContexts[0]
     const endCityContext   = cityContexts[cityContexts.length - 1]
     try {
-      const res = await fetch('/api/surprise-me', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start_city_id: startCityContext?.city ?? city,
-          end_city_id:   endCityContext?.city ?? city,
-          start_date:    state.travelStartDate ?? undefined,
-          end_date:      state.travelEndDate ?? undefined,
-          persona:       personaProfile.archetype ?? 'explorer',
-        }),
+      const result = await api.surpriseMe({
+        start_city_id: startCityContext?.city ?? city,
+        end_city_id:   endCityContext?.city ?? city,
+        start_date:    state.travelStartDate ?? undefined,
+        end_date:      state.travelEndDate ?? undefined,
+        persona:       personaProfile.archetype ?? 'explorer',
       })
-      if (res.ok) {
-        const result = await res.json()
-        dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-        dispatch({ type: 'GO_TO', screen: 'route' })
-      }
-    } catch { /* silence */ }
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+      dispatch({ type: 'GO_TO', screen: 'route' })
+    } catch (err) {
+      console.error('[MapScreen] Surprise Me failed:', err)
+      setEventsError('Surprise Me failed — try again')
+      setTimeout(() => setEventsError(null), 4000)
+    }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
+
+  const handleBuild = useCallback(async () => {
+    if (buildLoading || selectedPlaces.length === 0) return
+    setBuildLoading(true)
+    try {
+      const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
+      const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
+      const result = await api.engineItinerary({
+        city: city ?? '',
+        lat: cityGeo?.lat ?? 0,
+        lon: cityGeo?.lon ?? 0,
+        days,
+        startDate,
+        selectedPlaceIds: selectedPlaces.map(p => p.id),
+        personaArchetype: personaProfile?.archetype ?? 'explorer',
+        engineWeights: null,
+      })
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
+      dispatch({ type: 'GO_TO', screen: 'route' })
+    } catch (err) {
+      console.error('[MapScreen] handleBuild failed:', err)
+      setEventsError('Could not build itinerary — try again')
+      setTimeout(() => setEventsError(null), 4000)
+    } finally {
+      setBuildLoading(false)
+    }
+  }, [buildLoading, selectedPlaces, state, city, cityGeo, personaProfile, dispatch])
 
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const eventPlaces = places.filter(p => p.category === 'event');
-  const counts: Partial<Record<string, number>> = {
-    all:         places.length,
-    trending:    ourPicks.filter(p => p.badge === 'trending').length || undefined,
-    hidden_gems: ourPicks.filter(p => p.badge === 'hidden_gem').length || undefined,
-    event:       eventsLoaded ? eventPlaces.length : undefined,
-    picks:       ourPicks.length || undefined,
-  };
+  const curatedCount = ourPicks.length + liveEvents.length;
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
@@ -632,7 +620,7 @@ export function MapScreen() {
           onPinClick={handlePinClick}
         />
         {/* Our Picks layer */}
-        {activeFilter === 'picks' && (
+        {activeFilter === 'curated' && (
           <OurPicksPinsLayer
             picks={ourPicks}
             activePinId={activePinId ?? null}
@@ -641,7 +629,7 @@ export function MapScreen() {
         )}
 
         {/* Live Events layer */}
-        {activeFilter === 'event' && (
+        {activeFilter === 'curated' && (
           <LiveEventPinsLayer
             events={liveEvents}
             activePinId={activePinId ?? null}
@@ -788,9 +776,10 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
-            counts={counts}
+            allCount={places.length}
+            curatedCount={curatedCount}
+            curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
-            lockedFilters={isCurationLocked(state) ? ['picks', 'trending'] : []}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
@@ -980,7 +969,8 @@ export function MapScreen() {
       <BuildItineraryBar
         itineraryPlaces={selectedPlaces}
         days={activeCityDays}
-        onBuild={() => dispatch({ type: 'GO_TO', screen: 'route' })}
+        onBuild={handleBuild}
+        loading={buildLoading}
       />
 
       {/* Search results strip */}

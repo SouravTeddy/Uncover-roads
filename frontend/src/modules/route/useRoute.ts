@@ -40,8 +40,6 @@ export function useRoute() {
 
     const access = getGenerationAccess(state.userTier, state.generationCount, state.packTripsRemaining);
     if (!access.allowed) {
-      // Navigate to subscription screen for free users who've hit limit
-      // or pack users with zero balance
       dispatch({ type: 'GO_TO', screen: 'subscription' });
       return;
     }

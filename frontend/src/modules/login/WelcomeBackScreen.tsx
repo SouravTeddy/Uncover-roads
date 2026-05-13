@@ -1,7 +1,16 @@
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import type { Persona } from '../../shared/types';
 import { Button } from '../../shared/ui/Button';
+
+const BG_PHOTOS = [
+  'photo-1469854523086-cc02fe5d8800',
+  'photo-1476514525405-09b77a9d1f66',
+  'photo-1488085061387-422e29b40080',
+  'photo-1507608616759-54f48f0af0ee',
+  'photo-1500835556395-d53988b8c5e2',
+];
 
 const ARCHETYPE_ICONS: Record<string, string> = {
   historian:     'account_balance',
@@ -40,6 +49,15 @@ export function WelcomeBackScreen() {
   const icon        = ARCHETYPE_ICONS[archetype] ?? 'explore';
   const colors      = ARCHETYPE_COLORS[archetype] ?? { from: '#1e3a8a', to: '#1d4ed8', text: '#93c5fd' };
 
+  const [bgIndex, setBgIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgIndex(i => (i + 1) % BG_PHOTOS.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+  const bgUrl = `https://images.unsplash.com/${BG_PHOTOS[bgIndex]}?w=900&q=80`;
+
   function continueJourney() {
     dispatch({ type: 'GO_TO', screen: 'destination' });
   }
@@ -55,8 +73,8 @@ export function WelcomeBackScreen() {
     <div
       className="relative min-h-screen w-full flex flex-col items-center justify-between px-6 pt-12 pb-8"
       style={{
-        background:
-          "url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80') center/cover no-repeat",
+        background: `url('${bgUrl}') center/cover no-repeat`,
+        transition: 'background-image 1.2s ease-in-out',
       }}
     >
       {/* Gradient overlay */}

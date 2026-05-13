@@ -15,15 +15,15 @@ export const TRAIT_COLORS = {
   urban:      '#C1C6D7',
 } as const;
 
-/** Per-archetype accent color + glow */
+/** Per-archetype accent color + glow — warm editorial palette */
 export const ARCHETYPE_COLORS: Record<string, { primary: string; glow: string }> = {
-  voyager:       { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)'  },
-  wanderer:      { primary: '#14b8a6', glow: 'rgba(20,184,166,.22)'  },
-  epicurean:     { primary: '#f97316', glow: 'rgba(249,115,22,.22)'  },
-  historian:     { primary: '#d97706', glow: 'rgba(217,119,6,.22)'   },
-  pulse:         { primary: '#ec4899', glow: 'rgba(236,72,153,.22)'  },
-  slowtraveller: { primary: '#22c55e', glow: 'rgba(34,197,94,.22)'   },
-  explorer:      { primary: '#0ea5e9', glow: 'rgba(14,165,233,.22)'  },
+  voyager:       { primary: '#4f8fab', glow: 'rgba(79,143,171,.22)'   },  // sky
+  wanderer:      { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  epicurean:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
+  historian:     { primary: '#c49840', glow: 'rgba(196,152,64,.22)'   },  // amber
+  pulse:         { primary: '#e07854', glow: 'rgba(224,120,84,.22)'   },  // terracotta primary
+  slowtraveller: { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
+  explorer:      { primary: '#6b9470', glow: 'rgba(107,148,112,.22)'  },  // sage
 };
 
 export const ARCHETYPE_SHORT: Record<string, string> = {

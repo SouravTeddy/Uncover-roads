@@ -2,9 +2,17 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 
+const BG_PHOTOS = [
+  'photo-1469854523086-cc02fe5d8800', // open road at sunset
+  'photo-1476514525405-09b77a9d1f66', // aerial mountain valley
+  'photo-1488085061387-422e29b40080', // night train journey
+  'photo-1507608616759-54f48f0af0ee', // city lights from above
+  'photo-1500835556395-d53988b8c5e2', // sea travel, boat deck
+];
+
 const FLOATING_ICONS = [
   'flight','place','map','luggage','camera_alt',
-  'restaurant','hotel','explore','directions_walk',
+  'restaurant','beach_access','explore','directions_walk',
 ];
 
 export function LoginScreen() {
@@ -66,9 +74,18 @@ export function LoginScreen() {
     }
   }
 
+  const [bgIndex, setBgIndex] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgIndex(i => (i + 1) % BG_PHOTOS.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, []);
+  const bgUrl = `https://images.unsplash.com/${BG_PHOTOS[bgIndex]}?w=900&q=80`;
+
   if (checking) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: '#0a0e14' }}>
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
         <span className="ms text-primary text-3xl animate-spin">autorenew</span>
       </div>
     );
@@ -78,8 +95,8 @@ export function LoginScreen() {
     <div
       className="relative min-h-screen w-full flex items-center justify-center px-6 py-8"
       style={{
-        background:
-          "url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80') center/cover no-repeat",
+        background: `url('${bgUrl}') center/cover no-repeat`,
+        transition: 'background-image 1.2s ease-in-out',
       }}
     >
       {/* Gradient overlay */}
@@ -138,8 +155,8 @@ export function LoginScreen() {
                 onClick={continueToOnboarding}
                 className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
                 style={{
-                  background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
-                  boxShadow: '0 8px 32px rgba(99,102,241,.3)',
+                  background: 'linear-gradient(135deg, #e07854, #c4613d)',
+                  boxShadow: '0 8px 32px rgba(224,120,84,.3)',
                 }}
               >
                 Continue

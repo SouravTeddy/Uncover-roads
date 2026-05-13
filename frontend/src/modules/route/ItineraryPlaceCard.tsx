@@ -130,13 +130,13 @@ export function ItineraryPlaceCard({
 
         {/* Stop number + time badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <span className="text-[11px] text-[var(--color-primary)] font-semibold bg-[var(--color-primary-bg)] px-2 py-0.5 rounded-full">
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(224,120,84,.14)', padding: '2px 8px', borderRadius: 999 }}>
             Stop {activeIdx + 1} of {stops.length}{stop.time ? ` · ${stop.time}` : ''}
           </span>
         </div>
 
         {/* Place name */}
-        <h3 className="font-[family-name:var(--font-heading)] text-[var(--color-text-1)] text-[17px] font-semibold mt-2">
+        <h3 className="font-[family-name:var(--font-heading)] mt-2" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)' }}>
           {stop.place}
         </h3>
 
@@ -200,7 +200,7 @@ export function ItineraryPlaceCard({
           <div style={{ marginBottom: 14 }}>
             <div style={{
               fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.8px',
-              textTransform: 'uppercase', color: '#6366f1', marginBottom: 5,
+              textTransform: 'uppercase', color: 'var(--color-text-2)', marginBottom: 5,
             }}>
               Why this for you
             </div>
@@ -245,7 +245,7 @@ export function ItineraryPlaceCard({
         )}
 
         {/* CTA */}
-        <Button variant="primary" className="w-full mt-4">Start navigating</Button>
+        <Button variant="primary" className="w-full mt-4" style={{ background: 'linear-gradient(135deg, #e07854, #c4613d)', height: 50, borderRadius: 16 }}>Start navigating</Button>
 
         </div>{/* end card container */}
 
@@ -273,10 +273,10 @@ export function ItineraryPlaceCard({
             disabled={activeIdx === stops.length - 1}
             style={{
               flex: 1, padding: '10px 0',
-              background: activeIdx < stops.length - 1 ? 'rgba(99,102,241,.15)' : 'rgba(255,255,255,.05)',
-              border: activeIdx < stops.length - 1 ? '1px solid rgba(99,102,241,.3)' : '1px solid rgba(255,255,255,.08)',
+              background: activeIdx < stops.length - 1 ? 'rgba(224,120,84,.15)' : 'rgba(255,255,255,.05)',
+              border: activeIdx < stops.length - 1 ? '1px solid rgba(224,120,84,.3)' : '1px solid rgba(255,255,255,.08)',
               borderRadius: 12,
-              color: activeIdx < stops.length - 1 ? '#a5b4fc' : '#94a3b8',
+              color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : '#94a3b8',
               fontSize: '0.78rem', fontWeight: 600,
               cursor: activeIdx < stops.length - 1 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === stops.length - 1 ? 0.3 : 1,
