@@ -200,7 +200,7 @@ export function ItineraryPlaceCard({
           <div style={{ marginBottom: 14 }}>
             <div style={{
               fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.8px',
-              textTransform: 'uppercase', color: '#6366f1', marginBottom: 5,
+              textTransform: 'uppercase', color: 'var(--color-text-2)', marginBottom: 5,
             }}>
               Why this for you
             </div>
@@ -273,10 +273,10 @@ export function ItineraryPlaceCard({
             disabled={activeIdx === stops.length - 1}
             style={{
               flex: 1, padding: '10px 0',
-              background: activeIdx < stops.length - 1 ? 'rgba(99,102,241,.15)' : 'rgba(255,255,255,.05)',
-              border: activeIdx < stops.length - 1 ? '1px solid rgba(99,102,241,.3)' : '1px solid rgba(255,255,255,.08)',
+              background: activeIdx < stops.length - 1 ? 'rgba(224,120,84,.15)' : 'rgba(255,255,255,.05)',
+              border: activeIdx < stops.length - 1 ? '1px solid rgba(224,120,84,.3)' : '1px solid rgba(255,255,255,.08)',
               borderRadius: 12,
-              color: activeIdx < stops.length - 1 ? '#a5b4fc' : '#94a3b8',
+              color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : '#94a3b8',
               fontSize: '0.78rem', fontWeight: 600,
               cursor: activeIdx < stops.length - 1 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === stops.length - 1 ? 0.3 : 1,

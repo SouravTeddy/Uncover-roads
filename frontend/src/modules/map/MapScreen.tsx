@@ -341,33 +341,20 @@ export function MapScreen() {
     }
     setEventsNoDate(false)
 
-    const params = new URLSearchParams({ city, start_date: startDate, end_date: endDate })
-    if (cityGeo) {
-      params.set('lat', String(cityGeo.lat))
-      params.set('lon', String(cityGeo.lon))
-    }
-
     setEventsLoading(true)
-    fetch(`/events?${params}`)
-      .then(r => r.ok ? r.json() : { places: [], error: 'unavailable' })
-      .then((data: { places?: Array<{ id: string; title: string; lat: number; lon: number; tags: Record<string, string>; imageUrl: string | null }>; error?: string }) => {
-        if (data.error || !data.places) {
-          setEventsError('Events unavailable — check back later')
-          setLiveEvents([])
-          setEventsLoaded(false)
-          return
-        }
-        const mapped = data.places.map(p => ({
+    api.events(city, startDate, endDate, cityGeo?.lat, cityGeo?.lon)
+      .then((places) => {
+        const mapped = places.map(p => ({
           id:        p.id,
           title:     p.title,
           lat:       p.lat,
           lon:       p.lon,
-          venueName: p.tags?.venue   ?? '',
+          venueName: p.tags?.venue      ?? '',
           date:      p.tags?.event_date ?? '',
           time:      p.tags?.event_time ?? '',
-          genre:     p.tags?.genre   ?? '',
-          url:       p.tags?.website ?? '',
-          imageUrl:  p.imageUrl ?? null,
+          genre:     p.tags?.genre      ?? '',
+          url:       p.tags?.website    ?? '',
+          imageUrl:  (p as Place & { imageUrl?: string | null }).imageUrl ?? null,
         }))
         setLiveEvents(mapped)
         setEventsLoaded(true)
@@ -375,6 +362,7 @@ export function MapScreen() {
       })
       .catch(() => {
         setEventsError('Events unavailable — check back later')
+        setLiveEvents([])
         setEventsLoaded(false)
       })
       .finally(() => setEventsLoading(false))

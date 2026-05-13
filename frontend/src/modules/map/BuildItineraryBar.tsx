@@ -34,6 +34,7 @@ export function BuildItineraryBar({ itineraryPlaces, days, onBuild, loading = fa
         right: 0,
         zIndex: 60,
         padding: '12px 16px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
         background: 'rgba(10,14,23,0.95)',
         backdropFilter: 'blur(16px)',
         borderTop: '1px solid rgba(255,255,255,0.08)',

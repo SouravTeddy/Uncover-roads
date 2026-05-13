@@ -54,10 +54,10 @@ export function ItineraryMapCard({ mapRef, center, selectedPlaces, activeStopIdx
                 width: isActive ? 44 : 34,
                 height: isActive ? 44 : 34,
                 borderRadius: '50%',
-                background: isActive ? 'rgba(59,130,246,.95)' : 'rgba(30,41,59,.9)',
+                background: isActive ? 'rgba(224,120,84,.95)' : 'rgba(30,41,59,.9)',
                 border: isActive ? '2.5px solid #fff' : '2px solid rgba(255,255,255,.5)',
                 boxShadow: isActive
-                  ? '0 0 0 3px rgba(59,130,246,.4), 0 4px 16px rgba(0,0,0,.6)'
+                  ? '0 0 0 3px rgba(224,120,84,.4), 0 4px 16px rgba(0,0,0,.6)'
                   : '0 2px 8px rgba(0,0,0,.4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.25s ease',
@@ -66,7 +66,7 @@ export function ItineraryMapCard({ mapRef, center, selectedPlaces, activeStopIdx
                 <span style={{ fontSize: isActive ? 18 : 14, lineHeight: 1 }}>{emoji}</span>
                 <div style={{
                   position: 'absolute', top: -6, right: -6,
-                  background: isActive ? '#6366f1' : '#334155',
+                  background: isActive ? 'var(--color-primary)' : '#334155',
                   border: '1.5px solid rgba(255,255,255,.5)',
                   borderRadius: '50%',
                   width: 16, height: 16,
