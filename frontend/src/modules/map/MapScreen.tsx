@@ -600,6 +600,7 @@ export function MapScreen() {
         zoom={cityGeo ? 13 : 2}
         places={[]}
         selectedPlace={null}
+        selectedPlaces={selectedPlaces}
         highlightIds={highlightIds}
         onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
