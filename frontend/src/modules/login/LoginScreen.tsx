@@ -155,8 +155,8 @@ export function LoginScreen() {
                 onClick={continueToOnboarding}
                 className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
                 style={{
-                  background: 'linear-gradient(135deg, #e07854, #c4613d)',
-                  boxShadow: '0 8px 32px rgba(224,120,84,.3)',
+                  background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+                  boxShadow: '0 8px 32px rgba(212,168,83,.3)',
                 }}
               >
                 Continue
