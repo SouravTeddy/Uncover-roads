@@ -90,14 +90,14 @@ export function WelcomeBackScreen() {
       </div>
 
       {/* Center content */}
-      <div className="relative flex flex-col items-center gap-6 w-full max-w-[340px]">
+      <div className="relative flex flex-col items-center gap-6 w-full max-w-[340px]" style={{ animation: 'springUp 0.55s cubic-bezier(.22,1,.36,1) both' }}>
 
         {/* Avatar */}
         <div className="relative">
           <div
             className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden bg-[var(--color-primary-bg)] text-[var(--color-primary)]"
             style={{
-              boxShadow: '0 0 0 2px rgba(99,130,246,.25), 0 0 0 4px rgba(59,130,246,.1)',
+              boxShadow: '0 0 0 2px var(--color-primary-bg), 0 0 0 4px rgba(212,168,83,.06)',
             }}
           >
             {user?.avatar ? (
