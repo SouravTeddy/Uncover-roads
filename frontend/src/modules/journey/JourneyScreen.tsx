@@ -217,11 +217,11 @@ export function JourneyScreen() {
         {/* SVG grid overlay */}
         <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <pattern id="journey-grid" width="40" height="40" patternUnits="userSpaceOnUse">
               <path d="M 32 0 L 0 0 0 32" fill="none" stroke="white" strokeWidth="0.5" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
+          <rect width="100%" height="100%" fill="url(#journey-grid)" />
         </svg>
 
         {/* Keep existing city dots + route SVG — do NOT remove them */}
