@@ -1,7 +1,7 @@
 interface ImageRowCardProps {
   label:       string;
   description: string;
-  imageUrl:    string;
+  imageUrl?:   string;
   selected:    boolean;
   onSelect:    () => void;
   hidden?:     boolean;   // "less common for your trip type" badge
@@ -19,8 +19,12 @@ export function ImageRowCard({
       onClick={disabled ? undefined : onSelect}
       disabled={disabled}
       aria-pressed={selected}
+      style={{
+        touchAction: 'manipulation',
+        ...(selected ? { animation: 'glowPulse 0.45s ease-out' } : {}),
+      }}
       className={[
-        'w-full flex items-center gap-3 p-3 rounded-2xl border text-left',
+        'w-full flex items-center gap-4 p-4 rounded-2xl border text-left',
         'transition-all duration-200 active:scale-[.98]',
         selected
           ? 'border-[var(--color-primary)] bg-[var(--color-primary-bg)]'
@@ -31,20 +35,21 @@ export function ImageRowCard({
           : 'bg-[var(--color-surface)] border-[var(--color-border)]',
         !disabled && !dimmed && 'hover:translate-x-0.5 cursor-pointer',
       ].filter(Boolean).join(' ')}
-      style={selected ? { animation: 'glow-pulse 0.45s ease-out' } : undefined}
     >
       {/* Thumbnail */}
-      <img
-        src={imageUrl}
-        alt=""
-        aria-hidden="true"
-        className={[
-          'w-12 h-12 rounded-xl object-cover flex-shrink-0 transition-transform duration-300',
-          selected ? 'scale-105' : '',
-          hidden ? 'saturate-50 brightness-75' : '',
-          dimmed ? 'saturate-50 brightness-75' : '',
-        ].filter(Boolean).join(' ')}
-      />
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt=""
+          aria-hidden="true"
+          className={[
+            'w-16 h-16 rounded-xl object-cover flex-shrink-0 transition-transform duration-300',
+            selected ? 'scale-105' : '',
+            hidden ? 'saturate-50 brightness-75' : '',
+            dimmed ? 'saturate-50 brightness-75' : '',
+          ].filter(Boolean).join(' ')}
+        />
+      )}
 
       {/* Text */}
       <div className="flex-1 min-w-0">
@@ -54,13 +59,10 @@ export function ImageRowCard({
             less common for your trip type
           </span>
         )}
-        <span className={[
-          'block font-heading font-bold text-[14px] font-medium',
-          'text-[var(--color-text-1)]',
-        ].join(' ')}>
+        <span className="block font-heading font-bold text-[15px] text-[var(--color-text-1)]">
           {label}
         </span>
-        <span className="block text-[12px] text-text-3 mt-0.5">{description}</span>
+        <span className="block text-[13px] text-text-2 mt-0.5 leading-snug">{description}</span>
       </div>
 
       {/* Checkbox */}

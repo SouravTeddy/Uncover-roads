@@ -9,7 +9,7 @@ const OPTIONS = [
   { value: 'couple',  label: 'Partner',          sublabel: 'Romantic, shared pace',
     imageUrl: 'https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=400&q=80' },
   { value: 'family',  label: 'Family',           sublabel: 'Kid-accessible spots',
-    imageUrl: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&q=80' },
+    imageUrl: 'https://images.unsplash.com/photo-1602001562539-fc01cf5c7e27?w=400&q=80' },
   { value: 'friends', label: 'Friends',          sublabel: 'Group bookings, social',
     imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80' },
 ];

@@ -53,7 +53,7 @@ const TRANSITION = { duration: 0.6, ease: 'easeInOut' as const }
 
 export function OBBackground({ layerState }: Props) {
   return (
-    <div className="absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
       {/* Layer 1 — Sky */}
       <AnimatePresence mode="sync">
         <motion.div
