@@ -1,5 +1,6 @@
 import { Marker } from 'react-map-gl/maplibre'
 import { PICKS_PIN_SIZE, PICKS_PIN_BG, BADGE_COLORS } from './pin-visual'
+import { CATEGORY_ICONS } from './types'
 
 export interface PlacePickFE {
   place_id: string
@@ -32,6 +33,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
         const isActive = activePinId === pick.place_id
         const size = isActive ? PICKS_PIN_SIZE + 4 : PICKS_PIN_SIZE
         const badgeColor = pick.badge ? BADGE_COLORS[pick.badge] : null
+        const categoryIcon = CATEGORY_ICONS[pick.category] ?? 'place'
 
         return (
           <Marker
@@ -62,7 +64,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
                 }}
               >
                 <span className="ms fill" style={{ fontSize: size * 0.45, color: '#fff', lineHeight: 1 }}>
-                  star
+                  {categoryIcon}
                 </span>
               </div>
               {pick.badge && badgeColor && (
