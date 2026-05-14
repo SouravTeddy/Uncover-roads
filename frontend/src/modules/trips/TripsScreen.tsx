@@ -85,7 +85,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
           }}>
             {cityName}
           </div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', fontWeight: 500 }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-3)', fontWeight: 500 }}>
             {[country, date, `${stops.length} stops${isPast ? ' · Completed' : ''}`].filter(Boolean).join(' · ')}
           </div>
         </div>
@@ -111,7 +111,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
           padding: '6px 12px', borderRadius: 999,
           background: 'rgba(255,255,255,.12)',
           backdropFilter: 'blur(8px)',
-          fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.85)',
+          fontSize: 11, fontWeight: 600, color: 'var(--color-text-1)',
           border: '1px solid rgba(255,255,255,.15)',
           cursor: 'pointer',
         }} onClick={e => { e.stopPropagation(); handlePlay(); }}>

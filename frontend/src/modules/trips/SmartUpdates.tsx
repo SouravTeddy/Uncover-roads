@@ -143,7 +143,7 @@ export function SmartUpdates({ trip }: Props) {
 
       {/* No updates state */}
       {checked && updateCards.length === 0 && !loading && (
-        <p className="text-white/25 text-[10px] mt-2">Everything looks good · Checked just now</p>
+        <p className="text-[var(--color-text-4)] text-[10px] mt-2">Everything looks good · Checked just now</p>
       )}
     </div>
   );

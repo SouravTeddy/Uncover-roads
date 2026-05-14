@@ -167,7 +167,7 @@ export function ProfileScreen() {
           }}
         >
           <div className="flex-1 text-left min-w-0">
-            <p className="text-white/40 text-[10px] uppercase tracking-widest mb-0.5">Travel Persona</p>
+            <p className="text-[var(--color-text-4)] text-[10px] uppercase tracking-widest mb-0.5">Travel Persona</p>
             <p className="text-[11px]" style={{ color: '#f97316' }}>Retune your persona →</p>
           </div>
         </button>

@@ -50,7 +50,7 @@ export function ExploreEmptyState() {
               >
                 {city.name}
               </p>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,.65)', fontWeight: 500 }}>
+              <p style={{ fontSize: 11, color: 'var(--color-text-2)', fontWeight: 500 }}>
                 {city.country}
               </p>
             </div>

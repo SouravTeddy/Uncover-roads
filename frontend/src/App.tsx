@@ -29,6 +29,9 @@ const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [desktopBypassed, setDesktopBypassed] = useState(() => {
+    try { return localStorage.getItem('ur_desktop_bypass') === '1'; } catch { return false; }
+  });
 
   useEffect(() => {
     const handler = () => setIsDesktop(window.innerWidth >= 768);
@@ -36,7 +39,12 @@ function ScreenRouter() {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  if (isDesktop && state.currentScreen !== 'trips') return <DesktopGate />;
+  if (isDesktop && !desktopBypassed && state.currentScreen !== 'trips') {
+    return <DesktopGate onBypass={() => {
+      try { localStorage.setItem('ur_desktop_bypass', '1'); } catch { /* ignore */ }
+      setDesktopBypassed(true);
+    }} />;
+  }
 
   async function handleSignedIn(user: User) {
     if (!BETA_ALLOWLIST.includes(user.email ?? '')) {
@@ -190,11 +198,11 @@ function ScreenRouter() {
   );
 }
 
-function DesktopGate() {
+function DesktopGate({ onBypass }: { onBypass: () => void }) {
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center px-8"
-      style={{ background: '#0f141e' }}
+      style={{ background: 'var(--color-bg2)' }}
     >
       {/* Glow blob */}
       <div
@@ -219,15 +227,15 @@ function DesktopGate() {
         {/* Wordmark */}
         <div className="flex flex-col gap-1">
           <p className="font-heading font-bold text-white text-2xl tracking-tight">Uncover Roads</p>
-          <p className="text-white/35 text-xs font-medium uppercase tracking-widest">Travel Planner</p>
+          <p className="text-[var(--color-text-4)] text-xs font-medium uppercase tracking-widest">Travel Planner</p>
         </div>
 
         {/* Message */}
         <div className="flex flex-col gap-2">
-          <p className="text-white/80 text-base font-semibold leading-snug">
+          <p className="text-[var(--color-text-1)] text-base font-semibold leading-snug">
             Built for the road, not the desk.
           </p>
-          <p className="text-white/40 text-sm leading-relaxed">
+          <p className="text-[var(--color-text-3)] text-sm leading-relaxed">
             Uncover Roads is designed for mobile. Open it on your phone for the full experience — maps, itineraries, and navigation the way they're meant to feel.
           </p>
         </div>
@@ -244,8 +252,22 @@ function DesktopGate() {
             height={160}
             className="rounded-xl"
           />
-          <p className="text-white/30 text-xs">Scan to open on your phone</p>
+          <p className="text-[var(--color-text-4)] text-xs">Scan to open on your phone</p>
         </div>
+
+        {/* Desktop bypass */}
+        <button
+          onClick={onBypass}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-text-4)', fontSize: 12,
+            padding: '4px 8px', borderRadius: 6,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text-2)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-4)')}
+        >
+          Continue on desktop anyway →
+        </button>
       </div>
     </div>
   );

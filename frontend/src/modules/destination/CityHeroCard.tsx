@@ -68,7 +68,7 @@ export function CityHeroCard({ city, selectedPlaces, startDate, endDate, onResum
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="font-heading font-bold text-white text-base leading-tight">{city}</p>
-            <p className="text-white/45 text-[10px] mt-0.5">
+            <p className="text-[var(--color-text-3)] text-[10px] mt-0.5">
               {selectedPlaces.length} place{selectedPlaces.length !== 1 ? 's' : ''} · {dateLabel(startDate, endDate)}
             </p>
           </div>

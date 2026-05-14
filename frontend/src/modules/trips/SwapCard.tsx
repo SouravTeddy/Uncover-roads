@@ -46,7 +46,7 @@ export function SwapCard({ card, onResolve }: Props) {
         >
           <div className="flex items-center gap-2">
             <span className="text-base">🔄</span>
-            <span className="text-white/40 text-[10px] uppercase tracking-widest font-bold">Stop {card.stopIdx + 1}</span>
+            <span className="text-[var(--color-text-3)] text-[10px] uppercase tracking-widest font-bold">Stop {card.stopIdx + 1}</span>
           </div>
           <p className="text-white font-semibold text-sm leading-snug">{card.stopName}</p>
           <div
@@ -55,11 +55,11 @@ export function SwapCard({ card, onResolve }: Props) {
               background: 'rgba(255,255,255,.06)',
             }}
           >
-            <p className="text-white/40 text-[9px] uppercase tracking-widest font-bold mb-1">Current</p>
-            <p className="text-white/70 text-xs">{card.currentSummary}</p>
-            {card.currentNote && <p className="text-white/35 text-[10px] mt-0.5">{card.currentNote}</p>}
+            <p className="text-[var(--color-text-3)] text-[9px] uppercase tracking-widest font-bold mb-1">Current</p>
+            <p className="text-[var(--color-text-2)] text-xs">{card.currentSummary}</p>
+            {card.currentNote && <p className="text-[var(--color-text-4)] text-[10px] mt-0.5">{card.currentNote}</p>}
           </div>
-          <p className="text-white/30 text-[10px] text-center mt-auto">tap to see suggestion ▼</p>
+          <p className="text-[var(--color-text-4)] text-[10px] text-center mt-auto">tap to see suggestion ▼</p>
         </div>
 
         {/* Back — suggestion */}
@@ -81,7 +81,7 @@ export function SwapCard({ card, onResolve }: Props) {
             <span className="text-indigo-400 text-[10px] uppercase tracking-widest font-bold">Suggested</span>
           </div>
           <p className="text-white font-semibold text-sm leading-snug">{card.stopName}</p>
-          <p className="text-white/60 text-xs leading-snug flex-1">{card.suggestedNote}</p>
+          <p className="text-[var(--color-text-2)] text-xs leading-snug flex-1">{card.suggestedNote}</p>
           <div className="flex gap-2 mt-auto">
             <button
               onClick={e => { e.stopPropagation(); onResolve(card.id, 'new'); }}
@@ -93,7 +93,7 @@ export function SwapCard({ card, onResolve }: Props) {
             <button
               onClick={e => { e.stopPropagation(); onResolve(card.id, 'original'); }}
               className="flex-1 py-2 rounded-xl text-[11px] font-semibold"
-              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: 'rgba(255,255,255,.4)' }}
+              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: 'var(--color-text-3)' }}
             >
               Keep original
             </button>

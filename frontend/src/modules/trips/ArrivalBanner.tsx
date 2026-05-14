@@ -58,10 +58,10 @@ export function ArrivalBanner({ tripId, travelDate, city, onCheckNow }: Props) {
       <div className="flex items-start gap-2 mb-3">
         <span className="text-lg leading-none flex-shrink-0">✈️</span>
         <div>
-          <p className="text-white/80 text-sm font-semibold leading-snug">
+          <p className="text-[var(--color-text-1)] text-sm font-semibold leading-snug">
             You're heading to {city} today
           </p>
-          <p className="text-white/40 text-xs mt-0.5">Want a last-minute itinerary check?</p>
+          <p className="text-[var(--color-text-3)] text-xs mt-0.5">Want a last-minute itinerary check?</p>
         </div>
       </div>
       <div className="flex gap-2">
@@ -75,7 +75,7 @@ export function ArrivalBanner({ tripId, travelDate, city, onCheckNow }: Props) {
         <button
           onClick={handleNotYet}
           className="flex-1 py-2 rounded-xl text-xs font-semibold"
-          style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: 'rgba(255,255,255,.4)' }}
+          style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: 'var(--color-text-3)' }}
         >
           Not yet
         </button>

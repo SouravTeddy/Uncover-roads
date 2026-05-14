@@ -28,7 +28,7 @@ export function PackPurchaseConfirm({ tripsAdded, onDone }: Props) {
       <p className="font-heading font-bold text-white text-xl mb-1 text-center">
         {tripsAdded} trip{tripsAdded !== 1 ? 's' : ''} added!
       </p>
-      <p className="text-white/40 text-sm text-center mb-8">
+      <p className="text-[var(--color-text-3)] text-sm text-center mb-8">
         Balance: {state.packTripsRemaining} trip{state.packTripsRemaining !== 1 ? 's' : ''}
       </p>
 
@@ -38,8 +38,8 @@ export function PackPurchaseConfirm({ tripsAdded, onDone }: Props) {
         style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)' }}
       >
         <div className="flex-1">
-          <p className="text-white/80 text-sm font-semibold">Auto top-up when trips run out</p>
-          <p className="text-white/35 text-xs mt-0.5">
+          <p className="text-[var(--color-text-1)] text-sm font-semibold">Auto top-up when trips run out</p>
+          <p className="text-[var(--color-text-4)] text-xs mt-0.5">
             Automatically buy {tripsAdded} more trip{tripsAdded !== 1 ? 's' : ''} when your balance hits zero.
           </p>
         </div>

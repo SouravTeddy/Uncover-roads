@@ -66,7 +66,7 @@ export function SavedPlaceCard({ pin, category, tall = false, onRemove }: Props)
       >
         <p className="text-xs font-bold text-white leading-snug line-clamp-2">{pin.title}</p>
         <p className="text-[10px] mt-0.5 capitalize"
-          style={{ color: 'rgba(255,255,255,.55)' }}
+          style={{ color: 'var(--color-text-3)' }}
         >
           {category}
         </p>

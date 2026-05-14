@@ -21,7 +21,7 @@ export function InstallPrompt() {
         right: 12,
         zIndex: 50,
         borderRadius: 20,
-        background: 'linear-gradient(160deg, rgba(26,23,20,0.97), rgba(20,17,14,0.99))',
+        background: 'linear-gradient(160deg, rgba(17,17,17,0.97), rgba(10,10,10,0.99))',
         border: '1px solid rgba(196,97,61,0.25)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(224,120,84,0.08)',
         padding: '16px 16px 14px',
@@ -43,7 +43,7 @@ export function InstallPrompt() {
 
       <h2
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontFamily: 'var(--font-heading)',
           fontSize: 17,
           fontWeight: 600,
           color: '#f5e6d6',
