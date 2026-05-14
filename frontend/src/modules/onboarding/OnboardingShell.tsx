@@ -10,6 +10,18 @@ import { PersonaSilhouette } from './PersonaSilhouette';
 import { getLayerUpdatesForAnswer, resolveLayerState } from './ob-layers';
 import type { OBLayerUpdate } from './ob-layers';
 
+const STEP_HERO: Partial<Record<ObStep, string>> = {
+  ob1: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80',
+  ob2: 'https://images.unsplash.com/photo-1551918120-9739cb430c6d?w=800&q=80',
+  ob3: 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?w=800&q=80',
+  ob4: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800&q=80',
+  ob5: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80',
+  ob6: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&q=80',
+  ob7: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
+  ob8: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&q=80',
+  ob9: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80',
+};
+
 
 interface Props {
   step:       ObStep;
@@ -81,7 +93,18 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle }:
 
           {/* Body */}
           <div className="flex-1 min-h-0 overflow-y-auto" style={{ paddingBottom: '9rem' }}>
-            <div className="px-5 pt-6">
+            {/* Hero image */}
+            {STEP_HERO[step] && (
+              <div className="w-full h-44 overflow-hidden flex-shrink-0">
+                <img
+                  src={STEP_HERO[step]}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+            <div className="px-5 pt-5">
               <span className="text-text-3 text-xs font-medium tracking-wide uppercase">
                 Step {String(currentIndex + 1).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
               </span>
