@@ -24,7 +24,7 @@ const OPTIONS = [
 ];
 
 const MAX = 3;
-const FAMILY_HERO = 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80';
+const FAMILY_HERO = 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&q=80';
 
 export function OB2Mood() {
   const { state, dispatch } = useAppStore();
