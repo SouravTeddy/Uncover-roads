@@ -400,7 +400,7 @@ export function JourneyScreen() {
             className="w-full font-bold text-[15px] text-white transition-all active:scale-[.97]"
             style={building
               ? { background: 'linear-gradient(135deg, #6b9470, #3d6642)', height: 50, borderRadius: 16 }
-              : { background: 'linear-gradient(135deg, #d4a853, #b8893a)', height: 50, borderRadius: 16, boxShadow: 'var(--shadow-primary)' }
+              : { background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))', height: 50, borderRadius: 16, boxShadow: 'var(--shadow-primary)' }
             }
           >
             {building
