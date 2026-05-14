@@ -4,9 +4,9 @@ import type { DiscoveryMode } from '../../shared/types'
 import {
   FAMOUS_PIN_COLOR,
   FAMOUS_PIN_SIZE,
-  FAMOUS_STAR_ICON,
   getFamousLayerOpacity,
 } from './pin-visual'
+import { CATEGORY_ICONS } from './types'
 
 interface Props {
   places: Place[]
@@ -28,6 +28,7 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
       {places.map((place) => {
         const isActive = activePlaceId === place.id
         const size = isActive ? FAMOUS_PIN_SIZE + 6 : FAMOUS_PIN_SIZE
+        const icon = CATEGORY_ICONS[place.category] ?? 'star'
 
         return (
           <Marker
@@ -64,7 +65,7 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
                 className="ms fill"
                 style={{ fontSize: isActive ? 16 : 13, color: '#fff', lineHeight: 1 }}
               >
-                {FAMOUS_STAR_ICON}
+                {icon}
               </span>
             </div>
           </Marker>
