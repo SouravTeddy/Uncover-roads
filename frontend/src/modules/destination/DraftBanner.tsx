@@ -52,8 +52,8 @@ export function DraftBanner({ city, selectedPlaces, startDate, onTap }: Props) {
       />
       {/* Info */}
       <div className="flex-1 min-w-0 text-left">
-        <p className="text-white/85 text-[11px] font-semibold truncate">{city} draft</p>
-        <p className="text-white/35 text-[9px] mt-0.5">
+        <p className="text-[var(--color-text-1)] text-[11px] font-semibold truncate">{city} draft</p>
+        <p className="text-[var(--color-text-4)] text-[9px] mt-0.5">
           {dateLabel} · {selectedPlaces.length} stop{selectedPlaces.length !== 1 ? 's' : ''}
         </p>
         {/* Progress dots */}
@@ -67,7 +67,7 @@ export function DraftBanner({ city, selectedPlaces, startDate, onTap }: Props) {
           ))}
         </div>
       </div>
-      <span className="ms text-white/20 text-base flex-shrink-0">chevron_right</span>
+      <span className="ms text-[var(--color-text-4)] text-base flex-shrink-0">chevron_right</span>
     </button>
   );
 }

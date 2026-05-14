@@ -112,7 +112,7 @@ export function CitySearch({ onSelect }: Props) {
               <div>
                 <div className="font-[family-name:var(--font-heading)] text-white text-[22px] font-bold">{r.main_text}</div>
                 {r.secondary_text && (
-                  <div className="text-[11px] text-white/70">{r.secondary_text}</div>
+                  <div className="text-[11px] text-[var(--color-text-2)]">{r.secondary_text}</div>
                 )}
               </div>
             </button>

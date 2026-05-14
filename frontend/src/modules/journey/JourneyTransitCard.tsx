@@ -71,14 +71,14 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
 
       {/* Route */}
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>from</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-3)', marginBottom: 4 }}>from</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: TEXT1 }}>{from}</div>
         <div style={{ margin: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
           <span className="ms fill text-[var(--color-sky)] text-[22px]">{cfg.icon}</span>
           <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
         </div>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>to</div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-3)', marginBottom: 4 }}>to</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: TEXT1 }}>{to}</div>
 
         {/* Duration + distance */}
@@ -89,13 +89,13 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
                 <span className="text-[11px] bg-[var(--color-sky-bg)] text-[var(--color-sky)] border border-[var(--color-sky-bdr)] px-2 py-0.5 rounded-full">
                   {formatDuration(durationMinutes)}
                 </span>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 4 }}>duration</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'var(--color-text-4)', marginTop: 4 }}>duration</div>
               </div>
             )}
             {distanceKm !== undefined && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 800, color: cfg.accentColor }}>{Math.round(distanceKm)} km</div>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>distance</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'var(--color-text-4)', marginTop: 2 }}>distance</div>
               </div>
             )}
           </div>

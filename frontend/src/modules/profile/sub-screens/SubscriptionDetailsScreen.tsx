@@ -77,10 +77,10 @@ export function SubscriptionDetailsScreen({ onBack }: { onBack: () => void }) {
         <div className="fixed inset-0 flex items-center justify-center px-6" style={{ zIndex: 60, background: 'rgba(0,0,0,.7)' }}>
           <div className="w-full max-w-sm rounded-2xl px-6 py-6" style={{ background: '#111827', border: '1px solid rgba(255,255,255,.1)' }}>
             <p className="text-white font-bold text-base mb-1">Downgrade to Free?</p>
-            <p className="text-white/40 text-sm mb-6">You'll lose access to unlimited trips and curation features at the end of your billing period.</p>
+            <p className="text-[var(--color-text-4)] text-sm mb-6">You'll lose access to unlimited trips and curation features at the end of your billing period.</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowDowngrade(false)} className="flex-1 h-11 rounded-xl text-sm text-white/50 border border-white/10">Cancel</button>
-              <button onClick={handleDowngrade} className="flex-1 h-11 rounded-xl text-sm font-semibold text-white/60 border border-white/20">
+              <button onClick={() => setShowDowngrade(false)} className="flex-1 h-11 rounded-xl text-sm text-[var(--color-text-3)] border border-white/10">Cancel</button>
+              <button onClick={handleDowngrade} className="flex-1 h-11 rounded-xl text-sm font-semibold text-[var(--color-text-2)] border border-white/20">
                 Downgrade to Free
               </button>
             </div>

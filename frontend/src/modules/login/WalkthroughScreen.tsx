@@ -1,94 +1,54 @@
 import { useState, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../../shared/store'
-import { WTPersonaAnim }   from './anim/WTPersonaAnim'
-import { WTCityAnim }      from './anim/WTCityAnim'
-import { WTRecsAnim }      from './anim/WTRecsAnim'
-import { WTMultiCityAnim } from './anim/WTMultiCityAnim'
-import { WTPricingAnim }   from './anim/WTPricingAnim'
 
 const CARDS = [
   {
-    id: 'persona',
-    chip: 'Persona',
-    accentVar: 'var(--color-primary)',
-    accentBg: 'var(--color-primary-bg)',
-    accentBdr: 'rgba(224,120,84,.25)',
-    ctaStyle: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-    title: 'Discover your travel DNA',
+    id: 'beta',
+    img: 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=900&q=85',
+    label: 'Beta Access',
+    accent: '#d4a853',
+    title: "You're shaping the future of travel",
+    desc: "Welcome to the Uncover Roads beta. Your instincts are already our best feature.",
+  },
+  {
+    id: 'dna',
+    img: 'https://images.unsplash.com/photo-1530521954074-e64f6810b32d?w=900&q=85',
+    label: 'Your DNA',
+    accent: '#5a8a60',
+    title: 'Travel like no one else does',
     desc: '9 questions. One archetype. Every recommendation tuned to who you are.',
-    Animation: WTPersonaAnim,
-    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(224,120,84,.12) 0%, transparent 70%)',
-    cta: 'Next',
   },
   {
     id: 'city',
-    chip: 'Explore',
-    accentVar: 'var(--color-sky)',
-    accentBg: 'var(--color-sky-bg)',
-    accentBdr: 'rgba(79,143,171,.25)',
-    ctaStyle: 'linear-gradient(135deg,#4f8fab,#2e6b89)',
-    title: 'Any city, anywhere',
-    desc: 'Search any destination and step straight onto its map — Tokyo to Lisbon.',
-    Animation: WTCityAnim,
-    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(79,143,171,.12) 0%, transparent 70%)',
-    cta: 'Next',
+    img: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=900&q=85',
+    label: 'Any Destination',
+    accent: '#4a7fa0',
+    title: 'Any city, anywhere on earth',
+    desc: 'From Tokyo backstreets to Lisbon hilltops — your day, not a tourist list.',
   },
   {
-    id: 'recs',
-    chip: 'Smart Picks',
-    accentVar: 'var(--color-amber)',
-    accentBg: 'var(--color-amber-bg)',
-    accentBdr: 'rgba(196,152,64,.25)',
-    ctaStyle: 'linear-gradient(135deg,#c49840,#9c7a1e)',
-    title: "Knows what's worth it",
-    desc: 'Tracks trends, flags what to skip, surfaces hidden gems others miss.',
-    Animation: WTRecsAnim,
-    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(196,152,64,.1) 0%, transparent 70%)',
-    cta: 'Next',
+    id: 'pin',
+    img: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=900&q=85',
+    label: 'Pin & Plan',
+    accent: '#8878b8',
+    title: 'Pin what calls to you',
+    desc: 'Browse the map, discover hidden gems, build your own shortlist.',
   },
   {
-    id: 'multicity',
-    chip: 'Multi-city',
-    accentVar: 'var(--color-sage)',
-    accentBg: 'var(--color-sage-bg)',
-    accentBdr: 'rgba(107,148,112,.25)',
-    ctaStyle: 'linear-gradient(135deg,#6b9470,#3d6642)',
-    title: 'One trip, many cities',
-    desc: 'Paris, Rome, Barcelona — a full itinerary for every stop, in one place.',
-    Animation: WTMultiCityAnim,
-    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(107,148,112,.1) 0%, transparent 70%)',
-    cta: 'Next',
-  },
-  {
-    id: 'pricing',
-    chip: 'Trip Packages',
-    accentVar: 'var(--color-primary)',
-    accentBg: 'var(--color-primary-bg)',
-    accentBdr: 'rgba(224,120,84,.25)',
-    ctaStyle: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-    title: 'First 2 trips on us',
-    desc: 'Your first two full itineraries are free. After that, pay only for the trips you take.',
-    Animation: WTPricingAnim,
-    stageBg: 'radial-gradient(ellipse 90% 70% at 50% 40%, rgba(224,120,84,.08) 0%, transparent 70%)',
-    cta: 'Get started',
-    hideSkip: true,
+    id: 'ai',
+    img: 'https://images.unsplash.com/photo-1452421822248-d4c2b47f0c81?w=900&q=85',
+    label: 'AI Itinerary',
+    accent: '#b88c3a',
+    title: 'AI builds your perfect day',
+    desc: 'Your persona + your picks = a timed, ordered day crafted just for you.',
   },
 ]
-
-const textVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1 } },
-}
-const textItem = {
-  hidden: { opacity: 0, y: 10 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.35 } },
-}
 
 export function WalkthroughScreen() {
   const { dispatch } = useAppStore()
   const [index, setIndex] = useState(0)
-  const [direction, setDirection] = useState(1)
+  const [animKey, setAnimKey] = useState(0)
+  const [exiting, setExiting] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const card = CARDS[index]
@@ -99,119 +59,189 @@ export function WalkthroughScreen() {
     dispatch({ type: 'GO_TO', screen: 'ob1' })
   }
 
-  function advance(dir: 1 | -1) {
-    const next = index + dir
+  function goTo(next: number) {
     if (next < 0 || next >= CARDS.length) return
-    setDirection(dir)
-    setIndex(next)
+    setExiting(true)
+    setTimeout(() => {
+      setIndex(next)
+      setAnimKey(k => k + 1)
+      setExiting(false)
+    }, 200)
   }
+
+  function next() { isLast ? finish() : goTo(index + 1) }
+  function prev() { if (index > 0) goTo(index - 1) }
 
   function handleTouchStart(e: React.TouchEvent) { touchStartX.current = e.touches[0].clientX }
   function handleTouchEnd(e: React.TouchEvent) {
     if (touchStartX.current === null) return
-    const delta = touchStartX.current - e.changedTouches[0].clientX
-    if (Math.abs(delta) > 48) advance(delta > 0 ? 1 : -1)
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (dx < -40) next()
+    else if (dx > 40) prev()
     touchStartX.current = null
-  }
-
-  const slideVariants = {
-    enter:  (d: number) => ({ x: d > 0 ? '60%' : '-60%', opacity: 0 }),
-    center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: [0.25, 1, 0.5, 1] as [number,number,number,number] } },
-    exit:   (d: number) => ({ x: d > 0 ? '-60%' : '60%', opacity: 0, transition: { duration: 0.25 } }),
   }
 
   return (
     <div
-      className="fixed inset-0 flex flex-col bg-[var(--color-bg)]"
-      style={{ zIndex: 20 }}
+      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#080808', userSelect: 'none', zIndex: 20 }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Full-bleed hero photo */}
+      <div
+        key={animKey}
+        style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          opacity: exiting ? 0 : 1,
+          transition: 'opacity .22s ease',
+        }}
+      >
+        <img
+          src={card.img}
+          alt=""
+          aria-hidden
+          style={{
+            width: '100%', height: '100%',
+            objectFit: 'cover', objectPosition: 'center',
+            animation: 'heroKenBurns 12s ease-out forwards',
+          }}
+        />
+      </div>
+
+      {/* Gradient overlay — dark at top and heavy at bottom */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1,
+        background: 'linear-gradient(to bottom, rgba(0,0,0,.35) 0%, transparent 30%, rgba(0,0,0,.5) 55%, rgba(0,0,0,.92) 100%)',
+      }} />
+
+      {/* Editorial watermark */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, top: '30%',
+        zIndex: 2, pointerEvents: 'none', overflow: 'hidden',
+      }}>
+        <div style={{
+          fontFamily: 'var(--font-heading), serif',
+          fontWeight: 700, fontSize: 110,
+          color: 'rgba(255,255,255,.06)',
+          letterSpacing: '-.03em', lineHeight: 1,
+          textAlign: 'center', whiteSpace: 'nowrap',
+          animation: 'heroKenBurns 12s ease-out forwards',
+        }}>explore</div>
+      </div>
+
       {/* Skip */}
-      <div className="flex-shrink-0 flex justify-end px-5" style={{ paddingTop: 'calc(env(safe-area-inset-top,0px) + 1rem)' }}>
-        {!card.hideSkip ? (
-          <button onClick={finish} className="text-[var(--color-text-3)] text-sm font-medium px-3 py-1.5 rounded-full hover:text-[var(--color-text-2)] transition-colors">
+      <div style={{
+        position: 'absolute', zIndex: 10,
+        top: 'calc(env(safe-area-inset-top, 0px) + 52px)',
+        right: 20,
+      }}>
+        {!isLast && (
+          <button
+            onClick={finish}
+            style={{
+              background: 'rgba(255,255,255,.12)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,.15)',
+              borderRadius: 999, padding: '6px 14px',
+              fontSize: 12, fontWeight: 600,
+              color: 'rgba(255,255,255,.7)', cursor: 'pointer',
+            }}
+          >
             Skip
           </button>
-        ) : <div className="h-8" />}
+        )}
       </div>
 
-      {/* Slide area */}
-      <div className="flex-1 relative overflow-hidden">
-        <AnimatePresence custom={direction} mode="wait">
-          <motion.div
-            key={card.id}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            className="absolute inset-0 flex flex-col"
-          >
-            {/* Animation stage */}
-            <div
-              className="flex-1 relative overflow-hidden flex items-center justify-center"
-              style={{ background: `${card.stageBg}, var(--color-bg)` }}
-            >
-              <card.Animation />
-            </div>
-
-            {/* Text */}
-            <motion.div
-              className="flex-shrink-0 px-6 pt-5 pb-2"
-              variants={textVariants}
-              initial="hidden"
-              animate="show"
-            >
-              <motion.div variants={textItem}>
-                <span
-                  className="inline-block text-[10px] font-bold tracking-widest uppercase rounded-full px-3 py-1 mb-3 border"
-                  style={{ background: card.accentBg, borderColor: card.accentBdr, color: card.accentVar }}
-                >
-                  {card.chip}
-                </span>
-              </motion.div>
-              <motion.h1
-                variants={textItem}
-                className="font-[family-name:var(--font-heading)] text-[22px] font-bold text-[var(--color-text-1)] leading-snug mb-2"
-              >
-                {card.title}
-              </motion.h1>
-              <motion.p variants={textItem} className="text-[var(--color-text-2)] text-sm leading-relaxed">
-                {card.desc}
-              </motion.p>
-            </motion.div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* Bottom */}
+      {/* Text block — anchored bottom */}
       <div
-        className="flex-shrink-0 px-6 pb-10 flex flex-col gap-4 items-center"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 2rem)' }}
+        key={`text-${animKey}`}
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          padding: '0 28px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 44px)',
+          zIndex: 5,
+          animation: exiting ? 'none' : 'fadeUp .5s ease both',
+          animationDelay: '.1s',
+          opacity: exiting ? 0 : 1,
+          transition: exiting ? 'opacity .2s ease' : 'none',
+        }}
       >
+        {/* Accent label pill */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '4px 12px', borderRadius: 999, marginBottom: 14,
+          border: `1px solid ${card.accent}60`,
+          background: `${card.accent}18`,
+        }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: '50%',
+            background: card.accent,
+            animation: 'glowPulse 2s ease-in-out infinite',
+          }} />
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            letterSpacing: '.14em', textTransform: 'uppercase',
+            color: card.accent,
+          }}>
+            {card.label}
+          </span>
+        </div>
+
+        {/* Headline */}
+        <h1 style={{
+          fontFamily: 'var(--font-heading), serif',
+          fontWeight: 700, fontSize: 44,
+          color: '#fff', lineHeight: 1.0,
+          letterSpacing: '-.02em',
+          margin: '0 0 12px',
+        }}>
+          {card.title}
+        </h1>
+
+        <p style={{
+          fontSize: 14, color: 'rgba(255,255,255,.55)',
+          lineHeight: 1.65, margin: '0 0 28px',
+          maxWidth: 300, fontWeight: 400,
+        }}>
+          {card.desc}
+        </p>
+
         {/* Step dots */}
-        <div className="flex gap-1.5 items-center">
+        <div style={{ display: 'flex', gap: 6, marginBottom: 22, alignItems: 'center' }}>
           {CARDS.map((_, i) => (
-            <motion.button
+            <button
               key={i}
-              onClick={() => { setDirection(i > index ? 1 : -1); setIndex(i) }}
-              animate={{ width: i === index ? 16 : 5, background: i === index ? card.accentVar : 'var(--color-surface2)' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-              className="h-1.5 rounded-full"
-              style={{ minWidth: 5 }}
+              onClick={() => goTo(i)}
+              style={{
+                height: 3, borderRadius: 2, border: 'none',
+                cursor: 'pointer', padding: 0,
+                width: i === index ? 28 : 8,
+                background: i === index ? card.accent : 'rgba(255,255,255,.25)',
+                transition: 'all .35s cubic-bezier(.25,0,0,1)',
+              }}
             />
           ))}
         </div>
 
         {/* CTA */}
         <button
-          onClick={isLast ? finish : () => advance(1)}
-          className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
-          style={{ background: card.ctaStyle, boxShadow: `0 8px 24px ${card.accentVar}40` }}
+          onClick={next}
+          style={{
+            width: '100%', height: 56,
+            borderRadius: 16, border: 'none',
+            cursor: 'pointer',
+            background: isLast
+              ? `linear-gradient(135deg, ${card.accent}, #8a6820)`
+              : 'rgba(255,255,255,.95)',
+            color: isLast ? '#fff' : '#0c0c0e',
+            fontSize: 15, fontWeight: 700,
+            fontFamily: 'var(--font-heading), serif',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: isLast ? `0 8px 28px ${card.accent}50` : '0 4px 16px rgba(0,0,0,.3)',
+          }}
         >
-          {card.cta}
-          <span className="ms fill text-white" style={{ fontSize: 20 }}>arrow_forward</span>
+          {isLast ? 'Get started' : 'Next'}
+          <span className="ms fill" style={{ fontSize: 18 }}>arrow_forward</span>
         </button>
       </div>
     </div>

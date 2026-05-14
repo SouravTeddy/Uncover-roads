@@ -233,7 +233,7 @@ export function PersonaScreen() {
               {traits.map((line, i) => (
                 <motion.p
                   key={i}
-                  className="text-white/90 text-lg text-center font-light tracking-wide"
+                  className="text-[var(--color-text-1)] text-lg text-center font-light tracking-wide"
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.8, duration: 0.6 }}
@@ -255,7 +255,7 @@ export function PersonaScreen() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <p className="text-white/50 text-sm tracking-widest uppercase">You are</p>
+          <p className="text-[var(--color-text-3)] text-sm tracking-widest uppercase">You are</p>
           <h1 className="text-white text-5xl font-serif tracking-wide capitalize">
             {archetypeId}
           </h1>

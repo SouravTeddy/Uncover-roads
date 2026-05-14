@@ -28,17 +28,17 @@ export function UpdateCard({ card, onAction, onDismiss }: Props) {
         <span className="text-base leading-none">{cfg.emoji}</span>
         <button
           onClick={() => onDismiss(card.id)}
-          className="text-white/25 text-xs leading-none"
+          className="text-[var(--color-text-4)] text-xs leading-none"
         >✕</button>
       </div>
 
       <div>
-        <p className="text-white/80 text-xs font-semibold leading-snug">{card.title}</p>
+        <p className="text-[var(--color-text-1)] text-xs font-semibold leading-snug">{card.title}</p>
         {card.detail && (
-          <p className="text-white/40 text-[10px] mt-1 leading-snug">{card.detail}</p>
+          <p className="text-[var(--color-text-3)] text-[10px] mt-1 leading-snug">{card.detail}</p>
         )}
         {card.affectedStop && (
-          <p className="text-white/30 text-[10px] mt-1">Near: {card.affectedStop}</p>
+          <p className="text-[var(--color-text-4)] text-[10px] mt-1">Near: {card.affectedStop}</p>
         )}
       </div>
 

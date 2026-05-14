@@ -105,7 +105,7 @@ export function RecalibrationStack({ trip, autoRun }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 mt-3 text-white/40 text-xs">
+      <div className="flex items-center gap-2 mt-3 text-[var(--color-text-3)] text-xs">
         <span className="ms fill animate-spin text-sm">autorenew</span>
         Checking your itinerary for today…
       </div>
@@ -139,7 +139,7 @@ export function RecalibrationStack({ trip, autoRun }: Props) {
       )}
 
       {!allDone && unresolved.length > 0 && (
-        <p className="text-white/25 text-[10px] text-center mt-2">
+        <p className="text-[var(--color-text-4)] text-[10px] text-center mt-2">
           Resolve {unresolved.length} suggestion{unresolved.length !== 1 ? 's' : ''} to continue
         </p>
       )}
