@@ -11,6 +11,8 @@ import { PersonaSilhouette } from './PersonaSilhouette';
 import { getLayerUpdatesForAnswer, resolveLayerState } from './ob-layers';
 import type { OBLayerUpdate } from './ob-layers';
 
+const SHELL_SECTION_LABEL = 'Travel Preferences';
+
 const STEP_HERO: Partial<Record<ObStep, string>> = {
   ob1: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80',
   ob2: 'https://images.unsplash.com/photo-1551918120-9739cb430c6d?w=800&q=80',
@@ -47,7 +49,8 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
       }
     }
     return resolveLayerState(updates);
-  }, [answers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(answers)]);
 
   const answeredCount = Object.keys(answers).length;
   const displayTitle    = title    ?? STEP_TITLES[step] ?? '';
@@ -66,7 +69,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
               key={bgHeroUrl}
               src={bgHeroUrl}
               alt=""
-              aria-hidden
+              aria-hidden={true}
               className="absolute inset-0 w-full h-full object-cover"
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.65 }}
@@ -136,7 +139,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
               fontSize: 13, color: '#f2ede6',
             }}
           >
-            Travel Preferences
+            {SHELL_SECTION_LABEL}
           </div>
 
           <div style={{ width: 36 }} />
