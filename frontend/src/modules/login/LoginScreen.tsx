@@ -69,15 +69,45 @@ export function LoginScreen() {
     );
   }
 
+  const FLOAT_ICONS = [
+    'explore', 'restaurant', 'directions_car', 'photo_camera',
+    'hotel', 'map', 'flight', 'local_cafe', 'luggage',
+  ];
+
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center px-6 py-8"
       style={{
         background:
           "linear-gradient(rgba(15,12,10,.55), rgba(15,12,10,.96)), url('https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&q=80') center/cover no-repeat",
+        overflow: 'hidden',
+        position: 'relative',
       }}
     >
-      <div className="w-full max-w-[380px]">
+      {/* Floating background icons */}
+      {FLOAT_ICONS.map((icon, i) => (
+        <span
+          key={icon}
+          className="ms"
+          style={{
+            position: 'absolute',
+            bottom: '-10%',
+            left: `${8 + i * 10}%`,
+            fontSize: 28,
+            color: 'rgba(255,255,255,0.07)',
+            animation: `floatUp ${7 + (i % 3)}s ease-in-out ${i * 0.9}s infinite`,
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          {icon}
+        </span>
+      ))}
+
+      <div
+        className="w-full max-w-[380px]"
+        style={{ animation: 'cardEntry 0.6s ease both' }}
+      >
 
         {/* Brand mark */}
         <div className="text-center mb-10">

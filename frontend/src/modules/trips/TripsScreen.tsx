@@ -31,26 +31,18 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const archetypeEmoji  = ARCHETYPE_EMOJI[archetypeKey]  ?? '◆';
   const archetypeName   = ARCHETYPE_SHORT[archetypeKey]  ?? (item.persona?.archetype_name ?? archetypeKey);
 
-  const days          = getDaysUntilTravel(item.travelDate);
-  const isToday       = days === 0;
-  const isPast        = days !== null && days < 0;
+  const days    = getDaysUntilTravel(item.travelDate);
+  const isToday = days === 0;
+  const isPast  = days !== null && days < 0;
   const hasUnresolved = (item.pendingSwapCards ?? []).some(c => !c.resolved);
-  const forceExpanded = isToday && hasUnresolved;
 
-  // Support both old flat itinerary and new engine itinerary (day-based)
   const stops = (item.itinerary as any)?.days?.flatMap((d: any) => d.stops) ?? item.itinerary?.itinerary ?? [];
-  const cityName = item.city;
-  const date = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
+  const cityName  = item.city;
+  const country   = (item as any).country ?? '';
+  const date      = item.travelDate ? formatDate(item.travelDate) : formatDate(item.date);
 
-  // Up to 3 card images for the fan
-  const fanImages: (string | null)[] = stops
-    .filter((s: any) => s.imageUrl ?? s.photo_ref)
-    .slice(0, 3)
-    .map((s: any) => s.imageUrl ?? null);
-  while (fanImages.length < 3) fanImages.unshift(null);
-
-  const FAN_ROTATIONS = [-6, -3, 0];
-  const FAN_TRANSLATE = [8, 4, 0];
+  // Pick the first stop with a photo for the card background
+  const heroPhoto = stops.find((s: any) => s.imageUrl)?.imageUrl ?? null;
 
   function handlePlay() {
     dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
@@ -62,145 +54,118 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
     setAutoRunRecalibration(true);
   }
 
+  const cardStyle = {
+    position: 'relative' as const,
+    height: 145,
+    borderRadius: 22,
+    overflow: 'hidden' as const,
+    marginBottom: 4,
+    cursor: 'pointer' as const,
+    animation: `cardEntry 0.4s ease ${index * 0.09}s both`,
+    background: heroPhoto
+      ? `url('${heroPhoto}') center/cover no-repeat`
+      : `linear-gradient(135deg, ${archetypeColors.glow}, rgba(20,16,12,1))`,
+  };
+
   return (
-    <div style={{ marginBottom: 32, animation: `cardEntry 0.4s ease ${index * 0.09}s both` }}>
+    <div style={{ marginBottom: 16 }}>
+      {/* Main card */}
+      <div style={cardStyle} onClick={() => setExpanded(e => !e)}>
+        {/* Gradient overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(160deg, rgba(20,16,12,.22) 0%, rgba(20,16,12,.80) 100%)',
+        }} />
 
-      {/* Card fan */}
-      <div style={{ position: 'relative', height: 240, marginBottom: 16 }}>
-        {fanImages.map((img, i) => (
-          <div
-            key={i}
-            onClick={i === 2 ? handlePlay : undefined}
-            style={{
-              position: 'absolute',
-              width: 220, height: 280,
-              top: 0, left: '50%', marginLeft: -110,
-              borderRadius: 20, overflow: 'hidden',
-              boxShadow: '0 16px 48px rgba(0,0,0,.7)',
-              transform: `rotate(${FAN_ROTATIONS[i]}deg) translateY(${FAN_TRANSLATE[i]}px)`,
-              zIndex: i + 1,
-              cursor: i === 2 ? 'pointer' : 'default',
-              transition: 'transform .4s cubic-bezier(.16,1,.3,1)',
-            }}
-          >
-            {img
-              ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${archetypeColors.glow}, rgba(255,255,255,.02))` }} />
-            }
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.85))' }} />
-            {i === 2 && (
-              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)', marginBottom: 4 }}>
-                  Stop 1
-                </div>
-                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#fff' }}>
-                  {(stops[0] as any)?.title ?? (stops[0] as any)?.place ?? cityName}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Trip meta */}
-      <div style={{ textAlign: 'center', marginBottom: 14 }}>
-        <div style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)' }}>{cityName}</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-3)', marginTop: 2 }}>{date} · {stops.length} stops{isPast ? ' · Completed' : ''}</div>
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
-            background: archetypeColors.glow,
-            border: `1px solid ${archetypeColors.primary}40`,
-            color: archetypeColors.primary,
+        {/* Top-left: city + caption */}
+        <div style={{ position: 'absolute', top: 14, left: 16 }}>
+          <div style={{
+            fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700,
+            color: '#fff', lineHeight: 1.1, marginBottom: 3,
           }}>
-            {archetypeEmoji} {archetypeName}
-          </span>
+            {cityName}
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.55)', fontWeight: 500 }}>
+            {[country, date, `${stops.length} stops${isPast ? ' · Completed' : ''}`].filter(Boolean).join(' · ')}
+          </div>
+        </div>
+
+        {/* Top-right: archetype badge */}
+        <div style={{
+          position: 'absolute', top: 14, right: 14,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '4px 9px', borderRadius: 999,
+          fontSize: 10, fontWeight: 700,
+          background: archetypeColors.glow,
+          border: `1px solid ${archetypeColors.primary}66`,
+          color: archetypeColors.primary,
+          backdropFilter: 'blur(6px)',
+        }}>
+          {archetypeEmoji} {archetypeName}
+        </div>
+
+        {/* Bottom-left: continue pill */}
+        <div style={{
+          position: 'absolute', bottom: 14, left: 16,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', borderRadius: 999,
+          background: 'rgba(255,255,255,.12)',
+          backdropFilter: 'blur(8px)',
+          fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.85)',
+          border: '1px solid rgba(255,255,255,.15)',
+          cursor: 'pointer',
+        }} onClick={e => { e.stopPropagation(); handlePlay(); }}>
+          <span className="ms fill" style={{ fontSize: 14 }}>play_arrow</span>
+          Continue trip
         </div>
       </div>
 
-      {/* Countdown strip */}
-      <div style={{ marginBottom: 12 }}>
-        <TripCountdown travelDate={item.travelDate} />
-      </div>
-
-      {/* Play button */}
-      <button
-        onClick={handlePlay}
-        style={{
-          width: '100%', height: 52, borderRadius: 16, border: 'none', cursor: 'pointer',
-          background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-          color: '#ffffff', fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: '0 6px 28px rgba(212,168,83,.25)',
-          marginBottom: 12,
-        }}
-      >
-        <span className="ms fill" style={{ fontSize: 20 }}>play_arrow</span>
-        Play Itinerary
-      </button>
-
-      {/* Stop list — expandable */}
-      <button
-        onClick={() => { if (!forceExpanded) setExpanded(e => !e); }}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer',
-        }}
-      >
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-3)' }}>
-          {stops.length} stops in order
-        </span>
-        <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-3)', transform: (forceExpanded || expanded) ? 'rotate(180deg)' : 'none', transition: 'transform .3s' }}>
-          expand_more
-        </span>
-      </button>
-
-      {(forceExpanded || expanded) && (
-        <div style={{ marginTop: 8 }}>
-          {/* Arrival banner */}
+      {/* Expandable drawer */}
+      {expanded && (
+        <div style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderTop: 'none',
+          borderRadius: '0 0 16px 16px',
+          padding: '12px 16px 16px',
+          animation: 'springUp 0.3s ease both',
+        }}>
+          <TripCountdown travelDate={item.travelDate} />
           {isToday && !hasUnresolved && (
             <ArrivalBanner tripId={item.id} travelDate={item.travelDate} city={item.city} onCheckNow={handleArrivalCheck} />
           )}
-          {/* Smart updates */}
           {!isToday && !isPast && item.travelDate && <SmartUpdates trip={item} />}
-          {/* Recalibration */}
           {isToday && <RecalibrationStack trip={item} autoRun={autoRunRecalibration} />}
 
-          {/* Stop list with why+consequence */}
-          {stops.map((stop: any, i: number) => {
-            const reason = stop.orderReason ?? stop.whyForYou ?? null;
-            const consequence = stop.orderConsequence ?? null;
-            const moved = stop.movedFrom !== null && stop.movedFrom !== undefined;
-            return (
-              <div key={stop.id ?? i} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-                borderBottom: i < stops.length - 1 ? '1px solid var(--color-border)' : 'none',
-              }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                  background: 'var(--color-primary-bg)',
-                  border: '1px solid rgba(224,120,84,.25)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
-                }}>{i + 1}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
-                    {stop.title ?? stop.place}
-                    {moved && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(224,120,84,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>}
-                  </div>
-                  {reason && (
-                    <div style={{ fontSize: 10, color: 'var(--color-text-3)', marginTop: 2 }}>
-                      {reason}{consequence ? ` · ${consequence}` : ''}
+          {/* Stop list */}
+          <div style={{ marginTop: 10 }}>
+            {stops.map((stop: any, i: number) => {
+              const moved = stop.movedFrom !== null && stop.movedFrom !== undefined;
+              return (
+                <div key={stop.id ?? i} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0',
+                  borderBottom: i < stops.length - 1 ? '1px solid var(--color-border)' : 'none',
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--color-primary-bg)',
+                    border: '1px solid rgba(212,168,83,.25)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
+                  }}>{i + 1}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>
+                      {stop.title ?? stop.place}
+                      {moved && (
+                        <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.18)', padding: '1px 5px', borderRadius: 999 }}>↑ moved</span>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>{stop.time ?? ''}</div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-primary)' }}>{stop.time ?? ''}</div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
