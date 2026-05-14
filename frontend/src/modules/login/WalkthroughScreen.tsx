@@ -5,7 +5,7 @@ const CARDS = [
   {
     id: 'beta',
     img: 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=900&q=85',
-    label: 'Beta Access',
+    label: '',
     accent: '#d4a853',
     title: "You're shaping the future of travel",
     desc: "Welcome to the Uncover Roads beta. Your instincts are already our best feature.",
@@ -114,21 +114,6 @@ export function WalkthroughScreen() {
         background: 'linear-gradient(to bottom, rgba(0,0,0,.35) 0%, transparent 30%, rgba(0,0,0,.5) 55%, rgba(0,0,0,.92) 100%)',
       }} />
 
-      {/* Editorial watermark */}
-      <div style={{
-        position: 'absolute', left: 0, right: 0, top: '30%',
-        zIndex: 2, pointerEvents: 'none', overflow: 'hidden',
-      }}>
-        <div style={{
-          fontFamily: 'var(--font-heading), serif',
-          fontWeight: 700, fontSize: 110,
-          color: 'rgba(255,255,255,.06)',
-          letterSpacing: '-.03em', lineHeight: 1,
-          textAlign: 'center', whiteSpace: 'nowrap',
-          animation: 'heroKenBurns 12s ease-out forwards',
-        }}>explore</div>
-      </div>
-
       {/* Skip */}
       <div style={{
         position: 'absolute', zIndex: 10,
@@ -167,25 +152,27 @@ export function WalkthroughScreen() {
         }}
       >
         {/* Accent label pill */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '4px 12px', borderRadius: 999, marginBottom: 14,
-          border: `1px solid ${card.accent}60`,
-          background: `${card.accent}18`,
-        }}>
+        {card.label && (
           <div style={{
-            width: 5, height: 5, borderRadius: '50%',
-            background: card.accent,
-            animation: 'glowPulse 2s ease-in-out infinite',
-          }} />
-          <span style={{
-            fontSize: 10, fontWeight: 700,
-            letterSpacing: '.14em', textTransform: 'uppercase',
-            color: card.accent,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 12px', borderRadius: 999, marginBottom: 14,
+            border: `1px solid ${card.accent}60`,
+            background: `${card.accent}18`,
           }}>
-            {card.label}
-          </span>
-        </div>
+            <div style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: card.accent,
+              animation: 'glowPulse 2s ease-in-out infinite',
+            }} />
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: '.14em', textTransform: 'uppercase',
+              color: card.accent,
+            }}>
+              {card.label}
+            </span>
+          </div>
+        )}
 
         {/* Headline */}
         <h1 style={{
