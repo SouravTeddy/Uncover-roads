@@ -2,6 +2,7 @@ import { OnboardingShell } from './OnboardingShell';
 import { PhotoGrid2x2 } from '../../shared/ui/PhotoGrid2x2';
 import { useAppStore } from '../../shared/store';
 import { resolveQ2Mood } from './ob-context-resolvers';
+import type { OBMood } from '../../shared/types';
 
 const OPTIONS = [
   {
@@ -22,27 +23,37 @@ const OPTIONS = [
   },
 ];
 
+const MAX = 3;
 const FAMILY_HERO = 'https://images.unsplash.com/photo-1511895426328-dc8714191011?w=800&q=80';
 
 export function OB2Mood() {
   const { state, dispatch } = useAppStore();
   const raw = state.rawOBAnswers;
-  const value = raw?.mood?.[0] ?? null;
+  const values: OBMood[] = raw?.mood ?? [];
   const ctx = resolveQ2Mood(raw ?? {});
   const heroUrl = raw?.group === 'family' ? FAMILY_HERO : undefined;
+
+  function toggle(v: string) {
+    const val = v as OBMood;
+    const next = values.includes(val)
+      ? values.filter(x => x !== val)
+      : values.length < MAX ? [...values, val] : values;
+    dispatch({ type: 'SET_RAW_OB_ANSWER', key: 'mood', value: next });
+  }
 
   return (
     <OnboardingShell
       step="ob2"
-      canAdvance={value !== null}
+      canAdvance={values.length > 0}
       title={ctx.title}
       subtitle={ctx.subtitle}
       heroUrl={heroUrl}
     >
       <PhotoGrid2x2
         options={OPTIONS}
-        selected={value}
-        onSelect={v => dispatch({ type: 'SET_RAW_OB_ANSWER', key: 'mood', value: [v] })}
+        selected={values}
+        multi
+        onSelect={toggle}
       />
     </OnboardingShell>
   );
