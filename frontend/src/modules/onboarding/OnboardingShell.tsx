@@ -7,7 +7,6 @@ import { useOnboarding } from './useOnboarding';
 import { useAppStore } from '../../shared/store';
 import { Button } from '../../shared/ui/Button';
 import { OBBackground } from './OBBackground';
-import { PersonaSilhouette } from './PersonaSilhouette';
 import { getLayerUpdatesForAnswer, resolveLayerState } from './ob-layers';
 import type { OBLayerUpdate } from './ob-layers';
 
@@ -52,7 +51,6 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(answers)]);
 
-  const answeredCount = Object.keys(answers).length;
   const displayTitle    = title    ?? STEP_TITLES[step] ?? '';
   const displaySubtitle = subtitle ?? '';
   const bgHeroUrl = heroUrl ?? STEP_HERO[step];
@@ -98,8 +96,6 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
           }}
         />
 
-        {/* PersonaSilhouette — above gradient so it's always visible in the corner */}
-        <PersonaSilhouette layerState={layerState} answeredCount={answeredCount} />
       </div>
 
       {/* ── Content stack ── */}
