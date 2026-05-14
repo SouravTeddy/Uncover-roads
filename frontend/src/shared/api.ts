@@ -276,7 +276,7 @@ export const api = {
     end_date?: string
     persona: string
   }) =>
-    post<EngineItinerary>('/surprise-me', body),
+    post<EngineItinerary>('/api/surprise-me', body),
 
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),
