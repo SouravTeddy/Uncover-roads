@@ -18,11 +18,18 @@ interface Props {
 
 export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
   return (
-    <div className="mx-4 mb-3 rounded-[16px] bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden">
+    <div
+      className="mx-4 mb-3 rounded-[16px] bg-[var(--color-surface)] border border-[var(--color-border)] overflow-hidden"
+      style={{
+        opacity: 0,
+        animation: 'cardEntry 0.4s ease both',
+        animationDelay: `${(stopNumber - 1) * 0.08}s`,
+      }}
+    >
       {/* Header row */}
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
         <div className="flex-1 min-w-0">
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(224,120,84,.14)', padding: '2px 8px', borderRadius: 999, display: 'inline-block', marginBottom: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'var(--color-primary-bg)', padding: '2px 8px', borderRadius: 999, display: 'inline-block', marginBottom: 4 }}>
             Stop {stopNumber} · {formatTime(stop.time)}
           </span>
           <p className="font-[family-name:var(--font-heading)] mt-0.5 leading-tight" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)' }}>
