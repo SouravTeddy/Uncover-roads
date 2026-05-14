@@ -2,6 +2,7 @@ import { OnboardingShell } from './OnboardingShell';
 import { PhotoGrid2x2 } from '../../shared/ui/PhotoGrid2x2';
 import { useAppStore } from '../../shared/store';
 import { resolveQ3Pace } from './ob-context-resolvers';
+import type { OBPace } from '../../shared/types';
 
 const OPTIONS = [
   { value: 'slow',        label: 'Slow',        sublabel: '2–3 places, deep dives',
@@ -14,18 +15,29 @@ const OPTIONS = [
     imageUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&q=80' },
 ];
 
+const MAX = 2;
+
 export function OB3Pace() {
   const { state, dispatch } = useAppStore();
-  const paceArr = state.rawOBAnswers?.pace ?? [];
-  const value = paceArr[0] ?? null;
-  const ctx = resolveQ3Pace(state.rawOBAnswers ?? {});
+  const raw = state.rawOBAnswers;
+  const values: OBPace[] = raw?.pace ?? [];
+  const ctx = resolveQ3Pace(raw ?? {});
+
+  function toggle(v: string) {
+    const val = v as OBPace;
+    const next = values.includes(val)
+      ? values.filter(x => x !== val)
+      : values.length < MAX ? [...values, val] : values;
+    dispatch({ type: 'SET_RAW_OB_ANSWER', key: 'pace', value: next });
+  }
 
   return (
-    <OnboardingShell step="ob3" canAdvance={value !== null && value !== undefined} title={ctx.title} subtitle={ctx.subtitle}>
+    <OnboardingShell step="ob3" canAdvance={values.length > 0} title={ctx.title} subtitle={ctx.subtitle}>
       <PhotoGrid2x2
         options={OPTIONS}
-        selected={value as string | null}
-        onSelect={v => dispatch({ type: 'SET_RAW_OB_ANSWER', key: 'pace', value: [v] })}
+        selected={values}
+        multi
+        onSelect={toggle}
       />
     </OnboardingShell>
   );

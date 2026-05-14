@@ -62,7 +62,10 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
 
       {/* ── Background stack ── */}
       <div className="absolute inset-0 overflow-hidden">
-        {/* Full-bleed hero — crossfades when bgHeroUrl changes */}
+        {/* OBBackground — answer-driven gradient (deepest layer) */}
+        <OBBackground layerState={layerState} />
+
+        {/* Full-bleed hero — sits on top of OBBackground, crossfades on step change */}
         <AnimatePresence mode="wait">
           {bgHeroUrl && (
             <motion.img
@@ -95,10 +98,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
           }}
         />
 
-        {/* OBBackground — answer-driven colour tinting */}
-        <OBBackground layerState={layerState} />
-
-        {/* PersonaSilhouette — builds opacity with each answer */}
+        {/* PersonaSilhouette — above gradient so it's always visible in the corner */}
         <PersonaSilhouette layerState={layerState} answeredCount={answeredCount} />
       </div>
 
