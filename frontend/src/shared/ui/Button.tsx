@@ -9,7 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const baseStyle: React.CSSProperties = {
-  height: 54,
+  height: 52,
   borderRadius: 16,
   padding: '0 24px',
   fontFamily: 'var(--font-sans)',
@@ -25,13 +25,13 @@ const baseStyle: React.CSSProperties = {
 
 const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
-    background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+    background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
     color: '#ffffff',
-    boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+    boxShadow: 'var(--shadow-primary)',
   },
   ghost: {
     background: 'transparent',
-    border: '1px solid rgba(242,237,230,.07)',
+    border: '1px solid var(--color-border)',
     color: 'var(--color-text-2)',
   },
   outline: {
