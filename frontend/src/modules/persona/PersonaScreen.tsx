@@ -145,15 +145,17 @@ export function PersonaScreen() {
   const profile = state.personaProfile;
   const rawAnswers = state.rawOBAnswers;
 
-  // Beat 1: atmosphere (0–1500ms) — just the bg, no text
-  // Beat 2: traits appear (1500ms, 800ms each = 1500–3900ms)
-  // Beat 3: name appears (3900ms+)
-  const [beat, setBeat] = useState<1 | 2 | 3>(1)
+  // Beat 1: atmosphere (0–1500ms) — gradient bg, no text
+  // Beat 2: traits appear (1500–3900ms, 800ms each)
+  // Beat 3: "YOU ARE / Name" full-screen (3900–5800ms)
+  // Beat 4: overlay exits, main content fades in (5800ms+)
+  const [beat, setBeat] = useState<1 | 2 | 3 | 4>(1)
 
   useEffect(() => {
     const t1 = setTimeout(() => setBeat(2), 1500)
     const t2 = setTimeout(() => setBeat(3), 3900)
-    return () => { clearTimeout(t1); clearTimeout(t2) }
+    const t3 = setTimeout(() => setBeat(4), 5800)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
   }, [])
 
   if (!profile) {
@@ -224,49 +226,57 @@ export function PersonaScreen() {
   return (
     <div className={`fixed inset-0 overflow-y-auto ${bg}`} style={{ zIndex: 20, animation: 'springUp 0.45s ease both' }}>
 
-      {/* ── 3-beat reveal overlay (Beats 1–3) ──────────────────── */}
-      {beat < 3 && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ zIndex: 30 }}>
+      {/* ── Cinematic reveal overlay (Beats 1–3, fades out on Beat 4) ── */}
+      {beat < 4 && (
+        <motion.div
+          className="fixed inset-0 flex flex-col items-center justify-center px-8"
+          style={{ zIndex: 30 }}
+          animate={{ opacity: beat === 4 ? 0 : 1 }}
+          transition={{ duration: 0.6 }}
+        >
           {/* Beat 2 — Trait lines */}
-          {beat >= 2 && (
+          {beat === 2 && (
             <div className="flex flex-col items-center justify-center gap-6">
               {traits.map((line, i) => (
                 <motion.p
                   key={i}
-                  className="text-[var(--color-text-1)] text-lg text-center font-light tracking-wide"
-                  initial={{ opacity: 0, y: 12 }}
+                  className="text-white/90 text-xl text-center font-light tracking-wide"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.8, duration: 0.6 }}
+                  transition={{ delay: i * 0.8, duration: 0.7 }}
                 >
                   {line}
                 </motion.p>
               ))}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Beat 3 — Archetype name reveal (absolute, bottom of screen) */}
-      {beat >= 3 && (
-        <motion.div
-          className="fixed left-0 right-0 flex flex-col items-center gap-3 pointer-events-none"
-          style={{ bottom: '6rem', zIndex: 30 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          <p className="text-[var(--color-text-3)] text-sm tracking-widest uppercase">You are</p>
-          <h1 className="text-white text-5xl font-serif tracking-wide capitalize">
-            {archetypeId}
-          </h1>
+          {/* Beat 3 — "YOU ARE / Name" centred full-screen */}
+          {beat === 3 && (
+            <motion.div
+              className="flex flex-col items-center gap-4"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <p className="text-white/50 text-xs tracking-[0.3em] uppercase">You are</p>
+              <h1
+                className="text-white text-center leading-none"
+                style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 14vw, 72px)', fontWeight: 700 }}
+              >
+                {meta.name}
+              </h1>
+            </motion.div>
+          )}
         </motion.div>
       )}
 
-      {/* ── Main screen content (visible after Beat 3) ─────────── */}
+      {/* ── Main screen content (visible only after reveal exits) ── */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: beat >= 3 ? 1 : 0 }}
-        transition={{ duration: 0.6, delay: 1.0 }}
+        animate={{ opacity: beat >= 4 ? 1 : 0 }}
+        transition={{ duration: 0.7 }}
       >
         {/* Top bar */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
