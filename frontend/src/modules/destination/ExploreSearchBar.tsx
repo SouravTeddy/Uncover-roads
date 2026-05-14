@@ -79,12 +79,12 @@ export function ExploreSearchBar({ onCitySelected }: Props) {
           onClick={useLocation}
           className="flex-shrink-0 flex items-center gap-1.5 px-3 h-11 rounded-2xl text-xs font-semibold"
           style={{
-            background: 'linear-gradient(135deg, rgba(108,143,255,0.16), rgba(176,108,255,0.16))',
-            border: '1px solid rgba(108,143,255,0.22)',
-            color: '#8aa8ff',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border-m)',
+            color: 'var(--color-text-2)',
           }}
         >
-          <span className="ms text-sm">my_location</span>
+          <span className="ms text-sm" style={{ color: 'var(--color-text-3)' }}>my_location</span>
           Near me
         </button>
       </div>
