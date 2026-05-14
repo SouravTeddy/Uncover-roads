@@ -26,10 +26,10 @@ const FAMILY_HERO = 'https://images.unsplash.com/photo-1511895426328-dc871419101
 
 export function OB2Mood() {
   const { state, dispatch } = useAppStore();
-  const answers = state.rawOBAnswers ?? {};
-  const value = answers.mood?.[0] ?? null;
-  const ctx = resolveQ2Mood(answers);
-  const heroUrl = answers.group === 'family' ? FAMILY_HERO : undefined;
+  const raw = state.rawOBAnswers;
+  const value = raw?.mood?.[0] ?? null;
+  const ctx = resolveQ2Mood(raw ?? {});
+  const heroUrl = raw?.group === 'family' ? FAMILY_HERO : undefined;
 
   return (
     <OnboardingShell

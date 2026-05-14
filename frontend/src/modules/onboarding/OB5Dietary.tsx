@@ -19,9 +19,9 @@ const OPTIONS = [
 
 export function OB5Dietary() {
   const { state, dispatch } = useAppStore();
-  const answers = state.rawOBAnswers ?? {};
-  const values: OBDietary[] = answers.dietary ?? [];
-  const ctx = resolveQ5Dietary(answers);
+  const raw = state.rawOBAnswers;
+  const values: OBDietary[] = raw?.dietary ?? [];
+  const ctx = resolveQ5Dietary(raw ?? {});
 
   function toggle(v: string) {
     const val = v as OBDietary;

@@ -17,9 +17,9 @@ const OPTIONS = [
 
 export function OB6Budget() {
   const { state, dispatch } = useAppStore();
-  const answers = state.rawOBAnswers ?? {};
-  const value = (answers.budget ?? null) as OBBudget | null;
-  const ctx = resolveQ6Budget(answers);
+  const raw = state.rawOBAnswers;
+  const value = (raw?.budget ?? null) as OBBudget | null;
+  const ctx = resolveQ6Budget(raw ?? {});
 
   return (
     <OnboardingShell step="ob6" canAdvance={value !== null} title={ctx.title} subtitle={ctx.subtitle}>
