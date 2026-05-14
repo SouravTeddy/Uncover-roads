@@ -1,6 +1,7 @@
 import { OnboardingShell } from './OnboardingShell';
 import { PhotoGrid2x2 } from '../../shared/ui/PhotoGrid2x2';
 import { useAppStore } from '../../shared/store';
+import { resolveQ6Budget } from './ob-context-resolvers';
 import type { OBBudget } from '../../shared/types';
 
 const OPTIONS = [
@@ -16,12 +17,12 @@ const OPTIONS = [
 
 export function OB6Budget() {
   const { state, dispatch } = useAppStore();
-  const value = (state.rawOBAnswers?.budget ?? null) as OBBudget | null;
+  const answers = state.rawOBAnswers ?? {};
+  const value = (answers.budget ?? null) as OBBudget | null;
+  const ctx = resolveQ6Budget(answers);
 
   return (
-    <OnboardingShell step="ob6" canAdvance={value !== null}
-      title="How are you travelling budget-wise?"
-      subtitle="Sets your price range across venues.">
+    <OnboardingShell step="ob6" canAdvance={value !== null} title={ctx.title} subtitle={ctx.subtitle}>
       <PhotoGrid2x2
         options={OPTIONS}
         selected={value}

@@ -1,6 +1,7 @@
 import { OnboardingShell } from './OnboardingShell';
 import { PhotoGrid2x2 } from '../../shared/ui/PhotoGrid2x2';
 import { useAppStore } from '../../shared/store';
+import { resolveQ5Dietary } from './ob-context-resolvers';
 import type { OBDietary } from '../../shared/types';
 
 const OPTIONS = [
@@ -18,7 +19,9 @@ const OPTIONS = [
 
 export function OB5Dietary() {
   const { state, dispatch } = useAppStore();
-  const values: OBDietary[] = state.rawOBAnswers?.dietary ?? [];
+  const answers = state.rawOBAnswers ?? {};
+  const values: OBDietary[] = answers.dietary ?? [];
+  const ctx = resolveQ5Dietary(answers);
 
   function toggle(v: string) {
     const val = v as OBDietary;
@@ -34,8 +37,7 @@ export function OB5Dietary() {
   }
 
   return (
-    <OnboardingShell step="ob5" canAdvance={true} title="Any food situation we should know?"
-      subtitle="Pick all that apply. Shapes restaurant filtering.">
+    <OnboardingShell step="ob5" canAdvance={true} title={ctx.title} subtitle={ctx.subtitle}>
       <PhotoGrid2x2 options={OPTIONS} selected={values} multi onSelect={toggle} />
     </OnboardingShell>
   );

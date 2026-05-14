@@ -14,7 +14,13 @@ export function resolveQ1Group(_answers: Partial<RawOBAnswers>): QuestionDisplay
 
 export function resolveQ2Mood(answers: Partial<RawOBAnswers>): QuestionDisplay {
   if (answers.group === 'family') {
-    return { title: "What does the family want from this trip?", subtitle: "Pick up to 3." };
+    return { title: "What does the family want from this trip?", subtitle: "Pick the main vibe — shapes what we prioritise." };
+  }
+  if (answers.group === 'couple') {
+    return { title: "What's the mood for you two?", subtitle: "Pick up to 3 — shapes what we prioritise." };
+  }
+  if (answers.group === 'friends') {
+    return { title: "What's the crew's energy?", subtitle: "Pick up to 3 — shapes what we prioritise." };
   }
   return { title: "What's the trip mood?", subtitle: "Pick up to 3 — shapes what we prioritise." };
 }
@@ -33,6 +39,9 @@ export function resolveQ4DayOpen(answers: Partial<RawOBAnswers>): QuestionDispla
   if (answers.group === 'family') {
     return { title: "How does the family start the day?", subtitle: "Sets your morning block." };
   }
+  if (answers.mood?.includes('eat_drink')) {
+    return { title: "How do you ease into a food-first day?", subtitle: "Sets your morning block." };
+  }
   if (answers.mood?.includes('relax')) {
     return { title: "How do you ease into a slow day?", subtitle: "Sets your morning block." };
   }
@@ -42,18 +51,27 @@ export function resolveQ4DayOpen(answers: Partial<RawOBAnswers>): QuestionDispla
   return { title: "How do you ease into the day?", subtitle: "Sets your morning block." };
 }
 
-export function resolveQ5Dietary(_answers: Partial<RawOBAnswers>): QuestionDisplay {
-  return {
-    title:    "Any food situation we should know?",
-    subtitle: "Shapes restaurant filtering. Pick all that apply.",
-  };
+export function resolveQ5Dietary(answers: Partial<RawOBAnswers>): QuestionDisplay {
+  if (answers.group === 'family') {
+    return { title: "Any food needs for the group?", subtitle: "We'll flag kid-friendly spots and allergens." };
+  }
+  if (answers.mood?.includes('eat_drink')) {
+    return { title: "Anything that limits where you eat or drink?", subtitle: "We'll still find great options." };
+  }
+  return { title: "Any food situation we should know?", subtitle: "Pick all that apply. Shapes restaurant filtering." };
 }
 
-export function resolveQ6Budget(_answers: Partial<RawOBAnswers>): QuestionDisplay {
-  return {
-    title:    "How are you travelling budget-wise?",
-    subtitle: "Sets your price range across venues.",
-  };
+export function resolveQ6Budget(answers: Partial<RawOBAnswers>): QuestionDisplay {
+  if (answers.group === 'family') {
+    return { title: "What's the family trip budget?", subtitle: "Sets price range — we'll prioritise family-friendly value." };
+  }
+  if (answers.group === 'friends') {
+    return { title: "What's the group budget?", subtitle: "Sets the price range for the whole group." };
+  }
+  if (answers.group === 'couple') {
+    return { title: "What's your budget as a couple?", subtitle: "Sets your price range across venues." };
+  }
+  return { title: "How are you travelling budget-wise?", subtitle: "Sets your price range across venues." };
 }
 
 export function resolveQ7Evening(answers: Partial<RawOBAnswers>): QuestionDisplay {
