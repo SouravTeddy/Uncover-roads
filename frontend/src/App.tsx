@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { User } from '@supabase/supabase-js';
 import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
@@ -149,30 +150,40 @@ function ScreenRouter() {
       className="relative w-full"
       style={{ background: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      {currentScreen === 'login'        && <LoginScreen />}
-      {currentScreen === 'welcome'      && <WelcomeBackScreen />}
-      {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
-      {currentScreen === 'ob1'          && <OB1Group />}
-      {currentScreen === 'ob2'          && <OB2Mood />}
-      {currentScreen === 'ob3'          && <OB3Pace />}
-      {currentScreen === 'ob4'          && <OB4DayOpen />}
-      {currentScreen === 'ob5'          && <OB5Dietary />}
-      {currentScreen === 'ob6'          && <OB6Budget />}
-      {currentScreen === 'ob7'          && <OB7Evening />}
-      {currentScreen === 'ob8'          && <OB8KidFocus />}
-      {currentScreen === 'ob9'          && <OB9BudgetProtect />}
-      {currentScreen === 'persona'     && <PersonaScreen />}
-      {currentScreen === 'destination' && <DestinationScreen />}
-      {currentScreen === 'map'         && <MapScreen />}
-      {currentScreen === 'journey'     && <JourneyScreen />}
-      {currentScreen === 'route'          && <RouteScreen />}
-      {currentScreen === 'itinerary-reel' && <ItineraryReelScreen />}
-      {currentScreen === 'trips'       && <TripsScreen />}
-      {currentScreen === 'saved'       && <SavedScreen />}
-      {currentScreen === 'nav'         && <NavScreen />}
-      {currentScreen === 'profile'     && <ProfileScreen />}
-      {currentScreen === 'subscription' && <SubscriptionScreen />}
-
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentScreen}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          style={{ position: 'absolute', inset: 0, minHeight: '100dvh' }}
+        >
+          {currentScreen === 'login'        && <LoginScreen />}
+          {currentScreen === 'welcome'      && <WelcomeBackScreen />}
+          {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
+          {currentScreen === 'ob1'          && <OB1Group />}
+          {currentScreen === 'ob2'          && <OB2Mood />}
+          {currentScreen === 'ob3'          && <OB3Pace />}
+          {currentScreen === 'ob4'          && <OB4DayOpen />}
+          {currentScreen === 'ob5'          && <OB5Dietary />}
+          {currentScreen === 'ob6'          && <OB6Budget />}
+          {currentScreen === 'ob7'          && <OB7Evening />}
+          {currentScreen === 'ob8'          && <OB8KidFocus />}
+          {currentScreen === 'ob9'          && <OB9BudgetProtect />}
+          {currentScreen === 'persona'     && <PersonaScreen />}
+          {currentScreen === 'destination' && <DestinationScreen />}
+          {currentScreen === 'map'         && <MapScreen />}
+          {currentScreen === 'journey'     && <JourneyScreen />}
+          {currentScreen === 'route'          && <RouteScreen />}
+          {currentScreen === 'itinerary-reel' && <ItineraryReelScreen />}
+          {currentScreen === 'trips'       && <TripsScreen />}
+          {currentScreen === 'saved'       && <SavedScreen />}
+          {currentScreen === 'nav'         && <NavScreen />}
+          {currentScreen === 'profile'     && <ProfileScreen />}
+          {currentScreen === 'subscription' && <SubscriptionScreen />}
+        </motion.div>
+      </AnimatePresence>
       <InstallPrompt />
       <BottomNav />
     </div>
