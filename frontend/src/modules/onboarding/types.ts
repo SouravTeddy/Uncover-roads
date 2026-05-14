@@ -1,7 +1,7 @@
 export type ObStep = 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5' | 'ob6' | 'ob7'
                    | 'ob8' | 'ob9';
 
-export const BASE_OB_STEPS: ObStep[] = ['ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'ob6', 'ob7'];
+export const BASE_OB_STEPS: ObStep[] = ['ob1', 'ob6', 'ob2', 'ob3', 'ob7', 'ob5', 'ob4'];
 export const CONDITIONAL_STEPS: Record<string, ObStep> = {
   family: 'ob8',
   budget: 'ob9',
