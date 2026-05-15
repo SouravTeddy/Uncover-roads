@@ -120,7 +120,7 @@ export function WelcomeBackScreen() {
         {/* Greeting */}
         <div className="text-center">
           <p className="text-white/50 text-sm mb-1">Welcome back</p>
-          <h1 className="font-[family-name:var(--font-heading)] text-white font-extrabold text-3xl tracking-tight">
+          <h1 className="font-[family-name:var(--font-heading)] text-white font-bold text-3xl tracking-tight">
             {firstName}
           </h1>
         </div>

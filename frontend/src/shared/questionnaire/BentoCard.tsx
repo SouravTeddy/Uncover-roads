@@ -30,7 +30,7 @@ export function BentoCard({ label, sub, imageUrl, selected, onSelect }: Props) {
 
       {/* Content */}
       <div className="absolute bottom-0 left-0 right-0 p-3">
-        <div className="font-[family-name:var(--font-heading)] text-white text-[15px] font-semibold">{label}</div>
+        <div className="font-[family-name:var(--font-heading)] text-white text-[15px] font-bold">{label}</div>
         <div className="text-[var(--color-text-2)] text-xs">{sub}</div>
       </div>
     </div>

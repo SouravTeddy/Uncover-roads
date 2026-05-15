@@ -145,7 +145,7 @@ export function RouteScreen() {
             <p className="text-[14px]">No itinerary yet — add places on the map and tap Build Itinerary</p>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
-              className="px-5 py-2.5 rounded-[12px] bg-[var(--color-primary)] text-white text-[14px] font-semibold"
+              className="px-5 py-2.5 rounded-[12px] bg-[var(--color-primary)] text-white text-[14px] font-heading font-bold"
             >
               Go to map
             </button>
@@ -186,7 +186,7 @@ export function RouteScreen() {
             </p>
             <button
               onClick={confirmRemoveStop}
-              className="w-full py-3 rounded-[14px] bg-red-500 text-white font-semibold text-[15px] mb-2"
+              className="w-full py-3 rounded-[14px] bg-red-500 text-white font-heading font-bold text-[15px] mb-2"
             >
               Remove &amp; rebuild
             </button>

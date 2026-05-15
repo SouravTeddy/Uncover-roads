@@ -312,7 +312,7 @@ export function NavScreen() {
       >
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-          className="w-full h-12 rounded-2xl font-bold text-sm border border-[var(--color-border)] text-[var(--color-text-2)] bg-[var(--color-surface)]"
+          className="w-full h-12 rounded-2xl font-heading font-bold text-sm border border-[var(--color-border)] text-[var(--color-text-2)] bg-[var(--color-surface)]"
         >
           End Journey
         </button>
@@ -363,7 +363,7 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
               className="w-6 h-6 rounded-full flex items-center justify-center"
               style={{ background: catStyle.bg, border: `1px solid ${catStyle.text}30` }}
             >
-              <span style={{ color: catStyle.text, fontSize: 10, fontWeight: 700, fontFamily: 'system-ui,sans-serif' }}>
+              <span style={{ color: catStyle.text, fontSize: 10, fontWeight: 700 }}>
                 {String(index + 1).padStart(2, '0')}
               </span>
             </div>

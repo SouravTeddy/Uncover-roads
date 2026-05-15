@@ -1021,7 +1021,7 @@ export function MapScreen() {
               </button>
               <button
                 onClick={_runSurprise}
-                style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#8b5cf6', border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+                style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#8b5cf6', border: 'none', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 700, cursor: 'pointer' }}
               >
                 Yes, surprise me
               </button>

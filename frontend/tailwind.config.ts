@@ -17,8 +17,8 @@ const config: Config = {
         'text-3': '#8e9099',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        heading: ['"Plus Jakarta Sans"', 'sans-serif'],
+        sans: ['var(--font-sans)'],
+        heading: ['var(--font-heading)'],
       },
     },
   },
