@@ -249,15 +249,15 @@ export function NavScreen() {
             <h1 className="font-[family-name:var(--font-heading)] font-bold text-[var(--color-text-1)] text-base truncate">
               {city ? `${city} Journey` : 'Your Journey'}
             </h1>
-            <p className="text-[var(--color-text-3)] text-xs">{timed.length} stops · starts {parseTimeLabel(startMins)}</p>
+            <p className="text-[var(--color-text-3)] text-[13px]">{timed.length} stops · starts {parseTimeLabel(startMins)}</p>
           </div>
         </div>
         {weather && (
           <div
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--color-border)] flex-shrink-0 bg-[var(--color-surface)]"
           >
-            <span className="text-[var(--color-text-1)] text-xs font-bold">{weather.temp}°</span>
-            <span className="text-[var(--color-text-3)] text-xs">{weather.condition}</span>
+            <span className="text-[var(--color-text-1)] text-[13px] font-bold">{weather.temp}°</span>
+            <span className="text-[var(--color-text-3)] text-[13px]">{weather.condition}</span>
           </div>
         )}
       </div>
@@ -279,7 +279,7 @@ export function NavScreen() {
             style={{ background: 'rgba(251,191,36,.08)' }}
           >
             <span className="ms fill text-amber-400 text-base flex-shrink-0 mt-px">lightbulb</span>
-            <p className="text-amber-200/80 text-xs leading-relaxed">{summary.pro_tip}</p>
+            <p className="text-amber-200/80 text-[13px] leading-relaxed">{summary.pro_tip}</p>
           </div>
         )}
 
@@ -363,7 +363,7 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
               className="w-6 h-6 rounded-full flex items-center justify-center"
               style={{ background: catStyle.bg, border: `1px solid ${catStyle.text}30` }}
             >
-              <span style={{ color: catStyle.text, fontSize: 10, fontWeight: 700 }}>
+              <span style={{ color: catStyle.text, fontSize: 11, fontWeight: 700 }}>
                 {String(index + 1).padStart(2, '0')}
               </span>
             </div>
@@ -371,15 +371,15 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
           {/* Category */}
           <div className="flex items-center gap-1.5">
             <span className="ms fill text-sm" style={{ color: catStyle.text }}>{icon}</span>
-            <span className="text-xs capitalize" style={{ color: catStyle.text }}>
+            <span className="text-[13px] capitalize" style={{ color: catStyle.text }}>
               {category ?? 'place'}
             </span>
           </div>
         </div>
         {/* Time */}
         <div className="flex items-center gap-1.5">
-          <span className="ms text-[var(--color-text-3)] text-xs">schedule</span>
-          <span className="text-[var(--color-text-2)] text-xs font-semibold">{parseTimeLabel(startMins)}</span>
+          <span className="ms text-[var(--color-text-3)] text-[13px]">schedule</span>
+          <span className="text-[var(--color-text-2)] text-[13px] font-semibold">{parseTimeLabel(startMins)}</span>
         </div>
       </div>
 
@@ -390,14 +390,14 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
 
         {/* Tip / what to expect */}
         {stop.tip && (
-          <p className="text-[var(--color-text-2)] text-sm leading-relaxed">{stop.tip}</p>
+          <p className="text-[var(--color-text-2)] text-[15px] leading-relaxed">{stop.tip}</p>
         )}
 
         {/* Persona match */}
         {personaNote && (
           <div className="flex items-center gap-1.5">
-            <span className="ms fill text-xs" style={{ color: catStyle.text }}>auto_awesome</span>
-            <span className="text-xs" style={{ color: catStyle.text }}>{personaNote}</span>
+            <span className="ms fill text-[13px]" style={{ color: catStyle.text }}>auto_awesome</span>
+            <span className="text-[13px]" style={{ color: catStyle.text }}>{personaNote}</span>
           </div>
         )}
 
@@ -413,14 +413,14 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
         {/* Duration + Open in Maps row */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5">
-            <span className="ms text-[var(--color-text-3)] text-xs">timer</span>
-            <span className="text-[var(--color-text-3)] text-xs">~{durationLabel}</span>
+            <span className="ms text-[var(--color-text-3)] text-[13px]">timer</span>
+            <span className="text-[var(--color-text-3)] text-[13px]">~{durationLabel}</span>
           </div>
           <a
             href={mapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-surface)] text-[var(--color-text-2)] border border-[var(--color-border)]"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[13px] font-semibold bg-[var(--color-surface)] text-[var(--color-text-2)] border border-[var(--color-border)]"
           >
             <span className="ms text-xs">open_in_new</span>
             Open in Maps
@@ -434,7 +434,7 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
           className="flex items-center gap-2 px-0 py-2.5 border-t border-[var(--color-divider)]"
         >
           <span className="ms fill text-[var(--color-text-3)] text-sm">arrow_downward</span>
-          <span className="text-[var(--color-text-3)] text-xs leading-relaxed flex-1">{stop.transit_to_next}</span>
+          <span className="text-[var(--color-text-3)] text-[13px] leading-relaxed flex-1">{stop.transit_to_next}</span>
         </div>
       )}
     </div>
@@ -457,8 +457,8 @@ function TagChip({ tag }: { tag: string }) {
       className="flex items-center gap-1 px-2 py-1 rounded-full"
       style={{ background: s.bg }}
     >
-      <span className="ms fill text-xs" style={{ color: s.color }}>{s.icon}</span>
-      <span className="text-xs" style={{ color: s.color }}>{s.label}</span>
+      <span className="ms fill text-[13px]" style={{ color: s.color }}>{s.icon}</span>
+      <span className="text-[13px]" style={{ color: s.color }}>{s.label}</span>
     </div>
   );
 }

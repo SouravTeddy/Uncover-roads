@@ -70,12 +70,12 @@ export function SearchResultCard({
               {place.title}
             </p>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-text-3" style={{ fontSize: 10 }}>{categoryLabel}</span>
+              <span className="text-text-3" style={{ fontSize: 11 }}>{categoryLabel}</span>
               {place.rating != null && (
-                <span className="text-text-3" style={{ fontSize: 10 }}>⭐ {place.rating.toFixed(1)}</span>
+                <span className="text-text-3" style={{ fontSize: 11 }}>⭐ {place.rating.toFixed(1)}</span>
               )}
               {place.price_level != null && (
-                <span className="text-text-3" style={{ fontSize: 10 }}>{PRICE_LABELS[place.price_level]}</span>
+                <span className="text-text-3" style={{ fontSize: 11 }}>{PRICE_LABELS[place.price_level]}</span>
               )}
             </div>
           </div>
@@ -104,7 +104,7 @@ export function SearchResultCard({
               onClick={handleAdd}
               className="h-7 px-3 rounded-lg font-semibold"
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 background: isAdded ? 'rgba(52,199,89,.15)' : '#3b82f6',
                 color: isAdded ? '#34c759' : 'white',
                 border: isAdded ? '1px solid rgba(52,199,89,.3)' : 'none',
@@ -118,15 +118,15 @@ export function SearchResultCard({
         {/* Footer row */}
         <div className="flex items-center justify-between px-4 py-2">
           {toastText ? (
-            <span className="text-xs font-medium" style={{ color: '#34c759' }}>{toastText}</span>
+            <span className="text-[13px] font-medium" style={{ color: '#34c759' }}>{toastText}</span>
           ) : (
-            <span className="text-text-3" style={{ fontSize: 10 }}>
+            <span className="text-text-3" style={{ fontSize: 11 }}>
               {activeIndex + 1} of {results.length} · swipe to browse
             </span>
           )}
           <button
             onMouseDown={onViewAll}
-            className="text-xs font-medium"
+            className="text-[13px] font-medium"
             style={{ color: '#3b82f6' }}
           >
             View all {results.length} →

@@ -77,7 +77,7 @@ export function BottomNav() {
             </span>
             <span
               style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: active ? 700 : 500,
                 color: active ? 'var(--color-primary)' : 'var(--color-text-3)',
                 textTransform: 'uppercase',

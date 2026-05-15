@@ -122,7 +122,7 @@ export function ProfileScreen() {
             <div className="text-[11px] text-[var(--color-text-3)] truncate">{email}</div>
           </div>
           <div
-            className="px-2 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0"
+            className="px-2 py-0.5 rounded-full border text-[11px] font-bold flex-shrink-0"
             style={isPro
               ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
               : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
@@ -151,7 +151,7 @@ export function ProfileScreen() {
               <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mt-2">
                 {archetypeData.name}
               </div>
-              <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
+              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
             </div>
           </div>
         )}
@@ -167,7 +167,7 @@ export function ProfileScreen() {
           }}
         >
           <div className="flex-1 text-left min-w-0">
-            <p className="text-[var(--color-text-4)] text-[10px] uppercase tracking-widest mb-0.5">Travel Persona</p>
+            <p className="text-[var(--color-text-4)] text-[11px] uppercase tracking-widest mb-0.5">Travel Persona</p>
             <p className="text-[11px]" style={{ color: '#f97316' }}>Retune your persona →</p>
           </div>
         </button>
@@ -319,7 +319,7 @@ function AttemptsCounter({ count }: { count: number }) {
           ))}
         </div>
       </div>
-      <p className="text-[var(--color-text-3)] text-[10px]">
+      <p className="text-[var(--color-text-3)] text-[11px]">
         {used} of 3 used · 1st–2nd: full · 3rd: no curation · 4th+: upgrade
       </p>
     </div>
@@ -328,7 +328,7 @@ function AttemptsCounter({ count }: { count: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ color: 'var(--color-text-3)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
+    <p style={{ color: 'var(--color-text-3)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
   );
 }
 
@@ -357,7 +357,7 @@ function SettingsRow({
     >
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium ${labelClass}`} style={!labelClass ? { color: 'var(--color-text-2)' } : {}}>{label}</p>
-        {sublabel && <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-3)' }}>{sublabel}</p>}
+        {sublabel && <p className="text-[13px] mt-0.5" style={{ color: 'var(--color-text-3)' }}>{sublabel}</p>}
       </div>
       {right ?? <span className="ms text-[var(--color-text-4)] text-base">chevron_right</span>}
     </button>

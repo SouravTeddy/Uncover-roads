@@ -60,14 +60,14 @@ export function FilterBar({
             background: isAllMode ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
             border: isAllMode ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,.12)',
             color: isAllMode ? '#0c0c0e' : 'rgba(255,255,255,.65)',
-            fontSize: '0.72rem', fontWeight: 700,
+            fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
           }}
         >
           {allLabel}
           {allCount > 0 && (
-            <span style={{ opacity: 0.7, fontSize: '0.68rem' }}>· {allCount}</span>
+            <span style={{ opacity: 0.7, fontSize: '0.72rem' }}>· {allCount}</span>
           )}
           <span className="ms" style={{ fontSize: 13, opacity: 0.7, marginLeft: 1 }}>
             {expanded ? 'expand_less' : 'expand_more'}
@@ -91,16 +91,16 @@ export function FilterBar({
               : curatedLocked
               ? 'rgba(255,255,255,.35)'
               : 'rgba(212,168,83,.85)',
-            fontSize: '0.72rem', fontWeight: 700,
+            fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
             opacity: curatedLocked ? 0.75 : 1,
           }}
         >
-          <span style={{ fontSize: 10 }}>✦</span>
+          <span style={{ fontSize: 11 }}>✦</span>
           Curated
           {!curatedLocked && curatedCount > 0 && (
-            <span style={{ opacity: 0.65, fontSize: '0.68rem' }}>· {curatedCount}</span>
+            <span style={{ opacity: 0.65, fontSize: '0.72rem' }}>· {curatedCount}</span>
           )}
           {curatedLocked && (
             <span className="ms" style={{ fontSize: 12, marginLeft: 1 }}>lock</span>
@@ -127,7 +127,7 @@ export function FilterBar({
                   background: isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
                   border: isActive ? '1px solid rgba(212,168,83,.5)' : '1px solid rgba(255,255,255,.1)',
                   color: isActive ? '#d4a853' : 'rgba(255,255,255,.55)',
-                  fontSize: '0.68rem', fontWeight: 600,
+                  fontSize: '0.72rem', fontWeight: 600,
                   backdropFilter: 'blur(8px)', cursor: 'pointer',
                   whiteSpace: 'nowrap', transition: 'all 0.12s ease',
                 }}

@@ -85,7 +85,7 @@ export function DestinationScreen() {
         }}
       >
         <div>
-          <p className="text-[11px] text-[var(--color-text-3)] uppercase tracking-wide">{today}</p>
+          <p className="text-[12px] text-[var(--color-text-3)] uppercase tracking-wide">{today}</p>
           <h1
             className="font-[family-name:var(--font-heading)] font-bold text-[var(--color-text-1)]"
             style={{ fontSize: 28, letterSpacing: '-0.01em', lineHeight: 1.15 }}

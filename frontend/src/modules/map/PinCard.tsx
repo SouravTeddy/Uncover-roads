@@ -180,7 +180,7 @@ export function PinCard({
             {place.title}
           </h2>
           {details?.address && (
-            <p style={{ margin: '0 0 6px', fontSize: '0.75rem', color: TEXT3 }}>{details.address.split(',')[0]}</p>
+            <p style={{ margin: '0 0 6px', fontSize: '0.8rem', color: TEXT3 }}>{details.address.split(',')[0]}</p>
           )}
 
           {/* Rating + price + category chip */}
@@ -196,7 +196,7 @@ export function PinCard({
             {priceLevel !== null && priceLevel in PRICE && (
               <span style={{ fontSize: '0.75rem', color: TEXT3 }}>{PRICE[priceLevel as keyof typeof PRICE]}</span>
             )}
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: catColor, background: catColor + '18', borderRadius: 99, padding: '2px 8px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: catColor, background: catColor + '18', borderRadius: 99, padding: '2px 8px' }}>
               {categoryLabel}
             </span>
           </div>
@@ -208,7 +208,7 @@ export function PinCard({
               padding: '4px 10px', borderRadius: 99, marginBottom: 8,
               background: dateAlert.status === 'closed' ? 'rgba(234,179,8,.12)' : 'rgba(34,197,94,.1)',
               border: `1px solid ${dateAlert.status === 'closed' ? 'rgba(234,179,8,.3)' : 'rgba(34,197,94,.3)'}`,
-              fontSize: '0.7rem', fontWeight: 700,
+              fontSize: '0.75rem', fontWeight: 700,
               color: dateAlert.status === 'closed' ? '#fbbf24' : '#86efac',
             }}>
               {dateAlert.status === 'closed' ? '⚠️' : '✓'} {dateAlert.text}
@@ -222,7 +222,7 @@ export function PinCard({
                 <div key={badge.text} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '3px 9px', borderRadius: 999,
-                  fontSize: '0.68rem', fontWeight: 700,
+                  fontSize: '0.72rem', fontWeight: 700,
                   color: badge.color,
                   background: badge.bg,
                   border: `1px solid ${badge.border}`,
@@ -238,7 +238,7 @@ export function PinCard({
             {insightLoading ? (
               <ShimmerLine width="80%" height={14} />
             ) : insight ? (
-              <p style={{ margin: 0, fontSize: '0.78rem', color: TEXT3, fontStyle: 'italic', lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: TEXT3, fontStyle: 'italic', lineHeight: 1.5 }}>
                 <span style={{ color: AI_MARK, marginRight: 4 }}>✦</span>{insight}
               </p>
             ) : null}
@@ -251,7 +251,7 @@ export function PinCard({
               background: isFavourited ? 'rgba(239,68,68,.15)' : 'rgba(255,255,255,.06)',
               border: `1px solid ${isFavourited ? 'rgba(239,68,68,.4)' : BORDER}`,
               color: isFavourited ? '#f87171' : TEXT3,
-              fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
             }}>
               {isFavourited ? '❤️ Saved' : '🤍 Save'}
             </button>
@@ -260,7 +260,7 @@ export function PinCard({
               background: isSelected ? 'rgba(59,130,246,.15)' : ACCENT,
               border: `1px solid ${isSelected ? 'rgba(59,130,246,.4)' : 'transparent'}`,
               color: isSelected ? '#60a5fa' : '#fff',
-              fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
             }}>
               {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
             </button>

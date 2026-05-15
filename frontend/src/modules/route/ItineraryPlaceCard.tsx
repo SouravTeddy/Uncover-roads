@@ -171,7 +171,7 @@ export function ItineraryPlaceCard({
             background: 'rgba(251,191,36,.07)',
             border: '1px solid rgba(251,191,36,.15)',
             marginBottom: 14,
-            fontSize: '0.75rem', color: '#fbbf24', lineHeight: 1.5,
+            fontSize: '0.8rem', color: '#fbbf24', lineHeight: 1.5,
           }}>
             ⚡ {stop.tip}
           </div>
@@ -184,7 +184,7 @@ export function ItineraryPlaceCard({
               <div key={badge.text} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '3px 9px', borderRadius: 999,
-                fontSize: '0.68rem', fontWeight: 700,
+                fontSize: '0.72rem', fontWeight: 700,
                 color: badge.color,
                 background: badge.bg,
                 border: `1px solid ${badge.border}`,
@@ -199,7 +199,7 @@ export function ItineraryPlaceCard({
         {(insightLoading || insight || refPin?.whyRec || matchedPlace?.reason) && (
           <div style={{ marginBottom: 14 }}>
             <div style={{
-              fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.8px',
+              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.8px',
               textTransform: 'uppercase', color: 'var(--color-text-2)', marginBottom: 5,
             }}>
               Why this for you
@@ -208,7 +208,7 @@ export function ItineraryPlaceCard({
               <ShimmerBlock lines={2} />
             ) : (
               <div style={{
-                fontSize: '0.82rem', color: 'rgba(193,198,215,.8)',
+                fontSize: '0.85rem', color: 'rgba(193,198,215,.8)',
                 lineHeight: 1.55, fontStyle: 'italic',
               }}>
                 {insight ?? refPin?.whyRec ?? matchedPlace?.reason}
@@ -225,10 +225,10 @@ export function ItineraryPlaceCard({
             border: '1px solid rgba(251,191,36,.15)',
             marginBottom: 14,
           }}>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
               Local tip
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(193,198,215,.8)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '0.82rem', color: 'rgba(193,198,215,.8)', lineHeight: 1.5 }}>
               {refPin.localTip}
             </div>
           </div>
@@ -260,7 +260,7 @@ export function ItineraryPlaceCard({
               flex: 1, padding: '10px 0',
               background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
               borderRadius: 12, color: '#94a3b8',
-              fontSize: '0.78rem', fontWeight: 600, cursor: activeIdx > 0 ? 'pointer' : 'not-allowed',
+              fontSize: '0.82rem', fontWeight: 600, cursor: activeIdx > 0 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === 0 ? 0.3 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
             }}
@@ -277,7 +277,7 @@ export function ItineraryPlaceCard({
               border: activeIdx < stops.length - 1 ? '1px solid rgba(212,168,83,.3)' : '1px solid rgba(255,255,255,.08)',
               borderRadius: 12,
               color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : '#94a3b8',
-              fontSize: '0.78rem', fontWeight: 600,
+              fontSize: '0.82rem', fontWeight: 600,
               cursor: activeIdx < stops.length - 1 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === stops.length - 1 ? 0.3 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
