@@ -106,7 +106,7 @@ export function DestinationScreen() {
         {city && !showCalendar && (
           <button
             onClick={() => setShowCalendar(true)}
-            className="flex-shrink-0 flex items-center gap-1.5 h-10 px-3 rounded-2xl text-xs font-semibold"
+            className="flex-shrink-0 flex items-center gap-1.5 h-10 px-3 rounded-2xl text-[13px] font-semibold"
             style={{
               background: travelStartDate ? 'var(--color-primary-bg)' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${travelStartDate ? 'rgba(224,120,84,.3)' : 'rgba(255,255,255,.1)'}`,

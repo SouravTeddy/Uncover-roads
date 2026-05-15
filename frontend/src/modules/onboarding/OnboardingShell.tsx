@@ -162,7 +162,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
         >
           <span
             className="block font-semibold tracking-widest uppercase mb-2"
-            style={{ fontSize: 10, color: 'rgba(212,168,83,.65)' }}
+            style={{ fontSize: 11, color: 'rgba(212,168,83,.65)' }}
           >
             Step {String(currentIndex + 1).padStart(2, '0')} of {String(totalSteps).padStart(2, '0')}
           </span>

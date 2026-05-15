@@ -422,7 +422,7 @@ function StopCard({ index, total: _total, stop, startMins, endMins, category, ar
             rel="noopener noreferrer"
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[13px] font-semibold bg-[var(--color-surface)] text-[var(--color-text-2)] border border-[var(--color-border)]"
           >
-            <span className="ms text-xs">open_in_new</span>
+            <span className="ms text-[13px]">open_in_new</span>
             Open in Maps
           </a>
         </div>

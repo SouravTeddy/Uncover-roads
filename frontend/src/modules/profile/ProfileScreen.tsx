@@ -289,7 +289,7 @@ export function ProfileScreen() {
         <div className="flex justify-center mt-2 mb-6">
           <a
             href="mailto:sourav@uncoverroads.com?subject=Feedback on Uncover Roads"
-            className="flex items-center gap-2 text-[var(--color-text-4)] text-xs hover:text-[var(--color-text-3)] transition-colors"
+            className="flex items-center gap-2 text-[var(--color-text-4)] text-[13px] hover:text-[var(--color-text-3)] transition-colors"
           >
             <span className="ms text-sm">mail</span>
             Send Feedback
