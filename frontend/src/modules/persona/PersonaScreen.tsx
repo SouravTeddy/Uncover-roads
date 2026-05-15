@@ -281,7 +281,7 @@ export function PersonaScreen() {
         {/* Top bar */}
         <div className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
           <span className="ms text-text-2 text-xl">explore</span>
-          <span className="font-heading font-semibold text-text-1 text-sm">Uncover Roads</span>
+          <span className="font-heading font-bold text-text-1 text-sm">Uncover Roads</span>
         </div>
 
         {/* Hero card */}
@@ -307,7 +307,7 @@ export function PersonaScreen() {
           </span>
 
           {/* Name */}
-          <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+          <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mt-2">
             {meta.name}
           </div>
 

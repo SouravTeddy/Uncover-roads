@@ -128,7 +128,7 @@ export function WalkthroughScreen() {
               backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,.15)',
               borderRadius: 999, padding: '6px 14px',
-              fontSize: 12, fontWeight: 600,
+              fontSize: 12, fontWeight: 700,
               color: 'rgba(255,255,255,.7)', cursor: 'pointer',
             }}
           >

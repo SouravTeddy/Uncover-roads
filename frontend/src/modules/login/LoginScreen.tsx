@@ -160,7 +160,7 @@ export function LoginScreen() {
               <button
                 onClick={signInWithGoogle}
                 disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-heading font-semibold text-[0.95rem] disabled:opacity-60 mb-4 active:border-[var(--color-primary)] focus:border-[var(--color-primary)]"
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-heading font-bold text-[0.95rem] disabled:opacity-60 mb-4 active:border-[var(--color-primary)] focus:border-[var(--color-primary)]"
               >
                 {authLoading ? (
                   <span className="ms text-white animate-spin text-lg">autorenew</span>

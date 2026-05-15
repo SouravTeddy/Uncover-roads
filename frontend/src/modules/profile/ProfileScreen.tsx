@@ -148,7 +148,7 @@ export function ProfileScreen() {
               <span className="text-[42px] relative" style={{ filter: `drop-shadow(0 0 16px ${archetypeData.primary}70)` }}>
                 {archetypeData.emoji}
               </span>
-              <div className="font-[family-name:var(--font-heading)] text-[17px] font-semibold text-[var(--color-text-1)] mt-2">
+              <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mt-2">
                 {archetypeData.name}
               </div>
               <div className="text-[12px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
@@ -256,7 +256,7 @@ export function ProfileScreen() {
         <div className="px-4 mb-4">
           <button
             onClick={handleSave}
-            className={`w-full h-[52px] rounded-[18px] font-bold text-[15px] text-white transition-all active:scale-[.97] ${
+            className={`w-full h-[52px] rounded-[18px] font-heading font-bold text-[15px] text-white transition-all active:scale-[.97] ${
               saved
                 ? 'bg-green-600'
                 : 'bg-gradient-to-br from-[#d4a853] to-[#b8893a] [box-shadow:var(--shadow-primary)]'

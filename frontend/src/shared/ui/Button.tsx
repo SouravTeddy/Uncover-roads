@@ -12,7 +12,7 @@ const baseStyle: React.CSSProperties = {
   height: 52,
   borderRadius: 16,
   padding: '0 24px',
-  fontFamily: 'var(--font-sans)',
+  fontFamily: 'var(--font-heading)',
   fontSize: 15,
   fontWeight: 700,
   border: 'none',
