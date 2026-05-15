@@ -19,7 +19,7 @@ export function TravelDayCard({ day, fromCity, toCity }: Props) {
         <p className="text-[15px] font-bold text-[var(--color-text-1)] mt-0.5 truncate">
           {toCity ? `${fromCity} → ${toCity}` : fromCity}
         </p>
-        <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">
+        <p className="text-[13px] text-[var(--color-text-3)] mt-0.5">
           No stops scheduled — travel day
         </p>
       </div>

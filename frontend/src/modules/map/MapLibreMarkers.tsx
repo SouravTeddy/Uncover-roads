@@ -2,19 +2,18 @@ import { Marker } from 'react-map-gl/maplibre';
 import type { Place } from '../../shared/types';
 import { CATEGORY_ICONS } from './types';
 
-// Option B: icon + category color tint. Uniform 28px.
 const CATEGORY_COLORS: Record<string, string> = {
-  restaurant: '#d4a853',  // amber — dining
-  cafe:       '#b88c3a',  // amber-dark — cafe
-  park:       '#5a8a60',  // sage — park/nature
-  museum:     '#8878b8',  // violet — gallery/art
-  historic:   '#4a7fa0',  // sky — heritage/landmark
-  tourism:    '#4a7fa0',  // sky — tourism/landmark
-  event:      '#8878b8',  // violet — event
-  place:      '#6a6058',  // text3 — generic
+  restaurant: '#d4a853',
+  cafe:       '#b88c3a',
+  park:       '#5a8a60',
+  museum:     '#8878b8',
+  historic:   '#4a7fa0',
+  tourism:    '#4a7fa0',
+  event:      '#8878b8',
+  place:      '#6a6058',
 };
 
-const PIN_SIZE = 28;
+const PIN_SIZE = 30;
 
 interface Props {
   places: Place[];
@@ -64,30 +63,37 @@ export function MapLibreMarkers({
                 cursor: 'pointer',
               }}
             >
-              {/* Pin circle */}
+              {/* Pin circle — persona-chip style for default, vivid for selected */}
               <div style={{
                 width: PIN_SIZE, height: PIN_SIZE,
                 borderRadius: '50%',
-                backgroundColor: isInItinerary ? color : `${color}18`,
+                backgroundColor: isInItinerary
+                  ? color
+                  : isCardOpen
+                  ? '#2a2a2a'
+                  : '#1c1c1c',
                 border: isCardOpen
-                  ? `2.5px solid #fff`
+                  ? `2px solid ${color}`
                   : isInItinerary
                   ? `2px solid ${color}`
-                  : `1.5px solid ${color}80`,
+                  : '1.5px solid rgba(255,255,255,0.13)',
                 boxShadow: isCardOpen
-                  ? `0 0 0 2px ${color}60, 0 3px 12px rgba(0,0,0,.5)`
+                  ? `0 0 0 2px ${color}50, 0 3px 12px rgba(0,0,0,.5)`
                   : isInItinerary
                   ? `0 3px 10px ${color}40`
-                  : '0 2px 6px rgba(0,0,0,0.3)',
+                  : '0 2px 8px rgba(0,0,0,0.45)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s ease',
               }}>
                 <span
-                  className="ms fill"
+                  className="ms"
                   style={{
-                    fontSize: 14,
-                    color: isInItinerary ? '#0c0c0e' : color,
+                    fontSize: 15,
+                    color: isInItinerary ? '#0c0c0e' : isCardOpen ? color : '#a08d80',
                     lineHeight: 1,
+                    fontVariationSettings: isInItinerary
+                      ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                      : "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
                   }}
                 >
                   {icon}

@@ -35,7 +35,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
           <p className="font-[family-name:var(--font-heading)] mt-0.5 leading-tight" style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)' }}>
             {stop.title}
           </p>
-          <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">{stop.area}</p>
+          <p className="text-[13px] text-[var(--color-text-3)] mt-0.5">{stop.area}</p>
         </div>
         <button
           aria-label="Remove stop"
@@ -71,7 +71,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
             <span
               key={tag}
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: 999,
@@ -89,7 +89,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
 
       {/* Why for you */}
       <div className="px-4 pb-3">
-        <p className="text-[12px] text-[var(--color-text-2)] leading-relaxed">
+        <p className="text-[13px] text-[var(--color-text-2)] leading-relaxed">
           <span className="text-[var(--color-primary)] mr-1 font-semibold">✦</span>
           {stop.whyForYou}
         </p>
@@ -98,7 +98,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
       {/* Local tip */}
       {stop.localTip && (
         <div className="mx-4 mb-3 px-3 py-2 rounded-[10px] bg-[var(--color-primary-bg)] border border-[var(--color-border)]">
-          <p className="text-[11px] text-[var(--color-text-3)] italic leading-relaxed">{stop.localTip}</p>
+          <p className="text-[12px] text-[var(--color-text-3)] italic leading-relaxed">{stop.localTip}</p>
         </div>
       )}
 
@@ -110,7 +110,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
               href={stop.googleMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] font-semibold text-[var(--color-primary)] flex items-center gap-1"
+              className="text-[13px] font-semibold text-[var(--color-primary)] flex items-center gap-1"
             >
               <span className="ms text-[14px]">map</span>
               Google Maps
@@ -121,7 +121,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
               href={stop.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] font-semibold text-[var(--color-primary)] flex items-center gap-1"
+              className="text-[13px] font-semibold text-[var(--color-primary)] flex items-center gap-1"
             >
               <span className="ms text-[14px]">language</span>
               Website

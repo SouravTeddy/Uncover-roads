@@ -30,7 +30,7 @@ export function SearchResultRow({ result, isLast, onNavigate, onOpenCard }: Prop
         <span className="ms fill text-primary flex-shrink-0" style={{ fontSize: 16 }}>{icon}</span>
         <div className="min-w-0">
           <p className="text-white text-sm font-medium truncate">{name}</p>
-          {address && <p className="text-white/35 text-xs truncate mt-0.5">{address}</p>}
+          {address && <p className="text-white/35 text-[13px] truncate mt-0.5">{address}</p>}
         </div>
       </button>
 
