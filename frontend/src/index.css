@@ -10,6 +10,7 @@
 
   /* Primary — amber/gold */
   --color-primary:    #d4a853;
+  --color-primary-text: #d4a853;   /* same as --color-primary; gold text on dark #111111 → 8.9:1 */
   --color-primary-dk: #b8893a;
   --color-primary-bg: rgba(212,168,83,.14);
   --color-primary-glow: rgba(212,168,83,.22);
@@ -62,6 +63,7 @@
   --color-border:     rgba(44,36,32,.08);
   --color-border-m:   rgba(44,36,32,.14);
   --color-divider:    rgba(44,36,32,.06);
+  --color-primary-text: #7a5c18;   /* darkened gold; on #faf8f4 cream → 5.8:1 */
   --color-primary-bg: rgba(212,168,83,.10);
   --color-primary-glow: rgba(212,168,83,.15);
   --shadow-sm:        0 2px 8px rgba(44,36,32,.1);
