@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Place } from '../../shared/types';
 
-interface LastSession {
+export interface LastSession {
   places: Place[];
   city: string;
   savedAt: string;
