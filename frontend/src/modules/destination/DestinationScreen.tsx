@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { ExploreSearchBar } from './ExploreSearchBar';
+// TODO(Task 7): re-wire ExploreSearchBar with new onCitySelect / onNearMe props
 import { DateRangeCalendar } from './DateRangeCalendar';
 
 export function DestinationScreen() {
@@ -72,7 +72,7 @@ export function DestinationScreen() {
       {/* Search bar + 📅 icon row */}
       <div className="flex-shrink-0 flex items-center gap-2 pr-4">
         <div className="flex-1">
-          <ExploreSearchBar onCitySelected={handleCitySelected} />
+          {/* TODO(Task 7): <ExploreSearchBar onCitySelect={...} onNearMe={...} /> */}
         </div>
         {city && !showCalendar && (
           <button
