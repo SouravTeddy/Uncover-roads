@@ -275,6 +275,22 @@ html, body {
   65%       { transform: translateY(-2px); }
 }
 
+/* ── Persona reveal animations ──────────────────────────── */
+@keyframes persona-ring {
+  0%   { transform: scale(0.3); opacity: 0.55; }
+  100% { transform: scale(5.5); opacity: 0;    }
+}
+@keyframes persona-confetti-cw {
+  0%   { transform: translateY(0)    translateX(0)     rotate(0deg);    opacity: 1; }
+  18%  { opacity: 1; }
+  100% { transform: translateY(82vh) translateX(-32px) rotate(-560deg); opacity: 0; }
+}
+@keyframes persona-confetti-ccw {
+  0%   { transform: translateY(0)    translateX(0)    rotate(0deg);   opacity: 1; }
+  18%  { opacity: 1; }
+  100% { transform: translateY(82vh) translateX(32px) rotate(560deg); opacity: 0; }
+}
+
 /* ── Reel snap alignment ──────────────────────────────── */
 .reel-card {
   scroll-snap-align: start;

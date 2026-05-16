@@ -70,9 +70,22 @@ export function computePersonaBadges(
       badges.push({ text: '✓ Family-friendly', ...BADGE_BLUE });
     }
 
-    // 6. Slow pace + museum/historic
-    if (profile.pace === 'slow' && (place.category === 'museum' || place.category === 'historic')) {
+    // 6. Slow-paced persona + museum/historic
+    const isSlow = profile.flexibility >= 0.6;
+    if (isSlow && (place.category === 'museum' || place.category === 'historic')) {
       badges.push({ text: '✓ Good for slow exploration', ...BADGE_INDIGO });
+    }
+
+    // 7. Night creature persona badge (bar venues)
+    const isNightPersona = ['nightCreature', 'pulse'].includes(persona.archetype);
+    if (isNightPersona && (place.category as string) === 'bar') {
+      badges.push({ text: '✓ Fits your night style', ...BADGE_INDIGO });
+    }
+
+    // 8. Gastronaut persona + food venues
+    const isFoodPersona = ['gastronaut', 'epicurean'].includes(persona.archetype);
+    if (isFoodPersona && (['restaurant', 'food_market', 'street_food'] as string[]).includes(place.category)) {
+      badges.push({ text: '✓ Right up your street', ...BADGE_GREEN });
     }
   }
 
