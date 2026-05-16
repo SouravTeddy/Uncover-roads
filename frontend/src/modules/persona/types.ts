@@ -315,3 +315,25 @@ export const ARCHETYPE_COLORS: Record<string, { primary: string; glow: string }>
   slowtraveller: { primary: '#6b9470', glow: 'rgba(107,148,112,.22)' },
   explorer:      { primary: '#6b9470', glow: 'rgba(107,148,112,.22)' },
 };
+
+/** @deprecated Legacy emoji per archetype — kept for PersonaModal and TripsScreen */
+export const ARCHETYPE_EMOJI: Record<string, string> = {
+  voyager:       '✦',
+  wanderer:      '◈',
+  epicurean:     '◉',
+  historian:     '◎',
+  pulse:         '◈',
+  slowtraveller: '◇',
+  explorer:      '◆',
+};
+
+/** @deprecated Legacy short display name per archetype — kept for TripsScreen */
+export const ARCHETYPE_SHORT: Record<string, string> = {
+  voyager:       'Voyager',
+  wanderer:      'Wanderer',
+  epicurean:     'Epicurean',
+  historian:     'Historian',
+  pulse:         'Pulse Seeker',
+  slowtraveller: 'Slow Traveller',
+  explorer:      'Explorer',
+};

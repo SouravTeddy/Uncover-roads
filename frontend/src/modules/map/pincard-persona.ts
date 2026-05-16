@@ -78,13 +78,13 @@ export function computePersonaBadges(
 
     // 7. Night creature persona badge (bar venues)
     const isNightPersona = ['nightCreature', 'pulse'].includes(persona.archetype);
-    if (isNightPersona && place.category === 'bar') {
+    if (isNightPersona && (place.category as string) === 'bar') {
       badges.push({ text: '✓ Fits your night style', ...BADGE_INDIGO });
     }
 
     // 8. Gastronaut persona + food venues
     const isFoodPersona = ['gastronaut', 'epicurean'].includes(persona.archetype);
-    if (isFoodPersona && ['restaurant', 'food_market', 'street_food'].includes(place.category)) {
+    if (isFoodPersona && (['restaurant', 'food_market', 'street_food'] as string[]).includes(place.category)) {
       badges.push({ text: '✓ Right up your street', ...BADGE_GREEN });
     }
   }
