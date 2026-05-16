@@ -1,166 +1,111 @@
-import { useState, useEffect } from 'react';
+// frontend/src/modules/persona/PersonaScreen.tsx
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { syncPersonaProfile } from '../../shared/userSync';
-import { ARCHETYPE_COLORS } from './types';
+import { PERSONA_DEFINITIONS } from './types';
+import { resolvePersonaKey, legacyArchetypeToPersonaKey } from './persona-resolver';
+import type { PersonaKey } from './types';
 
-const MOOD_ARCHETYPE: Record<string, string> = {
-  explore:   'explorer',
-  relax:     'slowtraveller',
-  eat_drink: 'epicurean',
-  culture:   'historian',
-};
-
-const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: string }> = {
-  explorer:      { name: 'The Explorer',       emoji: '◆', tagline: 'You thrive on discovery — no plan survives contact with a great street.' },
-  slowtraveller: { name: 'The Slow Traveller', emoji: '◇', tagline: 'One great café beats ten tourist spots. You\'re here to be, not to tick.' },
-  epicurean:     { name: 'The Epicurean',      emoji: '◉', tagline: 'You travel stomach-first. Markets and hidden tables are your map.' },
-  historian:     { name: 'The Scholar',        emoji: '◎', tagline: 'Every city has layers. You\'re the one who finds the story behind the sign.' },
-};
-
-const ARCHETYPE_TRAITS: Record<string, [string, string, string]> = {
-  wanderer: [
-    "You leave before the crowds arrive.",
-    "You find the place they haven't named yet.",
-    "You don't take photos of everything.",
-  ],
-  historian: [
-    "You read the plaques everyone else walks past.",
-    "A place means more when you know what stood here before.",
-    "You leave with context, not just memories.",
-  ],
-  epicurean: [
-    "The best meal of your trip won't be in a guidebook.",
-    "You know the difference between a good market and a great one.",
-    "You travel through your stomach, always.",
-  ],
-  pulse: [
-    "You want to feel the city's heartbeat, not observe it.",
-    "Sleep is negotiable. Energy isn't.",
-    "The best nights are the ones with no plan.",
-  ],
-  slowtraveller: [
-    "You've sat at the same café table twice.",
-    "The neighbourhood matters more than the sights.",
-    "A good trip feels like you almost lived there.",
-  ],
-  voyager: [
-    "You know exactly how long it takes to get from A to B.",
-    "You've seen more cities than most people dream of.",
-    "Efficiency is how you fit more life in.",
-  ],
-  explorer: [
-    "The map is a starting point, not a plan.",
-    "You take the wrong turn on purpose sometimes.",
-    "Familiar and surprising — you want both.",
-  ],
-};
-
-// Inline hex colors — more reliable than dynamic Tailwind classes
-const ARCHETYPE_BG_COLORS: Record<string, { from: string; via: string; to: string }> = {
-  wanderer:      { from: '#1c1917', via: '#44403c', to: '#78350f' },
-  historian:     { from: '#1e293b', via: '#334155', to: '#44403c' },
-  epicurean:     { from: '#78350f', via: '#c2410c', to: '#b45309' },
-  pulse:         { from: '#2e1065', via: '#5b21b6', to: '#312e81' },
-  slowtraveller: { from: '#134e4a', via: '#115e59', to: '#44403c' },
-  voyager:       { from: '#0c4a6e', via: '#075985', to: '#1e293b' },
-  explorer:      { from: '#064e3b', via: '#065f46', to: '#44403c' },
-};
-
-const DAY_OPEN_LABELS: Record<string, string> = {
-  coffee:    'Coffee first',
-  breakfast: 'Sit-down breakfast',
-  straight:  'Straight to it',
-  grab_go:   'Grab & go',
-};
-const DAY_OPEN_ICONS: Record<string, string> = {
-  coffee: 'local_cafe', breakfast: 'egg_alt', straight: 'directions_run', grab_go: 'takeout_dining',
-};
-
-const EVENING_LABELS: Record<string, string> = {
-  bars:        'Bar hop',
-  dinner_wind: 'Dinner & wind down',
-  markets:     'Night markets',
-  early:       'Early night in',
-};
-const EVENING_ICONS: Record<string, string> = {
-  bars: 'local_bar', dinner_wind: 'restaurant', markets: 'storefront', early: 'bedtime',
-};
-
-const VENUE_LABELS: Record<string, string> = {
-  neighbourhood: 'Neighbourhoods', landmark: 'Landmarks', viewpoint: 'Viewpoints',
-  park: 'Parks', spa: 'Spas', cafe: 'Cafés', restaurant: 'Restaurants',
-  market: 'Markets', street_food: 'Street food', museum: 'Museums',
-  heritage: 'Heritage sites', gallery: 'Galleries', romantic: 'Romantic spots',
-  table_for_2: 'Intimate dining', family: 'Family spots', communal: 'Communal dining',
-  social: 'Social venues', group_booking: 'Group spots',
-};
-const VENUE_ICONS: Record<string, string> = {
-  neighbourhood: 'home_pin', landmark: 'account_balance', viewpoint: 'landscape',
-  park: 'park', spa: 'spa', cafe: 'local_cafe', restaurant: 'restaurant',
-  market: 'storefront', street_food: 'ramen_dining', museum: 'museum',
-  heritage: 'account_balance', gallery: 'palette', romantic: 'favorite',
-  table_for_2: 'dinner_dining', family: 'family_restroom', communal: 'groups',
-  social: 'diversity_3', group_booking: 'groups',
-};
-
-const SOCIAL_LABELS: Record<string, string> = {
-  solo: 'Solo', couple: 'Couple', family: 'Family', kids: 'Kid-friendly', group: 'Group',
-};
-const SOCIAL_ICONS: Record<string, string> = {
-  solo: 'person', couple: 'people', family: 'family_restroom', kids: 'child_care', group: 'groups',
-};
-
-const DIETARY_LABELS: Record<string, string> = {
-  vegan_boost: 'Plant-based', meat_flag: 'Meat-friendly',
-  halal_certified_only: 'Halal', kosher_certified_only: 'Kosher',
-  allergy_warning: 'Allergy aware',
-};
-const DIETARY_ICONS: Record<string, string> = {
-  vegan_boost: 'eco', meat_flag: 'set_meal',
-  halal_certified_only: 'mosque', kosher_certified_only: 'synagogue',
-  allergy_warning: 'warning',
-};
-
-function priceRange(min: number, max: number): string {
-  const symbols = ['', '$', '$$', '$$$', '$$$$'];
-  return min === max ? symbols[min] : `${symbols[min]} – ${symbols[max]}`;
-}
-
-function flexLabel(f: number): string {
-  if (f >= 0.7) return 'Flexible';
-  if (f >= 0.4) return 'Balanced';
-  return 'Structured';
-}
-
-// Framer-motion variants for staggered content reveal
+// ── Framer variants ───────────────────────────────────────────────────────────
 const containerVariants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
 };
 const sectionVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } },
+  hidden:   { opacity: 0, y: 20 },
+  visible:  { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
+};
+const tagContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.065, delayChildren: 0.08 } },
+};
+const tagItemVariants = {
+  hidden:  { opacity: 0, y: 10, scale: 0.9 },
+  visible: { opacity: 1, y: 0,  scale: 1,
+    transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
 };
 
+// ── Social context SVG icons ─────────────────────────────────────────────────
+const SOCIAL_ICONS: Record<string, string> = {
+  solo:   `<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>`,
+  couple: `<path d="M12 21l-1.4-1.3C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.2L12 21z"/>`,
+  family: `<circle cx="8.5" cy="6" r="2.5"/><circle cx="15.5" cy="6" r="2.5"/><circle cx="12" cy="16" r="2"/><path d="M3 19c0-3 2.5-5.5 5.5-5.5h1.5M21 19c0-3-2.5-5.5-5.5-5.5h-1.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  group:  `<circle cx="7" cy="7.5" r="2.5"/><circle cx="17" cy="7.5" r="2.5"/><circle cx="7" cy="16.5" r="2.5"/><circle cx="17" cy="16.5" r="2.5"/>`,
+};
+
+// ── Confetti burst ────────────────────────────────────────────────────────────
+function ConfettiBurst({ primary }: { primary: string }) {
+  const particles = useMemo(() =>
+    Array.from({ length: 32 }, (_, i) => ({
+      id: i,
+      left:     12 + Math.random() * 76,
+      size:      6 + Math.random() * 9,
+      isCircle: Math.random() > 0.45,
+      delay:    Math.random() * 0.42,
+      duration: 1.6 + Math.random() * 1.3,
+      cw:       Math.random() > 0.5,
+      color:    Math.random() > 0.5
+        ? primary
+        : `rgba(245,240,234,${0.55 + Math.random() * 0.45})`,
+    }))
+  , [primary]);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 50 }}>
+      {particles.map(p => (
+        <div key={p.id} style={{
+          position: 'absolute', top: '-12px', left: `${p.left}%`,
+          width: p.size, height: p.size,
+          borderRadius: p.isCircle ? '50%' : '2px',
+          background: p.color,
+          animationName:           p.cw ? 'persona-confetti-cw' : 'persona-confetti-ccw',
+          animationDuration:       `${p.duration}s`,
+          animationDelay:          `${p.delay}s`,
+          animationTimingFunction: 'linear',
+          animationFillMode:       'both',
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function PersonaScreen() {
   const { state, dispatch } = useAppStore();
-  const profile = state.personaProfile;
+  const profile    = state.personaProfile;
   const rawAnswers = state.rawOBAnswers;
 
-  // Beat 1: atmosphere (0–1500ms)
-  // Beat 2: traits appear (1500–3900ms)
-  // Beat 3: "YOU ARE / Name" full-screen (3900–5800ms)
-  // Beat 4: overlay exits, main content reveals (5800ms+)
+  // Beat 1: atmosphere (0–1.5s)
+  // Beat 2: traits (1.5–4s)
+  // Beat 3: statement + rings (4–6.5s)
+  // Beat 4: content reveal (6.5s+)
   const [beat, setBeat] = useState<1 | 2 | 3 | 4>(1);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     const t1 = setTimeout(() => setBeat(2), 1500);
-    const t2 = setTimeout(() => setBeat(3), 3900);
-    const t3 = setTimeout(() => setBeat(4), 5800);
+    const t2 = setTimeout(() => setBeat(3), 4000);
+    const t3 = setTimeout(() => { setBeat(4); setShowConfetti(true); }, 6500);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
+
+  // ── Resolve persona ─────────────────────────────────────────────────────────
+  const personaKey: PersonaKey = useMemo(() => {
+    if (rawAnswers) return resolvePersonaKey(rawAnswers);
+    // Fallback: if stored persona exists with old key, migrate it
+    const stored = state.persona?.archetype;
+    if (stored) return legacyArchetypeToPersonaKey(stored);
+    return 'flaneur';
+  }, [rawAnswers, state.persona?.archetype]);
+
+  const def = PERSONA_DEFINITIONS[personaKey];
+
+  // ── Social context ──────────────────────────────────────────────────────────
+  const rawGroup = rawAnswers?.group ?? 'solo';
+  const socialKey: 'solo' | 'couple' | 'family' | 'group' =
+    rawGroup === 'friends' ? 'group' : rawGroup;
 
   if (!profile) {
     return (
@@ -177,89 +122,74 @@ export function PersonaScreen() {
     );
   }
 
-  const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
-  const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? 'explorer';
-  const meta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
-  const color = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#3b82f6', glow: 'rgba(59,130,246,.22)' };
-  const traits = ARCHETYPE_TRAITS[archetypeKey] ?? ARCHETYPE_TRAITS.explorer;
-  const bgColors = ARCHETYPE_BG_COLORS[archetypeKey] ?? ARCHETYPE_BG_COLORS.explorer;
-  const bgGradient = `linear-gradient(to bottom, ${bgColors.from}, ${bgColors.via} 50%, ${bgColors.to})`;
-
-  const topVenues = Object.entries(profile.venue_weights)
-    .filter(([, w]) => (w ?? 0) > 0.1)
-    .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
-    .slice(0, 5)
-    .map(([k]) => k);
+  const bgGradient = `linear-gradient(to bottom, ${def.bgFrom}, ${def.bgTo})`;
+  const gradientText = `linear-gradient(135deg, ${def.primary}, ${def.secondary})`;
 
   function startPlanning() {
     dispatch({
       type: 'SET_PERSONA',
       persona: {
-        archetype:      archetypeKey,
-        archetype_name: meta.name,
-        archetype_desc: meta.tagline,
-        ritual:         null,
-        sensory:        null,
-        style:          null,
-        attractions:    [],
-        pace:           null,
-        social:         null,
-        insight:        meta.tagline,
-        venue_filters:  [],
-        itinerary_bias: [],
-        archetypeData:  { name: meta.name, desc: meta.tagline, venue_filters: [], itinerary_bias: [] },
+        archetype:      personaKey,
+        archetype_name: def.name,
+        archetype_desc: def.headline,
+        ritual:         null, sensory: null, style: null,
+        attractions: [], pace: null, social: null,
+        insight:        def.social[socialKey],
+        venue_filters:  def.placeTags,
+        itinerary_bias: def.chips,
+        archetypeData:  { name: def.name, desc: def.headline, venue_filters: def.placeTags, itinerary_bias: def.chips },
       },
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        syncPersonaProfile(session.user.id, archetypeKey, meta.name, rawAnswers).catch(console.warn);
+        syncPersonaProfile(session.user.id, personaKey, def.name, rawAnswers).catch((e) => console.warn('[persona] sync failed', e));
       }
     });
     dispatch({ type: 'GO_TO', screen: 'destination' });
   }
+
+  const statementLines = def.statement.split('\n');
 
   return (
     <div
       className="fixed inset-0 overflow-y-auto"
       style={{ zIndex: 20, background: bgGradient, animation: 'springUp 0.45s ease both' }}
     >
-      {/* ── Cinematic reveal overlay (Beats 1–3) ── */}
-      {/* AnimatePresence enables proper fade-out when beat hits 4 */}
+      {showConfetti && <ConfettiBurst primary={def.primary} />}
+
+      {/* ── Cinematic overlay ── */}
       <AnimatePresence>
         {beat < 4 && (
           <motion.div
             className="fixed inset-0 flex flex-col items-center justify-center px-8"
             style={{ zIndex: 30, background: bgGradient }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Beat 1 — Atmosphere: just the archetype symbol */}
+            {/* Beat 1 — big emoji */}
             {beat === 1 && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 0.3, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 0.35, scale: 1 }}
                 transition={{ duration: 1.2, ease: 'easeOut' }}
-                className="text-white text-center"
-                style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(80px, 22vw, 120px)', fontWeight: 700 }}
+                style={{ fontSize: 'clamp(80px, 22vw, 120px)', lineHeight: 1, filter: `drop-shadow(0 0 32px ${def.primary})` }}
               >
-                {meta.emoji}
+                {def.heroEmoji}
               </motion.div>
             )}
 
-            {/* Beat 2 — Trait lines */}
+            {/* Beat 2 — trait lines */}
             {beat === 2 && (
               <div className="flex flex-col items-center justify-center gap-6">
-                {traits.map((line, i) => (
+                {def.traits.map((line, i) => (
                   <motion.p
                     key={i}
                     className="text-white/90 text-center font-light tracking-wide"
                     style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px, 5vw, 22px)' }}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.75, duration: 0.7 }}
+                    transition={{ delay: i * 0.8, duration: 0.7 }}
                   >
                     {line}
                   </motion.p>
@@ -267,182 +197,191 @@ export function PersonaScreen() {
               </div>
             )}
 
-            {/* Beat 3 — "YOU ARE / Name" */}
+            {/* Beat 3 — statement + rings */}
             {beat === 3 && (
-              <motion.div
-                className="flex flex-col items-center gap-4"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <p className="text-white/50 text-[11px] tracking-[0.3em] uppercase">You are</p>
-                <h1
-                  className="text-white text-center leading-none"
-                  style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(48px, 14vw, 72px)', fontWeight: 700 }}
+              <div className="relative flex flex-col items-center justify-center">
+                {[0, 0.55].map((delay, i) => (
+                  <div key={i} className="absolute" style={{
+                    width: 200, height: 200, borderRadius: '50%',
+                    border: `1px solid ${i === 0 ? def.primary + '55' : 'rgba(255,255,255,0.18)'}`,
+                    animation: `persona-ring 2.2s ${delay}s ease-out infinite`,
+                  }} />
+                ))}
+                <motion.div
+                  className="relative flex flex-col items-center gap-3"
+                  initial={{ opacity: 0, scale: 0.88 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {meta.name}
-                </h1>
-              </motion.div>
+                  {statementLines.map((line, i) => (
+                    <span
+                      key={i}
+                      className="text-center leading-none"
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 'clamp(44px, 13vw, 64px)',
+                        fontWeight: 700,
+                        ...(i === def.gradientLine
+                          ? { background: gradientText, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }
+                          : { color: '#fff' }
+                        ),
+                      }}
+                    >
+                      {line}
+                    </span>
+                  ))}
+                </motion.div>
+              </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Main screen content — staggered section-by-section reveal ── */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate={beat >= 4 ? 'visible' : 'hidden'}
-      >
+      {/* ── Main content ── */}
+      <motion.div variants={containerVariants} initial="hidden" animate={beat >= 4 ? 'visible' : 'hidden'}>
+
         {/* Top bar */}
         <motion.div variants={sectionVariants} className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
           <span className="ms text-text-2 text-xl">explore</span>
           <span className="font-heading font-bold text-text-1 text-[15px]">Uncover Roads</span>
         </motion.div>
 
-        {/* Hero card */}
-        <motion.div
-          variants={sectionVariants}
-          className="rounded-[20px] p-5 relative overflow-hidden mx-4 mt-5"
-          style={{
-            background: `linear-gradient(150deg, ${color.glow}, rgba(255,255,255,.02))`,
-            border: `1px solid ${color.primary}28`,
-          }}
-        >
-          <div
-            className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
-            style={{ background: `radial-gradient(ellipse at left, ${color.primary}18, transparent 70%)` }}
+        {/* Header image */}
+        <motion.div variants={sectionVariants} className="relative w-full overflow-hidden" style={{ height: 220 }}>
+          <img
+            src={def.image}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="eager"
           />
-          <span
-            className="text-[42px] relative"
-            style={{ filter: `drop-shadow(0 0 16px ${color.primary}70)` }}
+          {/* Color grade overlay */}
+          <div className="absolute inset-0" style={{
+            background: `linear-gradient(to bottom, ${def.primary}44 0%, transparent 45%, ${def.bgFrom} 100%)`,
+          }} />
+          {/* Social badge */}
+          <div
+            className="absolute bottom-3 right-4 flex items-center justify-center"
+            style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.7)',
+              border: `1.5px solid ${def.primary}`,
+              color: def.primary,
+              boxShadow: `0 0 10px ${def.primary}60`,
+            }}
           >
-            {meta.emoji}
-          </span>
-          <div className="font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--color-text-1)] mt-2">
-            {meta.name}
-          </div>
-          <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">{meta.tagline}</div>
-        </motion.div>
-
-        {/* Stats row */}
-        <motion.div variants={sectionVariants} className="px-4 mt-5 grid grid-cols-3 gap-2">
-          {[
-            { icon: 'place', label: 'Stops / day', value: String(profile.stops_per_day) },
-            { icon: 'payments', label: 'Budget range', value: priceRange(profile.price_min, profile.price_max) },
-            { icon: 'tune', label: 'Pacing', value: flexLabel(profile.flexibility) },
-          ].map(stat => (
-            <div
-              key={stat.label}
-              className="flex flex-col items-center gap-1 py-3 rounded-2xl"
-              style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}
-            >
-              <span className="ms text-text-3 text-lg">{stat.icon}</span>
-              <span className="text-white font-heading font-bold text-[17px] leading-none">{stat.value}</span>
-              <span className="text-text-3 text-[11px]">{stat.label}</span>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Your Day — animated chips slide in from opposite sides */}
-        <motion.div variants={sectionVariants} className="px-5 mt-6">
-          <p className="text-text-3 text-[11px] font-bold uppercase tracking-widest mb-3">Your Day</p>
-          <div className="flex items-center gap-3">
-            {/* Morning chip — slides from left */}
-            <motion.div
-              initial={{ opacity: 0, x: -28 }}
-              animate={beat >= 4 ? { opacity: 1, x: 0 } : { opacity: 0, x: -28 }}
-              transition={{ delay: 0.25, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-1.5 px-3 h-10 rounded-full flex-shrink-0"
-              style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
-            >
-              <span className="ms fill text-sm" style={{ color: color.primary }}>
-                {DAY_OPEN_ICONS[profile.day_open] ?? 'wb_sunny'}
-              </span>
-              <span className="text-white text-[13px] font-semibold">
-                {DAY_OPEN_LABELS[profile.day_open] ?? profile.day_open}
-              </span>
-            </motion.div>
-
-            {/* Animated arrow */}
-            <motion.span
-              initial={{ opacity: 0, scale: 0.4 }}
-              animate={beat >= 4 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.4 }}
-              transition={{ delay: 0.45, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="ms text-text-3 text-base flex-shrink-0"
-            >
-              arrow_forward
-            </motion.span>
-
-            {/* Evening chip — slides from right */}
-            <motion.div
-              initial={{ opacity: 0, x: 28 }}
-              animate={beat >= 4 ? { opacity: 1, x: 0 } : { opacity: 0, x: 28 }}
-              transition={{ delay: 0.6, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              className="flex items-center gap-1.5 px-3 h-10 rounded-full flex-shrink-0"
-              style={{ background: `${color.primary}18`, border: `1px solid ${color.primary}35` }}
-            >
-              <span className="ms fill text-sm" style={{ color: color.primary }}>
-                {EVENING_ICONS[profile.evening_type] ?? 'nightlife'}
-              </span>
-              <span className="text-white text-[13px] font-semibold">
-                {EVENING_LABELS[profile.evening_type] ?? profile.evening_type}
-              </span>
-            </motion.div>
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"
+              dangerouslySetInnerHTML={{ __html: SOCIAL_ICONS[socialKey] }}
+            />
           </div>
         </motion.div>
 
-        {/* Top venues */}
-        {topVenues.length > 0 && (
-          <motion.div variants={sectionVariants} className="px-5 mt-5">
-            <p className="text-text-3 text-[11px] font-bold uppercase tracking-widest mb-3">
-              Places we'll surface
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {topVenues.map(v => (
-                <div
-                  key={v}
-                  className="flex items-center gap-1.5 px-3 h-9 rounded-xl bg-surface border border-white/10"
-                >
-                  <span className="ms text-[13px] text-text-3">{VENUE_ICONS[v] ?? 'place'}</span>
-                  <span className="text-text-2 text-[13px] font-medium">{VENUE_LABELS[v] ?? v}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        {/* Hero headline + social subtext */}
+        <motion.div variants={sectionVariants} className="px-5 mt-4">
+          <h1
+            className="leading-tight"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 'clamp(26px, 7vw, 32px)',
+              fontWeight: 700,
+              background: gradientText,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            {def.headline}
+          </h1>
+          <p className="text-text-2 text-[13px] mt-2 leading-relaxed" style={{ maxWidth: 300 }}>
+            {def.social[socialKey]}
+          </p>
+        </motion.div>
 
-        {/* Social + dietary flags */}
-        {(profile.social_flags.length > 0 || profile.dietary.length > 0) && (
-          <motion.div variants={sectionVariants} className="px-5 mt-4 flex flex-wrap gap-2">
-            {profile.social_flags.map(f => (
+        {/* Instinct chips */}
+        <motion.div variants={sectionVariants} className="px-5 mt-5">
+          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Your travel instincts</p>
+          <div className="flex gap-2 flex-wrap">
+            {def.chips.map((chip, i) => (
               <div
-                key={f}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-full bg-surface border border-white/8"
+                key={`chip-${i}`}
+                className="px-3 h-9 rounded-full flex items-center text-[13px] font-semibold"
+                style={{
+                  background: i === 0 ? `${def.primary}20` : i === 1 ? `${def.secondary}18` : `${def.primary}12`,
+                  border:     i === 0 ? `1px solid ${def.primary}45` : i === 1 ? `1px solid ${def.secondary}40` : `1px solid ${def.primary}30`,
+                  color:      i === 1 ? def.secondary : def.primary,
+                }}
               >
-                <span className="ms fill text-[13px] text-text-3">{SOCIAL_ICONS[f] ?? 'person'}</span>
-                <span className="text-text-2 text-[13px]">{SOCIAL_LABELS[f] ?? f}</span>
+                {chip}
               </div>
             ))}
-            {profile.dietary.map(f => (
-              <div
-                key={f}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-full bg-surface border border-white/8"
+          </div>
+        </motion.div>
+
+        {/* Route style */}
+        <motion.div variants={sectionVariants} className="px-5 mt-5">
+          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-2">How we build your day</p>
+          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
+            <span style={{ fontSize: 18 }}>🗺️</span>
+            <p className="text-text-2 text-[13px] leading-relaxed">{def.route}</p>
+          </div>
+        </motion.div>
+
+        {/* Prioritise / Skip */}
+        <motion.div variants={sectionVariants} className="px-5 mt-4 flex flex-col gap-2">
+          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
+            <span className="text-[13px] font-bold mt-0.5" style={{ color: def.primary }}>✦</span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: def.primary }}>We surface</p>
+              <p className="text-text-2 text-[13px] leading-relaxed">{def.prioritise}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
+            <span className="text-[13px] font-bold mt-0.5 opacity-40">✕</span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-text-3">We skip</p>
+              <p className="text-text-2 text-[13px] leading-relaxed">{def.skip}</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Place tags — per-tag stagger */}
+        <motion.div variants={sectionVariants} className="px-5 mt-5">
+          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Places for you</p>
+          <motion.div
+            className="flex flex-wrap gap-2"
+            variants={tagContainerVariants}
+            initial="hidden"
+            animate={beat >= 4 ? 'visible' : 'hidden'}
+          >
+            {def.placeTags.map((tag, i) => (
+              <motion.div
+                key={`tag-${i}`}
+                variants={tagItemVariants}
+                className="flex items-center px-3 h-9 rounded-xl text-[13px] font-medium"
+                style={{
+                  background: i % 2 === 0 ? `${def.primary}14` : `${def.secondary}12`,
+                  border:     i % 2 === 0 ? `1px solid ${def.primary}30` : `1px solid ${def.secondary}28`,
+                  color:      i % 2 === 0 ? def.primary : def.secondary,
+                }}
               >
-                <span className="ms fill text-[13px] text-text-3">{DIETARY_ICONS[f] ?? 'info'}</span>
-                <span className="text-text-2 text-[13px]">{DIETARY_LABELS[f] ?? f}</span>
-              </div>
+                {tag}
+              </motion.div>
             ))}
           </motion.div>
-        )}
+        </motion.div>
 
         {/* CTAs */}
         <motion.div variants={sectionVariants} className="px-5 mt-8 pb-14">
           <button
             onClick={startPlanning}
-            className="w-full h-14 rounded-2xl font-heading font-bold text-white text-[17px] flex items-center justify-center gap-2 mb-3"
-            style={{ background: `linear-gradient(135deg, ${color.primary}, ${color.primary}bb)` }}
+            className="relative overflow-hidden w-full h-14 rounded-2xl font-heading font-bold text-white text-[17px] flex items-center justify-center gap-2 mb-3"
+            style={{ background: `linear-gradient(135deg, ${def.primary}, ${def.secondary})` }}
           >
+            <motion.div
+              className="absolute inset-y-0 pointer-events-none"
+              style={{ width: '55%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)' }}
+              initial={{ left: '-60%', skewX: -15 }}
+              animate={{ left: '160%', skewX: -15 }}
+              transition={{ delay: 0.9, duration: 0.62, ease: 'easeInOut' }}
+            />
             Start Planning
             <span className="ms text-base">arrow_forward</span>
           </button>
@@ -454,6 +393,7 @@ export function PersonaScreen() {
             Retake Assessment
           </button>
         </motion.div>
+
       </motion.div>
     </div>
   );
