@@ -20,7 +20,7 @@ export interface PersonaDefinition {
   gradientLine: number;
   /** Hero card headline — one punchy sentence, no label */
   headline: string;
-  /** Hero card subtext template — use {{social}} placeholder replaced per-context */
+  /** Single emoji displayed full-size in Beat 1 atmospheric reveal */
   heroEmoji: string;
   /** 3 short instinct chips, max 3 words each */
   chips: [string, string, string];
