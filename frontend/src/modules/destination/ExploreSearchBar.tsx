@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { CitySearch } from './CitySearch';
 
 interface ExploreSearchBarProps {
-  onCitySelect: (city: string) => void;
+  onCitySelect: (city: string, geo?: import('../../shared/types').GeoData) => void;
   onNearMe: () => void;
 }
 
 export function ExploreSearchBar({ onCitySelect, onNearMe }: ExploreSearchBarProps) {
   const [showSearch, setShowSearch] = useState(false);
 
-  function handleSelect(city: string) {
-    onCitySelect(city);
+  function handleSelect(city: string, geo?: { lat: number; lon: number; name?: string; address?: string } | null) {
+    onCitySelect(city, geo ? (geo as import('../../shared/types').GeoData) : undefined);
     setShowSearch(false);
   }
 
@@ -53,7 +53,7 @@ export function ExploreSearchBar({ onCitySelect, onNearMe }: ExploreSearchBarPro
           style={{ background: 'var(--color-bg)' }}
         >
           <div className="p-4">
-            <CitySearch onSelect={(city) => handleSelect(city)} />
+            <CitySearch onSelect={(city, geo) => handleSelect(city, geo)} />
           </div>
           <button
             type="button"

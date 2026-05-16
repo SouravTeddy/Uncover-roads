@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Place } from '../../shared/types';
+import type { Place, GeoData } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { useLastSession } from './useLastSession';
@@ -29,8 +29,9 @@ export function DestinationScreen() {
     });
   }, []);
 
-  function handleCitySelect(selectedCity: string) {
+  function handleCitySelect(selectedCity: string, geo?: GeoData) {
     dispatch({ type: 'SET_CITY', city: selectedCity });
+    if (geo) dispatch({ type: 'SET_CITY_GEO', geo });
     setPendingCity(selectedCity);
     setShowCalendar(true);
   }
