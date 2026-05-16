@@ -9,16 +9,13 @@ interface ExploreHeroProps {
 }
 
 const ARCHETYPE_PHOTOS: Record<string, string> = {
-  flaneur:       'photo-1499856871958-5b9627545d1a',  // Paris streets
-  gastronaut:    'photo-1540959733332-eab4deabeeaf',  // Tokyo food
-  nightCreature: 'photo-1524231757912-21f4fe3a7200',  // Istanbul night
-  wanderer:      'photo-1585208798174-6cedd4b9b6e5',  // Lisbon
-  historian:     'photo-1552832230-c0197dd311b5',     // Rome
-  epicurean:     'photo-1583422409516-2895a77efded',  // Barcelona
-  explorer:      'photo-1528360983277-13d401cdc186',  // Kyoto
-  slowtraveller: 'photo-1534351590666-13e3e96b5017',  // Amsterdam
-  voyager:       'photo-1520986606214-8b456906c813',  // London
-  pulse:         'photo-1496442226666-8d4d0e62e6e9',  // NYC
+  historian:     'photo-1552832230-c0197dd311b5',  // Rome
+  epicurean:     'photo-1540959733332-eab4deabeeaf', // Tokyo food
+  wanderer:      'photo-1585208798174-6cedd4b9b6e5', // Lisbon
+  voyager:       'photo-1520986606214-8b456906c813', // London
+  explorer:      'photo-1528360983277-13d401cdc186', // Kyoto
+  slowtraveller: 'photo-1534351590666-13e3e96b5017', // Amsterdam
+  pulse:         'photo-1524231757912-21f4fe3a7200', // Istanbul night
 };
 
 const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1476514525405-09b77a9d1f66?w=800&q=80';

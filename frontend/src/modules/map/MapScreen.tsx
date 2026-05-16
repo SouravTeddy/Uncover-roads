@@ -100,7 +100,7 @@ export function MapScreen() {
     if (currentScreen !== 'map' && selectedPlaces.length > 0 && city) {
       saveSession(selectedPlaces, city);
     }
-  }, [currentScreen]);
+  }, [currentScreen, selectedPlaces, city]);
 
   // Consume a place requested from the Explore tab — open its PinCard then clear
   useEffect(() => {
