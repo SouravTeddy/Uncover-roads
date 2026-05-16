@@ -21,6 +21,7 @@ import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
+import { saveSession } from '../destination/useLastSession';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
@@ -77,7 +78,7 @@ export function MapScreen() {
   } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
-  const { pendingActivePlace } = state;
+  const { pendingActivePlace, currentScreen } = state;
   const personaProfile = state.personaProfile ?? null;
 
   // New store state for phase 4
@@ -93,6 +94,13 @@ export function MapScreen() {
     if (!city) dispatch({ type: 'GO_TO', screen: 'destination' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save session when navigating away from the map screen
+  useEffect(() => {
+    if (currentScreen !== 'map' && selectedPlaces.length > 0 && city) {
+      saveSession(selectedPlaces, city);
+    }
+  }, [currentScreen]);
 
   // Consume a place requested from the Explore tab — open its PinCard then clear
   useEffect(() => {
