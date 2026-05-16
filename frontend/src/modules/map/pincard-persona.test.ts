@@ -68,8 +68,8 @@ describe('computePersonaBadges', () => {
     expect(badges.some(b => b.text.includes('Family-friendly'))).toBe(true);
   });
 
-  it('returns "Good for slow exploration" for slow pace + museum', () => {
-    const profile = { ...baseProfile, pace: 'slow' as const };
+  it('returns "Good for slow exploration" for high flexibility + museum', () => {
+    const profile = { ...baseProfile, flexibility: 0.7 };
     const place   = { ...basePlace, category: 'museum' as const };
     const badges  = computePersonaBadges(place, basePersona, profile);
     expect(badges.some(b => b.text.includes('slow exploration'))).toBe(true);
