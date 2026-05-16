@@ -29,10 +29,10 @@ const tagItemVariants = {
 
 // ── Social context SVG icons ─────────────────────────────────────────────────
 const SOCIAL_ICONS: Record<string, string> = {
-  solo:   `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>`,
-  couple: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21l-1.4-1.3C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.2L12 21z"/></svg>`,
-  family: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8.5" cy="6" r="2.5"/><circle cx="15.5" cy="6" r="2.5"/><circle cx="12" cy="16" r="2"/><path d="M3 19c0-3 2.5-5.5 5.5-5.5h1.5M21 19c0-3-2.5-5.5-5.5-5.5h-1.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`,
-  group:  `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="7.5" r="2.5"/><circle cx="17" cy="7.5" r="2.5"/><circle cx="7" cy="16.5" r="2.5"/><circle cx="17" cy="16.5" r="2.5"/></svg>`,
+  solo:   `<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>`,
+  couple: `<path d="M12 21l-1.4-1.3C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.2L12 21z"/>`,
+  family: `<circle cx="8.5" cy="6" r="2.5"/><circle cx="15.5" cy="6" r="2.5"/><circle cx="12" cy="16" r="2"/><path d="M3 19c0-3 2.5-5.5 5.5-5.5h1.5M21 19c0-3-2.5-5.5-5.5-5.5h-1.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  group:  `<circle cx="7" cy="7.5" r="2.5"/><circle cx="17" cy="7.5" r="2.5"/><circle cx="7" cy="16.5" r="2.5"/><circle cx="17" cy="16.5" r="2.5"/>`,
 };
 
 // ── Confetti burst ────────────────────────────────────────────────────────────
@@ -103,9 +103,9 @@ export function PersonaScreen() {
   const def = PERSONA_DEFINITIONS[personaKey];
 
   // ── Social context ──────────────────────────────────────────────────────────
-  const socialCtx = (rawAnswers?.group ?? 'solo') as 'solo' | 'couple' | 'family' | 'group';
-  // 'friends' maps to 'group' messaging
-  const socialKey = socialCtx === 'friends' ? 'group' : socialCtx;
+  const rawGroup = rawAnswers?.group ?? 'solo';
+  const socialKey: 'solo' | 'couple' | 'family' | 'group' =
+    rawGroup === 'friends' ? 'group' : rawGroup;
 
   if (!profile) {
     return (
@@ -143,7 +143,7 @@ export function PersonaScreen() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        syncPersonaProfile(session.user.id, personaKey, def.name, rawAnswers).catch(console.warn);
+        syncPersonaProfile(session.user.id, personaKey, def.name, rawAnswers).catch((e) => console.warn('[persona] sync failed', e));
       }
     });
     dispatch({ type: 'GO_TO', screen: 'destination' });
@@ -268,10 +268,11 @@ export function PersonaScreen() {
               color: def.primary,
               boxShadow: `0 0 10px ${def.primary}60`,
             }}
-            dangerouslySetInnerHTML={{ __html: `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">${
-              SOCIAL_ICONS[socialKey].replace(/<svg[^>]*>/, '').replace('</svg>', '')
-            }</svg>` }}
-          />
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"
+              dangerouslySetInnerHTML={{ __html: SOCIAL_ICONS[socialKey] }}
+            />
+          </div>
         </motion.div>
 
         {/* Hero headline + social subtext */}
@@ -300,7 +301,7 @@ export function PersonaScreen() {
           <div className="flex gap-2 flex-wrap">
             {def.chips.map((chip, i) => (
               <div
-                key={chip}
+                key={`chip-${i}`}
                 className="px-3 h-9 rounded-full flex items-center text-[13px] font-semibold"
                 style={{
                   background: i === 0 ? `${def.primary}20` : i === 1 ? `${def.secondary}18` : `${def.primary}12`,
@@ -352,7 +353,7 @@ export function PersonaScreen() {
           >
             {def.placeTags.map((tag, i) => (
               <motion.div
-                key={tag}
+                key={`tag-${i}`}
                 variants={tagItemVariants}
                 className="flex items-center px-3 h-9 rounded-xl text-[13px] font-medium"
                 style={{
