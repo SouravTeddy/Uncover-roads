@@ -8,6 +8,7 @@ import type { PersonaKey } from './types';
  * Pure function — no side effects.
  */
 export function resolvePersonaKey(raw: RawOBAnswers): PersonaKey {
+  // Key order here is the intentional tiebreaker priority (flaneur = safe default)
   const scores: Record<PersonaKey, number> = {
     flaneur: 0, gastronaut: 0, slowScholar: 0, neighbourhoodLocal: 0,
     efficientExplorer: 0, aesthete: 0, nightCreature: 0, ritualSeeker: 0,
@@ -74,11 +75,13 @@ export function resolvePersonaKey(raw: RawOBAnswers): PersonaKey {
 
   // ── Budget ─────────────────────────────────────────────────────────────────
   if (budget === 'budget')    scores.neighbourhoodLocal += 1;
+  if (budget === 'mid_range') scores.efficientExplorer += 1;
   if (budget === 'luxury')    { scores.aesthete += 2; scores.gastronaut += 1; }
   if (budget === 'comfortable') scores.aesthete += 1;
 
   // ── Group ──────────────────────────────────────────────────────────────────
   if (group === 'solo')    { scores.flaneur += 1; scores.nightCreature += 1; scores.aesthete += 1; }
+  if (group === 'couple')  { scores.aesthete += 1; scores.gastronaut += 1; }
   if (group === 'family')  { scores.neighbourhoodLocal += 1; scores.ritualSeeker += 1; scores.nightCreature -= 2; }
   if (group === 'friends') scores.nightCreature += 2;
 
