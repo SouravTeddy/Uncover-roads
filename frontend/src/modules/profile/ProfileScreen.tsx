@@ -137,7 +137,7 @@ export function ProfileScreen() {
             <div
               className="rounded-[20px] p-5 relative overflow-hidden"
               style={{
-                background: `linear-gradient(150deg, ${archetypeData.glow}, rgba(255,255,255,.02))`,
+                background: `linear-gradient(150deg, ${archetypeData.glow}, var(--color-surface))`,
                 border: `1px solid ${archetypeData.primary}28`,
               }}
             >
@@ -241,7 +241,7 @@ export function ProfileScreen() {
             <button
               onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
               className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
-              style={{ background: theme === 'dark' ? 'var(--color-primary)' : 'rgba(255,255,255,.15)' }}
+              style={{ background: theme === 'dark' ? 'var(--color-primary)' : 'var(--color-border-m)' }}
               aria-label="Toggle appearance"
             >
               <span
