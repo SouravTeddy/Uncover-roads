@@ -63,7 +63,7 @@ export function LoginScreen() {
 
   if (checking) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
+      <div data-theme="dark" className="min-h-screen w-full flex items-center justify-center" style={{ background: 'var(--color-bg)' }}>
         <span className="ms text-primary text-3xl animate-spin">autorenew</span>
       </div>
     );
@@ -76,6 +76,7 @@ export function LoginScreen() {
 
   return (
     <div
+      data-theme="dark"
       className="min-h-screen w-full flex items-center justify-center px-6 py-8"
       style={{
         background:
