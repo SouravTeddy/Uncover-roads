@@ -1,6 +1,6 @@
 import type { TransitMode } from '../../shared/types';
 
-const TEXT1 = '#f1f5f9';
+const TEXT1 = 'var(--color-text-1)';
 
 interface Props {
   mode: TransitMode;
@@ -74,9 +74,9 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-3)', marginBottom: 4 }}>from</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: TEXT1 }}>{from}</div>
         <div style={{ margin: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--color-border-m)' }} />
           <span className="ms fill text-[var(--color-sky)] text-[22px]">{cfg.icon}</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.15)' }} />
+          <div style={{ flex: 1, height: 1, background: 'var(--color-border-m)' }} />
         </div>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 13, color: 'var(--color-text-3)', marginBottom: 4 }}>to</div>
         <div style={{ fontFamily: 'var(--font-heading)', fontSize: 26, fontWeight: 800, color: TEXT1 }}>{to}</div>
@@ -115,7 +115,7 @@ export function JourneyTransitCard({ mode, from, to, durationMinutes, distanceKm
           rel="noopener noreferrer"
           style={{
             height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.2)',
+            background: 'var(--color-surface)', border: '1px solid var(--color-border-m)',
             borderRadius: 16, textDecoration: 'none',
             fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 700, color: TEXT1,
           }}

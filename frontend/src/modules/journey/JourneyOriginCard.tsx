@@ -1,8 +1,8 @@
 import type { OriginPlace } from '../../shared/types';
 
-const SURFACE2 = '#1A1F2B';
-const TEXT3    = '#8e9099';
-const BORDER   = 'rgba(255,255,255,.08)';
+const SURFACE2 = 'var(--color-surface2)';
+const TEXT3    = 'var(--color-text-3)';
+const BORDER   = 'var(--color-border)';
 
 const ORIGIN_ICONS: Record<string, string> = {
   home: 'home', hotel: 'hotel', airport: 'flight', custom: 'location_on',
@@ -66,7 +66,7 @@ export function JourneyOriginCard({ place, advisorMessage, onEdit }: Props) {
       {/* Edit */}
       <button
         onClick={onEdit}
-        style={{ marginTop: 'auto', height: 44, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
+        style={{ marginTop: 'auto', height: 44, background: 'var(--color-surface)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
       >
         Change starting point
       </button>
