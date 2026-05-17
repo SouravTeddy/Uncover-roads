@@ -81,7 +81,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
         <div style={{ position: 'absolute', top: 14, left: 16 }}>
           <div style={{
             fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700,
-            color: '#fff', lineHeight: 1.1, marginBottom: 3,
+            color: 'var(--color-text-1)', lineHeight: 1.1, marginBottom: 3,
           }}>
             {cityName}
           </div>
@@ -109,10 +109,10 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
           position: 'absolute', bottom: 14, left: 16,
           display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '6px 12px', borderRadius: 999,
-          background: 'rgba(255,255,255,.12)',
+          background: 'var(--color-surface)',
           backdropFilter: 'blur(8px)',
           fontSize: 11, fontWeight: 600, color: 'var(--color-text-1)',
-          border: '1px solid rgba(255,255,255,.15)',
+          border: '1px solid var(--color-border-m)',
           cursor: 'pointer',
         }} onClick={e => { e.stopPropagation(); handlePlay(); }}>
           <span className="ms fill" style={{ fontSize: 14 }}>play_arrow</span>
