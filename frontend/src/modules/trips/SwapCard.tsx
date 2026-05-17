@@ -38,8 +38,8 @@ export function SwapCard({ card, onResolve }: Props) {
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             borderRadius: 16,
-            background: 'rgba(255,255,255,.04)',
-            border: '1px solid rgba(255,255,255,.1)',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
             padding: 16,
             display: 'flex', flexDirection: 'column', gap: 8,
           }}
@@ -48,11 +48,11 @@ export function SwapCard({ card, onResolve }: Props) {
             <span className="text-base">🔄</span>
             <span className="text-[var(--color-text-3)] text-[10px] uppercase tracking-widest font-bold">Stop {card.stopIdx + 1}</span>
           </div>
-          <p className="text-white font-semibold text-sm leading-snug">{card.stopName}</p>
+          <p className="text-[var(--color-text-1)] font-semibold text-sm leading-snug">{card.stopName}</p>
           <div
             style={{
               padding: '8px 10px', borderRadius: 10,
-              background: 'rgba(255,255,255,.06)',
+              background: 'var(--color-surface2)',
             }}
           >
             <p className="text-[var(--color-text-3)] text-[9px] uppercase tracking-widest font-bold mb-1">Current</p>
@@ -80,7 +80,7 @@ export function SwapCard({ card, onResolve }: Props) {
             <span className="text-base">✦</span>
             <span className="text-indigo-400 text-[10px] uppercase tracking-widest font-bold">Suggested</span>
           </div>
-          <p className="text-white font-semibold text-sm leading-snug">{card.stopName}</p>
+          <p className="text-[var(--color-text-1)] font-semibold text-sm leading-snug">{card.stopName}</p>
           <p className="text-[var(--color-text-2)] text-xs leading-snug flex-1">{card.suggestedNote}</p>
           <div className="flex gap-2 mt-auto">
             <button
@@ -93,7 +93,7 @@ export function SwapCard({ card, onResolve }: Props) {
             <button
               onClick={e => { e.stopPropagation(); onResolve(card.id, 'original'); }}
               className="flex-1 py-2 rounded-xl text-[11px] font-semibold"
-              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: 'var(--color-text-3)' }}
+              style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-3)' }}
             >
               Keep original
             </button>

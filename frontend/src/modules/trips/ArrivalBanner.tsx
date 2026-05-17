@@ -75,7 +75,7 @@ export function ArrivalBanner({ tripId, travelDate, city, onCheckNow }: Props) {
         <button
           onClick={handleNotYet}
           className="flex-1 py-2 rounded-xl text-xs font-semibold"
-          style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: 'var(--color-text-3)' }}
+          style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-3)' }}
         >
           Not yet
         </button>

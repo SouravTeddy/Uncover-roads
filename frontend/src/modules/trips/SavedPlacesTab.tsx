@@ -109,7 +109,7 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
                 onClick={() => onOpenMap(group.city)}
                 className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2"
                 style={{
-                  background: 'rgba(255,255,255,.05)',
+                  background: 'var(--color-surface2)',
                   border: '1px solid var(--color-border)',
                   color: 'var(--color-text-2)',
                 }}
