@@ -62,7 +62,7 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
           background: 'rgba(15,20,30,0.93)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,0.11)',
+          border: '1px solid var(--color-border-m)',
           borderRadius: 22,
           padding: '24px 32px',
           textAlign: 'center',
@@ -85,7 +85,7 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
         {/* Cycling message */}
         <p
           style={{
-            color: '#fff',
+            color: 'var(--color-text-1)',
             fontSize: 14,
             fontWeight: 600,
             margin: '0 0 4px',
@@ -99,7 +99,7 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
         {/* Static sub-label */}
         <p
           style={{
-            color: 'rgba(255,255,255,0.28)',
+            color: 'var(--color-text-3)',
             fontSize: 11,
             margin: 0,
             fontWeight: 400,

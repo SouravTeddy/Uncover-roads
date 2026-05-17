@@ -6,9 +6,9 @@ interface Props {
 }
 
 const ACCENT = '#3b82f6'
-const SURFACE = 'rgba(255,255,255,0.06)'
-const BORDER = 'rgba(255,255,255,0.1)'
-const TEXT3 = 'rgba(193,198,215,0.7)'
+const SURFACE = 'var(--color-border)'
+const BORDER = 'var(--color-border)'
+const TEXT3 = 'var(--color-text-3)'
 
 /**
  * Discovery mode toggle — appears on the map after a city is selected.
