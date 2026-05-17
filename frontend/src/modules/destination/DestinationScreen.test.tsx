@@ -8,9 +8,10 @@ function renderInProvider() {
 }
 
 describe('DestinationScreen', () => {
-  it('renders the app title', () => {
+  it('renders the explore hero section', () => {
     renderInProvider();
-    expect(screen.getByText('uncover roads')).toBeTruthy();
+    // ExploreHero renders a greeting (Good morning/afternoon/evening/night)
+    expect(screen.getByText(/Good (morning|afternoon|evening|night), Traveller/i)).toBeTruthy();
   });
 
   it('does not show calendar initially', () => {
