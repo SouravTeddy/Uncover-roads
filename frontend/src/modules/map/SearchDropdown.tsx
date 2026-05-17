@@ -77,7 +77,7 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
   if (!hasRows) return null;
 
   const rowStyle: React.CSSProperties = {
-    borderBottom: '1px solid rgba(255,255,255,.06)',
+    borderBottom: '1px solid var(--color-border)',
     padding: '10px 14px',
     display: 'flex',
     flexDirection: 'column',
@@ -93,8 +93,8 @@ export function SearchDropdown({ parsedQuery, locationSuggestions, dateValidatio
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    color: 'rgba(255,255,255,.3)',
-    borderBottom: '1px solid rgba(255,255,255,.06)',
+    color: 'var(--color-text-3)',
+    borderBottom: '1px solid var(--color-border)',
   };
   const nudgeStyle: React.CSSProperties = {
     fontSize: 10,

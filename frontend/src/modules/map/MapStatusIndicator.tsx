@@ -13,7 +13,7 @@ export function MapStatusIndicator({ status }: Props) {
         zIndex: 1000,
         background: 'rgba(15,20,30,.85)',
         backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,.14)',
+        border: '1px solid var(--color-border-m)',
         pointerEvents: 'none',
       }}
     >
