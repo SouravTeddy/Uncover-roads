@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 
-const TEXT3  = '#8e9099';
-const BORDER = 'rgba(255,255,255,.08)';
+const TEXT3  = 'var(--color-text-3)';
+const BORDER = 'var(--color-border)';
 
 export function JourneyAdvisorThread() {
   const { state } = useAppStore();
@@ -19,7 +19,7 @@ export function JourneyAdvisorThread() {
         style={{
           width: '100%', height: 36,
           display: 'flex', alignItems: 'center', gap: 8,
-          background: 'rgba(255,255,255,.03)', border: `1px solid ${BORDER}`,
+          background: 'var(--color-surface)', border: `1px solid ${BORDER}`,
           borderRadius: 12, padding: '0 14px', cursor: 'pointer',
         }}
       >
