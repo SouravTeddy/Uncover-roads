@@ -84,19 +84,19 @@ export function PrivacyScreen({ onBack, onSignOut }: { onBack: () => void; onSig
         {/* Delete confirmation dialog */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 flex items-center justify-center px-6" style={{ zIndex: 60, background: 'rgba(0,0,0,.7)' }}>
-            <div className="w-full max-w-sm rounded-2xl px-6 py-6" style={{ background: '#111827', border: '1px solid rgba(255,255,255,.1)' }}>
-              <p className="text-white font-bold text-base mb-1">Delete account?</p>
+            <div className="w-full max-w-sm rounded-2xl px-6 py-6" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[var(--color-text-1)] font-bold text-base mb-1">Delete account?</p>
               <p className="text-[var(--color-text-4)] text-sm mb-4">This is permanent. Type DELETE to confirm.</p>
               <input
                 value={deleteInput}
                 onChange={e => setDeleteInput(e.target.value)}
                 placeholder="Type DELETE"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm mb-4 outline-none focus:border-red-400/40"
+                className="w-full bg-[var(--color-surface2)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-[var(--color-text-1)] text-sm mb-4 outline-none focus:border-red-400/40"
               />
               <div className="flex gap-3">
                 <button
                   onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}
-                  className="flex-1 h-11 rounded-xl text-sm text-[var(--color-text-3)] border border-white/10"
+                  className="flex-1 h-11 rounded-xl text-sm text-[var(--color-text-3)] border border-[var(--color-border)]"
                 >Cancel</button>
                 <button
                   onClick={handleDeleteAccount}
