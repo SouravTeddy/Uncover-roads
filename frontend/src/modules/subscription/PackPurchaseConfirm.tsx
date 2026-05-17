@@ -25,7 +25,7 @@ export function PackPurchaseConfirm({ tripsAdded, onDone }: Props) {
         <span className="ms fill text-green-400 text-4xl">check_circle</span>
       </div>
 
-      <p className="font-heading font-bold text-white text-xl mb-1 text-center">
+      <p className="font-heading font-bold text-[var(--color-text-1)] text-xl mb-1 text-center">
         {tripsAdded} trip{tripsAdded !== 1 ? 's' : ''} added!
       </p>
       <p className="text-[var(--color-text-3)] text-sm text-center mb-8">
@@ -35,7 +35,7 @@ export function PackPurchaseConfirm({ tripsAdded, onDone }: Props) {
       {/* Auto-replenish toggle */}
       <div
         className="w-full rounded-2xl p-4 mb-6 flex items-start gap-3"
-        style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)' }}
+        style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
       >
         <div className="flex-1">
           <p className="text-[var(--color-text-1)] text-sm font-semibold">Auto top-up when trips run out</p>
@@ -46,7 +46,7 @@ export function PackPurchaseConfirm({ tripsAdded, onDone }: Props) {
         <button
           onClick={() => setAutoReplenish(v => !v)}
           className="flex-shrink-0 mt-0.5 w-11 h-6 rounded-full relative transition-colors"
-          style={{ background: autoReplenish ? '#f97316' : 'rgba(255,255,255,.12)' }}
+          style={{ background: autoReplenish ? '#f97316' : 'var(--color-border-m)' }}
         >
           <div
             className="absolute top-1 w-4 h-4 rounded-full bg-white transition-transform"
