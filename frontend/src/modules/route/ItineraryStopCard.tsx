@@ -75,8 +75,8 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: 999,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--color-border)',
+                border: '1px solid var(--color-border-m)',
                 color: 'var(--color-text-3)',
                 whiteSpace: 'nowrap',
               }}

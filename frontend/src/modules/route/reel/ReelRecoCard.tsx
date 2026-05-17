@@ -9,7 +9,7 @@ export function ReelRecoCard({ card }: Props) {
   return (
     <div className="reel-card" style={{
       position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden',
-      background: 'linear-gradient(135deg, #0c0c0e, #0c1020)',
+      background: 'var(--color-bg)',
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
       padding: '0 22px 88px',
     }}>
@@ -18,11 +18,11 @@ export function ReelRecoCard({ card }: Props) {
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>Near your next stop</span>
       </div>
 
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.4)', marginBottom: 6 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 6 }}>
         While you&apos;re here
       </p>
-      <p style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginBottom: 6 }}>{card.label}</p>
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', marginBottom: 20 }}>{card.consequence}</p>
+      <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-1)', marginBottom: 6 }}>{card.label}</p>
+      <p style={{ fontSize: 13, color: 'var(--color-text-2)', marginBottom: 20 }}>{card.consequence}</p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {['Best match', 'Near route', 'Open now'].map(tag => (

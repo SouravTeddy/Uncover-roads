@@ -74,9 +74,9 @@ export function ItineraryPlaceCard({
   if (!stop) {
     return (
       <div style={{
-        height: '100%', background: '#0f1420',
+        height: '100%', background: 'var(--color-bg)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#64748b', fontSize: '0.85rem',
+        color: 'var(--color-text-3)', fontSize: '0.85rem',
       }}>
         No stops planned yet
       </div>
@@ -120,7 +120,7 @@ export function ItineraryPlaceCard({
               style={{
                 width: i === activeIdx ? 20 : 6,
                 height: 6, borderRadius: 3,
-                background: i === activeIdx ? 'var(--color-primary)' : 'rgba(255,255,255,.2)',
+                background: i === activeIdx ? 'var(--color-primary)' : 'var(--color-text-4)',
                 border: 'none', padding: 0, cursor: 'pointer',
                 transition: 'width 0.2s ease, background 0.2s ease',
               }}
@@ -162,7 +162,7 @@ export function ItineraryPlaceCard({
           )}
         </div>
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginBottom: 14 }} />
+        <div style={{ height: 1, background: 'var(--color-divider)', marginBottom: 14 }} />
 
         {/* Tip / intel pill */}
         {stop.tip && (
@@ -208,7 +208,7 @@ export function ItineraryPlaceCard({
               <ShimmerBlock lines={2} />
             ) : (
               <div style={{
-                fontSize: '0.85rem', color: 'rgba(193,198,215,.8)',
+                fontSize: '0.85rem', color: 'var(--color-text-1)',
                 lineHeight: 1.55, fontStyle: 'italic',
               }}>
                 {insight ?? refPin?.whyRec ?? matchedPlace?.reason}
@@ -225,10 +225,10 @@ export function ItineraryPlaceCard({
             border: '1px solid rgba(251,191,36,.15)',
             marginBottom: 14,
           }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary-text)', marginBottom: 4 }}>
               Local tip
             </div>
-            <div style={{ fontSize: '0.82rem', color: 'rgba(193,198,215,.8)', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--color-text-1)', lineHeight: 1.5 }}>
               {refPin.localTip}
             </div>
           </div>
@@ -258,8 +258,8 @@ export function ItineraryPlaceCard({
             disabled={activeIdx === 0}
             style={{
               flex: 1, padding: '10px 0',
-              background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)',
-              borderRadius: 12, color: '#94a3b8',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              borderRadius: 12, color: 'var(--color-text-2)',
               fontSize: '0.82rem', fontWeight: 600, cursor: activeIdx > 0 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === 0 ? 0.3 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -273,10 +273,10 @@ export function ItineraryPlaceCard({
             disabled={activeIdx === stops.length - 1}
             style={{
               flex: 1, padding: '10px 0',
-              background: activeIdx < stops.length - 1 ? 'rgba(212,168,83,.15)' : 'rgba(255,255,255,.05)',
-              border: activeIdx < stops.length - 1 ? '1px solid rgba(212,168,83,.3)' : '1px solid rgba(255,255,255,.08)',
+              background: activeIdx < stops.length - 1 ? 'var(--color-primary-bg)' : 'var(--color-surface)',
+              border: activeIdx < stops.length - 1 ? '1px solid var(--color-border-m)' : '1px solid var(--color-border)',
               borderRadius: 12,
-              color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : '#94a3b8',
+              color: activeIdx < stops.length - 1 ? 'var(--color-primary)' : 'var(--color-text-2)',
               fontSize: '0.82rem', fontWeight: 600,
               cursor: activeIdx < stops.length - 1 ? 'pointer' : 'not-allowed',
               opacity: activeIdx === stops.length - 1 ? 0.3 : 1,

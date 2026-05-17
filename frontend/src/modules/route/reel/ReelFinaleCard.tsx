@@ -49,11 +49,11 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         star
       </span>
 
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: '#fff', textAlign: 'center', marginBottom: 8, animation: active ? 'fadeUp .5s .15s both' : 'none' }}>
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: 'var(--color-text-1)', textAlign: 'center', marginBottom: 8, animation: active ? 'fadeUp .5s .15s both' : 'none' }}>
         {card.city ?? 'Your trip'} awaits
       </h2>
 
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
         {card.totalStops} stops · Saved to your trips
       </p>
 
@@ -75,7 +75,7 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         {saved ? 'Saved to trips' : 'Save trip'}
       </button>
 
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-3)', textAlign: 'center' }}>
         Find it in Saved Trips · Tap play to relive it
       </p>
     </div>
