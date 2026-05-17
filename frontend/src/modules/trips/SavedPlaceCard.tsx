@@ -2,12 +2,12 @@ import type { FavouritedPin } from '../../shared/types';
 
 // Gradient backgrounds per category spec
 const CATEGORY_GRADIENT: Record<string, string> = {
-  historic:    'linear-gradient(135deg, #2d1f18, #1a130e)',
-  museum:      'linear-gradient(135deg, #2d1f18, #1a130e)',
-  park:        'linear-gradient(135deg, #1a2018, #111a0e)',
-  restaurant:  'linear-gradient(135deg, #201818, #150f0f)',
-  cafe:        'linear-gradient(135deg, #201818, #150f0f)',
-  tourism:     'linear-gradient(135deg, #182028, #0f1620)',
+  historic:    'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
+  museum:      'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
+  park:        'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
+  restaurant:  'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
+  cafe:        'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
+  tourism:     'linear-gradient(135deg, var(--color-surface2), var(--color-surface))',
 };
 
 const CATEGORY_EMOJI: Record<string, string> = {

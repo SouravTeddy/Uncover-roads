@@ -34,9 +34,9 @@ export function FootprintChips({ footprints, activeCityIdx, onChipTap }: Props) 
               background: isActive ? 'rgba(99,102,241,.25)' : 'rgba(15,20,30,.75)',
               border: isActive
                 ? '1px solid rgba(99,102,241,.5)'
-                : '1px solid rgba(255,255,255,.12)',
+                : '1px solid var(--color-border-m)',
               backdropFilter: 'blur(12px)',
-              color: isActive ? '#c7d2fe' : 'rgba(193,198,215,.8)',
+              color: isActive ? '#c7d2fe' : 'var(--color-text-2)',
               fontSize: '0.8125rem', fontWeight: 700,
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',

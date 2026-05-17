@@ -85,22 +85,22 @@ export function ItineraryMapCard({ mapRef, center, selectedPlaces, activeStopIdx
         onClick={onFullMap}
         style={{
           position: 'absolute', top: 12, right: 12, zIndex: 10,
-          background: 'rgba(15,20,30,.8)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,.12)', borderRadius: 10,
+          background: 'var(--color-bg)', backdropFilter: 'blur(10px)',
+          border: '1px solid var(--color-border-m)', borderRadius: 10,
           width: 36, height: 36,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
         }}
       >
-        <span className="ms" style={{ fontSize: 18, color: '#94a3b8' }}>fit_screen</span>
+        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-2)' }}>fit_screen</span>
       </button>
 
       {selectedPlaces[activeStopIdx] && selectedPlaces[activeStopIdx + 1] && (
         <div style={{
           position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
           zIndex: 10,
-          background: 'rgba(15,20,30,.8)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,.1)', borderRadius: 999,
+          background: 'var(--color-bg)', backdropFilter: 'blur(10px)',
+          border: '1px solid var(--color-border)', borderRadius: 999,
           padding: '5px 12px',
           display: 'flex', alignItems: 'center', gap: 6,
           whiteSpace: 'nowrap',

@@ -203,7 +203,7 @@ export function SubscriptionScreen() {
               <div className="font-semibold" style={{ color: '#86efac' }}>
                 You've spent ${packSpend.toFixed(2)} on packs
               </div>
-              <div style={{ color: '#94a3b8' }}>
+              <div style={{ color: 'var(--color-text-3)' }}>
                 Pro plan for the same period would've cost ${proEquivalent.toFixed(2)} — saving
                 you ${nudgeSavings.toFixed(2)}.
               </div>

@@ -58,8 +58,8 @@ export function FilterBar({
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '5px 12px', height: 28, borderRadius: 999,
             background: isAllMode ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
-            border: isAllMode ? '1px solid var(--color-primary)' : '1px solid rgba(255,255,255,.12)',
-            color: isAllMode ? '#0c0c0e' : 'rgba(255,255,255,.65)',
+            border: isAllMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border-m)',
+            color: isAllMode ? '#0c0c0e' : 'var(--color-text-2)',
             fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
@@ -84,13 +84,13 @@ export function FilterBar({
             border: active === 'curated'
               ? '1px solid var(--color-primary)'
               : curatedLocked
-              ? '1px solid rgba(255,255,255,.1)'
+              ? '1px solid var(--color-border)'
               : '1px solid rgba(212,168,83,.3)',
             color: active === 'curated'
               ? 'var(--color-primary)'
               : curatedLocked
-              ? 'rgba(255,255,255,.35)'
-              : 'rgba(212,168,83,.85)',
+              ? 'var(--color-text-3)'
+              : 'var(--color-primary-text)',
             fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
@@ -125,8 +125,8 @@ export function FilterBar({
                   display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                   padding: '4px 10px', height: 26, borderRadius: 999,
                   background: isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
-                  border: isActive ? '1px solid rgba(212,168,83,.5)' : '1px solid rgba(255,255,255,.1)',
-                  color: isActive ? '#d4a853' : 'rgba(255,255,255,.55)',
+                  border: isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  color: isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
                   fontSize: '0.72rem', fontWeight: 600,
                   backdropFilter: 'blur(8px)', cursor: 'pointer',
                   whiteSpace: 'nowrap', transition: 'all 0.12s ease',

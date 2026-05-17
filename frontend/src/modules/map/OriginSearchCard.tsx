@@ -5,13 +5,13 @@ import { ORIGIN_STRINGS, PLACE_TYPE_LABELS } from '../../shared/strings';
 import { classifyOriginType } from '../../shared/origin-utils';
 import type { OriginPlace } from '../../shared/types';
 
-const SURFACE2 = '#1A1F2B';
+const SURFACE2 = 'var(--color-surface2)';
 const PRIMARY  = '#3b82f6';
 const PRIMARY_BG = 'rgba(59,130,246,.12)';
 const PRIMARY_BORDER = 'rgba(59,130,246,.25)';
-const TEXT1 = '#f1f5f9';
-const TEXT3 = '#8e9099';
-const BORDER = 'rgba(255,255,255,.08)';
+const TEXT1 = 'var(--color-text-1)';
+const TEXT3 = 'var(--color-text-3)';
+const BORDER = 'var(--color-border)';
 
 const TYPE_BADGE_STYLES: Record<string, { bg: string; color: string }> = {
   hotel:   { bg: 'rgba(168,85,247,.15)',   color: '#a855f7' },
@@ -90,7 +90,7 @@ export function OriginSearchCard({ onDone }: Props) {
               aria-label="Remove place"
               style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: 'rgba(255,255,255,.08)',
+                background: 'var(--color-border)',
                 border: `1px solid ${BORDER}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer',
@@ -163,7 +163,7 @@ export function OriginSearchCard({ onDone }: Props) {
                   left: rect.left,
                   width: rect.width,
                   zIndex: 9999,
-                  background: '#1E2535',
+                  background: 'var(--color-surface2)',
                   border: `1px solid ${BORDER}`,
                   borderRadius: 16,
                   overflowY: 'auto',
@@ -269,7 +269,7 @@ export function OriginSearchCard({ onDone }: Props) {
               aria-label="Remove selection"
               style={{
                 width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                background: 'rgba(255,255,255,.08)',
+                background: 'var(--color-border)',
                 border: `1px solid ${BORDER}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer',

@@ -330,7 +330,7 @@ export function JourneyScreen() {
                 className={`h-[28px] px-4 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap flex-shrink-0 ${
                   active
                     ? 'bg-[var(--color-primary-bg)] border border-[var(--color-primary)] text-[var(--color-primary)] scale-[1.05]'
-                    : 'text-[var(--color-text-3)] bg-white/5 border border-white/[0.08]'
+                    : 'text-[var(--color-text-3)] bg-[var(--color-surface)] border border-[var(--color-border)]'
                 }`}
               >
                 {label}
@@ -340,7 +340,7 @@ export function JourneyScreen() {
           {/* Add city */}
           <button
             onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
-            className="flex-shrink-0 h-[28px] px-3 rounded-full text-[12px] text-[var(--color-text-3)] border border-dashed border-[var(--color-border)] bg-white/[0.03]"
+            className="flex-shrink-0 h-[28px] px-3 rounded-full text-[12px] text-[var(--color-text-3)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)]"
           >
             + city
           </button>

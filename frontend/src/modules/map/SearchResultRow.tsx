@@ -19,7 +19,7 @@ export function SearchResultRow({ result, isLast, onNavigate, onOpenCard }: Prop
   return (
     <div
       className="flex items-center"
-      style={{ borderBottom: isLast ? 'none' : '1px solid rgba(255,255,255,.05)' }}
+      style={{ borderBottom: isLast ? 'none' : '1px solid var(--color-divider)' }}
     >
       {/* Left zone — navigate to pin */}
       <button

@@ -27,9 +27,9 @@ export function ViewAllSheet({ results, addedIds, onSelect, onAdd, onClose, quer
         className="fixed inset-x-0 bottom-0 rounded-t-2xl overflow-hidden"
         style={{
           zIndex: 29,
-          background: 'rgba(13,17,23,.98)',
+          background: 'var(--color-surface)',
           backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,.1)',
+          border: '1px solid var(--color-border)',
           maxHeight: '60vh',
           display: 'flex',
           flexDirection: 'column',
@@ -39,7 +39,7 @@ export function ViewAllSheet({ results, addedIds, onSelect, onAdd, onClose, quer
         <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b border-white/8">
           <div
             className="w-8 h-1 rounded-full mx-auto mb-3"
-            style={{ background: 'rgba(255,255,255,.2)' }}
+            style={{ background: 'var(--color-border-m)' }}
           />
           <div className="flex items-center justify-between">
             <p className="text-text-1 font-semibold text-sm capitalize">{queryLabel}</p>
@@ -60,7 +60,7 @@ export function ViewAllSheet({ results, addedIds, onSelect, onAdd, onClose, quer
                 key={place.id}
                 onClick={() => { onSelect(index); onClose(); }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-white/5"
-                style={{ borderTop: index > 0 ? '1px solid rgba(255,255,255,.06)' : undefined }}
+                style={{ borderTop: index > 0 ? '1px solid var(--color-divider)' : undefined }}
               >
                 <div
                   className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -76,7 +76,7 @@ export function ViewAllSheet({ results, addedIds, onSelect, onAdd, onClose, quer
                 <div className="flex-1 min-w-0">
                   <p
                     className="font-semibold text-sm truncate"
-                    style={{ color: added ? '#34c759' : 'rgba(255,255,255,.9)' }}
+                    style={{ color: added ? '#34c759' : 'var(--color-text-1)' }}
                   >
                     {index + 1}. {place.title}
                   </p>

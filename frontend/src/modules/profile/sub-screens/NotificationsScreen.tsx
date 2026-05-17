@@ -59,8 +59,8 @@ export function NotificationsScreen({ onBack }: { onBack: () => void }) {
                 className="flex-shrink-0 w-11 h-6 rounded-full transition-all relative"
                 style={{
                   background: row.locked
-                    ? 'rgba(255,255,255,.08)'
-                    : notifPrefs[row.key] ? '#f97316' : 'rgba(255,255,255,.12)',
+                    ? 'var(--color-border)'
+                    : notifPrefs[row.key] ? '#f97316' : 'var(--color-border-m)',
                 }}
               >
                 <div

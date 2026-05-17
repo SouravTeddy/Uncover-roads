@@ -5,10 +5,10 @@ import { computeTotalDays } from '../map/trip-capacity-utils';
 import { calculateTravelDays } from '../map/journey-legs';
 import { isJourneyMode, getJourneyCities } from '../map/journey-utils';
 
-const TEXT1    = '#f1f5f9';
-const TEXT3    = '#8e9099';
-const BORDER   = 'rgba(255,255,255,.08)';
-const SURFACE  = '#141921';
+const TEXT1    = 'var(--color-text-1)';
+const TEXT3    = 'var(--color-text-3)';
+const BORDER   = 'var(--color-border)';
+const SURFACE  = 'var(--color-surface)';
 
 function fmt(iso: string) {
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -82,12 +82,12 @@ export function JourneyStrip({ onDurationChange }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, marginBottom: 28 }}>
               <button
                 onClick={() => setDraftDays(d => Math.max(1, d - 1))}
-                style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
+                style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--color-surface2)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
               >−</button>
               <span style={{ fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 800, color: TEXT1, minWidth: 60, textAlign: 'center' }}>{draftDays}</span>
               <button
                 onClick={() => setDraftDays(d => d + 1)}
-                style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.06)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
+                style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--color-surface2)', border: `1px solid ${BORDER}`, fontSize: 22, color: TEXT1, cursor: 'pointer' }}
               >+</button>
             </div>
 

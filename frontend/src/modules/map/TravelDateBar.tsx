@@ -38,7 +38,7 @@ export function TravelDateBar({ startDate, endDate, cities, onTap }: Props) {
         padding: '6px 14px',
         borderRadius: 999,
         background: 'rgba(15,20,30,0.88)',
-        border: '1px solid rgba(255,255,255,0.12)',
+        border: '1px solid var(--color-border-m)',
         backdropFilter: 'blur(12px)',
         cursor: 'pointer',
         whiteSpace: 'nowrap',

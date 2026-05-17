@@ -109,7 +109,7 @@ export function ItineraryReelScreen() {
   if (!activeItinerary) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span className="ms" style={{ fontSize: 32, color: 'rgba(255,255,255,.2)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+        <span className="ms" style={{ fontSize: 32, color: 'var(--color-text-4)', animation: 'spin 1s linear infinite' }}>autorenew</span>
       </div>
     );
   }
@@ -202,18 +202,18 @@ export function ItineraryReelScreen() {
         <div style={{
           position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
           display: 'flex', alignItems: 'center', gap: 12,
-          background: 'rgba(18,18,22,.92)', backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(242,237,230,.07)',
+          background: 'var(--color-surface)', backdropFilter: 'blur(16px)',
+          border: '1px solid var(--color-border)',
           padding: '12px 18px', borderRadius: 999,
           boxShadow: '0 8px 32px rgba(0,0,0,.5)',
           zIndex: 40, whiteSpace: 'nowrap',
         }}>
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,.7)' }}>
-            <strong style={{ color: '#fff' }}>{undoPending.label}</strong> removed
+          <span style={{ fontSize: 13, color: 'var(--color-text-2)' }}>
+            <strong style={{ color: 'var(--color-text-1)' }}>{undoPending.label}</strong> removed
           </span>
           <button
             onClick={handleUndo}
-            style={{ fontSize: 13, fontWeight: 700, color: '#d4a853', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary-text)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
             Undo
           </button>

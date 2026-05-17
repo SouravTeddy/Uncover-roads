@@ -9,10 +9,10 @@ import { ShimmerLine } from '../../shared/Shimmer'
 import { computePersonaBadges, usePersonaInsight } from './pincard-persona'
 
 // ── Design tokens ─────────────────────────────────────────────
-const SURFACE  = 'rgba(15,19,28,0.97)'
-const BORDER   = 'rgba(255,255,255,0.08)'
-const TEXT1    = '#f1f5f9'
-const TEXT3    = 'rgba(193,198,215,0.7)'
+const SURFACE  = 'var(--color-surface)'
+const BORDER   = 'var(--color-border)'
+const TEXT1    = 'var(--color-text-1)'
+const TEXT3    = 'var(--color-text-3)'
 const ACCENT   = '#3b82f6'
 const AI_MARK  = '#8b5cf6'
 const PRICE: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' }
@@ -158,7 +158,7 @@ export function PinCard({
       >
         {/* Drag handle */}
         <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 4, touchAction: 'none' }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)' }} />
         </div>
 
         {/* Hero image */}
@@ -170,7 +170,7 @@ export function PinCard({
               <span className="ms fill" style={{ fontSize: 48, color: catColor, opacity: 0.6 }}>{catIcon}</span>
             </div>
           )}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,19,28,0.8) 0%, transparent 50%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 50%)' }} />
         </div>
 
         {/* Card body */}
@@ -248,7 +248,7 @@ export function PinCard({
           <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
             <button onClick={onFavourite} style={{
               flex: 1, padding: '10px 0', borderRadius: 12,
-              background: isFavourited ? 'rgba(239,68,68,.15)' : 'rgba(255,255,255,.06)',
+              background: isFavourited ? 'rgba(239,68,68,.15)' : 'var(--color-border)',
               border: `1px solid ${isFavourited ? 'rgba(239,68,68,.4)' : BORDER}`,
               color: isFavourited ? '#f87171' : TEXT3,
               fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',

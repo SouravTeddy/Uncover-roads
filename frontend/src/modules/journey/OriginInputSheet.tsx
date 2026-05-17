@@ -5,11 +5,11 @@ import { OriginSearchCard } from '../map/OriginSearchCard';
 import { ORIGIN_STRINGS } from '../../shared/strings';
 import type { OriginPlace } from '../../shared/types';
 
-const PRIMARY = '#3b82f6';
-const TEXT1   = '#f1f5f9';
-const TEXT3   = '#8e9099';
-const BORDER  = 'rgba(255,255,255,.08)';
-const SURFACE = '#141921';
+const PRIMARY = 'var(--color-sky)';
+const TEXT1   = 'var(--color-text-1)';
+const TEXT3   = 'var(--color-text-3)';
+const BORDER  = 'var(--color-border)';
+const SURFACE = 'var(--color-surface)';
 
 interface Props {
   onDone: (origin: OriginPlace | null) => void;
@@ -63,7 +63,7 @@ export function OriginInputSheet({ onDone, onClose }: Props) {
             onClick={onClose}
             style={{
               position: 'absolute', top: 16, right: 16, width: 32, height: 32,
-              borderRadius: '50%', background: 'rgba(255,255,255,.07)',
+              borderRadius: '50%', background: 'var(--color-surface2)',
               border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center',
               justifyContent: 'center', cursor: 'pointer',
             }}
