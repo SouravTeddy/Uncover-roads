@@ -83,6 +83,7 @@ export function WalkthroughScreen() {
 
   return (
     <div
+      data-theme="dark"
       style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#080808', userSelect: 'none', zIndex: 20 }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

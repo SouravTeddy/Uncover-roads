@@ -56,7 +56,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
   const bgHeroUrl = heroUrl ?? STEP_HERO[step];
 
   return (
-    <div className="fixed inset-0" style={{ zIndex: 20 }}>
+    <div data-theme="dark" className="fixed inset-0" style={{ zIndex: 20 }}>
 
       {/* ── Background stack ── */}
       <div className="absolute inset-0 overflow-hidden">
