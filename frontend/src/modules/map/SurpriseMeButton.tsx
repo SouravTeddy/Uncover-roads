@@ -36,7 +36,7 @@ export function SurpriseMeButton({ disabled, onSurprise }: Props) {
         borderRadius: 999,
         backgroundColor: 'rgba(10,14,23,0.88)',
         border: `1px solid ${ACCENT}`,
-        color: loading ? 'rgba(193,198,215,0.5)' : '#c4b5fd',
+        color: loading ? 'var(--color-text-2)' : '#c4b5fd',
         fontSize: '0.78rem',
         fontWeight: 700,
         cursor: loading || disabled ? 'not-allowed' : 'pointer',

@@ -61,13 +61,13 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
         <div style={{ width: '80%', position: 'relative', height: 100 }}>
           <div style={{
             position: 'absolute', left: 0, bottom: 0,
-            fontSize: '0.8rem', fontWeight: 700, color: '#c0b0a4',
+            fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-2)',
           }}>
             {fromCity}
           </div>
           <div style={{
             position: 'absolute', right: 0, bottom: 0,
-            fontSize: '0.8rem', fontWeight: 700, color: '#c0b0a4',
+            fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-2)',
           }}>
             {toCity}
           </div>
@@ -101,7 +101,7 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
           width: '85%', maxWidth: 360,
           borderRadius: 20,
           background: 'rgba(15,20,30,.9)',
-          border: '1px solid rgba(255,255,255,.1)',
+          border: '1px solid var(--color-border)',
           overflow: 'hidden',
         }}>
           <div style={{
@@ -117,12 +117,12 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
           <div style={{ padding: '20px 20px 24px' }}>
             <div style={{
               fontSize: '1.05rem', fontWeight: 800,
-              color: '#f5f0ea', lineHeight: 1.3, marginBottom: 10,
+              color: 'var(--color-text-1)', lineHeight: 1.3, marginBottom: 10,
             }}>
               {toCity} after {fromCity} — nice.
             </div>
             <div style={{
-              fontSize: '0.85rem', color: 'rgba(192,176,164,.75)',
+              fontSize: '0.85rem', color: 'var(--color-text-2)',
               lineHeight: 1.6,
             }}>
               We've added a travel day between them. Keep pinning places in both cities.
@@ -139,7 +139,7 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
                   style={{
                     width: i === storyIdx ? 18 : 6, height: 6,
                     borderRadius: 3,
-                    background: i === storyIdx ? 'var(--color-primary)' : 'rgba(255,255,255,.2)',
+                    background: i === storyIdx ? 'var(--color-primary)' : 'var(--color-border-m)',
                     transition: 'width 0.2s ease',
                   }}
                 />
@@ -152,7 +152,7 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
       {/* No story cards — show standalone message */}
       {phase === 'story' && !card && (
         <div style={{ width: '85%', maxWidth: 360, textAlign: 'center', padding: '0 16px' }}>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f5f0ea', marginBottom: 10 }}>
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-1)', marginBottom: 10 }}>
             {toCity} after {fromCity} — nice.
           </div>
           <div style={{ fontSize: '0.85rem', color: 'rgba(192,176,164,.75)', lineHeight: 1.6 }}>
@@ -165,9 +165,9 @@ export function CityHopOverlay({ fromCity, toCity, storyCards, onDone }: Props) 
         onClick={onDone}
         style={{
           marginTop: 32,
-          background: 'none', border: '1px solid rgba(255,255,255,.15)',
+          background: 'none', border: '1px solid var(--color-border-m)',
           borderRadius: 999, padding: '8px 20px',
-          color: 'rgba(192,176,164,.7)', fontSize: '0.75rem',
+          color: 'var(--color-text-3)', fontSize: '0.75rem',
           cursor: 'pointer',
         }}
       >

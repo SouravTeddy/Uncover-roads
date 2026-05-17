@@ -1,8 +1,8 @@
 import type { Place } from '../../shared/types';
 
-const TEXT3    = '#8e9099';
-const BORDER   = 'rgba(255,255,255,.08)';
-const SURFACE2 = '#1A1F2B';
+const TEXT3    = 'var(--color-text-3)';
+const BORDER   = 'var(--color-border)';
+const SURFACE2 = 'var(--color-surface2)';
 
 interface Props {
   city: string;
@@ -70,7 +70,7 @@ export function JourneyCityCard({ city, countryCode, places, estimatedDays, arri
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={onAddPlaces}
-          style={{ height: 44, flex: 1, background: 'rgba(255,255,255,.05)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
+          style={{ height: 44, flex: 1, background: 'var(--color-surface)', border: `1px solid ${BORDER}`, borderRadius: 14, cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 600, color: TEXT3 }}
         >
           Add more places
         </button>

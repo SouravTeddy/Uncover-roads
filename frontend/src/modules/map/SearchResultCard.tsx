@@ -86,7 +86,7 @@ export function SearchResultCard({
                 onClick={() => onNavigate(activeIndex - 1)}
                 disabled={activeIndex === 0}
                 className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
-                style={{ background: 'rgba(255,255,255,.08)' }}
+                style={{ background: 'var(--color-border)' }}
               >
                 <span className="ms text-text-2" style={{ fontSize: 14 }}>chevron_left</span>
               </button>
@@ -94,7 +94,7 @@ export function SearchResultCard({
                 onClick={() => onNavigate(activeIndex + 1)}
                 disabled={activeIndex === results.length - 1}
                 className="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
-                style={{ background: 'rgba(255,255,255,.08)' }}
+                style={{ background: 'var(--color-border)' }}
               >
                 <span className="ms text-text-2" style={{ fontSize: 14 }}>chevron_right</span>
               </button>

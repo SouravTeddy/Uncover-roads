@@ -25,7 +25,7 @@ export function BuildItineraryBar({ itineraryPlaces, days, onBuild }: Props) {
         padding: '12px 16px',
         background: 'rgba(12,12,14,.95)',
         backdropFilter: 'blur(16px)',
-        borderTop: '1px solid rgba(242,237,230,.08)',
+        borderTop: '1px solid var(--color-border)',
       }}
     >
       <button
@@ -37,8 +37,8 @@ export function BuildItineraryBar({ itineraryPlaces, days, onBuild }: Props) {
           fontSize: '0.95rem', fontWeight: 700, letterSpacing: '0.01em',
           background: canBuild
             ? 'linear-gradient(135deg, #d4a853, #b8893a)'
-            : 'rgba(255,255,255,.08)',
-          color: canBuild ? '#0c0c0e' : 'rgba(255,255,255,.25)',
+            : 'var(--color-border)',
+          color: canBuild ? '#0c0c0e' : 'var(--color-text-3)',
           opacity: canBuild ? 1 : 0.7,
           boxShadow: canBuild ? '0 6px 28px rgba(212,168,83,.25)' : 'none',
           transition: 'all 0.15s ease',

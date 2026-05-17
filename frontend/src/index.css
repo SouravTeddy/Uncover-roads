@@ -3,10 +3,10 @@
 /* ── Design tokens (Tailwind v4 CSS-first config) ─── */
 @theme {
   /* Backgrounds */
-  --color-bg:         #111111;
+  --color-bg:         #0f0d0c;   /* was #111111 */
   --color-bg2:        #0a0a0a;
-  --color-surface:    #1a1a1a;
-  --color-surface2:   #222222;
+  --color-surface:    #1a1714;   /* was #1a1a1a */
+  --color-surface2:   #221e1b;   /* was #222222 */
 
   /* Primary — amber/gold */
   --color-primary:    #d4a853;
@@ -71,6 +71,9 @@
   --shadow-lg:        0 16px 40px rgba(44,36,32,.18);
   --shadow-primary:   0 6px 20px rgba(212,168,83,.20);
   --nav-bg:           rgba(250,248,244,.94);
+}
+[data-theme=light] .shimmer::after {
+  background: linear-gradient(90deg, transparent, rgba(44,36,32,.05), transparent);
 }
 
 /* ── Global resets ────────────────────────────────── */

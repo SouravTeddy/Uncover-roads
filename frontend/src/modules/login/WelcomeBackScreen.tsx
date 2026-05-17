@@ -71,6 +71,7 @@ export function WelcomeBackScreen() {
 
   return (
     <div
+      data-theme="dark"
       className="relative min-h-screen w-full flex flex-col items-center justify-between px-6 pt-12 pb-8"
       style={{
         background: `url('${bgUrl}') center/cover no-repeat`,

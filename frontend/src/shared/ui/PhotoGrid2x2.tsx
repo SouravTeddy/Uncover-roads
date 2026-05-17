@@ -13,7 +13,7 @@ interface Props {
   onSelect: (value: string) => void;
 }
 
-const DEFAULT_COLOR = '#d4a853';
+const DEFAULT_COLOR = 'var(--color-primary)';
 
 export function PhotoGrid2x2({ options, selected, multi = false, onSelect }: Props) {
   function isSelected(v: string) {
@@ -97,7 +97,7 @@ export function PhotoGrid2x2({ options, selected, multi = false, onSelect }: Pro
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 animation: 'dotPop .25s cubic-bezier(.16,1,.3,1)',
               }}>
-                <span className="ms fill" style={{ fontSize: 14, color: '#0c0c0e' }}>check</span>
+                <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-bg)' }}>check</span>
               </div>
             )}
 

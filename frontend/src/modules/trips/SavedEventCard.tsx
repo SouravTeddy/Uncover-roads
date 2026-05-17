@@ -44,7 +44,7 @@ export function SavedEventCard({ event, onRemove }: Props) {
         <button
           onClick={() => onRemove(event.id)}
           className="w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(255,255,255,.06)' }}
+          style={{ background: 'var(--color-surface2)' }}
           aria-label="Remove event"
         >
           <span className="ms text-[var(--color-text-3)]" style={{ fontSize: 14 }}>close</span>

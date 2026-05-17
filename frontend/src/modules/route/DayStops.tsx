@@ -7,8 +7,8 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
         <div
           key={stopIdx}
           style={{
-            background: '#141921',
-            border: '1px solid rgba(255,255,255,.08)',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
             borderRadius: 16,
             padding: '14px 16px',
             marginBottom: 10,
@@ -17,7 +17,7 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: 'rgba(224,120,84,.12)',
+              background: 'var(--color-primary-bg)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span className="ms" style={{ fontSize: 17, color: 'var(--color-primary)' }}>place</span>
@@ -28,7 +28,7 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
               }}>
                 {stop.time && (
                   <span style={{
-                    fontSize: 11, fontWeight: 700, color: '#93c5fd',
+                    fontSize: 11, fontWeight: 700, color: 'var(--color-sky)',
                     fontFamily: 'var(--font-sans)',
                   }}>
                     {stop.time}
@@ -37,14 +37,14 @@ export function DayStops({ stops }: { stops: ItineraryStop[] }) {
               </div>
               <div style={{
                 fontFamily: 'var(--font-heading)',
-                fontSize: 15, fontWeight: 700, color: '#f1f5f9',
+                fontSize: 15, fontWeight: 700, color: 'var(--color-text-1)',
                 marginBottom: stop.tip ? 4 : 0,
               }}>
                 {stop.place}
               </div>
               {stop.tip && (
                 <div style={{
-                  fontSize: 12, color: '#8e9099',
+                  fontSize: 12, color: 'var(--color-text-3)',
                   fontFamily: 'var(--font-sans)', lineHeight: 1.5,
                 }}>
                   {stop.tip}

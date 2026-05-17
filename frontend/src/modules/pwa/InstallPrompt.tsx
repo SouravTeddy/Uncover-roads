@@ -21,7 +21,7 @@ export function InstallPrompt() {
         right: 12,
         zIndex: 50,
         borderRadius: 20,
-        background: 'linear-gradient(160deg, rgba(17,17,17,0.97), rgba(10,10,10,0.99))',
+        background: 'var(--color-surface)',
         border: '1px solid rgba(196,97,61,0.25)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 40px rgba(224,120,84,0.08)',
         padding: '16px 16px 14px',
@@ -46,7 +46,7 @@ export function InstallPrompt() {
           fontFamily: 'var(--font-heading)',
           fontSize: 17,
           fontWeight: 600,
-          color: '#f5e6d6',
+          color: 'var(--color-text-1)',
           marginBottom: 4,
         }}
       >
@@ -57,7 +57,7 @@ export function InstallPrompt() {
         style={{
           fontSize: 13,
           lineHeight: 1.5,
-          color: 'rgba(245,230,214,0.5)',
+          color: 'var(--color-text-2)',
           marginBottom: 16,
         }}
       >
@@ -72,7 +72,7 @@ export function InstallPrompt() {
             height: 44,
             borderRadius: 14,
             background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-            color: '#fff8f0',
+            color: 'var(--color-primary-text)',
             fontSize: 14,
             fontWeight: 600,
             border: 'none',
@@ -89,9 +89,9 @@ export function InstallPrompt() {
             height: 44,
             padding: '0 16px',
             borderRadius: 14,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: 'rgba(245,230,214,0.45)',
+            background: 'var(--color-surface2)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-3)',
             fontSize: 14,
             cursor: 'pointer',
           }}
