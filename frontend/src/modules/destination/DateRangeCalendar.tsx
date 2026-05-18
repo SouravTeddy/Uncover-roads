@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 interface Props {
+  city?: string | null;
   onSelect: (startDate: string, endDate: string) => void;
   onClose: () => void;
 }
@@ -20,7 +21,7 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ onSelect, onClose }: Props) {
+export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -73,8 +74,18 @@ export function DateRangeCalendar({ onSelect, onClose }: Props) {
     >
       {/* Prompt copy */}
       <div className="px-4 pt-4 pb-2">
+        {city && (
+          <p
+            className="text-[var(--color-primary)] font-semibold mb-0.5"
+            style={{ fontSize: 18, fontFamily: 'var(--font-heading, Georgia, serif)', animation: 'calCitySlide 0.35s cubic-bezier(.16,1,.3,1) both' }}
+          >
+            {city}
+          </p>
+        )}
+        <style>{`@keyframes calCitySlide { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }`}</style>
         <p className="text-xs text-[var(--color-text-3)] leading-relaxed">
-          When are you going? <span className="text-[var(--color-text-2)]">We use this to check events, weather and opening days.</span>
+          {city ? `When are you heading there?` : 'When are you going?'}{' '}
+          <span className="text-[var(--color-text-2)]">We use this to check events, weather and opening days.</span>
         </p>
       </div>
 

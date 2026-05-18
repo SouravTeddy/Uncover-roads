@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { Place, GeoData } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
+import { api } from '../../shared/api';
 import { useLastSession } from './useLastSession';
+import { useSheetDismiss } from '../../shared/useSheetDismiss';
 import { ExploreHero } from './ExploreHero';
 import { ExploreSearchBar } from './ExploreSearchBar';
 import CuratedCityCards from './CuratedCityCards';
@@ -31,7 +33,14 @@ export function DestinationScreen() {
 
   function handleCitySelect(selectedCity: string, geo?: GeoData) {
     dispatch({ type: 'SET_CITY', city: selectedCity });
-    if (geo) dispatch({ type: 'SET_CITY_GEO', geo });
+    if (geo) {
+      dispatch({ type: 'SET_CITY_GEO', geo });
+    } else {
+      // Curated card tap — geocode in parallel while calendar shows
+      api.geocode(selectedCity)
+        .then(result => dispatch({ type: 'SET_CITY_GEO', geo: result }))
+        .catch(() => {}); // map screen handles missing geo gracefully
+    }
     setPendingCity(selectedCity);
     setShowCalendar(true);
   }
@@ -40,11 +49,13 @@ export function DestinationScreen() {
     dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
   }
 
-  function handleCalendarClose() {
+  const handleCalendarClose = useCallback(() => {
     setShowCalendar(false);
     setPendingCity(null);
     if (travelStartDate) dispatch({ type: 'GO_TO', screen: 'map' });
-  }
+  }, [travelStartDate, dispatch]);
+
+  useSheetDismiss(handleCalendarClose, showCalendar);
 
   function handleOpenMap(places: Place[]) {
     places.forEach(p => dispatch({ type: 'SET_PENDING_PLACE', place: p }));
@@ -74,21 +85,31 @@ export function DestinationScreen() {
       )}
 
       {showCalendar && (
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{
-            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-            scrollbarWidth: 'none',
-            animation: 'slideUp 0.3s ease forwards',
-          }}
-        >
-          <style>{`@keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
-          <DateRangeCalendar
-            key={pendingCity ?? city}
-            onSelect={handleDateSelect}
-            onClose={handleCalendarClose}
+        <>
+          {/* Backdrop — rgba(0,0,0,0.01) makes it clickable on iOS WebKit */}
+          <div
+            onClick={handleCalendarClose}
+            style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'rgba(0,0,0,0.01)' }}
           />
-        </div>
+          <div
+            className="flex-1 overflow-y-auto"
+            style={{
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+              scrollbarWidth: 'none',
+              animation: 'slideUp 0.3s ease forwards',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <style>{`@keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+            <DateRangeCalendar
+              key={pendingCity ?? city}
+              city={pendingCity ?? city}
+              onSelect={handleDateSelect}
+              onClose={handleCalendarClose}
+            />
+          </div>
+        </>
       )}
     </div>
   );

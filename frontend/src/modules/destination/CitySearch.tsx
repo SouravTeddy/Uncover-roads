@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useGoogleCitySearch } from './useGoogleCitySearch';
 import type { AutocompleteResult } from '../../shared/types';
 
@@ -18,6 +18,7 @@ export function CitySearch({ onSelect }: Props) {
   const [focused, setFocused] = useState(false);
   const { results, loading, search, selectResult, clear } = useGoogleCitySearch();
   const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef(0);
 
   function handleInput(value: string) {
     setQuery(value);
@@ -97,7 +98,11 @@ export function CitySearch({ onSelect }: Props) {
             <button
               key={i}
               onMouseDown={() => handleSelect(r)}
-              onTouchStart={() => handleSelect(r)}
+              onTouchStart={e => { touchStartY.current = e.touches[0].clientY; }}
+              onTouchEnd={e => {
+                const delta = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+                if (delta < 6) handleSelect(r);
+              }}
               style={{
                 width: '100%',
                 display: 'flex',
