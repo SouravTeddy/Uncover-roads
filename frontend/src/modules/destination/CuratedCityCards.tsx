@@ -4,32 +4,17 @@ import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 
 interface CuratedCityCardsProps {
   persona: Persona | null;
-  travelStartDate: string | null;
-  travelEndDate: string | null;
   onCitySelect: (city: string) => void;
 }
 
-function formatDatePill(start: string, end: string | null): string {
-  const s = new Date(start + 'T12:00:00');
-  if (!end || start === end)
-    return s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const e = new Date(end + 'T12:00:00');
-  return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-}
-
-export default function CuratedCityCards({
-  persona,
-  travelStartDate,
-  travelEndDate,
-  onCitySelect,
-}: CuratedCityCardsProps) {
+export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityCardsProps) {
   const archetype = persona?.archetype ?? null;
   const cities =
     archetype && ARCHETYPE_CITIES[archetype]
       ? ARCHETYPE_CITIES[archetype].slice(0, 6)
       : DEFAULT_CITIES;
 
-  const cardHeight = travelStartDate ? 178 : 188;
+  const cardHeight = 188;
 
   return (
     <section className="px-4 pt-4 pb-2">
@@ -47,21 +32,6 @@ export default function CuratedCityCards({
         >
           Destinations
         </h2>
-        {travelStartDate && (
-          <span
-            style={{
-              background: 'var(--color-primary-bg)',
-              color: 'var(--color-primary-text)',
-              fontSize: 11,
-              fontWeight: 500,
-              borderRadius: 999,
-              padding: '2px 8px',
-              lineHeight: 1.4,
-            }}
-          >
-            {formatDatePill(travelStartDate, travelEndDate)}
-          </span>
-        )}
       </div>
 
       {/* Horizontal scroll row */}
