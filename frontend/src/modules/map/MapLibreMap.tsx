@@ -2,6 +2,7 @@
 import { useRef, useCallback, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
 import Map, { Marker } from 'react-map-gl/maplibre';
 import type { MapRef as LibreMapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
+import type { StyleSpecification } from 'maplibre-gl';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
 import { MapLibreRoute } from './MapLibreRoute';
@@ -28,7 +29,7 @@ function forceEnglishLabels(style: any): any {
   }
 }
 
-async function fetchMapStyle(url: string): Promise<object> {
+async function fetchMapStyle(url: string): Promise<StyleSpecification> {
   const res = await fetch(url)
   const style = await res.json()
   return forceEnglishLabels(style)
@@ -59,7 +60,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
-  const [mapStyle, setMapStyle] = useState<string | object>(getMapStyleUrl());
+  const [mapStyle, setMapStyle] = useState<string | StyleSpecification>(getMapStyleUrl());
 
   useEffect(() => {
     fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
