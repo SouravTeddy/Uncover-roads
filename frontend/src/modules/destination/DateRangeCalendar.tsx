@@ -3,7 +3,6 @@ import { useState } from 'react';
 interface Props {
   city?: string | null;
   onSelect: (startDate: string, endDate: string) => void;
-  onClose: () => void;
 }
 
 function toIso(year: number, month: number, day: number): string {
@@ -21,7 +20,7 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
+export function DateRangeCalendar({ city, onSelect }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
