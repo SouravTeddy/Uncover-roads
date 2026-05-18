@@ -81,13 +81,13 @@ export function DestinationScreen() {
       {!showCalendar && (
         <div className="flex-1 overflow-y-auto pb-28" style={{ scrollbarWidth: 'none' }}>
           <ExploreSearchBar onCitySelect={handleCitySelect} />
-          <RecentVisits session={session} onOpenMap={handleOpenMap} />
           <CuratedCityCards
             persona={persona}
             travelStartDate={travelStartDate}
             travelEndDate={travelEndDate}
             onCitySelect={handleCitySelect}
           />
+          <RecentVisits session={session} onOpenMap={handleOpenMap} />
         </div>
       )}
 
