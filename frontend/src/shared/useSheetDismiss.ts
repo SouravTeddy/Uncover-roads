@@ -10,7 +10,7 @@ export function useSheetDismiss(onClose: () => void, isOpen: boolean) {
     let removeListener: (() => void) | null = null;
 
     import('@capacitor/app').then(({ App }) => {
-      App.addListener('backButton', onClose).then(handle => {
+      App.addListener('backButton', onClose).then((handle: { remove: () => void }) => {
         removeListener = () => handle.remove();
       });
     }).catch(() => {
