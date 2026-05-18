@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  FAMOUS_PIN_COLOR,
+  FAMOUS_PIN_COLOR_DARK,
+  FAMOUS_PIN_COLOR_LIGHT,
   FAMOUS_PIN_SIZE,
   REFERENCE_PIN_COLOR,
   REFERENCE_PIN_SIZE,
@@ -14,8 +15,9 @@ import {
 } from './pin-visual'
 
 describe('pin-visual constants', () => {
-  it('famous pin is gold, 28px', () => {
-    expect(FAMOUS_PIN_COLOR).toBe('#f59e0b')
+  it('famous pin is theme-aware navy/slate, 28px', () => {
+    expect(FAMOUS_PIN_COLOR_DARK).toBe('#1e3a5f')
+    expect(FAMOUS_PIN_COLOR_LIGHT).toBe('#334155')
     expect(FAMOUS_PIN_SIZE).toBe(28)
   })
 
