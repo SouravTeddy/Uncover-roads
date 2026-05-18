@@ -60,7 +60,7 @@ export function MapScreen() {
   } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
-  const { pendingActivePlace, currentScreen } = state;
+  const { pendingActivePlace } = state;
   const personaProfile = state.personaProfile ?? null;
 
   // New store state for phase 4
