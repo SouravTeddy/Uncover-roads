@@ -6,11 +6,32 @@ import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
 import { MapLibreRoute } from './MapLibreRoute';
 
-function getMapStyle(): string {
+function getMapStyleUrl(): string {
   const isDark = document.documentElement.dataset.theme !== 'light'
   return isDark
     ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
     : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function forceEnglishLabels(style: any): any {
+  const englishField = ['coalesce', ['get', 'name:en'], ['get', 'name']]
+  return {
+    ...style,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    layers: style.layers.map((layer: any) => {
+      if (layer.layout?.['text-field'] !== undefined) {
+        return { ...layer, layout: { ...layer.layout, 'text-field': englishField } }
+      }
+      return layer
+    }),
+  }
+}
+
+async function fetchMapStyle(url: string): Promise<object> {
+  const res = await fetch(url)
+  const style = await res.json()
+  return forceEnglishLabels(style)
 }
 
 export interface MapHandle {
@@ -38,7 +59,11 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
-  const [mapStyle, setMapStyle] = useState(() => getMapStyle());
+  const [mapStyle, setMapStyle] = useState<string | object>(getMapStyleUrl());
+
+  useEffect(() => {
+    fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     flyTo(lat: number, lon: number, targetZoom = 15) {
@@ -61,7 +86,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      setMapStyle(getMapStyle());
+      fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
