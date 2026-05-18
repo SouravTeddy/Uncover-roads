@@ -13,11 +13,13 @@ import { DateRangeCalendar } from './DateRangeCalendar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
-  const { city, persona, savedItineraries, travelStartDate, travelEndDate } = state;
+  const { city, persona, savedItineraries } = state;
   const { session } = useLastSession();
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingCity, setPendingCity] = useState<string | null>(null);
   const [userName, setUserName] = useState('Traveller');
+  const [calStart, setCalStart] = useState<string | null>(null);
+  const [calEnd, setCalEnd] = useState<string | null>(null);
 
   const savedTripCity = savedItineraries[savedItineraries.length - 1]?.city ?? null;
 
@@ -42,11 +44,15 @@ export function DestinationScreen() {
         .catch(() => {}); // map screen handles missing geo gracefully
     }
     setPendingCity(selectedCity);
+    setCalStart(null);
+    setCalEnd(null);
     setShowCalendar(true);
   }
 
   function handleDateSelect(start: string, end: string) {
     dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
+    setCalStart(start);
+    setCalEnd(end);
   }
 
   // Done button inside the calendar — navigate to map
@@ -99,7 +105,7 @@ export function DestinationScreen() {
           <div
             className="flex-1 overflow-y-auto"
             style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 130px)',
               scrollbarWidth: 'none',
               animation: 'slideUp 0.3s ease forwards',
               position: 'relative',
@@ -113,18 +119,18 @@ export function DestinationScreen() {
               onSelect={handleDateSelect}
             />
           </div>
-          {/* Fixed Done CTA — sits above bottom nav, visible without scrolling */}
-          {travelStartDate && travelEndDate && (
+          {/* Fixed Done CTA — appears above bottom nav once both dates are picked */}
+          {calStart && calEnd && (
             <div
               style={{
                 position: 'fixed',
                 left: 0,
                 right: 0,
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
                 zIndex: 10,
                 display: 'flex',
                 justifyContent: 'flex-end',
-                padding: '12px 16px',
+                padding: '10px 16px',
                 background: 'linear-gradient(to top, var(--color-bg) 60%, transparent)',
               }}
             >
