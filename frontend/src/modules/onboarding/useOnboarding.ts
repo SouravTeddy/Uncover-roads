@@ -22,7 +22,7 @@ export function useOnboarding(step: ObStep) {
 
   function goNext() {
     if (currentIndex < totalSteps - 1) {
-      dispatch({ type: 'GO_TO', screen: activeSteps[currentIndex + 1] as Screen });
+      dispatch({ type: 'GO_TO', screen: activeSteps[currentIndex + 1] });
     }
   }
 
