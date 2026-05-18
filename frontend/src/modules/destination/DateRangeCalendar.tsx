@@ -167,9 +167,11 @@ export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
         })}
       </div>
 
-      {/* Range summary + Done */}
+      {/* Range summary + Done — sticky so it always sits above the bottom nav */}
       {startDate && (
-        <div ref={footerRef} className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-divider)]">
+        <div ref={footerRef} className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-divider)]"
+          style={{ position: 'sticky', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', background: 'var(--color-surface)' }}
+        >
           <span className="text-sm text-[var(--color-text-2)]">
             {endDate ? formatRange(startDate, endDate) : formatRange(startDate, startDate)}
           </span>

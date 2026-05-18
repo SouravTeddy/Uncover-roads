@@ -79,15 +79,15 @@ export function DestinationScreen() {
       />
 
       {!showCalendar && (
-        <div className="flex-1 overflow-y-auto pb-28" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex-1 flex flex-col overflow-hidden">
           <ExploreSearchBar onCitySelect={handleCitySelect} />
           <CuratedCityCards
             persona={persona}
-            travelStartDate={travelStartDate}
-            travelEndDate={travelEndDate}
             onCitySelect={handleCitySelect}
           />
-          <RecentVisits session={session} onOpenMap={handleOpenMap} />
+          <div className="flex-1 overflow-y-auto pb-24" style={{ scrollbarWidth: 'none' }}>
+            <RecentVisits session={session} onOpenMap={handleOpenMap} />
+          </div>
         </div>
       )}
 
