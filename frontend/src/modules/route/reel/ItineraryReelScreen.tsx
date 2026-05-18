@@ -153,7 +153,7 @@ export function ItineraryReelScreen() {
         <button
           onClick={() => {
             dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
-            dispatch({ type: 'GO_TO', screen: reelSavedId ? 'trips' : 'route' });
+            dispatch({ type: 'GO_BACK' });
           }}
           style={{
             width: 38, height: 38, borderRadius: '50%',
