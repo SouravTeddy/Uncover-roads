@@ -19,15 +19,13 @@ import { getJourneyCities, isJourneyMode } from './journey-utils';
 import { FamousPinsLayer } from './FamousPinsLayer';
 import { ReferencePinsLayer } from './ReferencePinsLayer';
 import { UserPinsLayer } from './UserPinsLayer';
-import { SurpriseMeButton } from './SurpriseMeButton';
-import { BuildItineraryBar } from './BuildItineraryBar';
+import { BottomActionTray } from './BottomActionTray';
 import { usePinCityDetector } from './usePinCityDetector';
 import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
 import { CityHopOverlay } from './CityHopOverlay';
 import type { TransitMode } from '../../shared/types';
-import { TravelDateBar } from './TravelDateBar'
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import type { PlacePickFE } from './OurPicksPinsLayer'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
@@ -64,7 +62,8 @@ export function MapScreen() {
   const personaProfile = state.personaProfile ?? null;
 
   // New store state for phase 4
-  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints } = state;
+  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
+  const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
 
   // Session cache for PinCard persona insights
@@ -167,6 +166,9 @@ export function MapScreen() {
 
   // Surprise Me error state
   const [surpriseError, setSurpriseError] = useState<string | null>(null)
+
+  // Surprise Me loading state (was previously owned by SurpriseMeButton)
+  const [surpriseLoading, setSurpriseLoading] = useState(false)
 
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
@@ -353,8 +355,13 @@ export function MapScreen() {
       setSurpriseConfirm(true)
       return
     }
-    await _runSurprise()
-  }, [city, personaProfile, state.engineItinerary])
+    setSurpriseLoading(true)
+    try {
+      await _runSurprise()
+    } finally {
+      setSurpriseLoading(false)
+    }
+  }, [city, personaProfile, state.engineItinerary, _runSurprise])
 
   const _runSurprise = useCallback(async () => {
     if (!city || !personaProfile) return
@@ -438,9 +445,10 @@ export function MapScreen() {
         routeGeojson={routeGeojson}
       >
         <FamousPinsLayer
-          places={filteredPlaces}
+          places={filteredPlaces.filter(p => !selectedIds.has(p.id))}
           activePlaceId={activePinId}
           discoveryMode="anchor"
+          isDark={isDark}
           onPinClick={handlePinClick}
         />
         <ReferencePinsLayer
@@ -497,8 +505,8 @@ export function MapScreen() {
         className="absolute inset-x-0 top-0 flex flex-col gap-2 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.5rem', zIndex: 20, pointerEvents: 'none' }}
       >
-        {/* Row 1: back button OR multi-city tab header */}
-        {isMultiCity ? (
+        {/* Row 1: multi-city tab header only; single-city has no back button */}
+        {isMultiCity && (
           <div style={{ pointerEvents: 'auto' }}>
             <MultiCityHeader
               cityFootprints={cityFootprints}
@@ -510,28 +518,6 @@ export function MapScreen() {
                 if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12);
               }}
               onAddCity={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-            />
-          </div>
-        ) : (
-          <div style={{ pointerEvents: 'auto' }}>
-            <button
-              onClick={goBack}
-              className="w-10 h-10 rounded-full backdrop-blur flex items-center justify-center border border-white/10"
-              style={{ background: 'rgba(15,20,30,.82)' }}
-            >
-              <span className="ms text-text-2 text-base">arrow_back</span>
-            </button>
-          </div>
-        )}
-
-        {/* Travel date bar */}
-        {(state.travelStartDate || state.travelEndDate) && (
-          <div style={{ pointerEvents: 'auto', display: 'flex', justifyContent: 'center' }}>
-            <TravelDateBar
-              startDate={state.travelStartDate}
-              endDate={state.travelEndDate}
-              cities={cityContexts.map(c => c.city)}
-              onTap={() => {}}
             />
           </div>
         )}
@@ -606,14 +592,14 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Events error toast */}
-      {eventsError && (
+      {/* Events error — small muted notice, only in curated tab, doesn't block OurPicks */}
+      {eventsError && activeFilter === 'curated' && (
         <div
-          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(245,158,11,.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(245,158,11,.3)' }}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(15,20,30,.82)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}
         >
-          <span className="ms fill text-amber-400" style={{ fontSize: 15 }}>event_busy</span>
-          <span className="text-amber-300 text-xs font-medium">{eventsError}</span>
+          <span className="ms fill text-text-3" style={{ fontSize: 13 }}>event_busy</span>
+          <span className="text-text-3" style={{ fontSize: '0.68rem' }}>Events unavailable</span>
         </div>
       )}
 
@@ -686,13 +672,6 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Surprise Me (bottom-right) */}
-      {city && (
-        <div style={{ position: 'absolute', bottom: selectedPlaces.length > 0 ? 100 : 72, right: 12, zIndex: 19 }}>
-          <SurpriseMeButton onSurprise={handleSurprise} disabled={!city || !personaProfile} />
-        </div>
-      )}
-
       {/* Pin card — fixed bottom sheet, handles its own positioning + backdrop */}
       {activePlace && (
         <PinCard
@@ -724,12 +703,21 @@ export function MapScreen() {
         />
       )}
 
-      {/* Build itinerary bar — uses portal, renders when places added */}
-      <BuildItineraryBar
-        itineraryPlaces={selectedPlaces}
-        days={activeCityDays}
-        onBuild={handleBuild}
-      />
+      {city && (
+        <BottomActionTray
+          startDate={state.travelStartDate}
+          endDate={state.travelEndDate}
+          cities={cityContexts.map(c => c.city)}
+          onDateTap={() => {}}
+          itineraryPlaces={selectedPlaces}
+          days={activeCityDays}
+          buildLoading={buildLoading}
+          onBuild={handleBuild}
+          surpriseDisabled={!personaProfile}
+          surpriseLoading={surpriseLoading}
+          onSurprise={handleSurprise}
+        />
+      )}
 
       {/* Search results strip */}
       {showSearchStrip && searchPins.length > 0 && (

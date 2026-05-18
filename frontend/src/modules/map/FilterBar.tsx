@@ -2,12 +2,19 @@ import { useState } from 'react';
 import type { MapFilter } from '../../shared/types';
 
 const SUB_CHIPS = [
-  { key: 'all',       label: 'All',       icon: 'layers' },
-  { key: 'historic',  label: 'Landmarks', icon: 'account_balance' },
-  { key: 'cafe',      label: 'Cafes',     icon: 'local_cafe' },
-  { key: 'park',      label: 'Parks',     icon: 'park' },
-  { key: 'restaurant',label: 'Dining',    icon: 'restaurant' },
-  { key: 'museum',    label: 'Galleries', icon: 'palette' },
+  { key: 'historic',      label: 'Landmarks', icon: 'account_balance' },
+  { key: 'cafe',          label: 'Cafes',     icon: 'local_cafe' },
+  { key: 'park',          label: 'Parks',     icon: 'park' },
+  { key: 'restaurant',    label: 'Dining',    icon: 'restaurant' },
+  { key: 'museum',        label: 'Museums',   icon: 'museum' },
+  { key: 'bar',           label: 'Bars',      icon: 'local_bar' },
+  { key: 'nightlife',     label: 'Nightlife', icon: 'nightlife' },
+  { key: 'gallery',       label: 'Art',       icon: 'palette' },
+  { key: 'viewpoint',     label: 'Views',     icon: 'landscape' },
+  { key: 'beach',         label: 'Beaches',   icon: 'beach_access' },
+  { key: 'market',        label: 'Markets',   icon: 'storefront' },
+  { key: 'spiritual',     label: 'Spiritual', icon: 'temple_buddhist' },
+  { key: 'spa',           label: 'Spa',       icon: 'spa' },
 ];
 
 interface Props {
@@ -43,7 +50,7 @@ export function FilterBar({
   }
 
   function handleSubChip(key: string) {
-    onCategorySelect(key === 'all' ? null : key);
+    onCategorySelect(key);
     setExpanded(false);
   }
 
@@ -115,8 +122,25 @@ export function FilterBar({
           scrollbarWidth: 'none',
           animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
         }}>
+          {/* Clear chip — resets to no category filter */}
+          <button
+            onClick={() => { onCategorySelect(null); setExpanded(false); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+              padding: '4px 10px', height: 26, borderRadius: 999,
+              background: activeCategory === null ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
+              border: activeCategory === null ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeCategory === null ? 'var(--color-primary-text)' : 'var(--color-text-2)',
+              fontSize: '0.72rem', fontWeight: 600,
+              backdropFilter: 'blur(8px)', cursor: 'pointer',
+              whiteSpace: 'nowrap', transition: 'all 0.12s ease',
+            }}
+          >
+            <span className="ms" style={{ fontSize: 12 }}>layers</span>
+            All
+          </button>
           {SUB_CHIPS.map(chip => {
-            const isActive = chip.key === 'all' ? activeCategory === null : activeCategory === chip.key;
+            const isActive = activeCategory === chip.key;
             return (
               <button
                 key={chip.key}

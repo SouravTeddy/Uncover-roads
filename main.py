@@ -350,7 +350,9 @@ def _overpass_map_data(clat: float, clon: float, radius_m: int) -> list:
     query = f"""
 [out:json][timeout:25];
 (
-  node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"~"restaurant|food_court"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"="cafe"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"~"bar|pub|nightclub"]["name"](around:{radius_m},{clat},{clon});
   node["amenity"="museum"]["name"](around:{radius_m},{clat},{clon});
   way["amenity"="museum"]["name"](around:{radius_m},{clat},{clon});
   node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:{radius_m},{clat},{clon});
@@ -359,6 +361,11 @@ def _overpass_map_data(clat: float, clon: float, radius_m: int) -> list:
   way["leisure"~"park|garden|nature_reserve"]["name"](around:{radius_m},{clat},{clon});
   node["historic"]["name"](around:{radius_m},{clat},{clon});
   way["historic"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"="marketplace"]["name"](around:{radius_m},{clat},{clon});
+  way["amenity"="marketplace"]["name"](around:{radius_m},{clat},{clon});
+  node["natural"="beach"]["name"](around:{radius_m},{clat},{clon});
+  way["natural"="beach"]["name"](around:{radius_m},{clat},{clon});
+  node["amenity"~"library|cinema|spa"]["name"](around:{radius_m},{clat},{clon});
 );
 out center 200;
 """
@@ -376,22 +383,43 @@ out center 200;
             continue
         seen_names.add(name)
 
-        amenity = tags.get("amenity", "")
-        tourism = tags.get("tourism", "")
-        leisure = tags.get("leisure", "")
+        amenity  = tags.get("amenity", "")
+        tourism  = tags.get("tourism", "")
+        leisure  = tags.get("leisure", "")
         historic = tags.get("historic", "")
+        natural  = tags.get("natural", "")
 
-        if amenity in ("restaurant", "bar", "food_court") or tags.get("cuisine"):
+        if amenity in ("bar", "pub", "nightclub"):
+            cat = "bar"
+        elif amenity in ("restaurant", "food_court") or tags.get("cuisine"):
             cat = "restaurant"
         elif amenity == "cafe":
             cat = "cafe"
         elif amenity == "museum" or tourism == "museum":
             cat = "museum"
-        elif leisure in ("park", "garden", "nature_reserve"):
+        elif amenity == "marketplace":
+            cat = "market"
+        elif amenity == "library":
+            cat = "library"
+        elif amenity == "cinema":
+            cat = "cinema"
+        elif amenity == "spa":
+            cat = "spa"
+        elif natural == "beach":
+            cat = "beach"
+        elif leisure in ("park", "nature_reserve"):
+            cat = "park"
+        elif leisure == "garden":
             cat = "park"
         elif historic:
             cat = "historic"
-        elif tourism in ("attraction", "artwork", "viewpoint", "gallery"):
+        elif tourism == "artwork":
+            cat = "street_art"
+        elif tourism == "viewpoint":
+            cat = "viewpoint"
+        elif tourism == "gallery":
+            cat = "gallery"
+        elif tourism == "attraction":
             cat = "tourism"
         else:
             cat = "place"
@@ -2035,13 +2063,25 @@ def place_details(request: Request, place_id: str):
 
 # Google Nearby Search types → app category (for map-data)
 _NEARBY_TYPE_TO_CATEGORY = {
-    "restaurant":        "restaurant",
-    "cafe":              "cafe",
-    "bar":               "restaurant",
-    "museum":            "museum",
+    "restaurant":         "restaurant",
+    "cafe":               "cafe",
+    "bar":                "bar",
+    "museum":             "museum",
     "tourist_attraction": "tourism",
-    "park":              "park",
-    "night_club":        "restaurant",
+    "park":               "park",
+    "night_club":         "nightlife",
+    "bakery":             "bakery",
+    "spa":                "spa",
+    "church":             "spiritual",
+    "mosque":             "spiritual",
+    "hindu_temple":       "spiritual",
+    "stadium":            "stadium",
+    "zoo":                "zoo",
+    "aquarium":           "aquarium",
+    "library":            "library",
+    "movie_theater":      "cinema",
+    "amusement_park":     "amusement_park",
+    "art_gallery":        "gallery",
 }
 
 MAP_DATA_CACHE_TTL_HOURS = int(os.getenv("MAP_DATA_CACHE_TTL_HOURS", "24"))
