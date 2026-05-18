@@ -13,7 +13,7 @@ import { DateRangeCalendar } from './DateRangeCalendar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
-  const { city, persona, savedItineraries } = state;
+  const { city, persona, savedItineraries, travelStartDate, travelEndDate } = state;
   const { session } = useLastSession();
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingCity, setPendingCity] = useState<string | null>(null);
@@ -79,15 +79,13 @@ export function DestinationScreen() {
       />
 
       {!showCalendar && (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
           <ExploreSearchBar onCitySelect={handleCitySelect} />
           <CuratedCityCards
             persona={persona}
             onCitySelect={handleCitySelect}
           />
-          <div className="flex-1 overflow-y-auto pb-24" style={{ scrollbarWidth: 'none' }}>
-            <RecentVisits session={session} onOpenMap={handleOpenMap} />
-          </div>
+          <RecentVisits session={session} onOpenMap={handleOpenMap} />
         </div>
       )}
 
@@ -101,7 +99,7 @@ export function DestinationScreen() {
           <div
             className="flex-1 overflow-y-auto"
             style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)',
               scrollbarWidth: 'none',
               animation: 'slideUp 0.3s ease forwards',
               position: 'relative',
@@ -113,9 +111,32 @@ export function DestinationScreen() {
               key={pendingCity ?? city}
               city={pendingCity ?? city}
               onSelect={handleDateSelect}
-              onClose={handleCalendarDone}
             />
           </div>
+          {/* Fixed Done CTA — sits above bottom nav, visible without scrolling */}
+          {travelStartDate && travelEndDate && (
+            <div
+              style={{
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+                zIndex: 10,
+                display: 'flex',
+                justifyContent: 'flex-end',
+                padding: '12px 16px',
+                background: 'linear-gradient(to top, var(--color-bg) 60%, transparent)',
+              }}
+            >
+              <button
+                onClick={handleCalendarDone}
+                className="text-sm font-semibold text-[var(--color-primary)] px-5 py-2 rounded-full"
+                style={{ background: 'var(--color-primary-bg)' }}
+              >
+                Done
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

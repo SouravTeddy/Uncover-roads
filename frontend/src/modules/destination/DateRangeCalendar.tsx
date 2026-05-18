@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 
 interface Props {
   city?: string | null;
   onSelect: (startDate: string, endDate: string) => void;
-  onClose: () => void;
 }
 
 function toIso(year: number, month: number, day: number): string {
@@ -21,20 +20,13 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
+export function DateRangeCalendar({ city, onSelect }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (endDate && footerRef.current) {
-      footerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [endDate]);
 
   const todayIso = toIso(today.getFullYear(), today.getMonth(), today.getDate());
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
@@ -167,23 +159,12 @@ export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
         })}
       </div>
 
-      {/* Range summary + Done — sticky so it always sits above the bottom nav */}
+      {/* Range summary */}
       {startDate && (
-        <div ref={footerRef} className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-divider)]"
-          style={{ position: 'sticky', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', background: 'var(--color-surface)' }}
-        >
+        <div className="flex items-center px-4 py-3 border-t border-[var(--color-divider)]">
           <span className="text-sm text-[var(--color-text-2)]">
             {endDate ? formatRange(startDate, endDate) : formatRange(startDate, startDate)}
           </span>
-          {endDate && (
-            <button
-              onClick={onClose}
-              className="text-xs font-semibold text-[var(--color-primary)] px-3 py-1.5 rounded-full"
-              style={{ background: 'var(--color-primary-bg)' }}
-            >
-              Done
-            </button>
-          )}
         </div>
       )}
     </div>

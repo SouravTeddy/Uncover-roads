@@ -4,19 +4,19 @@ import { DateRangeCalendar } from './DateRangeCalendar';
 
 describe('DateRangeCalendar', () => {
   it('renders the reason copy', () => {
-    render(<DateRangeCalendar onSelect={vi.fn()} onClose={vi.fn()} />);
+    render(<DateRangeCalendar onSelect={vi.fn()} />);
     expect(screen.getByText(/check events, weather and opening days/i)).toBeTruthy();
   });
 
   it('shows current month days', () => {
-    render(<DateRangeCalendar onSelect={vi.fn()} onClose={vi.fn()} />);
+    render(<DateRangeCalendar onSelect={vi.fn()} />);
     // Day "1" through at least "28" should be present
     expect(screen.getAllByRole('button').length).toBeGreaterThan(28);
   });
 
   it('calls onSelect with ISO dates when range is picked', () => {
     const onSelect = vi.fn();
-    render(<DateRangeCalendar onSelect={onSelect} onClose={vi.fn()} />);
+    render(<DateRangeCalendar onSelect={onSelect} />);
 
     // Navigate forward one month to ensure days 10 and 14 are always in the future
     // The next-month button is the last nav button in the month header row
