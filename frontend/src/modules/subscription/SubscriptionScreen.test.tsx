@@ -8,6 +8,7 @@ import type { AppState } from '../../shared/store';
 function makeState(overrides: Partial<AppState> = {}): AppState {
   return {
     currentScreen: 'subscription',
+    screenStack: ['subscription'],
     obAnswers: { ritual: null, sensory: null, style: null, attractions: [], pace: null, social: null },
     rawOBAnswers: null,
     personaProfile: null,
