@@ -70,18 +70,27 @@ export function MapScreen() {
   // Session cache for PinCard persona insights
   const insightCacheRef = useRef(new Map<string, string>());
 
+  // Keep refs current so the unmount cleanup can read latest values
+  const selectedPlacesRef = useRef(selectedPlaces);
+  const cityRef = useRef(city);
+  useEffect(() => { selectedPlacesRef.current = selectedPlaces; }, [selectedPlaces]);
+  useEffect(() => { cityRef.current = city; }, [city]);
+
   // Guard: if city was lost (fresh tab, cleared session), kick back to destination
   useEffect(() => {
     if (!city) dispatch({ type: 'GO_TO', screen: 'destination' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save session when navigating away from the map screen
+  // Save session on unmount — the previous effect-based approach never fired because
+  // MapScreen unmounts the moment currentScreen changes, before the effect could re-run.
   useEffect(() => {
-    if (currentScreen !== 'map' && selectedPlaces.length > 0 && city) {
-      saveSession(selectedPlaces, city);
-    }
-  }, [currentScreen, selectedPlaces, city]);
+    return () => {
+      if (selectedPlacesRef.current.length > 0 && cityRef.current) {
+        saveSession(selectedPlacesRef.current, cityRef.current);
+      }
+    };
+  }, []);
 
   // Consume a place requested from the Explore tab — open its PinCard then clear
   useEffect(() => {

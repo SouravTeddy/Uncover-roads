@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { getCityPhotoUrl } from '../../shared/cityPhoto';
 import type { Persona } from '../../shared/types';
 
@@ -8,17 +9,17 @@ interface ExploreHeroProps {
   userName: string;
 }
 
-const ARCHETYPE_PHOTOS: Record<string, string> = {
-  historian:     'photo-1552832230-c0197dd311b5',  // Rome
-  epicurean:     'photo-1540959733332-eab4deabeeaf', // Tokyo food
-  wanderer:      'photo-1585208798174-6cedd4b9b6e5', // Lisbon
-  voyager:       'photo-1520986606214-8b456906c813', // London
-  explorer:      'photo-1528360983277-13d401cdc186', // Kyoto
-  slowtraveller: 'photo-1534351590666-13e3e96b5017', // Amsterdam
-  pulse:         'photo-1524231757912-21f4fe3a7200', // Istanbul night
+const ARCHETYPE_KEYWORDS: Record<string, string> = {
+  historian:     'rome,colosseum',
+  epicurean:     'tokyo,food',
+  wanderer:      'lisbon,portugal',
+  voyager:       'london,bigben',
+  explorer:      'kyoto,japan',
+  slowtraveller: 'amsterdam,canals',
+  pulse:         'istanbul,turkey',
 };
 
-const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1476514525405-09b77a9d1f66?w=800&q=80';
+const FALLBACK_PHOTO = 'https://source.unsplash.com/featured/800x600?travel,city';
 
 export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreHeroProps) {
   const hour = new Date().getHours();
@@ -27,16 +28,18 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
     : hour >= 17 && hour < 21 ? 'Good evening'
     : 'Good night';
 
-  let photoUrl: string;
+  let initialPhoto: string;
   if (city) {
-    photoUrl = getCityPhotoUrl(city);
+    initialPhoto = getCityPhotoUrl(city);
   } else if (savedTripCity) {
-    photoUrl = getCityPhotoUrl(savedTripCity);
-  } else if (persona?.archetype && ARCHETYPE_PHOTOS[persona.archetype]) {
-    photoUrl = `https://images.unsplash.com/${ARCHETYPE_PHOTOS[persona.archetype]}?w=800&q=80`;
+    initialPhoto = getCityPhotoUrl(savedTripCity);
+  } else if (persona?.archetype && ARCHETYPE_KEYWORDS[persona.archetype]) {
+    initialPhoto = `https://source.unsplash.com/featured/800x600?${ARCHETYPE_KEYWORDS[persona.archetype]}`;
   } else {
-    photoUrl = FALLBACK_PHOTO;
+    initialPhoto = FALLBACK_PHOTO;
   }
+
+  const [photoUrl, setPhotoUrl] = useState(initialPhoto);
 
   const watermarkLabel = city ? city.toUpperCase() : 'EXPLORE';
 
@@ -54,6 +57,7 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
         alt=""
         className="absolute inset-0 w-full h-full object-cover object-center"
         style={{ animation: 'heroKenBurns 12s ease-in-out infinite alternate' }}
+        onError={() => setPhotoUrl(FALLBACK_PHOTO)}
       />
 
       {/* Gradient overlay */}
