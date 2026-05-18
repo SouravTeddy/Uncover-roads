@@ -160,21 +160,12 @@ export function DateRangeCalendar({ city, onSelect, onClose }: Props) {
         })}
       </div>
 
-      {/* Range summary + confirm */}
+      {/* Range summary */}
       {startDate && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--color-divider)]">
+        <div className="px-4 py-3 border-t border-[var(--color-divider)]">
           <span className="text-sm text-[var(--color-text-2)]">
             {endDate ? formatRange(startDate, endDate) : formatRange(startDate, startDate)}
           </span>
-          {endDate && (
-            <button
-              onClick={onClose}
-              className="text-xs font-semibold text-[var(--color-primary)] px-3 py-1.5 rounded-full"
-              style={{ background: 'var(--color-primary-bg)' }}
-            >
-              Done
-            </button>
-          )}
         </div>
       )}
     </div>
