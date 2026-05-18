@@ -101,7 +101,7 @@ export function DestinationScreen() {
           <div
             className="flex-1 overflow-y-auto"
             style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
               scrollbarWidth: 'none',
               animation: 'slideUp 0.3s ease forwards',
               position: 'relative',
@@ -113,42 +113,9 @@ export function DestinationScreen() {
               key={pendingCity ?? city}
               city={pendingCity ?? city}
               onSelect={handleDateSelect}
+              onClose={handleCalendarDone}
             />
           </div>
-
-          {/* Done CTA — fixed above bottom nav, appears once both dates are picked */}
-          {travelStartDate && travelEndDate && (
-            <div
-              style={{
-                position: 'fixed',
-                left: 0,
-                right: 0,
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
-                zIndex: 2,
-                padding: '10px 16px',
-                background: 'var(--color-bg)',
-                borderTop: '1px solid var(--color-divider)',
-              }}
-            >
-              <button
-                onClick={handleCalendarDone}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  borderRadius: 14,
-                  background: 'var(--color-primary)',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-heading)',
-                }}
-              >
-                Go to map
-              </button>
-            </div>
-          )}
         </>
       )}
     </div>
