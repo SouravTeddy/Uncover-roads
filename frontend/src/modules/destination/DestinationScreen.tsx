@@ -113,7 +113,6 @@ export function DestinationScreen() {
               key={pendingCity ?? city}
               city={pendingCity ?? city}
               onSelect={handleDateSelect}
-              onClose={handleCalendarDone}
             />
           </div>
 
