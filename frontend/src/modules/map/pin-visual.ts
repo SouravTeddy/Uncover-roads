@@ -1,9 +1,15 @@
 import type { DiscoveryMode } from '../../shared/types'
 
 // ── Famous pin layer ─────────────────────────────────────────
-export const FAMOUS_PIN_COLOR  = '#f59e0b'
+// Theme-aware: dark map gets a deep navy, light map gets charcoal slate
+export const FAMOUS_PIN_COLOR_DARK  = '#1e3a5f'
+export const FAMOUS_PIN_COLOR_LIGHT = '#334155'
 export const FAMOUS_PIN_SIZE   = 28
 export const FAMOUS_STAR_ICON  = 'star'   // Material Symbol name
+
+export function getFamousPinColor(isDark: boolean): string {
+  return isDark ? FAMOUS_PIN_COLOR_DARK : FAMOUS_PIN_COLOR_LIGHT
+}
 
 // ── Reference ghost pin layer ────────────────────────────────
 export const REFERENCE_PIN_COLOR   = '#8b5cf6'
