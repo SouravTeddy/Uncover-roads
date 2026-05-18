@@ -13,7 +13,7 @@ import { DateRangeCalendar } from './DateRangeCalendar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
-  const { city, travelStartDate, travelEndDate, persona, savedItineraries } = state;
+  const { city, persona, savedItineraries } = state;
   const { session } = useLastSession();
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingCity, setPendingCity] = useState<string | null>(null);
