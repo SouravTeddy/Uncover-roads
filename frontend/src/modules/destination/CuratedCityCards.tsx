@@ -45,9 +45,7 @@ export default function CuratedCityCards({
             fontWeight: 600,
           }}
         >
-          {persona
-            ? (persona.archetype_name ?? persona.archetype)
-            : 'Destinations'}
+          Destinations
         </h2>
         {travelStartDate && (
           <span
@@ -111,26 +109,6 @@ export default function CuratedCityCards({
                 padding: '0 10px 10px',
               }}
             >
-              {/* Archetype tag pill — only shown when persona is set */}
-              {persona && (
-                <span
-                  style={{
-                    display: 'inline-block',
-                    background: 'var(--color-primary-bg)',
-                    color: 'var(--color-primary-text)',
-                    fontSize: 9,
-                    fontWeight: 600,
-                    borderRadius: 999,
-                    padding: '2px 6px',
-                    marginBottom: 4,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  {persona.archetype}
-                </span>
-              )}
-
               {/* City name */}
               <div
                 style={{

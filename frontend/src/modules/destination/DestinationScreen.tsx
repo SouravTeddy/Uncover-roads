@@ -49,13 +49,20 @@ export function DestinationScreen() {
     dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
   }
 
-  const handleCalendarClose = useCallback(() => {
+  // Done button inside the calendar — navigate to map
+  const handleCalendarDone = useCallback(() => {
     setShowCalendar(false);
     setPendingCity(null);
-    if (travelStartDate) dispatch({ type: 'GO_TO', screen: 'map' });
-  }, [travelStartDate, dispatch]);
+    dispatch({ type: 'GO_TO', screen: 'map' });
+  }, [dispatch]);
 
-  useSheetDismiss(handleCalendarClose, showCalendar);
+  // Backdrop tap or hardware back — just close, don't navigate
+  const handleCalendarDismiss = useCallback(() => {
+    setShowCalendar(false);
+    setPendingCity(null);
+  }, []);
+
+  useSheetDismiss(handleCalendarDismiss, showCalendar);
 
   function handleOpenMap(places: Place[]) {
     places.forEach(p => dispatch({ type: 'SET_PENDING_PLACE', place: p }));
@@ -74,21 +81,21 @@ export function DestinationScreen() {
       {!showCalendar && (
         <div className="flex-1 overflow-y-auto pb-28" style={{ scrollbarWidth: 'none' }}>
           <ExploreSearchBar onCitySelect={handleCitySelect} />
+          <RecentVisits session={session} onOpenMap={handleOpenMap} />
           <CuratedCityCards
             persona={persona}
             travelStartDate={travelStartDate}
             travelEndDate={travelEndDate}
             onCitySelect={handleCitySelect}
           />
-          <RecentVisits session={session} onOpenMap={handleOpenMap} />
         </div>
       )}
 
       {showCalendar && (
         <>
-          {/* Backdrop — rgba(0,0,0,0.01) makes it clickable on iOS WebKit */}
+          {/* Backdrop — dismiss only, do not navigate */}
           <div
-            onClick={handleCalendarClose}
+            onClick={handleCalendarDismiss}
             style={{ position: 'fixed', inset: 0, zIndex: 0, background: 'rgba(0,0,0,0.01)' }}
           />
           <div
@@ -106,7 +113,7 @@ export function DestinationScreen() {
               key={pendingCity ?? city}
               city={pendingCity ?? city}
               onSelect={handleDateSelect}
-              onClose={handleCalendarClose}
+              onClose={handleCalendarDone}
             />
           </div>
         </>
