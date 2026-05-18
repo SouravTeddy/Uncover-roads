@@ -7,6 +7,7 @@ import { getPlacePhotoUrl, api } from '../../shared/api'
 import { getTravelDateBadge } from './pincard-utils'
 import { ShimmerLine } from '../../shared/Shimmer'
 import { computePersonaBadges, usePersonaInsight } from './pincard-persona'
+import { useSheetDismiss } from '../../shared/useSheetDismiss'
 
 // ── Design tokens ─────────────────────────────────────────────
 const SURFACE  = 'var(--color-surface)'
@@ -95,6 +96,8 @@ export function PinCard({
     ? computePersonaBadges(place, persona, personaProfile, 'map')
     : []
 
+  useSheetDismiss(onClose, true);
+
   // Swipe to dismiss handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY
@@ -132,10 +135,10 @@ export function PinCard({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — rgba(0,0,0,0.01) required for iOS WebKit to fire click events */}
       <div
         onClick={() => { if (!closing.current) { closing.current = true; onClose() } }}
-        style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'transparent' }}
+        style={{ position: 'fixed', inset: 0, zIndex: 39, background: 'rgba(0,0,0,0.01)' }}
       />
 
       {/* Sheet */}
