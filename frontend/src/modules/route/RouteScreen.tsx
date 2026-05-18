@@ -45,7 +45,7 @@ export function RouteScreen() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+          onClick={() => dispatch({ type: 'GO_BACK' })}
           className="flex items-center justify-center flex-shrink-0"
           aria-label="Back"
           style={{
@@ -69,7 +69,7 @@ export function RouteScreen() {
 
         {engineItinerary && (
           <button
-            onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+            onClick={() => dispatch({ type: 'GO_BACK' })}
             className="text-[13px] font-semibold text-[var(--color-primary)] flex items-center gap-1"
           >
             <span className="ms text-[15px]">edit</span>
@@ -144,7 +144,7 @@ export function RouteScreen() {
             <span className="ms text-[48px] text-[var(--color-border)]">route</span>
             <p className="text-[14px]">No itinerary yet — add places on the map and tap Build Itinerary</p>
             <button
-              onClick={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+              onClick={() => dispatch({ type: 'GO_BACK' })}
               className="px-5 py-2.5 rounded-[12px] bg-[var(--color-primary)] text-white text-[14px] font-heading font-bold"
             >
               Go to map

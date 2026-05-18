@@ -36,12 +36,6 @@ export function DestinationScreen() {
     setShowCalendar(true);
   }
 
-  function handleNearMe() {
-    const todayIso = new Date().toISOString().split('T')[0];
-    dispatch({ type: 'SET_TRAVEL_DATES', startDate: todayIso, endDate: todayIso });
-    dispatch({ type: 'GO_TO', screen: 'map' });
-  }
-
   function handleDateSelect(start: string, end: string) {
     dispatch({ type: 'SET_TRAVEL_DATES', startDate: start, endDate: end });
   }
@@ -65,22 +59,36 @@ export function DestinationScreen() {
         savedTripCity={savedTripCity}
         userName={userName}
       />
-      <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        <ExploreSearchBar onCitySelect={handleCitySelect} onNearMe={handleNearMe} />
-        <CuratedCityCards
-          persona={persona}
-          travelStartDate={travelStartDate}
-          travelEndDate={travelEndDate}
-          onCitySelect={handleCitySelect}
-        />
-        <RecentVisits session={session} onOpenMap={handleOpenMap} />
-      </div>
+
+      {!showCalendar && (
+        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+          <ExploreSearchBar onCitySelect={handleCitySelect} />
+          <CuratedCityCards
+            persona={persona}
+            travelStartDate={travelStartDate}
+            travelEndDate={travelEndDate}
+            onCitySelect={handleCitySelect}
+          />
+          <RecentVisits session={session} onOpenMap={handleOpenMap} />
+        </div>
+      )}
+
       {showCalendar && (
-        <DateRangeCalendar
-          key={pendingCity ?? city}
-          onSelect={handleDateSelect}
-          onClose={handleCalendarClose}
-        />
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)',
+            scrollbarWidth: 'none',
+            animation: 'slideUp 0.3s ease forwards',
+          }}
+        >
+          <style>{`@keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
+          <DateRangeCalendar
+            key={pendingCity ?? city}
+            onSelect={handleDateSelect}
+            onClose={handleCalendarClose}
+          />
+        </div>
       )}
     </div>
   );

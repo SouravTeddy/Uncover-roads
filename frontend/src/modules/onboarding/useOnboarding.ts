@@ -1,5 +1,4 @@
 import { useAppStore } from '../../shared/store';
-import type { Screen } from '../../shared/types';
 import { BASE_OB_STEPS, type ObStep } from './types';
 import { resolveOBAnswers } from './ob-resolver';
 
@@ -18,11 +17,7 @@ export function useOnboarding(step: ObStep) {
   const isLast       = currentIndex === totalSteps - 1;
 
   function goBack() {
-    if (currentIndex === 0) {
-      dispatch({ type: 'GO_TO', screen: 'login' });
-    } else {
-      dispatch({ type: 'GO_TO', screen: activeSteps[currentIndex - 1] as Screen });
-    }
+    dispatch({ type: 'GO_BACK' });
   }
 
   function goNext() {

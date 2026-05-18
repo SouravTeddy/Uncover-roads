@@ -19,7 +19,7 @@ export function SubscriptionScreen() {
   const [couponFeedback, setCouponFeedback] = useState('');
 
   function back() {
-    dispatch({ type: 'GO_TO', screen: 'profile' });
+    dispatch({ type: 'GO_BACK' });
   }
 
   function buyPack(trips: number) {

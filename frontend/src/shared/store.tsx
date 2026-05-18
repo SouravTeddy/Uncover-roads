@@ -58,6 +58,7 @@ const defaultObAnswers: OnboardingAnswers = {
 export interface AppState {
   theme: 'dark' | 'light';
   currentScreen: Screen;
+  screenStack: Screen[];
   obAnswers: OnboardingAnswers;
   rawOBAnswers: RawOBAnswers | null;
   personaProfile: PersonaProfile | null;
@@ -238,6 +239,7 @@ function getStoredUnits(): 'km' | 'miles' {
 export const initialState: AppState = {
   theme: 'dark',
   currentScreen: getInitialScreen(),
+  screenStack: [getInitialScreen()],
   obAnswers: defaultObAnswers,
   rawOBAnswers: null,
   personaProfile: null,
@@ -290,6 +292,8 @@ export const initialState: AppState = {
 
 export type Action =
   | { type: 'GO_TO'; screen: Screen }
+  | { type: 'GO_BACK' }
+  | { type: 'NAV_TAB'; screen: Screen }
   | { type: 'SET_OB_ANSWER'; key: keyof OnboardingAnswers; value: OnboardingAnswers[keyof OnboardingAnswers] }
   | { type: 'SET_PERSONA'; persona: Persona }
   | { type: 'SET_CITY'; city: string }
@@ -363,9 +367,24 @@ export type Action =
 
 export function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case 'GO_TO':
+    case 'GO_TO': {
       ssSave('ur_ss_screen', action.screen);
-      return { ...state, currentScreen: action.screen };
+      const stack = [...state.screenStack, action.screen];
+      return { ...state, currentScreen: action.screen, screenStack: stack };
+    }
+
+    case 'GO_BACK': {
+      if (state.screenStack.length <= 1) return state;
+      const stack = state.screenStack.slice(0, -1);
+      const screen = stack[stack.length - 1];
+      ssSave('ur_ss_screen', screen);
+      return { ...state, currentScreen: screen, screenStack: stack };
+    }
+
+    case 'NAV_TAB': {
+      ssSave('ur_ss_screen', action.screen);
+      return { ...state, currentScreen: action.screen, screenStack: [action.screen] };
+    }
 
     case 'SET_OB_ANSWER':
       return {

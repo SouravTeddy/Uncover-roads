@@ -22,7 +22,7 @@ export function BottomNav() {
   }
 
   function handleTap(screen: Screen) {
-    dispatch({ type: 'GO_TO', screen });
+    dispatch({ type: 'NAV_TAB', screen });
   }
 
   return (

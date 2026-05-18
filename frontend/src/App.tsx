@@ -29,6 +29,9 @@ const BETA_ALLOWLIST = ['sourav.bis93@gmail.com'];
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [showExitPrompt, setShowExitPrompt] = useState(false);
+  const stackRef = React.useRef(state.screenStack);
+  stackRef.current = state.screenStack;
   const [desktopBypassed, setDesktopBypassed] = useState(() => {
     try { return localStorage.getItem('ur_desktop_bypass') === '1'; } catch { return false; }
   });
@@ -37,6 +40,22 @@ function ScreenRouter() {
     const handler = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  // Intercept the browser/OS back button
+  useEffect(() => {
+    window.history.pushState({ ur: true }, '');
+    function onPopState() {
+      window.history.pushState({ ur: true }, ''); // re-arm the trap
+      if (stackRef.current.length <= 1) {
+        setShowExitPrompt(true);
+      } else {
+        dispatch({ type: 'GO_BACK' });
+      }
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (isDesktop && !desktopBypassed && state.currentScreen !== 'trips') {
@@ -194,6 +213,62 @@ function ScreenRouter() {
       </AnimatePresence>
       <InstallPrompt />
       <BottomNav />
+
+      {showExitPrompt && (
+        <div
+          onClick={() => setShowExitPrompt(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%',
+              background: 'var(--color-surface)',
+              borderRadius: '20px 20px 0 0',
+              padding: '28px 20px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
+            }}
+          >
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 6 }}>
+              Leave Uncover Roads?
+            </p>
+            <p style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--color-text-3)', marginBottom: 24, lineHeight: 1.5 }}>
+              Your itinerary and selections are saved.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setShowExitPrompt(false)}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: 16,
+                  background: 'var(--color-surface2)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-1)',
+                  fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Stay
+              </button>
+              <button
+                onClick={() => { setShowExitPrompt(false); window.close(); }}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: 16,
+                  background: 'var(--color-primary)',
+                  border: 'none', color: '#fff',
+                  fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
