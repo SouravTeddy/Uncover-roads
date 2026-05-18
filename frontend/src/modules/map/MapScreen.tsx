@@ -54,7 +54,7 @@ export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, trackViewedCategory, goBack,
+    togglePlace, setFilter, trackViewedCategory,
   } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
@@ -343,26 +343,6 @@ export function MapScreen() {
   }, [setActivePlace, clearDetails, dispatch]);
 
 
-  // Surprise Me — calls backend, navigates to route screen
-  const handleSurprise = useCallback(async () => {
-    if (!city) return
-    if (!personaProfile) {
-      setEventsError('Complete your persona first to use Surprise Me')
-      setTimeout(() => setEventsError(null), 3500)
-      return
-    }
-    if (state.engineItinerary) {
-      setSurpriseConfirm(true)
-      return
-    }
-    setSurpriseLoading(true)
-    try {
-      await _runSurprise()
-    } finally {
-      setSurpriseLoading(false)
-    }
-  }, [city, personaProfile, state.engineItinerary, _runSurprise])
-
   const _runSurprise = useCallback(async () => {
     if (!city || !personaProfile) return
     setSurpriseConfirm(false)
@@ -385,6 +365,26 @@ export function MapScreen() {
       setTimeout(() => setSurpriseError(null), 3000)
     }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
+
+  // Surprise Me — calls backend, navigates to route screen
+  const handleSurprise = useCallback(async () => {
+    if (!city) return
+    if (!personaProfile) {
+      setEventsError('Complete your persona first to use Surprise Me')
+      setTimeout(() => setEventsError(null), 3500)
+      return
+    }
+    if (state.engineItinerary) {
+      setSurpriseConfirm(true)
+      return
+    }
+    setSurpriseLoading(true)
+    try {
+      await _runSurprise()
+    } finally {
+      setSurpriseLoading(false)
+    }
+  }, [city, personaProfile, state.engineItinerary, _runSurprise])
 
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
