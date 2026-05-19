@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { MutableRefObject } from 'react'
 import type { Place, PlaceDetails, ReferencePin } from '../../shared/types'
 import type { Persona, PersonaProfile } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { getTravelDateBadge } from './pincard-utils'
-import { ShimmerLine } from '../../shared/Shimmer'
-import { computePersonaBadges, usePersonaInsight } from './pincard-persona'
+import { computePersonaBadges } from './pincard-persona'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 
 // ── Design tokens ─────────────────────────────────────────────
@@ -15,7 +13,6 @@ const BORDER   = 'var(--color-border)'
 const TEXT1    = 'var(--color-text-1)'
 const TEXT3    = 'var(--color-text-3)'
 const ACCENT   = '#3b82f6'
-const AI_MARK  = '#8b5cf6'
 const PRICE: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' }
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
@@ -37,14 +34,13 @@ interface Props {
   travelDate?: string | null
   persona?: Persona | null
   personaProfile?: PersonaProfile | null
-  insightCache?: MutableRefObject<Map<string, string>>
 }
 
 export function PinCard({
   place, city, isSelected, isFavourited,
   onAdd, onClose, onFavourite,
   details, travelDate,
-  persona, personaProfile, insightCache,
+  persona, personaProfile,
 }: Props) {
   const [visible, setVisible]   = useState(false)
   const [imgSrc, setImgSrc]     = useState<string | null>(null)
@@ -83,13 +79,6 @@ export function PinCard({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [place.id, googlePhotoUrl])
-
-  // LLM archetype insight
-  const fallbackCache = useRef(new Map<string, string>())
-  const activeCache = insightCache ?? fallbackCache
-  const { insight, loading: insightLoading } = usePersonaInsight(
-    place, persona ?? null, 'map', activeCache,
-  )
 
   // Persona badges — computed synchronously
   const personaBadges = (persona && personaProfile != null)
@@ -218,34 +207,28 @@ export function PinCard({
             </div>
           )}
 
-          {/* Persona badges */}
+          {/* Our take */}
           {personaBadges.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-              {personaBadges.map((badge) => (
-                <div key={badge.text} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 9px', borderRadius: 999,
-                  fontSize: '0.72rem', fontWeight: 700,
-                  color: badge.color,
-                  background: badge.bg,
-                  border: `1px solid ${badge.border}`,
-                }}>
-                  {badge.text}
-                </div>
-              ))}
+            <div style={{ marginBottom: 10 }}>
+              <p style={{ margin: '0 0 5px', fontSize: '0.68rem', fontWeight: 700, color: TEXT3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Our take
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {personaBadges.map((badge) => (
+                  <div key={badge.text} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '3px 9px', borderRadius: 999,
+                    fontSize: '0.72rem', fontWeight: 700,
+                    color: badge.color,
+                    background: badge.bg,
+                    border: `1px solid ${badge.border}`,
+                  }}>
+                    {badge.text}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-
-          {/* Archetype insight — LLM ✦ (persona tone only, no facts) */}
-          <div style={{ marginBottom: 12, minHeight: 20 }}>
-            {insightLoading ? (
-              <ShimmerLine width="80%" height={14} />
-            ) : insight ? (
-              <p style={{ margin: 0, fontSize: '0.82rem', color: TEXT3, fontStyle: 'italic', lineHeight: 1.5 }}>
-                <span style={{ color: AI_MARK, marginRight: 4 }}>✦</span>{insight}
-              </p>
-            ) : null}
-          </div>
 
           {/* CTAs */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
