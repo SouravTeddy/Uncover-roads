@@ -6,7 +6,6 @@ interface Props {
   cities: string[]
   onDateTap: () => void
   itineraryPlaces: Place[]
-  days: number
   buildLoading: boolean
   onBuild: () => void
   hasBlockers: boolean
@@ -22,7 +21,7 @@ function formatDate(iso: string): string {
 
 export function BottomActionTray({
   startDate, endDate, cities, onDateTap,
-  itineraryPlaces, days, buildLoading, onBuild,
+  itineraryPlaces, buildLoading, onBuild,
   hasBlockers, onBlockerTap,
 }: Props) {
   const count = itineraryPlaces.length

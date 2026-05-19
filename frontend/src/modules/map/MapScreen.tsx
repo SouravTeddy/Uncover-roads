@@ -734,12 +734,8 @@ export function MapScreen() {
           cities={cityContexts.map(c => c.city)}
           onDateTap={() => {}}
           itineraryPlaces={selectedPlaces}
-          days={activeCityDays}
           buildLoading={buildLoading}
           onBuild={handleBuild}
-          surpriseDisabled={!personaProfile}
-          surpriseLoading={surpriseLoading}
-          onSurprise={handleSurprise}
           hasBlockers={hardBlockers.length > 0}
           onBlockerTap={() => setBlockerSheetOpen(true)}
         />
