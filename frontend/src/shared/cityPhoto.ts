@@ -18,3 +18,7 @@ export function getCityPhotoUrl(cityName: string): string {
   const id = Object.entries(CITY_PHOTOS).find(([k]) => key.includes(k))?.[1] ?? DEFAULT_CITY_PHOTO;
   return `https://images.unsplash.com/${id}?w=600&q=75`;
 }
+
+/** Gradient shown when image fails to load — matches the app's dark theme. */
+export const CITY_PHOTO_FALLBACK_GRADIENT =
+  'linear-gradient(135deg, #1a1f2e 0%, #0f141e 100%)';
