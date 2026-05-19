@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getCityPhotoUrl, CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
+import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhoto } from './useCityPhoto';
 import type { Persona } from '../../shared/types';
 
