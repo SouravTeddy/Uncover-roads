@@ -2452,6 +2452,7 @@ class CitySearchResult(BaseModel):
     country_code: str
     tier: int
     seeded: bool
+    image_url: Optional[str] = None
 
 
 class MapPin(BaseModel):
@@ -2485,7 +2486,7 @@ async def cities_autocomplete(q: str, _user=Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="database_unavailable")
     rows = (
         _supabase.table("city_whitelist")
-        .select("city_id, name, country_code, tier, seeded")
+        .select("city_id, name, country_code, tier, seeded, image_url")
         .ilike("name", f"{q}%")
         .order("tier")
         .limit(10)
@@ -2496,6 +2497,7 @@ async def cities_autocomplete(q: str, _user=Depends(get_current_user)):
             city_id=r["city_id"], name=r["name"],
             country_code=r["country_code"], tier=r["tier"],
             seeded=r.get("seeded", False),
+            image_url=r.get("image_url"),
         )
         for r in (rows.data or [])
     ]
@@ -2508,7 +2510,7 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
         raise HTTPException(status_code=503, detail="database_unavailable")
     row = (
         _supabase.table("city_whitelist")
-        .select("city_id, name, country_code, tier, seeded")
+        .select("city_id, name, country_code, tier, seeded, image_url")
         .eq("city_id", city_id)
         .maybe_single()
         .execute()
@@ -2520,7 +2522,31 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
         city_id=r["city_id"], name=r["name"],
         country_code=r["country_code"], tier=r["tier"],
         seeded=r.get("seeded", False),
+        image_url=r.get("image_url"),
     )
+
+
+@app.get("/api/cities/photos")
+async def cities_photos(names: str, _user=Depends(get_current_user)):
+    """Batch image URL lookup by city name. Returns {name: image_url|null}.
+
+    names: comma-separated city names, max 20, case-insensitive exact match.
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    name_list = [n.strip() for n in names.split(",") if n.strip()][:20]
+    if not name_list:
+        return {}
+    rows = (
+        _supabase.table("city_whitelist")
+        .select("name, image_url")
+        .in_("name", name_list)
+        .execute()
+    )
+    result: dict[str, Optional[str]] = {n: None for n in name_list}
+    for r in (rows.data or []):
+        result[r["name"]] = r.get("image_url")
+    return result
 
 
 @app.get("/api/cities/map-pins", response_model=list[MapPin])

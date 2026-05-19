@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { Persona } from '../../shared/types';
-import { getCityPhotoUrl } from '../../shared/cityPhoto';
+import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
+import { useCityPhotoBatch } from './useCityPhoto';
 import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 
 interface CuratedCityCardsProps {
@@ -13,6 +15,9 @@ export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityC
     archetype && ARCHETYPE_CITIES[archetype]
       ? ARCHETYPE_CITIES[archetype].slice(0, 6)
       : DEFAULT_CITIES;
+
+  const cityNames = cities.map(c => c.name);
+  const photoMap = useCityPhotoBatch(cityNames);
 
   const cardHeight = 188;
 
@@ -40,72 +45,104 @@ export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityC
         style={{ paddingBottom: 4 }}
       >
         {cities.map((city) => (
-          <button
+          <CityCard
             key={city.name}
-            onClick={() => onCitySelect(city.name)}
-            className="flex-shrink-0 relative overflow-hidden rounded-2xl"
-            style={{ width: 136, height: cardHeight, padding: 0, border: 'none', cursor: 'pointer' }}
-          >
-            {/* Background photo */}
-            <img
-              src={getCityPhotoUrl(city.name)}
-              alt={city.name}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center',
-              }}
-            />
-
-            {/* Dark gradient overlay */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.65) 100%)',
-              }}
-            />
-
-            {/* Text content */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                padding: '0 10px 10px',
-              }}
-            >
-              {/* City name */}
-              <div
-                style={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  color: '#ffffff',
-                  fontSize: 18,
-                  lineHeight: 1.15,
-                  fontWeight: 600,
-                }}
-              >
-                {city.name}
-              </div>
-
-              {/* Country name */}
-              <div
-                style={{
-                  color: 'rgba(255,255,255,.7)',
-                  fontSize: 11,
-                  lineHeight: 1.4,
-                }}
-              >
-                {city.country}
-              </div>
-            </div>
-          </button>
+            name={city.name}
+            country={city.country}
+            photoUrl={photoMap.get(city.name) ?? ''}
+            height={cardHeight}
+            onSelect={() => onCitySelect(city.name)}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+interface CityCardProps {
+  name: string;
+  country: string;
+  photoUrl: string;
+  height: number;
+  onSelect: () => void;
+}
+
+function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  return (
+    <button
+      onClick={onSelect}
+      className="flex-shrink-0 relative overflow-hidden rounded-2xl"
+      style={{
+        width: 136,
+        height,
+        padding: 0,
+        border: 'none',
+        cursor: 'pointer',
+        background: imgFailed ? CITY_PHOTO_FALLBACK_GRADIENT : undefined,
+      }}
+    >
+      {/* Background photo */}
+      {!imgFailed && photoUrl && (
+        <img
+          src={photoUrl}
+          alt={name}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+          onError={() => setImgFailed(true)}
+        />
+      )}
+
+      {/* Dark gradient overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.65) 100%)',
+        }}
+      />
+
+      {/* Text content */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '0 10px 10px',
+        }}
+      >
+        {/* City name */}
+        <div
+          style={{
+            fontFamily: '"Cormorant Garamond", serif',
+            color: '#ffffff',
+            fontSize: 18,
+            lineHeight: 1.15,
+            fontWeight: 600,
+          }}
+        >
+          {name}
+        </div>
+
+        {/* Country name */}
+        <div
+          style={{
+            color: 'rgba(255,255,255,.7)',
+            fontSize: 11,
+            lineHeight: 1.4,
+          }}
+        >
+          {country}
+        </div>
+      </div>
+    </button>
   );
 }
