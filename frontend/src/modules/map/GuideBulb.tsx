@@ -1,26 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GuideMessage } from './useGuideMessages'
 
 export interface GuideBulbProps {
-  message: GuideMessage | null
-  onConflictTap: () => void
+  messages: GuideMessage[]
+  hasUnread: boolean
+  onRead: () => void
 }
 
 const KIND_ICON: Record<GuideMessage['kind'], string> = {
-  area: 'explore',
-  event: 'event',
-  conflict: 'warning',
+  area:      'explore',
+  event:     'event',
   exploring: 'route',
 }
 
 const KIND_COLOR: Record<GuideMessage['kind'], string> = {
-  area: '#60a5fa',
-  event: '#a5b4fc',
-  conflict: '#fbbf24',
+  area:      '#60a5fa',
+  event:     '#a5b4fc',
   exploring: '#4ade80',
 }
 
-// Inject keyframe animations once on module load
+// Inject keyframe animations once
 const STYLE_ID = 'guide-bulb-keyframes'
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   const style = document.createElement('style')
@@ -31,9 +30,9 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
       70%  { transform: scale(1.35); }
       100% { transform: scale(1); }
     }
-    @keyframes guideGlowPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(212,168,83,0); }
-      50%       { box-shadow: 0 0 0 8px rgba(212,168,83,.25); }
+    @keyframes guideDotBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
     }
     @keyframes guideRingPulse {
       0%, 100% { transform: scale(1); opacity: .35; }
@@ -43,14 +42,41 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   document.head.appendChild(style)
 }
 
-export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
+export function GuideBulb({ messages, hasUnread, onRead }: GuideBulbProps) {
   const [open, setOpen] = useState(false)
-  const hasMessage = message !== null
+  const [isBlinking, setIsBlinking] = useState(false)
+  const prevCountRef = useRef(0)
+  const blinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Trigger blink animation whenever new messages arrive
+  useEffect(() => {
+    if (messages.length > prevCountRef.current) {
+      prevCountRef.current = messages.length
+      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current)
+      setIsBlinking(true)
+      blinkTimerRef.current = setTimeout(() => setIsBlinking(false), 3000)
+    }
+    return () => {
+      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current)
+    }
+  }, [messages.length])
+
+  function handleOpen() {
+    const wasOpen = open
+    setOpen(o => !o)
+    if (!wasOpen) {
+      onRead()
+    }
+  }
+
+  const showDot = hasUnread && !open
+  // Newest messages at top
+  const sorted = [...messages].reverse()
 
   return (
     <div style={{ position: 'relative', width: 44, height: 44 }}>
-      {/* Glow ring — shown when hasMessage && !open */}
-      {hasMessage && !open && (
+      {/* Glow ring — shown when unread and not open */}
+      {showDot && !isBlinking && (
         <div
           style={{
             position: 'absolute',
@@ -66,7 +92,7 @@ export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
       {/* Bulb button */}
       <button
         aria-label="Guide"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleOpen}
         style={{
           width: 44,
           height: 44,
@@ -74,11 +100,18 @@ export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: open ? 'rgba(212,168,83,.25)' : hasMessage ? 'rgba(212,168,83,.12)' : 'rgba(15,20,30,.72)',
-          border: open ? '1.5px solid rgba(212,168,83,.6)' : hasMessage ? '1.5px solid rgba(212,168,83,.3)' : '1px solid rgba(255,255,255,.1)',
+          background: open
+            ? 'rgba(212,168,83,.25)'
+            : hasUnread
+            ? 'rgba(212,168,83,.12)'
+            : 'rgba(15,20,30,.72)',
+          border: open
+            ? '1.5px solid rgba(212,168,83,.6)'
+            : hasUnread
+            ? '1.5px solid rgba(212,168,83,.3)'
+            : '1px solid rgba(255,255,255,.1)',
           backdropFilter: 'blur(12px)',
           cursor: 'pointer',
-          animation: hasMessage && !open ? 'guideGlowPulse 2.8s ease-in-out infinite' : undefined,
           transition: 'background 0.2s, border 0.2s',
         }}
       >
@@ -86,15 +119,15 @@ export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
           className="ms fill"
           style={{
             fontSize: 22,
-            color: open || hasMessage ? '#d4a853' : 'var(--color-text-3)',
+            color: open || hasUnread ? '#d4a853' : 'var(--color-text-3)',
           }}
         >
           lightbulb
         </span>
       </button>
 
-      {/* Notification dot — shown when hasMessage && !open */}
-      {hasMessage && !open && (
+      {/* Notification dot */}
+      {showDot && (
         <span
           data-testid="guide-dot"
           style={{
@@ -106,24 +139,27 @@ export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
             borderRadius: '50%',
             background: '#d4a853',
             border: '1.5px solid var(--color-surface)',
-            animation: 'guideDotBounceIn 0.35s cubic-bezier(.22,1,.36,1) both',
+            animation: isBlinking
+              ? 'guideDotBounceIn 0.35s cubic-bezier(.22,1,.36,1) both, guideDotBlink 0.4s ease-in-out 0.35s 7 both'
+              : 'none',
           }}
         />
       )}
 
-      {/* Panel — shown when open && message !== null */}
-      {open && message && (
+      {/* Panel */}
+      {open && (
         <div
           style={{
             position: 'absolute',
             top: 52,
             right: 0,
-            width: 260,
+            width: 272,
             background: 'rgba(15,20,30,.96)',
             backdropFilter: 'blur(16px)',
             border: '1px solid rgba(255,255,255,.1)',
             borderRadius: 16,
             overflow: 'hidden',
+            animation: 'none',
           }}
         >
           {/* Panel header */}
@@ -149,99 +185,59 @@ export function GuideBulb({ message, onConflictTap }: GuideBulbProps) {
             <button
               aria-label="Close panel"
               onClick={() => setOpen(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                lineHeight: 1,
-                padding: 2,
-              }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
             >
-              <span
-                className="ms"
-                style={{
-                  fontSize: 16,
-                  color: 'var(--color-text-3)',
-                }}
-              >
-                close
-              </span>
+              <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-3)' }}>close</span>
             </button>
           </div>
 
-          {/* Message card */}
-          <div
-            style={{
-              margin: '8px 10px 10px',
-              padding: '10px 12px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,.04)',
-              border: `1px solid ${KIND_COLOR[message.kind]}22`,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 8,
-              }}
-            >
-              <span
-                className="ms fill"
-                style={{
-                  fontSize: 16,
-                  color: KIND_COLOR[message.kind],
-                  marginTop: 1,
-                  flexShrink: 0,
-                }}
-              >
-                {KIND_ICON[message.kind]}
-              </span>
-              <div style={{ flex: 1 }}>
-                {message.kind === 'conflict' ? (
-                  <button
-                    aria-label="View conflict details"
-                    onClick={onConflictTap}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
-                      textAlign: 'left',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      color: 'var(--color-text-1)',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {message.text}
+          {/* Message history — newest first */}
+          {sorted.length === 0 ? (
+            <p style={{ margin: '12px', fontSize: '0.8rem', color: 'var(--color-text-3)' }}>
+              No suggestions yet.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px 10px' }}>
+              {sorted.map((msg, i) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 12,
+                    background: 'rgba(255,255,255,.04)',
+                    border: `1px solid ${KIND_COLOR[msg.kind]}22`,
+                    animation: `guideMsgIn 0.25s cubic-bezier(.22,1,.36,1) ${i * 60}ms both`,
+                  }}
+                >
+                  <style>{`
+                    @keyframes guideMsgIn {
+                      from { opacity: 0; transform: translateY(10px); }
+                      to   { opacity: 1; transform: translateY(0); }
+                    }
+                  `}</style>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                     <span
+                      className="ms fill"
+                      style={{ fontSize: 15, color: KIND_COLOR[msg.kind], marginTop: 1, flexShrink: 0 }}
+                    >
+                      {KIND_ICON[msg.kind]}
+                    </span>
+                    <p
                       style={{
-                        display: 'block',
-                        fontSize: '0.72rem',
-                        color: '#fbbf24',
-                        marginTop: 2,
+                        margin: 0,
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: 'var(--color-text-1)',
+                        lineHeight: 1.4,
                       }}
                     >
-                      Tap to see details →
-                    </span>
-                  </button>
-                ) : (
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      color: 'var(--color-text-1)',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {message.text}
-                  </p>
-                )}
-              </div>
+                      {msg.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

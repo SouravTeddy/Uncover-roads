@@ -3,60 +3,75 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { GuideBulb } from './GuideBulb'
 import type { GuideMessage } from './useGuideMessages'
 
-const areaMessage: GuideMessage = { id: 'area', kind: 'area', text: 'Explore the best of Tokyo' }
-const conflictMessage: GuideMessage = { id: 'conflict', kind: 'conflict', text: 'We found a conflict' }
+function makeMsg(overrides: Partial<GuideMessage> = {}): GuideMessage {
+  return { id: 'area-1', kind: 'area', text: 'Explore Tokyo', timestamp: 1000, ...overrides }
+}
 
 describe('GuideBulb', () => {
-  it('renders a button with aria-label "Guide"', () => {
-    render(<GuideBulb message={null} onConflictTap={() => {}} />)
-    const button = screen.getByRole('button', { name: /Guide/i })
-    expect(button).toBeTruthy()
+  it('renders the Guide button', () => {
+    render(<GuideBulb messages={[]} hasUnread={false} onRead={() => {}} />)
+    expect(screen.getByRole('button', { name: /Guide/i })).toBeTruthy()
   })
 
-  it('does not render dot when message is null', () => {
-    render(<GuideBulb message={null} onConflictTap={() => {}} />)
-    const dot = screen.queryByTestId('guide-dot')
-    expect(dot).toBeNull()
+  it('does not render dot when no unread messages', () => {
+    render(<GuideBulb messages={[]} hasUnread={false} onRead={() => {}} />)
+    expect(screen.queryByTestId('guide-dot')).toBeNull()
   })
 
-  it('renders dot with data-testid="guide-dot" when message is provided', () => {
-    render(<GuideBulb message={areaMessage} onConflictTap={() => {}} />)
-    const dot = screen.getByTestId('guide-dot')
-    expect(dot).toBeTruthy()
+  it('renders dot when hasUnread is true', () => {
+    const msg = makeMsg()
+    render(<GuideBulb messages={[msg]} hasUnread={true} onRead={() => {}} />)
+    expect(screen.getByTestId('guide-dot')).toBeTruthy()
   })
 
-  it('opens panel and shows message text when bulb button is clicked', () => {
-    render(<GuideBulb message={areaMessage} onConflictTap={() => {}} />)
-    const button = screen.getByRole('button', { name: /Guide/i })
-    fireEvent.click(button)
-    expect(screen.getByText(areaMessage.text)).toBeTruthy()
+  it('opens panel and shows message text when bulb clicked', () => {
+    const msg = makeMsg()
+    render(<GuideBulb messages={[msg]} hasUnread={true} onRead={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    expect(screen.getByText(msg.text)).toBeTruthy()
   })
 
   it('hides dot when panel is open', () => {
-    render(<GuideBulb message={areaMessage} onConflictTap={() => {}} />)
-    const button = screen.getByRole('button', { name: /Guide/i })
-    fireEvent.click(button)
-    const dot = screen.queryByTestId('guide-dot')
-    expect(dot).toBeNull()
+    const msg = makeMsg()
+    render(<GuideBulb messages={[msg]} hasUnread={true} onRead={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    expect(screen.queryByTestId('guide-dot')).toBeNull()
   })
 
-  it('calls onConflictTap when "View conflict details" button is clicked', () => {
-    const onConflictTap = vi.fn()
-    render(<GuideBulb message={conflictMessage} onConflictTap={onConflictTap} />)
-    const button = screen.getByRole('button', { name: /Guide/i })
-    fireEvent.click(button)
-    const detailsButton = screen.getByRole('button', { name: /View conflict details/i })
-    fireEvent.click(detailsButton)
-    expect(onConflictTap).toHaveBeenCalled()
+  it('calls onRead when panel opens', () => {
+    const onRead = vi.fn()
+    const msg = makeMsg()
+    render(<GuideBulb messages={[msg]} hasUnread={true} onRead={onRead} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    expect(onRead).toHaveBeenCalled()
   })
 
-  it('closes panel when "Close panel" button is clicked', () => {
-    render(<GuideBulb message={areaMessage} onConflictTap={() => {}} />)
-    const button = screen.getByRole('button', { name: /Guide/i })
-    fireEvent.click(button)
-    expect(screen.getByText(areaMessage.text)).toBeTruthy()
-    const closeButton = screen.getByRole('button', { name: /Close panel/i })
-    fireEvent.click(closeButton)
-    expect(screen.queryByText(areaMessage.text)).toBeNull()
+  it('closes panel when "Close panel" button clicked', () => {
+    const msg = makeMsg()
+    render(<GuideBulb messages={[msg]} hasUnread={true} onRead={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    expect(screen.getByText(msg.text)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Close panel/i }))
+    expect(screen.queryByText(msg.text)).toBeNull()
+  })
+
+  it('shows all messages in history — newest first', () => {
+    const msgs: GuideMessage[] = [
+      makeMsg({ id: 'm1', text: 'First message', timestamp: 1000 }),
+      makeMsg({ id: 'm2', kind: 'exploring', text: 'Second message', timestamp: 2000 }),
+    ]
+    render(<GuideBulb messages={msgs} hasUnread={true} onRead={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    const body = document.body.textContent ?? ''
+    const firstIdx = body.indexOf('First message')
+    const secondIdx = body.indexOf('Second message')
+    // Newer (timestamp 2000) should appear before older (timestamp 1000)
+    expect(secondIdx).toBeLessThan(firstIdx)
+  })
+
+  it('shows "No suggestions yet" when panel opened with no messages', () => {
+    render(<GuideBulb messages={[]} hasUnread={false} onRead={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /Guide/i }))
+    expect(screen.getByText(/No suggestions yet/i)).toBeTruthy()
   })
 })
