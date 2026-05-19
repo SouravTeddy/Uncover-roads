@@ -553,6 +553,7 @@ export function MapScreen() {
                 if (activeFilter === 'saved') {
                   setFilter('all');
                 } else {
+                  setActiveCategories([]);
                   setFilter('saved' as MapFilter);
                 }
               }}
