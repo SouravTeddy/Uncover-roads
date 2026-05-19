@@ -68,8 +68,6 @@ export function MapScreen() {
   // New store state for phase 4
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
   const isDark = theme !== 'light'
-  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
-
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
   const cityRef = useRef(city);
@@ -167,9 +165,6 @@ export function MapScreen() {
 
   // Surprise Me error state
   const [surpriseError, setSurpriseError] = useState<string | null>(null)
-
-  // Surprise Me loading state (was previously owned by SurpriseMeButton)
-  const [surpriseLoading, setSurpriseLoading] = useState(false)
 
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
@@ -374,26 +369,6 @@ export function MapScreen() {
       setTimeout(() => setSurpriseError(null), 3000)
     }
   }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
-
-  // Surprise Me — calls backend, navigates to route screen
-  const handleSurprise = useCallback(async () => {
-    if (!city) return
-    if (!personaProfile) {
-      setEventsError('Complete your persona first to use Surprise Me')
-      setTimeout(() => setEventsError(null), 3500)
-      return
-    }
-    if (state.engineItinerary) {
-      setSurpriseConfirm(true)
-      return
-    }
-    setSurpriseLoading(true)
-    try {
-      await _runSurprise()
-    } finally {
-      setSurpriseLoading(false)
-    }
-  }, [city, personaProfile, state.engineItinerary, _runSurprise])
 
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
