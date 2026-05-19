@@ -12,3 +12,87 @@ describe('Category type coverage', () => {
     expect(cats.length).toBe(24)
   })
 })
+
+import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
+import { FilterBar } from './FilterBar'
+
+const noop = () => {}
+
+const baseCounts: Record<string, number> = {
+  historic: 8, tourism: 5, cafe: 14, park: 3, restaurant: 11,
+  museum: 6, bar: 2, nightlife: 1, gallery: 4, viewpoint: 0,
+  beach: 0, market: 7, spiritual: 2, spa: 0,
+}
+
+describe('FilterBar component', () => {
+  it('renders the All button', () => {
+    render(
+      <FilterBar
+        active="all" activeCategories={[]} allCount={50}
+        curatedCount={0} curatedLocked={false}
+        categoryCounts={baseCounts}
+        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+      />
+    )
+    expect(screen.getByRole('button', { name: /All/i })).toBeTruthy()
+  })
+
+  it('shows count on Landmarks chip (historic 8 + tourism 5 = 13)', () => {
+    render(
+      <FilterBar
+        active="all" activeCategories={[]} allCount={50}
+        curatedCount={0} curatedLocked={false}
+        categoryCounts={baseCounts}
+        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    expect(screen.getByText('Landmarks')).toBeTruthy()
+    const el = document.body.textContent ?? ''
+    expect(el).toContain('13')
+  })
+
+  it('hides chips with 0 count (Spa has 0)', () => {
+    render(
+      <FilterBar
+        active="all" activeCategories={[]} allCount={50}
+        curatedCount={0} curatedLocked={false}
+        categoryCounts={baseCounts}
+        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    expect(screen.queryByText('Spa')).toBeNull()
+  })
+
+  it('calls onCategoriesSelect with ["historic","tourism"] for Landmarks', () => {
+    const onCategoriesSelect = vi.fn()
+    render(
+      <FilterBar
+        active="all" activeCategories={[]} allCount={50}
+        curatedCount={0} curatedLocked={false}
+        categoryCounts={baseCounts}
+        onSelect={noop} onCategoriesSelect={onCategoriesSelect} onLockedTap={noop}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    fireEvent.click(screen.getByText('Landmarks'))
+    expect(onCategoriesSelect).toHaveBeenCalledWith(['historic', 'tourism'])
+  })
+
+  it('scroll row has maxWidth set', () => {
+    render(
+      <FilterBar
+        active="all" activeCategories={[]} allCount={50}
+        curatedCount={0} curatedLocked={false}
+        categoryCounts={baseCounts}
+        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    const scrollRow = document.querySelector('[data-testid="subcategory-scroll"]') as HTMLElement | null
+    expect(scrollRow).not.toBeNull()
+    expect(scrollRow!.style.maxWidth).toBe('calc(100vw - 32px)')
+  })
+})

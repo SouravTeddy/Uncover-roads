@@ -1,64 +1,72 @@
-import { useState } from 'react';
-import type { MapFilter } from '../../shared/types';
+import { useState } from 'react'
+import type { MapFilter } from '../../shared/types'
 
-const SUB_CHIPS = [
-  { key: 'historic',      label: 'Landmarks', icon: 'account_balance' },
-  { key: 'cafe',          label: 'Cafes',     icon: 'local_cafe' },
-  { key: 'park',          label: 'Parks',     icon: 'park' },
-  { key: 'restaurant',    label: 'Dining',    icon: 'restaurant' },
-  { key: 'museum',        label: 'Museums',   icon: 'museum' },
-  { key: 'bar',           label: 'Bars',      icon: 'local_bar' },
-  { key: 'nightlife',     label: 'Nightlife', icon: 'nightlife' },
-  { key: 'gallery',       label: 'Art',       icon: 'palette' },
-  { key: 'viewpoint',     label: 'Views',     icon: 'landscape' },
-  { key: 'beach',         label: 'Beaches',   icon: 'beach_access' },
-  { key: 'market',        label: 'Markets',   icon: 'storefront' },
-  { key: 'spiritual',     label: 'Spiritual', icon: 'temple_buddhist' },
-  { key: 'spa',           label: 'Spa',       icon: 'spa' },
-];
+const SUB_CHIPS: { categories: string[]; label: string; icon: string }[] = [
+  { categories: ['historic', 'tourism'], label: 'Landmarks',  icon: 'account_balance' },
+  { categories: ['cafe'],                label: 'Cafes',       icon: 'local_cafe' },
+  { categories: ['park'],                label: 'Parks',       icon: 'park' },
+  { categories: ['restaurant'],          label: 'Dining',      icon: 'restaurant' },
+  { categories: ['museum'],              label: 'Museums',     icon: 'museum' },
+  { categories: ['bar'],                 label: 'Bars',        icon: 'local_bar' },
+  { categories: ['nightlife'],           label: 'Nightlife',   icon: 'nightlife' },
+  { categories: ['gallery'],             label: 'Art',         icon: 'palette' },
+  { categories: ['viewpoint'],           label: 'Views',       icon: 'landscape' },
+  { categories: ['beach'],               label: 'Beaches',     icon: 'beach_access' },
+  { categories: ['market'],              label: 'Markets',     icon: 'storefront' },
+  { categories: ['spiritual'],           label: 'Spiritual',   icon: 'temple_buddhist' },
+  { categories: ['spa'],                 label: 'Spa',         icon: 'spa' },
+]
 
 interface Props {
-  active: MapFilter;
-  activeCategory: string | null;
-  allCount: number;
-  curatedCount: number;
-  curatedLocked: boolean;
-  onSelect: (filter: MapFilter) => void;
-  onCategorySelect: (category: string | null) => void;
-  onLockedTap: () => void;
+  active: MapFilter
+  activeCategories: string[]
+  allCount: number
+  curatedCount: number
+  curatedLocked: boolean
+  categoryCounts: Record<string, number>
+  onSelect: (filter: MapFilter) => void
+  onCategoriesSelect: (categories: string[]) => void
+  onLockedTap: () => void
 }
 
 export function FilterBar({
-  active, activeCategory, allCount, curatedCount, curatedLocked,
-  onSelect, onCategorySelect, onLockedTap,
+  active, activeCategories, allCount, curatedCount, curatedLocked,
+  categoryCounts, onSelect, onCategoriesSelect, onLockedTap,
 }: Props) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false)
 
-  const isAllMode = active === 'all';
-  const allLabel = activeCategory
-    ? (SUB_CHIPS.find(c => c.key === activeCategory)?.label ?? 'All')
-    : 'All';
+  const isAllMode = active === 'all'
+
+  function chipCount(cats: string[]): number {
+    return cats.reduce((sum, c) => sum + (categoryCounts[c] ?? 0), 0)
+  }
+
+  const activeChip = SUB_CHIPS.find(c =>
+    c.categories.length === activeCategories.length &&
+    c.categories.every(cat => activeCategories.includes(cat))
+  )
+  const allLabel = activeChip ? activeChip.label : 'All'
 
   function handleAllTap() {
     if (!isAllMode) {
-      onSelect('all');
-      onCategorySelect(null);
-      setExpanded(false);
-      return;
+      onSelect('all')
+      onCategoriesSelect([])
+      setExpanded(false)
+      return
     }
-    setExpanded(e => !e);
+    setExpanded(e => !e)
   }
 
-  function handleSubChip(key: string) {
-    onCategorySelect(key);
-    setExpanded(false);
+  function handleSubChip(cats: string[]) {
+    onCategoriesSelect(cats)
+    setExpanded(false)
   }
+
+  const visibleChips = SUB_CHIPS.filter(c => chipCount(c.categories) > 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-      {/* Main chips row */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        {/* All chip */}
         <button
           onClick={handleAllTap}
           style={{
@@ -81,9 +89,8 @@ export function FilterBar({
           </span>
         </button>
 
-        {/* Curated chip */}
         <button
-          onClick={() => { curatedLocked ? onLockedTap() : onSelect('curated'); setExpanded(false); }}
+          onClick={() => { curatedLocked ? onLockedTap() : onSelect('curated'); setExpanded(false) }}
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '5px 12px', height: 28, borderRadius: 999,
@@ -115,22 +122,24 @@ export function FilterBar({
         </button>
       </div>
 
-      {/* Sub-category row — shown when All is expanded */}
       {expanded && isAllMode && (
-        <div style={{
-          display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
-          scrollbarWidth: 'none',
-          animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
-        }}>
-          {/* Clear chip — resets to no category filter */}
+        <div
+          data-testid="subcategory-scroll"
+          style={{
+            display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
+            maxWidth: 'calc(100vw - 32px)',
+            scrollbarWidth: 'none',
+            animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
+          }}
+        >
           <button
-            onClick={() => { onCategorySelect(null); setExpanded(false); }}
+            onClick={() => { onCategoriesSelect([]); setExpanded(false) }}
             style={{
               display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
               padding: '4px 10px', height: 26, borderRadius: 999,
-              background: activeCategory === null ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
-              border: activeCategory === null ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-              color: activeCategory === null ? 'var(--color-primary-text)' : 'var(--color-text-2)',
+              background: activeCategories.length === 0 ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
+              border: activeCategories.length === 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: activeCategories.length === 0 ? 'var(--color-primary-text)' : 'var(--color-text-2)',
               fontSize: '0.72rem', fontWeight: 600,
               backdropFilter: 'blur(8px)', cursor: 'pointer',
               whiteSpace: 'nowrap', transition: 'all 0.12s ease',
@@ -139,12 +148,14 @@ export function FilterBar({
             <span className="ms" style={{ fontSize: 12 }}>layers</span>
             All
           </button>
-          {SUB_CHIPS.map(chip => {
-            const isActive = activeCategory === chip.key;
+
+          {visibleChips.map(chip => {
+            const isActive = activeChip?.label === chip.label
+            const count = chipCount(chip.categories)
             return (
               <button
-                key={chip.key}
-                onClick={() => handleSubChip(chip.key)}
+                key={chip.label}
+                onClick={() => handleSubChip(chip.categories)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                   padding: '4px 10px', height: 26, borderRadius: 999,
@@ -158,11 +169,12 @@ export function FilterBar({
               >
                 <span className="ms" style={{ fontSize: 12 }}>{chip.icon}</span>
                 {chip.label}
+                <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {count}</span>
               </button>
-            );
+            )
           })}
         </div>
       )}
     </div>
-  );
+  )
 }
