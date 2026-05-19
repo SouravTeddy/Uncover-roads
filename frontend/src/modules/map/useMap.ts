@@ -47,6 +47,7 @@ export function useMap(activeCategories: string[] = []) {
   async function loadPlaces() {
     setLoading(true);
     setError(false);
+    dispatch({ type: 'SET_PLACES', places: [] });
     try {
       const data = await api.mapData(
         city,
