@@ -172,7 +172,12 @@ export interface GeoData {
 }
 
 // ── Places / Map ──────────────────────────────────────────────
-export type Category = 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism' | 'place' | 'event';
+export type Category =
+  | 'restaurant' | 'cafe' | 'park' | 'museum' | 'historic' | 'tourism'
+  | 'place' | 'event' | 'bar' | 'nightlife' | 'gallery' | 'bakery'
+  | 'spa' | 'spiritual' | 'stadium' | 'zoo' | 'aquarium' | 'library'
+  | 'cinema' | 'amusement_park' | 'viewpoint' | 'beach' | 'market'
+  | 'street_art';
 export type MapFilter = 'all' | 'curated' | 'saved';
 
 export interface Place {
