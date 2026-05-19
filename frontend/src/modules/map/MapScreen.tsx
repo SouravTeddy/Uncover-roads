@@ -172,9 +172,12 @@ export function MapScreen() {
   const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
 
   const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
-  const { message: guideMessage } = useGuideMessages(
-    selectedPlaces, hardBlockers, city, activePlace,
-    liveEvents, state.travelStartDate, state.travelEndDate,
+
+  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0
+  const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
+    selectedPlaces, city, state.persona ?? null, personaProfile,
+    places, activePlace, liveEvents,
+    state.travelStartDate, state.travelEndDate, activeCityDays,
   )
 
   const handleAreaLoad = useCallback(async (
@@ -565,8 +568,9 @@ export function MapScreen() {
         }}
       >
         <GuideBulb
-          message={guideMessage}
-          onConflictTap={() => setBlockerSheetOpen(true)}
+          messages={guideMessages}
+          hasUnread={guideHasUnread}
+          onRead={markGuideRead}
         />
       </div>
 
