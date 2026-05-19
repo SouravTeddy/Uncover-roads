@@ -7,9 +7,10 @@ function makePlace(overrides: Partial<Place> & { id: string; title: string }): P
   return { category: 'cafe', lat: 35.68, lon: 139.69, ...overrides }
 }
 
-function makeEvent(overrides: Partial<LiveEvent> & { id: string; title: string }): LiveEvent {
+function makeEvent(overrides: Partial<LiveEvent> & { id: string; title: string; date: string }): LiveEvent {
   return {
     venueName: 'Venue',
+    date: overrides.date,
     time: '19:00',
     genre: 'concert',
     url: 'https://example.com',
