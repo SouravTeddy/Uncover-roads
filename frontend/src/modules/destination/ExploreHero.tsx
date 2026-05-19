@@ -1,4 +1,6 @@
-import { getCityPhotoUrl } from '../../shared/cityPhoto';
+import { useState } from 'react';
+import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
+import { useCityPhoto } from './useCityPhoto';
 import type { Persona } from '../../shared/types';
 
 interface ExploreHeroProps {
@@ -21,22 +23,29 @@ const ARCHETYPE_PHOTOS: Record<string, string> = {
 const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1476514525405-09b77a9d1f66?w=800&q=80';
 
 export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreHeroProps) {
+  const [imgFailed, setImgFailed] = useState(false);
+
   const hour = new Date().getHours();
   const greeting = hour >= 5 && hour < 12 ? 'Good morning'
     : hour >= 12 && hour < 17 ? 'Good afternoon'
     : hour >= 17 && hour < 21 ? 'Good evening'
     : 'Good night';
 
+  // DB-backed photo for the active or last-visited city
+  const primaryCity = city ?? savedTripCity ?? null;
+  const dbPhotoUrl = useCityPhoto(primaryCity);
+
   let photoUrl: string;
-  if (city) {
-    photoUrl = getCityPhotoUrl(city);
-  } else if (savedTripCity) {
-    photoUrl = getCityPhotoUrl(savedTripCity);
+  if (city || savedTripCity) {
+    photoUrl = dbPhotoUrl;
   } else if (persona?.archetype && ARCHETYPE_PHOTOS[persona.archetype]) {
     photoUrl = `https://images.unsplash.com/${ARCHETYPE_PHOTOS[persona.archetype]}?w=800&q=80`;
   } else {
     photoUrl = FALLBACK_PHOTO;
   }
+
+  // Reset failed state when the city changes
+  const handleError = () => setImgFailed(true);
 
   const watermarkLabel = city ? city.toUpperCase() : 'EXPLORE';
 
@@ -46,15 +55,20 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
       style={{
         height: 236,
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0px)',
+        background: imgFailed ? CITY_PHOTO_FALLBACK_GRADIENT : undefined,
       }}
     >
       {/* Background image with Ken Burns animation */}
-      <img
-        src={photoUrl}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover object-center"
-        style={{ animation: 'heroKenBurns 12s ease-in-out infinite alternate' }}
-      />
+      {!imgFailed && (
+        <img
+          key={photoUrl}
+          src={photoUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ animation: 'heroKenBurns 12s ease-in-out infinite alternate' }}
+          onError={handleError}
+        />
+      )}
 
       {/* Gradient overlay */}
       <div
