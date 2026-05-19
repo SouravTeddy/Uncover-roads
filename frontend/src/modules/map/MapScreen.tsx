@@ -33,6 +33,10 @@ import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
+import { GuideBulb } from './GuideBulb'
+import { BlockerSheet } from './BlockerSheet'
+import { useHardBlockers } from './useHardBlockers'
+import { useGuideMessages } from './useGuideMessages'
 
 // ── Module-level utilities ───────────────────────────────────────
 
@@ -65,9 +69,6 @@ export function MapScreen() {
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
   const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
-
-  // Session cache for PinCard persona insights
-  const insightCacheRef = useRef(new Map<string, string>());
 
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
@@ -172,6 +173,14 @@ export function MapScreen() {
 
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
+
+  const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
+
+  const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
+  const { message: guideMessage } = useGuideMessages(
+    selectedPlaces, hardBlockers, city, activePlace,
+    liveEvents, state.travelStartDate, state.travelEndDate,
+  )
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
@@ -570,6 +579,22 @@ export function MapScreen() {
         </div>
       </div>
 
+      {/* GuideBulb — top-right, same level as FilterBar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+          right: '1rem',
+          zIndex: 25,
+          pointerEvents: 'auto',
+        }}
+      >
+        <GuideBulb
+          message={guideMessage}
+          onConflictTap={() => setBlockerSheetOpen(true)}
+        />
+      </div>
+
       {/* Events loading spinner */}
       {eventsLoading && (
         <div
@@ -699,7 +724,6 @@ export function MapScreen() {
           travelDate={state.tripContext.date}
           persona={state.persona ?? null}
           personaProfile={personaProfile}
-          insightCache={insightCacheRef}
         />
       )}
 
@@ -716,6 +740,8 @@ export function MapScreen() {
           surpriseDisabled={!personaProfile}
           surpriseLoading={surpriseLoading}
           onSurprise={handleSurprise}
+          hasBlockers={hardBlockers.length > 0}
+          onBlockerTap={() => setBlockerSheetOpen(true)}
         />
       )}
 
@@ -810,6 +836,18 @@ export function MapScreen() {
         }}>
           {surpriseError}
         </div>
+      )}
+
+      {/* BlockerSheet — slides up when user views conflict details */}
+      {blockerSheetOpen && (
+        <BlockerSheet
+          blockers={hardBlockers}
+          onFix={() => setBlockerSheetOpen(false)}
+          onBuildAnyway={() => {
+            setBlockerSheetOpen(false)
+            handleBuild()
+          }}
+        />
       )}
     </div>
   );
