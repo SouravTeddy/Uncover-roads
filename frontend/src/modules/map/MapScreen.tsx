@@ -53,13 +53,21 @@ function buildTransitSummary(transit: DetectedTransit | null): string {
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategories, setActiveCategories] = useState<string[]>([]);
 
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory,
-  } = useMap(activeCategory);
+  } = useMap(activeCategories);
+
+  const categoryCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = {}
+    for (const p of places) {
+      counts[p.category] = (counts[p.category] ?? 0) + 1
+    }
+    return counts
+  }, [places])
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
@@ -322,7 +330,7 @@ export function MapScreen() {
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
-    if (f !== 'all') setActiveCategory(null);
+    if (f !== 'all') setActiveCategories([]);
   }
 
   // ── Phase 4: new pin click handler — updates both local and store state ──
@@ -510,12 +518,13 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
-            activeCategory={activeCategory}
-            allCount={places.length}
+            activeCategories={activeCategories}
+            allCount={filteredPlaces.length}
+            categoryCounts={categoryCounts}
             curatedCount={curatedCount}
             curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
-            onCategorySelect={setActiveCategory}
+            onCategoriesSelect={setActiveCategories}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
@@ -528,6 +537,7 @@ export function MapScreen() {
                 if (activeFilter === 'saved') {
                   setFilter('all');
                 } else {
+                  setActiveCategories([]);
                   setFilter('saved' as MapFilter);
                 }
               }}
@@ -604,7 +614,7 @@ export function MapScreen() {
       )}
 
       {/* Loading — tiny spinner, corner, barely visible */}
-      {loading && (
+      {!initialLoading && loading && (
         <div
           className="absolute"
           style={{

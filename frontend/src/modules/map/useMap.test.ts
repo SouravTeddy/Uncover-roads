@@ -69,20 +69,6 @@ describe('clientSideFallback logic', () => {
   });
 });
 
-it('filters places by activeCategory when filter is all', () => {
-  const places = [
-    { id: '1', title: 'A Park', category: 'park',       lat: 0, lon: 0 },
-    { id: '2', title: 'A Cafe', category: 'cafe',       lat: 0, lon: 0 },
-    { id: '3', title: 'A Rest', category: 'restaurant', lat: 0, lon: 0 },
-  ];
-  // filteredPlaces logic extracted: activeFilter='all', activeCategory='park'
-  const result = places.filter(p =>
-    'all' === 'all' && 'park' !== null ? p.category === 'park' : true
-  );
-  expect(result).toHaveLength(1);
-  expect(result[0].title).toBe('A Park');
-});
-
 it('BuildItineraryBar canBuild is false with 1 place', () => {
   const places: Place[] = [{ id: '1', title: 'A', category: 'park', lat: 0, lon: 0 }];
   const canBuild = places.length >= 2;
@@ -97,3 +83,38 @@ it('BuildItineraryBar canBuild is true with 2 places', () => {
   const canBuild = places.length >= 2;
   expect(canBuild).toBe(true);
 });
+
+// ── filteredPlaces multi-category logic ───────────────────────────────────────
+
+function applyFilter(
+  places: { id: string; category: string }[],
+  activeCategories: string[],
+): { id: string; category: string }[] {
+  if (activeCategories.length === 0) return places
+  return places.filter(p => activeCategories.includes(p.category))
+}
+
+describe('filteredPlaces multi-category logic', () => {
+  const places = [
+    { id: '1', category: 'historic' },
+    { id: '2', category: 'tourism' },
+    { id: '3', category: 'cafe' },
+    { id: '4', category: 'museum' },
+  ]
+
+  it('returns all places when activeCategories is empty', () => {
+    expect(applyFilter(places, [])).toHaveLength(4)
+  })
+
+  it('filters to single category', () => {
+    const result = applyFilter(places, ['cafe'])
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe('3')
+  })
+
+  it('filters to multiple categories (Landmarks = historic + tourism)', () => {
+    const result = applyFilter(places, ['historic', 'tourism'])
+    expect(result).toHaveLength(2)
+    expect(result.map(p => p.id).sort()).toEqual(['1', '2'])
+  })
+})
