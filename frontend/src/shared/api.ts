@@ -308,7 +308,7 @@ export const api = {
     });
     if (lat !== undefined) params.set('lat', String(lat));
     if (lon !== undefined) params.set('lon', String(lon));
-    return get<Place[]>(`/events?${params}`);
+    return get<{ places: Place[] }>(`/events?${params}`).then(d => d.places ?? []);
   },
 
   referencePins: async (params: {
