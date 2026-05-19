@@ -72,7 +72,6 @@ export function computeBuildReadinessText(
   count: number,
   days: number,
   stopsPerDay: number,
-  city: string | null,
 ): string | null {
   if (days <= 0 || stopsPerDay <= 0) return null
   const threshold = Math.floor(days * stopsPerDay * 0.8)
@@ -188,7 +187,7 @@ function buildMessage(
       id: `build-ready-${now}`,
       kind: 'exploring',
       timestamp: now,
-      text: computeBuildReadinessText(selectedPlaces.length, days, stopsPerDay, city)!,
+      text: computeBuildReadinessText(selectedPlaces.length, days, stopsPerDay)!,
     }
   }
 

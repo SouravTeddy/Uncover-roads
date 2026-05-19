@@ -75,20 +75,20 @@ describe('computeAreaText', () => {
 describe('computeBuildReadinessText', () => {
   it('returns null when count < 80% threshold', () => {
     // 3 days × 4 stops × 0.8 = 9.6 → threshold = 9; count = 5
-    expect(computeBuildReadinessText(5, 3, 4, 'Tokyo')).toBeNull()
+    expect(computeBuildReadinessText(5, 3, 4)).toBeNull()
   })
 
   it('returns null when count < 2', () => {
-    expect(computeBuildReadinessText(1, 1, 2, 'Tokyo')).toBeNull()
+    expect(computeBuildReadinessText(1, 1, 2)).toBeNull()
   })
 
   it('returns null when days = 0', () => {
-    expect(computeBuildReadinessText(5, 0, 3, 'Tokyo')).toBeNull()
+    expect(computeBuildReadinessText(5, 0, 3)).toBeNull()
   })
 
   it('returns message containing day count when threshold met', () => {
     // 2 days × 3 stops × 0.8 = 4.8 → threshold = 4; count = 4
-    const text = computeBuildReadinessText(4, 2, 3, 'Tokyo')
+    const text = computeBuildReadinessText(4, 2, 3)
     expect(text).not.toBeNull()
     expect(text).toContain('2 days')
     expect(text).toContain('ready to build')
@@ -96,7 +96,7 @@ describe('computeBuildReadinessText', () => {
 
   it('uses singular "day" for 1-day trip', () => {
     // 1 day × 3 stops × 0.8 = 2.4 → threshold = 2; count = 2
-    const text = computeBuildReadinessText(2, 1, 3, 'Rome')
+    const text = computeBuildReadinessText(2, 1, 3)
     expect(text).toContain('1 day')
     expect(text).not.toContain('days')
   })
