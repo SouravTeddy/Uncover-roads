@@ -228,6 +228,11 @@ export function useGuideMessages(
   // Cluster signal fires at most once per session
   const clusterFired = useRef(false)
 
+  // Reset rising-edge tracking on city change so area message re-fires
+  useEffect(() => {
+    prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false }
+  }, [city])
+
   useEffect(() => {
     const current = evaluateConditions(
       selectedPlaces, city, persona, personaProfile, mapPlaces,
