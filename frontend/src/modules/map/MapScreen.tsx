@@ -162,6 +162,7 @@ export function MapScreen() {
 
   // Phase 11: Our Picks layer
   const [ourPicks, setOurPicks] = useState<PlacePickFE[]>([])
+  const [ourPicksLoaded, setOurPicksLoaded] = useState(false)
 
   // Phase 11: Live events layer
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
@@ -274,13 +275,17 @@ export function MapScreen() {
   }, [clusterGroup]);
 
   useEffect(() => {
-    if (!city || activeFilter !== 'curated') { setOurPicks([]); return }
+    if (!city || activeFilter !== 'curated') { setOurPicks([]); setOurPicksLoaded(false); return }
     const activeCityContext = cityContexts[activeCityIndex]
     const cityId = activeCityContext?.city ?? city
     fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
       .then(r => r.ok ? r.json() : [])
-      .then((data: PlacePickFE[]) => setOurPicks(data))
-      .catch(() => setOurPicks([]))
+      .then((data: PlacePickFE[]) => {
+        setOurPicks(data)
+        setOurPicksLoaded(true)
+        if (data.length === 0) console.warn('[MapScreen] ourPicks resolved empty for city:', cityId)
+      })
+      .catch(() => { setOurPicks([]); setOurPicksLoaded(true) })
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
@@ -378,7 +383,9 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length;
+  const curatedCount = ourPicksLoaded
+    ? ourPicks.length + liveEvents.length + recommendedPlaces.length
+    : 0
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
