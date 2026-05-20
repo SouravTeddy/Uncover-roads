@@ -388,6 +388,8 @@ export function MapScreen() {
     ? ourPicks.length + liveEvents.length + recommendedPlaces.length
     : 0
 
+  const displayCount = activeCategories.length > 0 ? filteredPlaces.length : places.length
+
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
   const routeGeojson = state.route?.geojson
@@ -512,7 +514,7 @@ export function MapScreen() {
           <FilterBar
             active={activeFilter as MapFilter}
             activeCategories={activeCategories}
-            allCount={places.length}
+            allCount={displayCount}
             curatedCount={curatedCount}
             categoryCounts={categoryCounts}
             onSelect={handleFilterSelect}

@@ -20,7 +20,7 @@ const SUB_CHIPS: { categories: string[]; label: string; icon: string }[] = [
 interface Props {
   active: MapFilter
   activeCategories: string[]
-  allCount: number
+  displayCount: number
   curatedCount: number
   categoryCounts: Record<string, number>
   onSelect: (filter: MapFilter) => void
@@ -28,7 +28,7 @@ interface Props {
 }
 
 export function FilterBar({
-  active, activeCategories, allCount, curatedCount,
+  active, activeCategories, displayCount, curatedCount,
   categoryCounts, onSelect, onCategoriesSelect,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
@@ -79,8 +79,8 @@ export function FilterBar({
           }}
         >
           {allLabel}
-          {allCount > 0 && (
-            <span style={{ opacity: 0.7, fontSize: '0.72rem' }}>· {allCount}</span>
+          {displayCount > 0 && (
+            <span style={{ opacity: 0.7, fontSize: '0.72rem' }}>· {displayCount}</span>
           )}
           <span className="ms" style={{ fontSize: 13, opacity: 0.7, marginLeft: 1 }}>
             {expanded ? 'expand_less' : 'expand_more'}
