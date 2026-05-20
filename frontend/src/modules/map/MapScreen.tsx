@@ -48,6 +48,10 @@ function buildTransitSummary(transit: DetectedTransit | null): string {
   return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
 }
 
+export function cityFavsCount(favouritedPins: Array<{ city: string }>, city: string): number {
+  return favouritedPins.filter(p => p.city === city).length
+}
+
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
@@ -509,7 +513,7 @@ export function MapScreen() {
         </div>
 
         {/* Saved filter chip — appears when places are hearted */}
-        {favouritedPins.length > 0 && (
+        {favouritedPins.filter(p => p.city === city).length > 0 && (
           <div style={{ pointerEvents: 'auto' }}>
             <button
               onClick={() => {
@@ -528,7 +532,7 @@ export function MapScreen() {
             >
               <span className="ms" style={{ fontSize: 13 }}>bookmark</span>
               Saved
-              <span style={{ opacity: 0.7 }}>{favouritedPins.length}</span>
+              <span style={{ opacity: 0.7 }}>{favouritedPins.filter(p => p.city === city).length}</span>
               {activeFilter === 'saved' && (
                 <span className="ms" style={{ fontSize: 12 }}>close</span>
               )}
