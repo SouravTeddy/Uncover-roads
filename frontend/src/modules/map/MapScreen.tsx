@@ -29,6 +29,7 @@ import type { TransitMode } from '../../shared/types';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import type { PlacePickFE } from './OurPicksPinsLayer'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
+import { RecoPlacesPinsLayer } from './RecoPlacesPinsLayer'
 import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
@@ -54,7 +55,7 @@ export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, trackViewedCategory,
+    togglePlace, setFilter, trackViewedCategory, recommendedPlaces,
   } = useMap(activeCategories);
 
   const { state, dispatch } = useAppStore();
@@ -144,7 +145,6 @@ export function MapScreen() {
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
   // Events
-  const [, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
   const [eventsError, setEventsError]           = useState<string | null>(null);
@@ -280,7 +280,7 @@ export function MapScreen() {
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'curated') { setLiveEvents([]); setEventsLoaded(false); return }
+    if (!city || activeFilter !== 'curated') { setLiveEvents([]); return }
 
     const startDate = state.travelStartDate
     const endDate   = state.travelEndDate
@@ -307,13 +307,11 @@ export function MapScreen() {
           imageUrl:  (p as Place & { imageUrl?: string | null }).imageUrl ?? null,
         }))
         setLiveEvents(mapped)
-        setEventsLoaded(true)
         setEventsError(null)
       })
       .catch(() => {
         setEventsError('Events unavailable — check back later')
         setLiveEvents([])
-        setEventsLoaded(false)
       })
       .finally(() => setEventsLoading(false))
   }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
@@ -430,6 +428,18 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
+        {/* Reco Places layer */}
+        {activeFilter === 'curated' && (
+          <RecoPlacesPinsLayer
+            places={recommendedPlaces}
+            activePinId={activePlace?.id ?? null}
+            onPinClick={(id) => {
+              const p = recommendedPlaces.find(r => r.id === id)
+              if (p) setActivePlace(p)
+            }}
+          />
+        )}
+
         {/* Our Picks layer */}
         {activeFilter === 'curated' && (
           <OurPicksPinsLayer
