@@ -44,6 +44,7 @@ app.add_middleware(
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
+EVENTBRITE_API_KEY = os.environ.get("EVENTBRITE_API_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
 # In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
@@ -1228,114 +1229,73 @@ Rules:
         return {"error": str(e)}
 
 
+# ── Persona scoring engine ─────────────────────────────────────────────────
+_ARCHETYPE_AFFINITY: dict[str, dict[str, float]] = {
+    'wanderer':      {'park': 0.9, 'historic': 0.8, 'museum': 0.7, 'tourism': 0.6, 'viewpoint': 0.8},
+    'historian':     {'historic': 0.9, 'museum': 0.9, 'tourism': 0.7, 'gallery': 0.7, 'library': 0.6},
+    'epicurean':     {'restaurant': 0.9, 'cafe': 0.8, 'bar': 0.7, 'market': 0.8, 'bakery': 0.7},
+    'pulse':         {'nightlife': 0.9, 'bar': 0.8, 'restaurant': 0.7, 'stadium': 0.7},
+    'slowtraveller': {'cafe': 0.9, 'park': 0.8, 'museum': 0.7, 'gallery': 0.7, 'spa': 0.6},
+    'voyager':       {'tourism': 0.9, 'viewpoint': 0.9, 'park': 0.8, 'historic': 0.7, 'beach': 0.8},
+    'explorer':      {'park': 0.9, 'beach': 0.8, 'viewpoint': 0.8, 'historic': 0.7, 'amusement_park': 0.6},
+}
+
+def _score_place(place: dict, archetype: str, all_filters: list[str]) -> float:
+    cat = place.get("category", "")
+    rating = place.get("rating")
+    affinity   = _ARCHETYPE_AFFINITY.get(archetype, {}).get(cat, 0.0)
+    filter_hit = 1.0 if cat in all_filters else 0.0
+    rating_val = (min(float(rating), 5.0) / 5.0) if rating is not None else 0.5
+    return affinity * 0.4 + filter_hit * 0.4 + rating_val * 0.2
+
+def _pick_reason(archetype: str, category: str, all_filters: list[str], score: float) -> str:
+    if category in all_filters:
+        label = category.replace("_", " ")
+        return f"Matches your taste for {label}s"
+    affinity = _ARCHETYPE_AFFINITY.get(archetype, {}).get(category, 0.0)
+    if affinity >= 0.8:
+        label = category.replace("_", " ")
+        return f"A top pick for {archetype} travellers — great {label}"
+    if score >= 0.5:
+        return "Highly rated and well suited to your style"
+    return "A solid pick for your travel style"
+
 # =========================================
-# RECOMMENDED PLACES — LLM picks with persona + behaviour signals
+# RECOMMENDED PLACES — deterministic persona scoring engine
 # =========================================
 @app.post("/recommended-places")
 def recommended_places_endpoint(body: dict):
-    """
-    Generate 6-8 persona-matched place picks for the Our Picks filter.
-    Uses both persona profile and browsing behaviour as signals.
-    Returns: { picks: [{ title, category, lat, lon, whyRec, signal }] }
-    """
-    if not ANTHROPIC_API_KEY:
+    """Score map places by persona affinity. Deterministic — no LLM."""
+    archetype      = body.get("persona_archetype", "explorer").lower()
+    venue_filters  = [v.lower() for v in body.get("venue_filters", [])]
+    itinerary_bias = [v.lower() for v in body.get("itinerary_bias", [])]
+    places         = body.get("places", [])
+
+    if not places:
         return {"picks": []}
 
-    city              = body.get("city", "")
-    persona_archetype = body.get("persona_archetype", "Explorer")
-    persona_desc      = body.get("persona_desc", "")
-    venue_filters     = body.get("venue_filters", [])
-    itinerary_bias    = body.get("itinerary_bias", [])
-    viewed_categories = body.get("viewed_categories", [])
+    all_filters = list(set(venue_filters + itinerary_bias))
+    non_events  = [p for p in places if p.get("category") != "event"]
 
-    if not city:
-        return {"picks": []}
+    scored = sorted(
+        [(p, _score_place(p, archetype, all_filters)) for p in non_events],
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
-    interests_str = ", ".join(set(venue_filters + itinerary_bias)) or "general sightseeing"
-    browsing_str  = ", ".join(set(viewed_categories)) if viewed_categories else "nothing yet"
+    picks = []
+    for p, s in scored[:15]:
+        picks.append({
+            "id":       p.get("id", ""),
+            "title":    p.get("title", ""),
+            "category": p.get("category", "place"),
+            "lat":      p.get("lat", 0),
+            "lon":      p.get("lon", 0),
+            "whyRec":   _pick_reason(archetype, p.get("category", ""), all_filters, s),
+            "signal":   "persona",
+        })
 
-    prompt = f"""You are a travel recommendation engine for the app Uncover Roads.
-
-A "{persona_archetype}" traveler ({persona_desc}) is visiting {city}.
-Their interests: {interests_str}.
-They have been browsing these place types on the map: {browsing_str}.
-
-Recommend exactly 6-8 real, specific, named places in {city} that are worth visiting.
-For each place return a JSON object with:
-- "title": exact place name (must be a real place)
-- "category": one of [restaurant, cafe, park, museum, historic, tourism, place]
-- "lat": latitude as a float (accurate real-world coordinates for {city})
-- "lon": longitude as a float
-- "whyRec": one sentence explaining why this specific place suits this traveler. Be direct and transparent.
-- "signal": "persona" if this pick is primarily driven by their travel profile/interests, "behaviour" if driven by what they have been browsing
-
-Rules:
-- Never include events or temporary exhibitions
-- Coordinates must be accurate for {city}
-- whyRec must mention something specific about the place, not a generic statement
-- Return only a valid JSON array of 6-8 objects. No markdown. No explanation.
-"""
-
-    try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.content[0].text.strip()
-        if "```" in raw:
-            import re
-            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
-
-        picks = json.loads(raw)
-        if not isinstance(picks, list):
-            return {"picks": []}
-
-        # Filter events, validate required fields
-        valid = []
-        for p in picks:
-            if not isinstance(p, dict):
-                continue
-            if p.get("category") == "event":
-                continue
-            if not p.get("title") or not p.get("lat") or not p.get("lon"):
-                continue
-            # Geocode if coords are 0 or missing
-            lat = float(p.get("lat", 0))
-            lon = float(p.get("lon", 0))
-            if (lat == 0 and lon == 0) and GOOGLE_PLACES_API_KEY:
-                try:
-                    geo_res = requests.get(
-                        f"{GOOGLE_PLACES_BASE}/textsearch/json",
-                        params={"query": f"{p['title']} {city}", "key": GOOGLE_PLACES_API_KEY},
-                        timeout=5,
-                    )
-                    geo_data = geo_res.json()
-                    if geo_data.get("results"):
-                        loc = geo_data["results"][0]["geometry"]["location"]
-                        lat, lon = loc["lat"], loc["lng"]
-                except Exception:
-                    pass  # skip geocode failure, keep original coords
-
-            valid.append({
-                "id":       f"rec-{p['title'].lower()[:20]}",
-                "title":    p["title"],
-                "category": p.get("category", "place"),
-                "lat":      lat,
-                "lon":      lon,
-                "whyRec":   p.get("whyRec", ""),
-                "signal":   p.get("signal", "persona"),
-            })
-
-        return {"picks": valid}
-
-    except json.JSONDecodeError as e:
-        print(f"RECOMMENDED PLACES JSON ERROR: {e}")
-        return {"picks": []}
-    except Exception as e:
-        print(f"RECOMMENDED PLACES ERROR: {e}")
-        return {"picks": []}
+    return {"picks": picks}
 
 
 @app.post("/persona-insight")
@@ -1544,6 +1504,37 @@ def city_profile_endpoint(city: str = Query(...)):
         return {"error": str(e)}
 
 
+def _fetch_eventbrite(
+    city: str, start_date: str, end_date: str,
+    lat: float | None, lon: float | None,
+) -> list[dict]:
+    if not EVENTBRITE_API_KEY:
+        return []
+    params: dict = {
+        "q":                      city,
+        "start_date.range_start": f"{start_date}T00:00:00",
+        "start_date.range_end":   f"{end_date}T23:59:59",
+        "expand":                 "venue",
+        "page_size":              20,
+    }
+    if lat is not None and lon is not None:
+        params["location.latitude"]  = lat
+        params["location.longitude"] = lon
+        params["location.within"]    = "10km"
+    try:
+        r = requests.get(
+            "https://www.eventbriteapi.com/v3/events/search/",
+            params=params,
+            headers={"Authorization": f"Bearer {EVENTBRITE_API_KEY}"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        return r.json().get("events", [])
+    except Exception as e:
+        print(f"EVENTS Eventbrite error (non-fatal): {e}")
+        return []
+
+
 # =========================================
 # EVENTS (Ticketmaster Discovery API)
 # =========================================
@@ -1705,6 +1696,43 @@ def events(
                 print(f"EVENTS (Yelp): added {len(yelp_data.get('events', []))} Yelp events")
             except Exception as ye:
                 print(f"EVENTS Yelp error (non-fatal): {ye}")
+
+        # ── Eventbrite Events ──
+        eb_raw = _fetch_eventbrite(city, start_date, end_date, lat, lon)
+        existing_titles = {p["title"].lower() for p in places}
+        for ev in eb_raw:
+            venue = ev.get("venue") or {}
+            try:
+                ev_lat = float(venue.get("latitude") or 0)
+                ev_lon = float(venue.get("longitude") or 0)
+            except (TypeError, ValueError):
+                continue
+            if ev_lat == 0 and ev_lon == 0:
+                continue
+            name = (ev.get("name") or {}).get("text", "Event")
+            if name.lower() in existing_titles:
+                continue
+            existing_titles.add(name.lower())
+            start_local = (ev.get("start") or {}).get("local", "")
+            event_date = start_local[:10] if start_local else start_date
+            event_time = start_local[11:16] if len(start_local) > 10 else ""
+            logo = ev.get("logo") or {}
+            places.append({
+                "id":       f"eb-{ev.get('id', '')}",
+                "title":    name,
+                "lat":      ev_lat,
+                "lon":      ev_lon,
+                "category": "event",
+                "imageUrl": logo.get("url"),
+                "tags": {
+                    "event_date": event_date,
+                    "event_time": event_time,
+                    "venue":      venue.get("name", ""),
+                    "genre":      "",
+                    "website":    ev.get("url", ""),
+                },
+            })
+        print(f"EVENTS (Eventbrite): added {len(eb_raw)} raw events")
 
         print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
         _events_cache[cache_key] = (_time(), places)
@@ -2575,7 +2603,7 @@ async def cities_map_pins(city_id: str, _user=Depends(get_current_user)):
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
-async def cities_picks(city_id: str, _user=Depends(require_pro)):
+async def cities_picks(city_id: str):
     """Pro: curated picks with trend stage badges.
     Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
 

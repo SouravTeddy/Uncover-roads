@@ -73,10 +73,9 @@ export function useMap(activeCategories: string[] = []) {
       const result = await api.recommendedPlaces({
         city,
         personaArchetype: persona.archetype,
-        personaDesc: persona.archetype_desc ?? '',
-        venueFilters: persona.venue_filters ?? [],
-        itineraryBias: persona.itinerary_bias ?? [],
-        viewedCategories: [...viewedCategoriesRef.current],
+        venueFilters:     persona.venue_filters ?? [],
+        itineraryBias:    persona.itinerary_bias ?? [],
+        places,
       });
       const picks = Array.isArray(result.picks) ? result.picks : [];
       const withIds = picks.map((p, i) => ({

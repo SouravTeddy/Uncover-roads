@@ -30,9 +30,9 @@ describe('FilterBar component', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} allCount={50}
-        curatedCount={0} curatedLocked={false}
+        curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+        onSelect={noop} onCategoriesSelect={noop}
       />
     )
     expect(screen.getByRole('button', { name: /All/i })).toBeTruthy()
@@ -42,9 +42,9 @@ describe('FilterBar component', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} allCount={50}
-        curatedCount={0} curatedLocked={false}
+        curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+        onSelect={noop} onCategoriesSelect={noop}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -57,9 +57,9 @@ describe('FilterBar component', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} allCount={50}
-        curatedCount={0} curatedLocked={false}
+        curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+        onSelect={noop} onCategoriesSelect={noop}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -71,9 +71,9 @@ describe('FilterBar component', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} allCount={50}
-        curatedCount={0} curatedLocked={false}
+        curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={onCategoriesSelect} onLockedTap={noop}
+        onSelect={noop} onCategoriesSelect={onCategoriesSelect}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -85,14 +85,29 @@ describe('FilterBar component', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} allCount={50}
-        curatedCount={0} curatedLocked={false}
+        curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop} onLockedTap={noop}
+        onSelect={noop} onCategoriesSelect={noop}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
     const scrollRow = document.querySelector('[data-testid="subcategory-scroll"]') as HTMLElement | null
     expect(scrollRow).not.toBeNull()
     expect(scrollRow!.style.maxWidth).toBe('calc(100vw - 32px)')
+  })
+
+  it('curated chip is always tappable — no lock icon', () => {
+    render(
+      <FilterBar
+        active="all"
+        activeCategories={[]}
+        allCount={10}
+        curatedCount={3}
+        categoryCounts={{}}
+        onSelect={() => {}}
+        onCategoriesSelect={() => {}}
+      />
+    )
+    expect(screen.queryByText('lock')).toBeNull()
   })
 })

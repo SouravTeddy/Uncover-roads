@@ -3,7 +3,6 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
-import { isCurationLocked } from '../../shared/tier';
 import type { MapHandle } from './MapLibreMap';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
@@ -29,10 +28,13 @@ import type { TransitMode } from '../../shared/types';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import type { PlacePickFE } from './OurPicksPinsLayer'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
+import { RecoPlacesPinsLayer } from './RecoPlacesPinsLayer'
 import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
+import { GuideBulb } from './GuideBulb'
+import { useGuideMessages } from './useGuideMessages'
 
 // ── Module-level utilities ───────────────────────────────────────
 
@@ -54,7 +56,7 @@ export function MapScreen() {
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
-    togglePlace, setFilter, trackViewedCategory,
+    togglePlace, setFilter, trackViewedCategory, recommendedPlaces,
   } = useMap(activeCategories);
 
   const { state, dispatch } = useAppStore();
@@ -65,9 +67,6 @@ export function MapScreen() {
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
   const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
-
-  // Session cache for PinCard persona insights
-  const insightCacheRef = useRef(new Map<string, string>());
 
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
@@ -127,6 +126,13 @@ export function MapScreen() {
     ? buildTransitSummary(pendingNewCity.transit)
     : '';
 
+  const categoryCounts = useMemo(() =>
+    places.reduce<Record<string, number>>((acc, p) => {
+      acc[p.category] = (acc[p.category] ?? 0) + 1;
+      return acc;
+    }, {}),
+  [places]);
+
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
     () => new Set(favouritedPins.map(f => f.placeId)),
@@ -144,7 +150,6 @@ export function MapScreen() {
   const [mapStatus, setMapStatus] = useState<'idle' | 'loading' | 'zoomed-out'>('idle');
 
   // Events
-  const [, setEventsLoaded]         = useState(false);
   const [eventsLoading, setEventsLoading]       = useState(false);
   const [eventsNoDate, setEventsNoDate]         = useState(false);
   const [eventsError, setEventsError]           = useState<string | null>(null);
@@ -164,11 +169,6 @@ export function MapScreen() {
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
 
-  const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
-
-  const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
-
-  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0
   const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
     selectedPlaces, city, state.persona ?? null, personaProfile,
     places, activePlace, liveEvents,
@@ -280,7 +280,7 @@ export function MapScreen() {
   }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'curated') { setLiveEvents([]); setEventsLoaded(false); return }
+    if (!city || activeFilter !== 'curated') { setLiveEvents([]); return }
 
     const startDate = state.travelStartDate
     const endDate   = state.travelEndDate
@@ -307,13 +307,11 @@ export function MapScreen() {
           imageUrl:  (p as Place & { imageUrl?: string | null }).imageUrl ?? null,
         }))
         setLiveEvents(mapped)
-        setEventsLoaded(true)
         setEventsError(null)
       })
       .catch(() => {
         setEventsError('Events unavailable — check back later')
         setLiveEvents([])
-        setEventsLoaded(false)
       })
       .finally(() => setEventsLoading(false))
   }, [city, activeFilter, state.travelStartDate, state.travelEndDate, cityGeo])
@@ -376,15 +374,7 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const categoryCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = {}
-    for (const p of places) {
-      counts[p.category] = (counts[p.category] ?? 0) + 1
-    }
-    return counts
-  }, [places])
-
-  const curatedCount = ourPicks.length + liveEvents.length;
+  const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length;
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
@@ -430,6 +420,21 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
+        {/* Reco Places layer */}
+        {activeFilter === 'curated' && (
+          <RecoPlacesPinsLayer
+            places={recommendedPlaces}
+            activePinId={activePinId ?? null}
+            onPinClick={(id) => {
+              const p = recommendedPlaces.find(r => r.id === id)
+              if (p) {
+                setActivePlace(p)
+                dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
+              }
+            }}
+          />
+        )}
+
         {/* Our Picks layer */}
         {activeFilter === 'curated' && (
           <OurPicksPinsLayer
@@ -495,13 +500,11 @@ export function MapScreen() {
           <FilterBar
             active={activeFilter as MapFilter}
             activeCategories={activeCategories}
-            allCount={filteredPlaces.length}
+            allCount={places.length}
             curatedCount={curatedCount}
-            curatedLocked={isCurationLocked(state)}
             categoryCounts={categoryCounts}
             onSelect={handleFilterSelect}
             onCategoriesSelect={setActiveCategories}
-            onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
 
