@@ -1228,114 +1228,73 @@ Rules:
         return {"error": str(e)}
 
 
+# ── Persona scoring engine ─────────────────────────────────────────────────
+_ARCHETYPE_AFFINITY: dict[str, dict[str, float]] = {
+    'wanderer':      {'park': 0.9, 'historic': 0.8, 'museum': 0.7, 'tourism': 0.6, 'viewpoint': 0.8},
+    'historian':     {'historic': 0.9, 'museum': 0.9, 'tourism': 0.7, 'gallery': 0.7, 'library': 0.6},
+    'epicurean':     {'restaurant': 0.9, 'cafe': 0.8, 'bar': 0.7, 'market': 0.8, 'bakery': 0.7},
+    'pulse':         {'nightlife': 0.9, 'bar': 0.8, 'restaurant': 0.7, 'stadium': 0.7},
+    'slowtraveller': {'cafe': 0.9, 'park': 0.8, 'museum': 0.7, 'gallery': 0.7, 'spa': 0.6},
+    'voyager':       {'tourism': 0.9, 'viewpoint': 0.9, 'park': 0.8, 'historic': 0.7, 'beach': 0.8},
+    'explorer':      {'park': 0.9, 'beach': 0.8, 'viewpoint': 0.8, 'historic': 0.7, 'amusement_park': 0.6},
+}
+
+def _score_place(place: dict, archetype: str, all_filters: list[str]) -> float:
+    cat = place.get("category", "")
+    rating = place.get("rating")
+    affinity   = _ARCHETYPE_AFFINITY.get(archetype, {}).get(cat, 0.0)
+    filter_hit = 1.0 if cat in all_filters else 0.0
+    rating_val = (min(float(rating), 5.0) / 5.0) if rating is not None else 0.5
+    return affinity * 0.4 + filter_hit * 0.4 + rating_val * 0.2
+
+def _pick_reason(archetype: str, category: str, all_filters: list[str], score: float) -> str:
+    if category in all_filters:
+        label = category.replace("_", " ")
+        return f"Matches your taste for {label}s"
+    affinity = _ARCHETYPE_AFFINITY.get(archetype, {}).get(category, 0.0)
+    if affinity >= 0.8:
+        label = category.replace("_", " ")
+        return f"A top pick for {archetype} travellers — great {label}"
+    if score >= 0.5:
+        return "Highly rated and well suited to your style"
+    return "A solid pick for your travel style"
+
 # =========================================
-# RECOMMENDED PLACES — LLM picks with persona + behaviour signals
+# RECOMMENDED PLACES — deterministic persona scoring engine
 # =========================================
 @app.post("/recommended-places")
 def recommended_places_endpoint(body: dict):
-    """
-    Generate 6-8 persona-matched place picks for the Our Picks filter.
-    Uses both persona profile and browsing behaviour as signals.
-    Returns: { picks: [{ title, category, lat, lon, whyRec, signal }] }
-    """
-    if not ANTHROPIC_API_KEY:
+    """Score map places by persona affinity. Deterministic — no LLM."""
+    archetype      = body.get("persona_archetype", "explorer").lower()
+    venue_filters  = [v.lower() for v in body.get("venue_filters", [])]
+    itinerary_bias = [v.lower() for v in body.get("itinerary_bias", [])]
+    places         = body.get("places", [])
+
+    if not places:
         return {"picks": []}
 
-    city              = body.get("city", "")
-    persona_archetype = body.get("persona_archetype", "Explorer")
-    persona_desc      = body.get("persona_desc", "")
-    venue_filters     = body.get("venue_filters", [])
-    itinerary_bias    = body.get("itinerary_bias", [])
-    viewed_categories = body.get("viewed_categories", [])
+    all_filters = list(set(venue_filters + itinerary_bias))
+    non_events  = [p for p in places if p.get("category") != "event"]
 
-    if not city:
-        return {"picks": []}
+    scored = sorted(
+        [(p, _score_place(p, archetype, all_filters)) for p in non_events],
+        key=lambda x: x[1],
+        reverse=True,
+    )
 
-    interests_str = ", ".join(set(venue_filters + itinerary_bias)) or "general sightseeing"
-    browsing_str  = ", ".join(set(viewed_categories)) if viewed_categories else "nothing yet"
+    picks = []
+    for p, s in scored[:15]:
+        picks.append({
+            "id":       p.get("id", ""),
+            "title":    p.get("title", ""),
+            "category": p.get("category", "place"),
+            "lat":      p.get("lat", 0),
+            "lon":      p.get("lon", 0),
+            "whyRec":   _pick_reason(archetype, p.get("category", ""), all_filters, s),
+            "signal":   "persona",
+        })
 
-    prompt = f"""You are a travel recommendation engine for the app Uncover Roads.
-
-A "{persona_archetype}" traveler ({persona_desc}) is visiting {city}.
-Their interests: {interests_str}.
-They have been browsing these place types on the map: {browsing_str}.
-
-Recommend exactly 6-8 real, specific, named places in {city} that are worth visiting.
-For each place return a JSON object with:
-- "title": exact place name (must be a real place)
-- "category": one of [restaurant, cafe, park, museum, historic, tourism, place]
-- "lat": latitude as a float (accurate real-world coordinates for {city})
-- "lon": longitude as a float
-- "whyRec": one sentence explaining why this specific place suits this traveler. Be direct and transparent.
-- "signal": "persona" if this pick is primarily driven by their travel profile/interests, "behaviour" if driven by what they have been browsing
-
-Rules:
-- Never include events or temporary exhibitions
-- Coordinates must be accurate for {city}
-- whyRec must mention something specific about the place, not a generic statement
-- Return only a valid JSON array of 6-8 objects. No markdown. No explanation.
-"""
-
-    try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = response.content[0].text.strip()
-        if "```" in raw:
-            import re
-            raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
-
-        picks = json.loads(raw)
-        if not isinstance(picks, list):
-            return {"picks": []}
-
-        # Filter events, validate required fields
-        valid = []
-        for p in picks:
-            if not isinstance(p, dict):
-                continue
-            if p.get("category") == "event":
-                continue
-            if not p.get("title") or not p.get("lat") or not p.get("lon"):
-                continue
-            # Geocode if coords are 0 or missing
-            lat = float(p.get("lat", 0))
-            lon = float(p.get("lon", 0))
-            if (lat == 0 and lon == 0) and GOOGLE_PLACES_API_KEY:
-                try:
-                    geo_res = requests.get(
-                        f"{GOOGLE_PLACES_BASE}/textsearch/json",
-                        params={"query": f"{p['title']} {city}", "key": GOOGLE_PLACES_API_KEY},
-                        timeout=5,
-                    )
-                    geo_data = geo_res.json()
-                    if geo_data.get("results"):
-                        loc = geo_data["results"][0]["geometry"]["location"]
-                        lat, lon = loc["lat"], loc["lng"]
-                except Exception:
-                    pass  # skip geocode failure, keep original coords
-
-            valid.append({
-                "id":       f"rec-{p['title'].lower()[:20]}",
-                "title":    p["title"],
-                "category": p.get("category", "place"),
-                "lat":      lat,
-                "lon":      lon,
-                "whyRec":   p.get("whyRec", ""),
-                "signal":   p.get("signal", "persona"),
-            })
-
-        return {"picks": valid}
-
-    except json.JSONDecodeError as e:
-        print(f"RECOMMENDED PLACES JSON ERROR: {e}")
-        return {"picks": []}
-    except Exception as e:
-        print(f"RECOMMENDED PLACES ERROR: {e}")
-        return {"picks": []}
+    return {"picks": picks}
 
 
 @app.post("/persona-insight")
