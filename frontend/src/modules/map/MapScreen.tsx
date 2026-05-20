@@ -514,7 +514,7 @@ export function MapScreen() {
           <FilterBar
             active={activeFilter as MapFilter}
             activeCategories={activeCategories}
-            allCount={displayCount}
+            displayCount={displayCount}
             curatedCount={curatedCount}
             categoryCounts={categoryCounts}
             onSelect={handleFilterSelect}
