@@ -381,7 +381,7 @@ export function MapScreen() {
     return counts
   }, [places])
 
-  const curatedCount = ourPicks.length + liveEvents.length;
+  const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length;
 
   const center: [number, number] = cityGeo ? [cityGeo.lat, cityGeo.lon] : [20, 0];
 
@@ -431,10 +431,13 @@ export function MapScreen() {
         {activeFilter === 'curated' && (
           <RecoPlacesPinsLayer
             places={recommendedPlaces}
-            activePinId={activePlace?.id ?? null}
+            activePinId={activePinId ?? null}
             onPinClick={(id) => {
               const p = recommendedPlaces.find(r => r.id === id)
-              if (p) setActivePlace(p)
+              if (p) {
+                setActivePlace(p)
+                dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
+              }
             }}
           />
         )}
