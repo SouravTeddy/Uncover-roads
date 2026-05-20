@@ -213,18 +213,16 @@ export const api = {
   recommendedPlaces: (params: {
     city: string;
     personaArchetype: string;
-    personaDesc: string;
     venueFilters: string[];
     itineraryBias: string[];
-    viewedCategories: string[];
+    places: Place[];
   }) =>
     post<{ picks: Place[] }>('/recommended-places', {
-      city: params.city,
+      city:              params.city,
       persona_archetype: params.personaArchetype,
-      persona_desc: params.personaDesc,
-      venue_filters: params.venueFilters,
-      itinerary_bias: params.itineraryBias,
-      viewed_categories: params.viewedCategories,
+      venue_filters:     params.venueFilters,
+      itinerary_bias:    params.itineraryBias,
+      places:            params.places,
     }),
 
   personaInsight: (params: {
