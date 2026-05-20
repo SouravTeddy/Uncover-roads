@@ -278,6 +278,7 @@ export function MapScreen() {
     if (!city || activeFilter !== 'curated') { setOurPicks([]); setOurPicksLoaded(false); return }
     const activeCityContext = cityContexts[activeCityIndex]
     const cityId = activeCityContext?.city ?? city
+    setOurPicksLoaded(false)
     fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
       .then(r => r.ok ? r.json() : [])
       .then((data: PlacePickFE[]) => {
