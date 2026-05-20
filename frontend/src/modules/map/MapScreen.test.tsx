@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 // Pure logic test — no component render needed
 
+// Mirrors the filter logic used for citySavedCount in MapScreen.tsx
 function cityFavsCount(favouritedPins: Array<{ city: string }>, city: string): number {
   return favouritedPins.filter(p => p.city === city).length
 }
