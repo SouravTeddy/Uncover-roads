@@ -138,6 +138,10 @@ export function MapScreen() {
     () => new Set(favouritedPins.map(f => f.placeId)),
     [favouritedPins],
   );
+  const citySavedCount = useMemo(
+    () => favouritedPins.filter(p => p.city === city).length,
+    [favouritedPins, city],
+  );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
 
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
@@ -509,7 +513,7 @@ export function MapScreen() {
         </div>
 
         {/* Saved filter chip — appears when places are hearted */}
-        {favouritedPins.filter(p => p.city === city).length > 0 && (
+        {citySavedCount > 0 && (
           <div style={{ pointerEvents: 'auto' }}>
             <button
               onClick={() => {
@@ -528,7 +532,7 @@ export function MapScreen() {
             >
               <span className="ms" style={{ fontSize: 13 }}>bookmark</span>
               Saved
-              <span style={{ opacity: 0.7 }}>{favouritedPins.filter(p => p.city === city).length}</span>
+              <span style={{ opacity: 0.7 }}>{citySavedCount}</span>
               {activeFilter === 'saved' && (
                 <span className="ms" style={{ fontSize: 12 }}>close</span>
               )}
