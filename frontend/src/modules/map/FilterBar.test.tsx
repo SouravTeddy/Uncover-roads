@@ -1,6 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import type { Category } from '../../shared/types'
 
+// Mirrors getDisplayCount logic used in MapScreen.tsx
+function getDisplayCount(
+  activeCategories: string[],
+  filteredPlaces: Array<unknown>,
+  allPlaces: Array<unknown>,
+): number {
+  return activeCategories.length > 0 ? filteredPlaces.length : allPlaces.length
+}
+
+describe('getDisplayCount', () => {
+  it('returns total when no category filter active', () => {
+    expect(getDisplayCount([], [1, 2], [1, 2, 3, 4])).toBe(4)
+  })
+
+  it('returns filtered length when category active', () => {
+    expect(getDisplayCount(['cafe'], [1, 2], [1, 2, 3, 4])).toBe(2)
+  })
+})
+
 describe('Category type coverage', () => {
   it('includes all backend-emitted categories', () => {
     const cats: Category[] = [
@@ -29,7 +48,7 @@ describe('FilterBar component', () => {
   it('renders the All button', () => {
     render(
       <FilterBar
-        active="all" activeCategories={[]} allCount={50}
+        active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
         onSelect={noop} onCategoriesSelect={noop}
@@ -41,7 +60,7 @@ describe('FilterBar component', () => {
   it('shows count on Landmarks chip (historic 8 + tourism 5 = 13)', () => {
     render(
       <FilterBar
-        active="all" activeCategories={[]} allCount={50}
+        active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
         onSelect={noop} onCategoriesSelect={noop}
@@ -56,7 +75,7 @@ describe('FilterBar component', () => {
   it('hides chips with 0 count (Spa has 0)', () => {
     render(
       <FilterBar
-        active="all" activeCategories={[]} allCount={50}
+        active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
         onSelect={noop} onCategoriesSelect={noop}
@@ -70,7 +89,7 @@ describe('FilterBar component', () => {
     const onCategoriesSelect = vi.fn()
     render(
       <FilterBar
-        active="all" activeCategories={[]} allCount={50}
+        active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
         onSelect={noop} onCategoriesSelect={onCategoriesSelect}
@@ -84,7 +103,7 @@ describe('FilterBar component', () => {
   it('scroll row has maxWidth set', () => {
     render(
       <FilterBar
-        active="all" activeCategories={[]} allCount={50}
+        active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
         onSelect={noop} onCategoriesSelect={noop}
@@ -101,7 +120,7 @@ describe('FilterBar component', () => {
       <FilterBar
         active="all"
         activeCategories={[]}
-        allCount={10}
+        displayCount={10}
         curatedCount={3}
         categoryCounts={{}}
         onSelect={() => {}}
