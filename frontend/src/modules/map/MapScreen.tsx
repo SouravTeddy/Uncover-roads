@@ -579,7 +579,9 @@ export function MapScreen() {
               lineHeight: 1,
               background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
               WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
+              color: 'transparent',
             }}
           >
             {city}
@@ -587,13 +589,11 @@ export function MapScreen() {
         )}
         {state.travelStartDate && state.travelEndDate && (
           <span
-            onClick={() => {}}
             style={{
               fontSize: 10,
               fontWeight: 600,
               color: 'var(--color-text-3)',
               lineHeight: 1,
-              cursor: 'pointer',
             }}
           >
             {new Date(state.travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
