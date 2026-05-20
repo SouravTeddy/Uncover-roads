@@ -33,10 +33,6 @@ import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
-import { GuideBulb } from './GuideBulb'
-import { BlockerSheet } from './BlockerSheet'
-import { useHardBlockers } from './useHardBlockers'
-import { useGuideMessages } from './useGuideMessages'
 
 // ── Module-level utilities ───────────────────────────────────────
 
@@ -53,21 +49,13 @@ function buildTransitSummary(transit: DetectedTransit | null): string {
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
-  const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory,
-  } = useMap(activeCategories);
-
-  const categoryCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = {}
-    for (const p of places) {
-      counts[p.category] = (counts[p.category] ?? 0) + 1
-    }
-    return counts
-  }, [places])
+  } = useMap(activeCategory);
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
@@ -76,6 +64,11 @@ export function MapScreen() {
   // New store state for phase 4
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
   const isDark = theme !== 'light'
+  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
+
+  // Session cache for PinCard persona insights
+  const insightCacheRef = useRef(new Map<string, string>());
+
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
   const cityRef = useRef(city);
@@ -168,22 +161,8 @@ export function MapScreen() {
   const [searchPins, setSearchPins] = useState<SearchResultPin[]>([])
   const [showSearchStrip, setShowSearchStrip] = useState(false)
 
-  // Phase 11: Surprise Me confirmation
-  const [surpriseConfirm, setSurpriseConfirm] = useState(false)
-
-  // Surprise Me error state
-  const [surpriseError, setSurpriseError] = useState<string | null>(null)
-
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
-
-  const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
-
-  const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
-  const { message: guideMessage } = useGuideMessages(
-    selectedPlaces, hardBlockers, city, activePlace,
-    liveEvents, state.travelStartDate, state.travelEndDate,
-  )
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
@@ -330,7 +309,7 @@ export function MapScreen() {
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
-    if (f !== 'all') setActiveCategories([]);
+    if (f !== 'all') setActiveCategory(null);
   }
 
   // ── Phase 4: new pin click handler — updates both local and store state ──
@@ -354,29 +333,6 @@ export function MapScreen() {
     dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
   }, [setActivePlace, clearDetails, dispatch]);
 
-
-  const _runSurprise = useCallback(async () => {
-    if (!city || !personaProfile) return
-    setSurpriseConfirm(false)
-    dispatch({ type: 'INCREMENT_GENERATION_COUNT' })
-    const startCityContext = cityContexts[0]
-    const endCityContext   = cityContexts[cityContexts.length - 1]
-    try {
-      const result = await api.surpriseMe({
-        start_city_id: startCityContext?.city ?? city,
-        end_city_id:   endCityContext?.city ?? city,
-        start_date:    state.travelStartDate ?? undefined,
-        end_date:      state.travelEndDate ?? undefined,
-        persona:       personaProfile.archetype ?? 'explorer',
-      })
-      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-      dispatch({ type: 'GO_TO', screen: 'route' })
-    } catch (err) {
-      console.error('[MapScreen] Surprise Me failed:', err)
-      setSurpriseError("Couldn't generate — try again")
-      setTimeout(() => setSurpriseError(null), 3000)
-    }
-  }, [city, personaProfile, cityContexts, state.travelStartDate, state.travelEndDate, dispatch])
 
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
@@ -422,6 +378,7 @@ export function MapScreen() {
     : null;
 
   return (
+    <>
     <div className="fixed inset-0" style={{ zIndex: !!activePlace ? 35 : 10 }}>
 
       {/* Map — full screen */}
@@ -518,13 +475,12 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <FilterBar
             active={activeFilter as MapFilter}
-            activeCategories={activeCategories}
-            allCount={filteredPlaces.length}
-            categoryCounts={categoryCounts}
+            activeCategory={activeCategory}
+            allCount={places.length}
             curatedCount={curatedCount}
             curatedLocked={isCurationLocked(state)}
             onSelect={handleFilterSelect}
-            onCategoriesSelect={setActiveCategories}
+            onCategorySelect={setActiveCategory}
             onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
@@ -537,7 +493,6 @@ export function MapScreen() {
                 if (activeFilter === 'saved') {
                   setFilter('all');
                 } else {
-                  setActiveCategories([]);
                   setFilter('saved' as MapFilter);
                 }
               }}
@@ -562,22 +517,6 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <JourneyBreadcrumb cities={getJourneyCities(selectedPlaces)} />
         </div>
-      </div>
-
-      {/* GuideBulb — top-right, same level as FilterBar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
-          right: '1rem',
-          zIndex: 25,
-          pointerEvents: 'auto',
-        }}
-      >
-        <GuideBulb
-          message={guideMessage}
-          onConflictTap={() => setBlockerSheetOpen(true)}
-        />
       </div>
 
       {/* Events loading spinner */}
@@ -614,7 +553,7 @@ export function MapScreen() {
       )}
 
       {/* Loading — tiny spinner, corner, barely visible */}
-      {!initialLoading && loading && (
+      {loading && (
         <div
           className="absolute"
           style={{
@@ -709,22 +648,10 @@ export function MapScreen() {
           travelDate={state.tripContext.date}
           persona={state.persona ?? null}
           personaProfile={personaProfile}
+          insightCache={insightCacheRef}
         />
       )}
 
-      {city && (
-        <BottomActionTray
-          startDate={state.travelStartDate}
-          endDate={state.travelEndDate}
-          cities={cityContexts.map(c => c.city)}
-          onDateTap={() => {}}
-          itineraryPlaces={selectedPlaces}
-          buildLoading={buildLoading}
-          onBuild={handleBuild}
-          hasBlockers={hardBlockers.length > 0}
-          onBlockerTap={() => setBlockerSheetOpen(true)}
-        />
-      )}
 
       {/* Search results strip */}
       {showSearchStrip && searchPins.length > 0 && (
@@ -741,39 +668,6 @@ export function MapScreen() {
         />
       )}
 
-      {/* Surprise Me confirmation */}
-      {surpriseConfirm && (
-        <div
-          style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}
-          onClick={() => setSurpriseConfirm(false)}
-        >
-          <div
-            style={{ width: '100%', background: 'var(--color-surface)', borderRadius: '20px 20px 0 0', padding: '24px 20px 32px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8 }}>
-              Replace current itinerary?
-            </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-3)', marginBottom: 20 }}>
-              This will replace your current itinerary. Continue?
-            </p>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => setSurpriseConfirm(false)}
-                style={{ flex: 1, padding: '12px', borderRadius: 12, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-2)', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={_runSurprise}
-                style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#8b5cf6', border: 'none', color: '#fff', fontFamily: 'var(--font-heading)', fontWeight: 700, cursor: 'pointer' }}
-              >
-                Yes, surprise me
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error state */}
       {!loading && error && (
@@ -804,32 +698,22 @@ export function MapScreen() {
         />
       )}
 
-      {/* Surprise Me error toast */}
-      {surpriseError && (
-        <div style={{
-          position: 'fixed', bottom: 120, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 50, padding: '10px 18px', borderRadius: 999,
-          background: 'rgba(220,60,60,.12)', border: '1px solid rgba(220,60,60,.3)',
-          backdropFilter: 'blur(12px)',
-          color: '#e05050', fontSize: '0.78rem', fontWeight: 600,
-          whiteSpace: 'nowrap',
-          animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
-        }}>
-          {surpriseError}
-        </div>
-      )}
+    </div>
 
-      {/* BlockerSheet — slides up when user views conflict details */}
-      {blockerSheetOpen && (
-        <BlockerSheet
-          blockers={hardBlockers}
-          onFix={() => setBlockerSheetOpen(false)}
-          onBuildAnyway={() => {
-            setBlockerSheetOpen(false)
-            handleBuild()
-          }}
+      {/* BottomActionTray — lifted outside the stacking-context div so it renders above BottomNav (zIndex 30) */}
+      {city && (
+        <BottomActionTray
+          startDate={state.travelStartDate}
+          endDate={state.travelEndDate}
+          cities={cityContexts.map(c => c.city)}
+          onDateTap={() => {}}
+          itineraryPlaces={selectedPlaces}
+          days={activeCityDays}
+          buildLoading={buildLoading}
+          onBuild={handleBuild}
         />
       )}
-    </div>
+
+    </>
   );
 }

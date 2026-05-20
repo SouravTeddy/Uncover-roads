@@ -6,6 +6,5 @@ export { FamousPinsLayer } from './FamousPinsLayer';
 export { ReferencePinsLayer } from './ReferencePinsLayer';
 export { UserPinsLayer } from './UserPinsLayer';
 export { DiscoveryModeToggle } from './DiscoveryModeToggle';
-export { SurpriseMeButton } from './SurpriseMeButton';
 export { BuildItineraryBar } from './BuildItineraryBar';
 export * from './pin-visual';
