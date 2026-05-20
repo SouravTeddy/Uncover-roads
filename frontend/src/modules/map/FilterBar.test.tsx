@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { Category } from '../../shared/types'
 
-// Mirrors getDisplayCount logic used in MapScreen.tsx
+// Mirrors the displayCount computation in MapScreen.tsx (line ~391)
 function getDisplayCount(
   activeCategories: string[],
   filteredPlaces: Array<unknown>,
