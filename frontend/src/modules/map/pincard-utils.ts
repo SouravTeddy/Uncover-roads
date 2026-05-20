@@ -90,3 +90,93 @@ export function getTravelDateBadge(
     status: 'open',
   };
 }
+
+type OurPickBadge = 'trending' | 'hidden_gem' | 'getting_busy' | null;
+
+/**
+ * Returns up to 3 travel-aware insight strings for the Our Analysis aura strip.
+ * Priority: trend velocity → hours/open status → best-time heuristic.
+ */
+export function computeAnalysisInsights(
+  place: { category: string },
+  details: { weekday_text?: string[]; open_now?: boolean | null } | null | undefined,
+  ourPickBadge: OurPickBadge,
+  travelStart: string | null,
+  travelEnd: string | null,
+): string[] {
+  const insights: string[] = [];
+
+  // 1. Trend velocity
+  if (ourPickBadge && travelStart) {
+    const month = new Date(travelStart + 'T12:00:00Z').toLocaleString('en-US', {
+      month: 'long', timeZone: 'UTC',
+    });
+    if (ourPickBadge === 'trending') {
+      insights.push(`Popular in ${month} — can get busy around your trip`);
+    } else if (ourPickBadge === 'hidden_gem') {
+      insights.push(`Hidden gem — fewer crowds during your trip`);
+    } else if (ourPickBadge === 'getting_busy') {
+      insights.push(`Getting popular — worth visiting early in your trip`);
+    }
+  }
+
+  // 2. Hours / open status across travel days
+  if (details?.weekday_text?.length && travelStart && travelEnd) {
+    const closedDays: string[] = [];
+    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (
+      let d = new Date(travelStart + 'T12:00:00Z');
+      d <= new Date(travelEnd + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + 1)
+    ) {
+      const jsDay = d.getUTCDay();
+      const googleIdx = jsDay === 0 ? 6 : jsDay - 1;
+      const line = details.weekday_text[googleIdx];
+      if (line && /closed/i.test(line)) {
+        closedDays.push(DAY_NAMES[jsDay]);
+      }
+    }
+
+    if (closedDays.length === 0) {
+      insights.push(`Open on all your travel days`);
+    } else {
+      insights.push(`Closed on ${closedDays[0]} — check your itinerary`);
+    }
+  }
+
+  // 3. Best visiting time heuristic
+  if (travelStart && travelEnd) {
+    let includesWeekend = false;
+    for (
+      let d = new Date(travelStart + 'T12:00:00Z');
+      d <= new Date(travelEnd + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + 1)
+    ) {
+      const day = d.getUTCDay();
+      if (day === 0 || day === 6) { includesWeekend = true; break; }
+    }
+
+    const cat = place.category;
+    if ((cat === 'tourism' || cat === 'park' || cat === 'historic') && includesWeekend) {
+      insights.push(`Gets busy on weekends — go early morning`);
+    } else if (cat === 'restaurant') {
+      insights.push(`Peak lunch 12–2pm — consider booking ahead`);
+    } else if (cat === 'cafe') {
+      let allWeekdays = true;
+      for (
+        let d = new Date(travelStart + 'T12:00:00Z');
+        d <= new Date(travelEnd + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 1)
+      ) {
+        const day = d.getUTCDay();
+        if (day === 0 || day === 6) { allWeekdays = false; break; }
+      }
+      if (allWeekdays) {
+        insights.push(`Quieter on weekdays — your trip includes weekday mornings`);
+      }
+    }
+  }
+
+  return insights.slice(0, 3);
+}
