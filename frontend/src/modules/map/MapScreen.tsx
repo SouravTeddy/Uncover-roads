@@ -33,6 +33,8 @@ import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
+import { GuideBulb } from './GuideBulb'
+import { useGuideMessages } from './useGuideMessages'
 
 // ── Module-level utilities ───────────────────────────────────────
 
@@ -167,11 +169,6 @@ export function MapScreen() {
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
 
-  const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
-
-  const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
-
-  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0
   const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
     selectedPlaces, city, state.persona ?? null, personaProfile,
     places, activePlace, liveEvents,
@@ -376,14 +373,6 @@ export function MapScreen() {
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
     : false;
-
-  const categoryCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = {}
-    for (const p of places) {
-      counts[p.category] = (counts[p.category] ?? 0) + 1
-    }
-    return counts
-  }, [places])
 
   const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length;
 
