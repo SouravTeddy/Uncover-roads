@@ -164,6 +164,17 @@ export function MapScreen() {
   // Build Itinerary loading state
   const [buildLoading, setBuildLoading] = useState(false)
 
+  const [blockerSheetOpen, setBlockerSheetOpen] = useState(false)
+
+  const hardBlockers = useHardBlockers(selectedPlaces, state.travelStartDate, state.travelEndDate)
+
+  const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0
+  const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
+    selectedPlaces, city, state.persona ?? null, personaProfile,
+    places, activePlace, liveEvents,
+    state.travelStartDate, state.travelEndDate, activeCityDays,
+  )
+
   const handleAreaLoad = useCallback(async (
     centerLat: number,
     centerLon: number,
@@ -526,6 +537,23 @@ export function MapScreen() {
         <div style={{ pointerEvents: 'auto' }}>
           <JourneyBreadcrumb cities={getJourneyCities(selectedPlaces)} />
         </div>
+      </div>
+
+      {/* GuideBulb — top-right, same level as FilterBar */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+          right: '1rem',
+          zIndex: 25,
+          pointerEvents: 'auto',
+        }}
+      >
+        <GuideBulb
+          messages={guideMessages}
+          hasUnread={guideHasUnread}
+          onRead={markGuideRead}
+        />
       </div>
 
       {/* Events loading spinner */}
