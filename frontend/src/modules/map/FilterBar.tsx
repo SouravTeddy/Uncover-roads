@@ -22,16 +22,14 @@ interface Props {
   activeCategories: string[]
   allCount: number
   curatedCount: number
-  curatedLocked: boolean
   categoryCounts: Record<string, number>
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
-  onLockedTap: () => void
 }
 
 export function FilterBar({
-  active, activeCategories, allCount, curatedCount, curatedLocked,
-  categoryCounts, onSelect, onCategoriesSelect, onLockedTap,
+  active, activeCategories, allCount, curatedCount,
+  categoryCounts, onSelect, onCategoriesSelect,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -90,34 +88,26 @@ export function FilterBar({
         </button>
 
         <button
-          onClick={() => { curatedLocked ? onLockedTap() : onSelect('curated'); setExpanded(false) }}
+          onClick={() => { onSelect('curated'); setExpanded(false) }}
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '5px 12px', height: 28, borderRadius: 999,
             background: active === 'curated' ? 'var(--color-primary-bg)' : 'rgba(15,20,30,.82)',
             border: active === 'curated'
               ? '1px solid var(--color-primary)'
-              : curatedLocked
-              ? '1px solid var(--color-border)'
               : '1px solid rgba(212,168,83,.3)',
             color: active === 'curated'
               ? 'var(--color-primary)'
-              : curatedLocked
-              ? 'var(--color-text-3)'
               : 'var(--color-primary-text)',
             fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
-            opacity: curatedLocked ? 0.75 : 1,
           }}
         >
           <span style={{ fontSize: 11 }}>✦</span>
           Curated
-          {!curatedLocked && curatedCount > 0 && (
+          {curatedCount > 0 && (
             <span style={{ opacity: 0.65, fontSize: '0.72rem' }}>· {curatedCount}</span>
-          )}
-          {curatedLocked && (
-            <span className="ms" style={{ fontSize: 12, marginLeft: 1 }}>lock</span>
           )}
         </button>
       </div>

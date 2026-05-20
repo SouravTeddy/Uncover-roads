@@ -3,7 +3,6 @@ import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
 import type { Place, MapFilter } from '../../shared/types';
-import { isCurationLocked } from '../../shared/tier';
 import type { MapHandle } from './MapLibreMap';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
@@ -507,11 +506,9 @@ export function MapScreen() {
             activeCategories={activeCategories}
             allCount={filteredPlaces.length}
             curatedCount={curatedCount}
-            curatedLocked={isCurationLocked(state)}
             categoryCounts={categoryCounts}
             onSelect={handleFilterSelect}
             onCategoriesSelect={setActiveCategories}
-            onLockedTap={() => dispatch({ type: 'GO_TO', screen: 'subscription' })}
           />
         </div>
 
