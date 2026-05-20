@@ -66,9 +66,6 @@ export function MapScreen() {
   const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
 
-  // Session cache for PinCard persona insights
-  const insightCacheRef = useRef(new Map<string, string>());
-
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
   const cityRef = useRef(city);
@@ -126,6 +123,13 @@ export function MapScreen() {
   const transitSummary = pendingNewCity?.transit
     ? buildTransitSummary(pendingNewCity.transit)
     : '';
+
+  const categoryCounts = useMemo(() =>
+    places.reduce<Record<string, number>>((acc, p) => {
+      acc[p.category] = (acc[p.category] ?? 0) + 1;
+      return acc;
+    }, {}),
+  [places]);
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
