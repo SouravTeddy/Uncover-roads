@@ -1,10 +1,6 @@
 import type { Place } from '../../shared/types'
 
 interface Props {
-  startDate: string | null
-  endDate: string | null
-  cities: string[]
-  onDateTap: () => void
   itineraryPlaces: Place[]
   days: number
   buildLoading: boolean
@@ -13,31 +9,14 @@ interface Props {
 
 const MIN_PLACES = 2
 
-function formatDate(iso: string): string {
-  const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-export function BottomActionTray({
-  startDate, endDate, cities, onDateTap,
-  itineraryPlaces, days, buildLoading, onBuild,
-}: Props) {
+export function BottomActionTray({ itineraryPlaces, days, buildLoading, onBuild }: Props) {
   const count = itineraryPlaces.length
   const canBuild = count >= MIN_PLACES
   const hasItinerary = count > 0
-  const hasDates = !!(startDate && endDate)
-
   const dayPart = days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''
   const buildLabel = buildLoading
     ? 'Building…'
     : `Build itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
-
-  const travelParts: string[] = hasDates
-    ? [
-        `${formatDate(startDate!)} – ${formatDate(endDate!)}`,
-        ...(cities.length > 1 ? [`${cities.length} cities`] : []),
-      ]
-    : []
 
   return (
     <div
@@ -51,8 +30,6 @@ export function BottomActionTray({
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'stretch', pointerEvents: 'auto' }}>
-
-        {/* Build itinerary button — only when places are selected */}
         {hasItinerary && (
           <>
             <button
@@ -80,25 +57,6 @@ export function BottomActionTray({
               </p>
             )}
           </>
-        )}
-
-        {/* Date pill */}
-        {hasDates && (
-          <button
-            onClick={onDateTap}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '7px 14px', borderRadius: 999,
-              background: 'rgba(15,20,30,0.88)', border: '1px solid var(--color-border-m)',
-              backdropFilter: 'blur(12px)', cursor: 'pointer', whiteSpace: 'nowrap',
-              alignSelf: 'flex-start',
-            }}
-          >
-            <span className="ms text-primary" style={{ fontSize: 14 }}>calendar_today</span>
-            <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--color-text-1)', letterSpacing: '0.01em' }}>
-              {travelParts.join(' · ')}
-            </span>
-          </button>
         )}
       </div>
     </div>

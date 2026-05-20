@@ -556,7 +556,7 @@ export function MapScreen() {
         </div>
       </div>
 
-      {/* GuideBulb — top-right, same level as FilterBar */}
+      {/* Right column — city name, travel dates, guide bulb */}
       <div
         style={{
           position: 'absolute',
@@ -564,8 +564,43 @@ export function MapScreen() {
           right: '1rem',
           zIndex: 25,
           pointerEvents: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 6,
         }}
       >
+        {city && (
+          <span
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 18,
+              fontWeight: 700,
+              lineHeight: 1,
+              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            {city}
+          </span>
+        )}
+        {state.travelStartDate && state.travelEndDate && (
+          <span
+            onClick={() => {}}
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: 'var(--color-text-3)',
+              lineHeight: 1,
+              cursor: 'pointer',
+            }}
+          >
+            {new Date(state.travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {' – '}
+            {new Date(state.travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
         <GuideBulb
           messages={guideMessages}
           hasUnread={guideHasUnread}
@@ -756,10 +791,6 @@ export function MapScreen() {
       {/* BottomActionTray — lifted outside the stacking-context div so it renders above BottomNav (zIndex 30) */}
       {city && !activePinId && (
         <BottomActionTray
-          startDate={state.travelStartDate}
-          endDate={state.travelEndDate}
-          cities={cityContexts.map(c => c.city)}
-          onDateTap={() => {}}
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
