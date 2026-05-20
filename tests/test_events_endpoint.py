@@ -73,3 +73,63 @@ def test_events_skips_venues_with_zero_coords(client):
 
         r = client.get("/events?city=Tokyo&start_date=2026-06-01&end_date=2026-06-08")
         assert r.json()["places"] == []
+
+def make_eventbrite_response(event_name="Art Fair", lat=35.69, lon=139.70):
+    return {
+        "events": [{
+            "id": "eb-999",
+            "name": {"text": event_name},
+            "start": {"local": "2026-06-02T10:00:00"},
+            "url": "https://eventbrite.com/e/999",
+            "logo": {"url": "https://example.com/art.jpg"},
+            "venue": {
+                "name": "Tokyo Forum",
+                "address": {"localized_address_display": "3-5-1 Marunouchi, Tokyo"},
+                "latitude": str(lat),
+                "longitude": str(lon),
+            },
+            "category_id": "105",
+        }]
+    }
+
+def test_events_merges_eventbrite(client):
+    """Eventbrite events appear in results when EVENTBRITE_API_KEY is set."""
+    from unittest.mock import patch, MagicMock
+    def fake_get(url, **kwargs):
+        mock = MagicMock()
+        mock.status_code = 200
+        if "ticketmaster" in url:
+            mock.json.return_value = {"_embedded": {"events": []}}
+        elif "eventbriteapi" in url:
+            mock.json.return_value = make_eventbrite_response()
+        return mock
+
+    with patch("requests.get", side_effect=fake_get), \
+         patch.object(m, "TICKETMASTER_KEY", "fake_key"), \
+         patch.object(m, "EVENTBRITE_API_KEY", "fake_eb"), \
+         patch.object(m, "YELP_API_KEY", ""):
+        r = client.get("/events?city=Tokyo&start_date=2026-06-01&end_date=2026-06-08")
+        assert r.status_code == 200
+        places = r.json()["places"]
+        assert any("Art Fair" in p["title"] for p in places)
+
+def test_events_deduplicates_across_sources(client):
+    """Same event title from Ticketmaster and Eventbrite appears only once."""
+    from unittest.mock import patch, MagicMock
+    def fake_get(url, **kwargs):
+        mock = MagicMock()
+        mock.status_code = 200
+        if "ticketmaster" in url:
+            mock.json.return_value = make_tm_response("Jazz Night")
+        elif "eventbriteapi" in url:
+            mock.json.return_value = make_eventbrite_response("Jazz Night")
+        return mock
+
+    with patch("requests.get", side_effect=fake_get), \
+         patch.object(m, "TICKETMASTER_KEY", "fake_key"), \
+         patch.object(m, "EVENTBRITE_API_KEY", "fake_eb"), \
+         patch.object(m, "YELP_API_KEY", ""):
+        r = client.get("/events?city=Tokyo&start_date=2026-06-01&end_date=2026-06-08")
+        places = r.json()["places"]
+        jazz_nights = [p for p in places if p["title"] == "Jazz Night"]
+        assert len(jazz_nights) == 1
