@@ -384,6 +384,10 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
+  const activeOurPickBadge = activePlace
+    ? (ourPicks.find(p => p.place_id === activePlace.id)?.badge ?? null)
+    : null
+
   const curatedCount = ourPicksLoaded
     ? ourPicks.length + liveEvents.length + recommendedPlaces.length
     : 0
@@ -735,6 +739,9 @@ export function MapScreen() {
             });
           }}
           travelDate={state.tripContext.date}
+          travelStartDate={state.travelStartDate}
+          travelEndDate={state.travelEndDate}
+          ourPickBadge={activeOurPickBadge}
           persona={state.persona ?? null}
           personaProfile={personaProfile}
         />
