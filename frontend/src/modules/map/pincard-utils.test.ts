@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl, getTravelDateBadge } from './pincard-utils';
+import { filterTypes, getHoursLabel, parseOpenClose, getDirectionsUrl, getTravelDateBadge, computeAnalysisInsights } from './pincard-utils';
+import type { PlaceDetails } from '../../shared/types';
 
 const WEEKDAYS = [
   'Monday: 9:00 AM – 11:00 PM',
@@ -110,5 +111,99 @@ describe('getTravelDateBadge', () => {
 
   it('returns null for invalid date string', () => {
     expect(getTravelDateBadge(HOURS, 'not-a-date')).toBeNull();
+  });
+});
+
+const basePlace = (category: string) => ({
+  id: '1', title: 'Test', lat: 0, lon: 0, category,
+  photo_ref: null, tags: {}, rating: null,
+});
+
+const baseDetails = (overrides: Partial<PlaceDetails> = {}): PlaceDetails => ({
+  place_id: '1', name: 'Test', address: '', lat: 0, lon: 0,
+  rating: null, rating_count: null, price_level: null,
+  weekday_text: [], photo_ref: null, open_now: null,
+  ...overrides,
+}) as PlaceDetails;
+
+describe('computeAnalysisInsights', () => {
+  it('returns trending insight referencing travel month', () => {
+    const insights = computeAnalysisInsights(
+      basePlace('tourism'), baseDetails(), 'trending', '2026-05-20', '2026-05-27'
+    );
+    expect(insights[0]).toContain('Popular in May');
+  });
+
+  it('returns hidden gem insight', () => {
+    const insights = computeAnalysisInsights(
+      basePlace('cafe'), baseDetails(), 'hidden_gem', '2026-05-20', '2026-05-27'
+    );
+    expect(insights[0]).toContain('Hidden gem');
+  });
+
+  it('returns getting popular insight', () => {
+    const insights = computeAnalysisInsights(
+      basePlace('cafe'), baseDetails(), 'getting_busy', '2026-05-20', '2026-05-27'
+    );
+    expect(insights[0]).toContain('Getting popular');
+  });
+
+  it('returns open-on-all-days insight when no closed days', () => {
+    const weekday_text = [
+      'Monday: 9:00 AM – 10:00 PM',
+      'Tuesday: 9:00 AM – 10:00 PM',
+      'Wednesday: 9:00 AM – 10:00 PM',
+      'Thursday: 9:00 AM – 10:00 PM',
+      'Friday: 9:00 AM – 10:00 PM',
+      'Saturday: 9:00 AM – 10:00 PM',
+      'Sunday: 9:00 AM – 10:00 PM',
+    ];
+    const insights = computeAnalysisInsights(
+      basePlace('museum'), baseDetails({ weekday_text }), null, '2026-05-20', '2026-05-21'
+    );
+    expect(insights.some(i => i.toLowerCase().includes('open'))).toBe(true);
+  });
+
+  it('returns closed alert when closed on a travel day', () => {
+    const weekday_text = [
+      'Monday: 9:00 AM – 10:00 PM',
+      'Tuesday: Closed',
+      'Wednesday: 9:00 AM – 10:00 PM',
+      'Thursday: 9:00 AM – 10:00 PM',
+      'Friday: 9:00 AM – 10:00 PM',
+      'Saturday: 9:00 AM – 10:00 PM',
+      'Sunday: 9:00 AM – 10:00 PM',
+    ];
+    // 2026-05-19 is a Tuesday
+    const insights = computeAnalysisInsights(
+      basePlace('museum'), baseDetails({ weekday_text }), null, '2026-05-19', '2026-05-19'
+    );
+    expect(insights.some(i => i.toLowerCase().includes('closed'))).toBe(true);
+  });
+
+  it('returns weekend heuristic for landmark on weekend travel', () => {
+    // 2026-05-23 is a Saturday
+    const insights = computeAnalysisInsights(
+      basePlace('tourism'), baseDetails(), null, '2026-05-23', '2026-05-24'
+    );
+    expect(insights.some(i => i.includes('weekends'))).toBe(true);
+  });
+
+  it('returns no more than 3 insights', () => {
+    const weekday_text = [
+      'Monday: 9:00 AM – 10:00 PM', 'Tuesday: 9:00 AM – 10:00 PM',
+      'Wednesday: 9:00 AM – 10:00 PM', 'Thursday: 9:00 AM – 10:00 PM',
+      'Friday: 9:00 AM – 10:00 PM', 'Saturday: 9:00 AM – 10:00 PM',
+      'Sunday: 9:00 AM – 10:00 PM',
+    ];
+    const insights = computeAnalysisInsights(
+      basePlace('tourism'), baseDetails({ weekday_text }), 'trending', '2026-05-23', '2026-05-24'
+    );
+    expect(insights.length).toBeLessThanOrEqual(3);
+  });
+
+  it('returns empty array when no insights apply', () => {
+    const insights = computeAnalysisInsights(basePlace('place'), baseDetails(), null, null, null);
+    expect(insights).toEqual([]);
   });
 });
