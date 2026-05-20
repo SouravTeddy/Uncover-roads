@@ -754,7 +754,7 @@ export function MapScreen() {
     </div>
 
       {/* BottomActionTray — lifted outside the stacking-context div so it renders above BottomNav (zIndex 30) */}
-      {city && (
+      {city && !activePinId && (
         <BottomActionTray
           startDate={state.travelStartDate}
           endDate={state.travelEndDate}
