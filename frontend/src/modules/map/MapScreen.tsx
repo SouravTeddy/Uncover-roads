@@ -48,10 +48,6 @@ function buildTransitSummary(transit: DetectedTransit | null): string {
   return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
 }
 
-export function cityFavsCount(favouritedPins: Array<{ city: string }>, city: string): number {
-  return favouritedPins.filter(p => p.city === city).length
-}
-
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
