@@ -91,7 +91,7 @@ export function getTravelDateBadge(
   };
 }
 
-type OurPickBadge = 'trending' | 'hidden_gem' | 'getting_busy' | null;
+export type OurPickBadge = 'trending' | 'hidden_gem' | 'getting_busy' | null;
 
 /**
  * Returns up to 3 travel-aware insight strings for the Our Analysis aura strip.
@@ -99,7 +99,7 @@ type OurPickBadge = 'trending' | 'hidden_gem' | 'getting_busy' | null;
  */
 export function computeAnalysisInsights(
   place: { category: string },
-  details: { weekday_text?: string[]; open_now?: boolean | null } | null | undefined,
+  details: { weekday_text?: string[] } | null | undefined,
   ourPickBadge: OurPickBadge,
   travelStart: string | null,
   travelEnd: string | null,
@@ -141,7 +141,7 @@ export function computeAnalysisInsights(
     if (closedDays.length === 0) {
       insights.push(`Open on all your travel days`);
     } else {
-      insights.push(`Closed on ${closedDays[0]} — check your itinerary`);
+      insights.push(`Closed on ${closedDays.join(', ')} — check your itinerary`);
     }
   }
 
