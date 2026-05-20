@@ -44,6 +44,7 @@ app.add_middleware(
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
+EVENTBRITE_API_KEY = os.environ.get("EVENTBRITE_API_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
 
 # In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
@@ -1503,6 +1504,37 @@ def city_profile_endpoint(city: str = Query(...)):
         return {"error": str(e)}
 
 
+def _fetch_eventbrite(
+    city: str, start_date: str, end_date: str,
+    lat: float | None, lon: float | None,
+) -> list[dict]:
+    if not EVENTBRITE_API_KEY:
+        return []
+    params: dict = {
+        "q":                      city,
+        "start_date.range_start": f"{start_date}T00:00:00",
+        "start_date.range_end":   f"{end_date}T23:59:59",
+        "expand":                 "venue",
+        "page_size":              20,
+    }
+    if lat is not None and lon is not None:
+        params["location.latitude"]  = lat
+        params["location.longitude"] = lon
+        params["location.within"]    = "10km"
+    try:
+        r = requests.get(
+            "https://www.eventbriteapi.com/v3/events/search/",
+            params=params,
+            headers={"Authorization": f"Bearer {EVENTBRITE_API_KEY}"},
+            timeout=8,
+        )
+        r.raise_for_status()
+        return r.json().get("events", [])
+    except Exception as e:
+        print(f"EVENTS Eventbrite error (non-fatal): {e}")
+        return []
+
+
 # =========================================
 # EVENTS (Ticketmaster Discovery API)
 # =========================================
@@ -1664,6 +1696,43 @@ def events(
                 print(f"EVENTS (Yelp): added {len(yelp_data.get('events', []))} Yelp events")
             except Exception as ye:
                 print(f"EVENTS Yelp error (non-fatal): {ye}")
+
+        # ── Eventbrite Events ──
+        eb_raw = _fetch_eventbrite(city, start_date, end_date, lat, lon)
+        existing_titles = {p["title"].lower() for p in places}
+        for ev in eb_raw:
+            venue = ev.get("venue") or {}
+            try:
+                ev_lat = float(venue.get("latitude") or 0)
+                ev_lon = float(venue.get("longitude") or 0)
+            except (TypeError, ValueError):
+                continue
+            if ev_lat == 0 and ev_lon == 0:
+                continue
+            name = (ev.get("name") or {}).get("text", "Event")
+            if name.lower() in existing_titles:
+                continue
+            existing_titles.add(name.lower())
+            start_local = (ev.get("start") or {}).get("local", "")
+            event_date = start_local[:10] if start_local else start_date
+            event_time = start_local[11:16] if len(start_local) > 10 else ""
+            logo = ev.get("logo") or {}
+            places.append({
+                "id":       f"eb-{ev.get('id', '')}",
+                "title":    name,
+                "lat":      ev_lat,
+                "lon":      ev_lon,
+                "category": "event",
+                "imageUrl": logo.get("url"),
+                "tags": {
+                    "event_date": event_date,
+                    "event_time": event_time,
+                    "venue":      venue.get("name", ""),
+                    "genre":      "",
+                    "website":    ev.get("url", ""),
+                },
+            })
+        print(f"EVENTS (Eventbrite): added {len(eb_raw)} raw events")
 
         print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
         _events_cache[cache_key] = (_time(), places)
@@ -2534,7 +2603,7 @@ async def cities_map_pins(city_id: str, _user=Depends(get_current_user)):
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
-async def cities_picks(city_id: str, _user=Depends(require_pro)):
+async def cities_picks(city_id: str):
     """Pro: curated picks with trend stage badges.
     Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
 
