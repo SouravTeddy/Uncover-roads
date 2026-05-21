@@ -406,7 +406,17 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_places', []);
       ssSave('ur_ss_sel', []);
       ssSave('ur_ss_geo', null);
-      return { ...state, city: action.city, places: [], selectedPlaces: [], cityGeo: null };
+      ssSave('ur_ss_footprints', []);
+      return {
+        ...state,
+        city: action.city,
+        places: [],
+        selectedPlaces: [],
+        cityGeo: null,
+        cityFootprints: [],
+        cityContexts: [],
+        activeCityIndex: 0,
+      };
 
     case 'UPDATE_CITY_LABEL':
       ssSave('ur_ss_city', action.city);

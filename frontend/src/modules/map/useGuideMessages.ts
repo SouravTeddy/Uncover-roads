@@ -23,9 +23,38 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
+function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6_371_000
+  const φ1 = (lat1 * Math.PI) / 180
+  const φ2 = (lat2 * Math.PI) / 180
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180
+  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+const PAIR_COMPLEMENT_CATS = ['cafe', 'park', 'restaurant']
+const PAIR_TRIGGER_CATS = new Set(['historic', 'museum', 'tourism'])
+const PAIR_RADIUS_M = 700
+
+export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place | null {
+  let best: Place | null = null
+  let bestDist = Infinity
+  for (const p of mapPlaces) {
+    if (p.id === anchor.id || !PAIR_COMPLEMENT_CATS.includes(p.category)) continue
+    const d = haversineM(anchor.lat, anchor.lon, p.lat, p.lon)
+    if (d < PAIR_RADIUS_M && d < bestDist) {
+      best = p
+      bestDist = d
+    }
+  }
+  return best
+}
+
 /**
  * Build the persona-aware area message.
- * Counts map pins that match the persona's venue_filters, surfaces the top 1–2 categories.
+ * Finds the centroid of persona-matching pins and surfaces the closest one as a starting point.
+ * Adapts language to the user's pace preference.
  */
 export function computeAreaText(
   city: string,
@@ -33,35 +62,32 @@ export function computeAreaText(
   mapPlaces: Place[],
 ): string {
   const filters: string[] = (persona as unknown as { venue_filters?: string[] }).venue_filters ?? []
+  const matching = mapPlaces.filter(p => filters.includes(p.category))
 
-  // Count pins per matching category
-  const counts: Record<string, number> = {}
-  for (const p of mapPlaces) {
-    if (filters.includes(p.category)) {
-      counts[p.category] = (counts[p.category] ?? 0) + 1
-    }
-  }
-
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1])
-
-  if (sorted.length === 0) {
-    // No matching pins — neutral fallback
+  if (matching.length === 0) {
     return `There are ${mapPlaces.length} spots on this map — tap any pin to start exploring ${city}`
   }
 
-  const total = sorted.reduce((s, [, n]) => s + n, 0)
+  // Find centroid of matching pins
+  const avgLat = matching.reduce((s, p) => s + p.lat, 0) / matching.length
+  const avgLon = matching.reduce((s, p) => s + p.lon, 0) / matching.length
 
-  // Combine top 2 categories if close in count (within 20%)
-  let labelStr: string
-  if (sorted.length >= 2 && sorted[1][1] >= sorted[0][1] * 0.8) {
-    const l1 = CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0]
-    const l2 = CATEGORY_LABELS[sorted[1][0]] ?? sorted[1][0]
-    labelStr = `${l1} and ${l2}`
-  } else {
-    labelStr = CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0]
+  // Closest place to centroid = natural starting anchor
+  let startPlace = matching[0]
+  let bestDist = Infinity
+  for (const p of matching) {
+    const d = haversineM(avgLat, avgLon, p.lat, p.lon)
+    if (d < bestDist) { bestDist = d; startPlace = p }
   }
 
-  return `${total} ${labelStr} are on this map — based on your interests, those are your best starting points in ${city}`
+  const pace = (persona as unknown as { pace?: string }).pace
+  const isSlowPace = pace === 'walking' || pace === 'local'
+
+  if (isSlowPace) {
+    return `Since you enjoy taking it slow, start at ${startPlace.title} — it's central to the ${matching.length} spots we think you'll love in ${city}`
+  }
+
+  return `Based on your interests, ${startPlace.title} is a great first stop — ${matching.length} spots nearby match your travel style`
 }
 
 /**
@@ -98,7 +124,7 @@ export function isGeographicCluster(places: Place[]): boolean {
 
 // ── Condition keys — used to detect rising edges ──────────────────────────────
 
-type ConditionKey = 'area' | 'event' | 'build-ready' | 'cluster'
+type ConditionKey = 'area' | 'event' | 'build-ready' | 'cluster' | 'pair'
 
 function evaluateConditions(
   selectedPlaces: Place[],
@@ -111,6 +137,7 @@ function evaluateConditions(
   travelStartDate: string | null,
   travelEndDate: string | null,
   days: number,
+  pairedIds: Set<string>,
 ): Record<ConditionKey, boolean> {
   const stopsPerDay = personaProfile?.stops_per_day ?? 3
   const count = selectedPlaces.length
@@ -140,7 +167,15 @@ function evaluateConditions(
   // Cluster: all picks within 800m bounding box
   const cluster = isGeographicCluster(selectedPlaces)
 
-  return { area, event, 'build-ready': buildReady, cluster }
+  // Pair: latest selected is a landmark/museum and has a nearby complement not yet suggested
+  const lastSel = selectedPlaces[count - 1] ?? null
+  const pair =
+    lastSel !== null &&
+    PAIR_TRIGGER_CATS.has(lastSel.category) &&
+    !pairedIds.has(lastSel.id) &&
+    findNearbyComplement(lastSel, mapPlaces) !== null
+
+  return { area, event, 'build-ready': buildReady, cluster, pair }
 }
 
 function buildMessage(
@@ -191,6 +226,16 @@ function buildMessage(
     }
   }
 
+  if (key === 'pair') {
+    const lastSel = selectedPlaces[selectedPlaces.length - 1]
+    const complement = findNearbyComplement(lastSel, mapPlaces)
+    const complementLabel = CATEGORY_LABELS[complement?.category ?? ''] ?? 'a nearby spot'
+    const text = complement
+      ? `${lastSel.title} pairs nicely with ${complement.title} (${complementLabel}) just a short walk away`
+      : `${lastSel.title} is a great pick — look for a café or park nearby to round out the stop`
+    return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text }
+  }
+
   // cluster
   return {
     id: `cluster-${now}`,
@@ -223,21 +268,26 @@ export function useGuideMessages(
     event: false,
     'build-ready': false,
     cluster: false,
+    pair: false,
   })
 
   // Cluster signal fires at most once per session
   const clusterFired = useRef(false)
+  // Track which place IDs have already triggered a pair message
+  const pairedIdsRef = useRef<Set<string>>(new Set())
 
   // Reset rising-edge tracking on city change so area message re-fires
   useEffect(() => {
-    prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false }
+    prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false, pair: false }
     clusterFired.current = false
+    pairedIdsRef.current = new Set()
   }, [city])
 
   useEffect(() => {
     const current = evaluateConditions(
       selectedPlaces, city, persona, personaProfile, mapPlaces,
       activePlace, liveEvents, travelStartDate, travelEndDate, days,
+      pairedIdsRef.current,
     )
 
     const toAppend: GuideMessage[] = []
@@ -251,6 +301,12 @@ export function useGuideMessages(
         // Cluster only fires once per session
         if (key === 'cluster' && clusterFired.current) continue
         if (key === 'cluster') clusterFired.current = true
+
+        // Mark the paired place so it doesn't fire again for the same place
+        if (key === 'pair') {
+          const lastSel = selectedPlaces[selectedPlaces.length - 1]
+          if (lastSel) pairedIdsRef.current.add(lastSel.id)
+        }
 
         toAppend.push(buildMessage(
           key, selectedPlaces, city, persona, personaProfile,

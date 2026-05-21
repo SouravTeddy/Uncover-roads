@@ -310,6 +310,7 @@ export interface PlaceDetails {
   open_now?: boolean;
   weekday_text?: string[];
   photo_ref?: string;
+  photo_refs?: string[];
   types?: string[];
   editorial_summary?: string;
   top_review?: string;
