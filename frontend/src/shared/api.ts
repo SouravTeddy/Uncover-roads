@@ -261,7 +261,15 @@ export const api = {
     lon: number
     days: number
     startDate: string
-    selectedPlaceIds: string[]
+    selectedPlaces: Array<{
+      id: string
+      place_id?: string
+      title: string
+      lat: number
+      lon: number
+      category: string
+      rating?: number
+    }>
     personaArchetype: string
     engineWeights: EngineWeights | null
   }) =>
