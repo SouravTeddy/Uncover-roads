@@ -231,6 +231,7 @@ export function useGuideMessages(
   // Reset rising-edge tracking on city change so area message re-fires
   useEffect(() => {
     prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false }
+    clusterFired.current = false
   }, [city])
 
   useEffect(() => {
