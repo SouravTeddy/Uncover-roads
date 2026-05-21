@@ -116,9 +116,10 @@ export function computeAnalysisInsights(
   if (details?.weekday_text?.length && travelStart && travelEnd) {
     const closedDay = (() => {
       const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const endDate1 = new Date(travelEnd + 'T12:00:00Z')
       for (
         let d = new Date(travelStart + 'T12:00:00Z');
-        d <= new Date(travelEnd + 'T12:00:00Z');
+        d <= endDate1;
         d.setUTCDate(d.getUTCDate() + 1)
       ) {
         const jsDay = d.getUTCDay()
@@ -168,9 +169,10 @@ export function computeAnalysisInsights(
   if (travelStart && travelEnd && insights.length < 3) {
     let includesWeekend = false
     let allWeekdays = true
+    const endDate2 = new Date(travelEnd + 'T12:00:00Z')
     for (
       let d = new Date(travelStart + 'T12:00:00Z');
-      d <= new Date(travelEnd + 'T12:00:00Z');
+      d <= endDate2;
       d.setUTCDate(d.getUTCDate() + 1)
     ) {
       const day = d.getUTCDay()

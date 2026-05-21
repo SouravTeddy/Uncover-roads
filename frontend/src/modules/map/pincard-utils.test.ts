@@ -104,4 +104,30 @@ describe('computeAnalysisInsights', () => {
     )
     expect(result.length).toBeLessThanOrEqual(3)
   })
+
+  it('detects closed day in the middle of a multi-day trip', () => {
+    // Jun 20-24 spans Saturday to Wednesday — includes Monday (closed)
+    const result = computeAnalysisInsights(
+      { category: 'museum' },
+      { weekday_text: closedMonday, open_now: false },
+      null,
+      '2026-06-20',
+      '2026-06-24',
+    )
+    expect(result[0].state).toBe('red')
+    expect(result[0].text).toMatch(/Closed Mon/)
+  })
+
+  it('returns green when closed day is outside the trip range', () => {
+    // Jun 18-21 is Thursday-Sunday — Monday is not in this range
+    const result = computeAnalysisInsights(
+      { category: 'museum' },
+      { weekday_text: closedMonday, open_now: true },
+      null,
+      '2026-06-18',
+      '2026-06-21',
+    )
+    expect(result[0].state).toBe('green')
+    expect(result[0].text).toMatch(/Open every day/)
+  })
 })
