@@ -2272,9 +2272,9 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             return {"place_id": None, "error": data.get("status", "UNKNOWN")}
 
         result = data.get("result", {})
-        photo_ref = None
-        if result.get("photos"):
-            photo_ref = result["photos"][0]["photo_reference"]
+        raw_photos = result.get("photos") or []
+        photo_refs = [p["photo_reference"] for p in raw_photos[:4] if p.get("photo_reference")]
+        photo_ref = photo_refs[0] if photo_refs else None
 
         details = {
             "place_id": resolved_id,
@@ -2290,6 +2290,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             "open_now": result.get("opening_hours", {}).get("open_now"),
             "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
             "photo_ref": photo_ref,
+            "photo_refs": photo_refs,
             "types": result.get("types", []),
             "editorial_summary": result.get("editorial_summary", {}).get("overview"),
             "top_review": result["reviews"][0]["text"] if result.get("reviews") else None,

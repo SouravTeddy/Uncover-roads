@@ -44,11 +44,14 @@ export function PinCard({
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
   const [descExpanded, setDescExpanded] = useState(false)
-  const [imgSrc, setImgSrc] = useState<string | null>(null)
+  const [imgSrcs, setImgSrcs] = useState<string[]>([])
+  const [slideIdx, setSlideIdx] = useState(0)
   const sheetRef = useRef<HTMLDivElement>(null)
   const touchStartY = useRef(0)
   const dragY = useRef(0)
   const closing = useRef(false)
+  const heroTouchStartX = useRef(0)
+  const heroTouchStartY = useRef(0)
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true))
@@ -61,24 +64,39 @@ export function PinCard({
     }
   }, [])
 
-  const photoRef = details?.photo_ref ?? place.photo_ref ?? null
-  const googlePhotoUrl = photoRef ? getPlacePhotoUrl(photoRef) : null
-
   useEffect(() => {
     closing.current = false
-    setImgSrc(null)
-    if (googlePhotoUrl) {
-      const img = new Image()
-      img.onload = () => setImgSrc(googlePhotoUrl)
-      img.onerror = () => {
-        api.placeImage(place.title, city).then(url => { if (url) setImgSrc(url) })
-      }
-      img.src = googlePhotoUrl
+    setImgSrcs([])
+    setSlideIdx(0)
+
+    const refs: string[] =
+      (details?.photo_refs && details.photo_refs.length > 0)
+        ? details.photo_refs
+        : (details?.photo_ref ?? place.photo_ref)
+        ? [details?.photo_ref ?? place.photo_ref!]
+        : []
+
+    if (refs.length > 0) {
+      const urls = refs.map(r => getPlacePhotoUrl(r))
+      Promise.allSettled(
+        urls.map(url => new Promise<string>((res, rej) => {
+          const img = new Image(); img.onload = () => res(url); img.onerror = rej; img.src = url
+        }))
+      ).then(results => {
+        const loaded = results
+          .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+          .map(r => r.value)
+        if (loaded.length > 0) {
+          setImgSrcs(loaded)
+        } else {
+          api.placeImage(place.title, city).then(url => { if (url) setImgSrcs([url]) })
+        }
+      })
     } else {
-      api.placeImage(place.title, city).then(url => { if (url) setImgSrc(url) })
+      api.placeImage(place.title, city).then(url => { if (url) setImgSrcs([url]) })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [place.id, googlePhotoUrl])
+  }, [place.id, details?.photo_refs, details?.photo_ref])
 
   useEffect(() => {
     setHoursOpen(false)
@@ -112,16 +130,47 @@ export function PinCard({
     dragY.current = 0
   }, [onClose])
 
+  const handleHeroTouchStart = useCallback((e: React.TouchEvent) => {
+    heroTouchStartX.current = e.touches[0].clientX
+    heroTouchStartY.current = e.touches[0].clientY
+  }, [])
+  const handleHeroTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - heroTouchStartX.current
+    const dy = e.changedTouches[0].clientY - heroTouchStartY.current
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      setSlideIdx(i =>
+        dx < 0
+          ? Math.min(i + 1, imgSrcs.length - 1)
+          : Math.max(i - 1, 0)
+      )
+    }
+  }, [imgSrcs.length])
+
   const catColor = CATEGORY_COLORS[place.category] ?? '#6b7280'
   const catIcon = CATEGORY_ICONS[place.category] ?? 'location_on'
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
   const weekdayText = details?.weekday_text ?? []
-  const description = (place as Place & { description?: string }).description ?? null
+  const description = details?.editorial_summary ?? details?.top_review ?? null
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
+
+  // Derive open status from weekday_text on the travel start date.
+  // Google's weekday_text is ordered Mon=0…Sun=6.
+  // Falls back to real-time open_now only when no travel date is set.
+  const openNow = (() => {
+    if (weekdayText.length > 0 && resolvedStart) {
+      const d = new Date(resolvedStart + 'T12:00:00')
+      const jsDay = d.getDay() // 0=Sun … 6=Sat
+      const googleIdx = jsDay === 0 ? 6 : jsDay - 1
+      const dayText = weekdayText[googleIdx] ?? ''
+      if (dayText.toLowerCase().includes('closed')) return false
+      return dayText.includes(':')
+    }
+    return details?.open_now ?? null
+  })()
 
   const insights = computeAnalysisInsights(place, details ?? null, ourPickBadge, resolvedStart, resolvedEnd)
 
@@ -160,9 +209,13 @@ export function PinCard({
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)' }} />
         </div>
 
-        {/* Hero — 190px, does not scroll */}
-        <div style={{ height: 190, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-          {/* Base: category gradient + icon */}
+        {/* Hero — 190px fixed height, swipeable image carousel */}
+        <div
+          style={{ height: 190, position: 'relative', overflow: 'hidden', flexShrink: 0 }}
+          onTouchStart={handleHeroTouchStart}
+          onTouchEnd={handleHeroTouchEnd}
+        >
+          {/* Base: category gradient + icon (always behind images) */}
           <div style={{
             position: 'absolute', inset: 0, zIndex: 1,
             background: `linear-gradient(135deg, ${catColor}22, ${catColor}44)`,
@@ -171,8 +224,8 @@ export function PinCard({
             <span className="ms fill" style={{ fontSize: 56, color: catColor, opacity: 0.6 }}>{catIcon}</span>
           </div>
 
-          {/* Sweep overlay — visible while image is loading */}
-          {!imgSrc && (
+          {/* Sweep skeleton while images are loading */}
+          {imgSrcs.length === 0 && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden', pointerEvents: 'none' }}>
               <div style={{
                 position: 'absolute', top: 0, bottom: 0,
@@ -183,22 +236,48 @@ export function PinCard({
             </div>
           )}
 
-          {/* Loaded image — fades in */}
-          {imgSrc && (
-            <img
-              src={imgSrc}
-              alt={place.title}
-              style={{
-                position: 'absolute', inset: 0, zIndex: 3,
-                width: '100%', height: '100%', objectFit: 'cover',
-                animation: 'fadeIn 0.5s ease forwards',
-              }}
-            />
+          {/* Carousel — fades in once images are ready */}
+          {imgSrcs.length > 0 && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 3, animation: 'fadeIn 0.5s ease forwards' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  width: `${imgSrcs.length * 100}%`,
+                  height: '100%',
+                  transform: `translateX(-${slideIdx * (100 / imgSrcs.length)}%)`,
+                  transition: 'transform 0.3s cubic-bezier(0.32,0.72,0,1)',
+                }}
+              >
+                {imgSrcs.map((src, i) => (
+                  <img
+                    key={i}
+                    src={src}
+                    alt={place.title}
+                    style={{ width: `${100 / imgSrcs.length}%`, height: '100%', objectFit: 'cover', flexShrink: 0 }}
+                  />
+                ))}
+              </div>
+              {imgSrcs.length > 1 && (
+                <div style={{
+                  position: 'absolute', bottom: 36, left: 0, right: 0,
+                  display: 'flex', justifyContent: 'center', gap: 5,
+                  pointerEvents: 'none',
+                }}>
+                  {imgSrcs.map((_, i) => (
+                    <div key={i} style={{
+                      width: i === slideIdx ? 16 : 5,
+                      height: 5, borderRadius: 3,
+                      background: i === slideIdx ? '#fff' : 'rgba(255,255,255,0.45)',
+                      transition: 'all 0.25s ease',
+                    }} />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Bottom gradient */}
           <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 55%)', pointerEvents: 'none' }} />
-
           {/* Heart button */}
           <button
             onClick={onFavourite}

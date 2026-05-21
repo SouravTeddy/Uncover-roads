@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
-import type { Place, MapFilter } from '../../shared/types';
+import type { Place, MapFilter, Category } from '../../shared/types';
 import type { MapHandle } from './MapLibreMap';
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types';
 import { useMapMove } from './useMapMove';
@@ -335,6 +335,43 @@ export function MapScreen() {
     dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
   }, [setActivePlace, clearDetails, dispatch]);
 
+  const handlePicksPinClick = useCallback((placeId: string) => {
+    // Prefer an existing place entry so all fields are present
+    const existing = places.find(p => p.id === placeId || p.place_id === placeId)
+    if (existing) { handlePinClick(existing.id); return }
+    const pick = ourPicks.find(p => p.place_id === placeId)
+    if (!pick) return
+    const synthetic: Place = {
+      id: pick.place_id,
+      title: pick.name,
+      lat: pick.lat,
+      lon: pick.lon,
+      category: pick.category as Category,
+      rating: pick.rating ?? undefined,
+      place_id: pick.place_id,
+    }
+    setActivePlace(synthetic)
+    fetchDetails(synthetic)
+    trackViewedCategory(pick.category)
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: placeId })
+  }, [places, ourPicks, handlePinClick, setActivePlace, fetchDetails, trackViewedCategory, dispatch])
+
+  const handleEventPinClick = useCallback((eventId: string) => {
+    const ev = liveEvents.find(e => e.id === eventId)
+    if (!ev) return
+    const synthetic: Place = {
+      id: ev.id,
+      title: ev.title,
+      lat: ev.lat,
+      lon: ev.lon,
+      category: 'event' as Category,
+      tags: { genre: ev.genre, event_date: ev.date, event_time: ev.time, venue: ev.venueName, website: ev.url },
+    }
+    setActivePlace(synthetic)
+    fetchDetails(synthetic)
+    trackViewedCategory('event')
+    dispatch({ type: 'SET_ACTIVE_PIN_ID', id: eventId })
+  }, [liveEvents, setActivePlace, fetchDetails, trackViewedCategory, dispatch])
 
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
@@ -404,7 +441,10 @@ export function MapScreen() {
         routeGeojson={routeGeojson}
       >
         <FamousPinsLayer
-          places={filteredPlaces.filter(p => !selectedIds.has(p.id))}
+          places={filteredPlaces.filter(p =>
+            !selectedIds.has(p.id) &&
+            !ourPicks.some(pick => pick.place_id === p.id || pick.place_id === p.place_id)
+          )}
           activePlaceId={activePinId}
           discoveryMode="anchor"
           isDark={isDark}
@@ -430,6 +470,8 @@ export function MapScreen() {
               const p = recommendedPlaces.find(r => r.id === id)
               if (p) {
                 setActivePlace(p)
+                fetchDetails(p)
+                trackViewedCategory(p.category)
                 dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
               }
             }}
@@ -441,7 +483,7 @@ export function MapScreen() {
           <OurPicksPinsLayer
             picks={ourPicks}
             activePinId={activePinId ?? null}
-            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+            onPinClick={handlePicksPinClick}
           />
         )}
 
@@ -450,7 +492,7 @@ export function MapScreen() {
           <LiveEventPinsLayer
             events={liveEvents}
             activePinId={activePinId ?? null}
-            onPinClick={(id) => dispatch({ type: 'SET_ACTIVE_PIN_ID', id })}
+            onPinClick={handleEventPinClick}
           />
         )}
 
@@ -471,8 +513,8 @@ export function MapScreen() {
       {/* Initial load overlay */}
       <MapLoadingOverlay visible={initialLoading} />
 
-      {/* Map status — loading / zoomed-out indicator */}
-      <MapStatusIndicator status={mapStatus} />
+      {/* Map status — loading / zoomed-out indicator (hidden during initial overlay) */}
+      <MapStatusIndicator status={initialLoading ? 'idle' : mapStatus} />
 
       {/* ── Top overlay ── */}
       <div
