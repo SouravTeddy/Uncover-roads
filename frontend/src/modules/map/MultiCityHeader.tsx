@@ -11,14 +11,14 @@ interface Props {
 
 export function MultiCityHeader({ cityFootprints, activeCityIdx, travelStartDate, travelEndDate, onCityTap, onDateTap }: Props) {
   const startFmt = travelStartDate
-    ? new Date(travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    ? new Date(travelStartDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : null
   const endFmt = travelEndDate
-    ? new Date(travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    ? new Date(travelEndDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     : null
 
   const totalDays = (travelStartDate && travelEndDate)
-    ? Math.round((new Date(travelEndDate + 'T00:00:00').getTime() - new Date(travelStartDate + 'T00:00:00').getTime()) / 86400000) + 1
+    ? Math.round((new Date(travelEndDate + 'T12:00:00Z').getTime() - new Date(travelStartDate + 'T12:00:00Z').getTime()) / 86400000) + 1
     : null
 
   return (

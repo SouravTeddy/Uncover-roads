@@ -117,7 +117,6 @@ export function PinCard({
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
-  const openNow = details?.open_now ?? null
   const weekdayText = details?.weekday_text ?? []
   const description = (place as Place & { description?: string }).description ?? null
 
@@ -324,6 +323,17 @@ export function PinCard({
                       <div style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 7 }} />
                       <span style={{ fontSize: '0.75rem', color: textColor, lineHeight: 1.45 }}>
                         {insight.text}
+                        {insight.linkLabel && (details?.website || details?.googleMapsUrl) && (
+                          <a
+                            href={details.website ?? details.googleMapsUrl ?? '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 11, color: 'var(--color-primary)', textDecoration: 'underline', marginLeft: 4, verticalAlign: 'middle' }}
+                          >
+                            {insight.linkLabel} ↗
+                          </a>
+                        )}
                       </span>
                     </div>
                   )
