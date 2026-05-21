@@ -22,7 +22,7 @@ import json as _json
 from pathlib import Path as _Path
 from engine.builder import build_itinerary
 from engine.types import EngineStop, EngineContext
-from city.data_model import load_city
+from city.data_model import load_city, CityData
 from city.sync_job import start_scheduler as _start_sync_scheduler
 from pydantic import BaseModel
 
@@ -86,6 +86,27 @@ class ItineraryBuildRequest(BaseModel):
     travel_dates: list[str]
     persona: dict
     discovery_mode: str = "standard"
+
+
+class EngineItineraryPlace(BaseModel):
+    id: str
+    place_id: Optional[str] = None
+    title: str
+    lat: float
+    lon: float
+    category: str
+    rating: Optional[float] = None
+
+
+class EngineItineraryPayload(BaseModel):
+    city: str
+    lat: float
+    lon: float
+    days: int
+    startDate: str
+    selectedPlaces: list[EngineItineraryPlace]
+    personaArchetype: str = "explorer"
+    engineWeights: Optional[dict] = None
 
 
 # ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
@@ -2470,6 +2491,150 @@ async def build_itinerary_endpoint(
             for m in result.messages
         ],
         "recommendations": result.recommendations,
+    }
+
+
+# ── Frontend-facing build itinerary endpoint ─────────────────────────────────
+
+_ARCHETYPE_PERSONA: dict[str, dict] = {
+    "explorer":      {"archetype": "explorer",      "arrival_time": "09:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
+    "wanderer":      {"archetype": "wanderer",      "arrival_time": "10:00", "day_buffer_min": 40, "weights": {"w_walk_affinity": 0.8, "w_scenic": 0.7, "w_efficiency": 0.3, "w_food_density": 0.6, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.7, "w_spontaneity": 0.8, "w_rest_need": 0.5}},
+    "historian":     {"archetype": "historian",     "arrival_time": "09:00", "day_buffer_min": 25, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.6, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.4, "w_spontaneity": 0.3, "w_rest_need": 0.4}},
+    "epicurean":     {"archetype": "epicurean",     "arrival_time": "10:00", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.5, "w_food_density": 0.9, "w_culture_depth": 0.5, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.4, "w_spontaneity": 0.5, "w_rest_need": 0.3}},
+    "pulse":         {"archetype": "pulse",         "arrival_time": "10:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.6, "w_culture_depth": 0.4, "w_nightlife": 0.9, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.7, "w_rest_need": 0.3}},
+    "slowtraveller": {"archetype": "slowtraveller", "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.7, "w_efficiency": 0.2, "w_food_density": 0.6, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.6, "w_spontaneity": 0.6, "w_rest_need": 0.7}},
+    "voyager":       {"archetype": "voyager",       "arrival_time": "08:00", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.9, "w_food_density": 0.4, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.3, "w_spontaneity": 0.3, "w_rest_need": 0.3}},
+}
+
+
+@app.post("/engine-itinerary")
+async def engine_itinerary(body: EngineItineraryPayload, user=Depends(require_auth_or_pack)):
+    """Build an itinerary from user-selected places. Called from MapScreen Build button."""
+    from datetime import date as _date, timedelta as _td
+
+    days = max(body.days, 1)
+    start = _date.fromisoformat(body.startDate)
+    travel_dates = [(start + _td(days=i)).isoformat() for i in range(days)]
+
+    archetype = body.personaArchetype.lower()
+    persona = _ARCHETYPE_PERSONA.get(archetype, _ARCHETYPE_PERSONA["explorer"])
+
+    # Try to load city seed data; fall back to a minimal stub so the engine still runs
+    city_slug = body.city.lower().replace(" ", "_")
+    try:
+        city_data = load_city(city_slug, _supabase)
+    except Exception:
+        city_data = CityData(
+            id=city_slug, name=body.city, tier=1,
+            center=(body.lat, body.lon), timezone="UTC",
+            climate={}, movement={}, culture={},
+            neighborhoods=[], insert_candidates=[],
+            scenic_routes=[], transit_edges=[],
+            engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
+        )
+
+    engine_stops = [
+        EngineStop(
+            place_id=p.place_id or p.id,
+            name=p.title,
+            lat=p.lat,
+            lon=p.lon,
+            category=p.category,
+            duration_min=90,
+            opening_hours=[],
+            price_level=1,
+            rating=p.rating or 4.0,
+            neighborhood=None,
+            is_user_added=True,
+        )
+        for p in body.selectedPlaces
+    ]
+
+    ctx = EngineContext(
+        persona=persona,
+        city=city_data,
+        travel_dates=travel_dates,
+        weather=None,
+    )
+
+    result = await build_itinerary(engine_stops, ctx)
+
+    now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+
+    all_messages = [
+        {
+            "id": str(uuid.uuid4()),
+            "type": m.type,
+            "what": m.what,
+            "why": m.why,
+            "consequence": m.consequence,
+            "dismissable": m.dismissable,
+            "undo_action": m.undo_key,
+        }
+        for m in result.messages
+    ]
+
+    # Assign all messages to the first non-travel day
+    messages_assigned = False
+    days_out = []
+    for i, day in enumerate(result.days):
+        day_messages: list[dict] = []
+        if not messages_assigned and not day.is_travel_day and all_messages:
+            day_messages = all_messages
+            messages_assigned = True
+        days_out.append({
+            "day": i + 1,
+            "date": day.date,
+            "city": body.city,
+            "isTravel": day.is_travel_day,
+            "stops": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "placeId": s.place_id,
+                    "title": s.name,
+                    "area": "",
+                    "day": i + 1,
+                    "time": s.scheduled_time or "09:00",
+                    "durationMin": s.duration_min,
+                    "category": s.category,
+                    "lat": s.lat,
+                    "lon": s.lon,
+                    "priceLevel": None,
+                    "rating": s.rating if s.rating != 4.0 else None,
+                    "weekdayText": None,
+                    "whyForYou": "",
+                    "localTip": None,
+                    "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
+                    "website": None,
+                    "photoRef": None,
+                    "tags": s.tags or [],
+                }
+                for s in day.stops
+            ],
+            "messages": day_messages,
+        })
+
+    weights = persona.get("weights", {})
+    persona_snapshot = {
+        "w_walk_affinity":      weights.get("w_walk_affinity", 0.5),
+        "w_scenic":             weights.get("w_scenic", 0.5),
+        "w_efficiency":         weights.get("w_efficiency", 0.5),
+        "w_food_density":       weights.get("w_food_density", 0.5),
+        "w_culture_depth":      weights.get("w_culture_depth", 0.5),
+        "w_nightlife":          weights.get("w_nightlife", 0.4),
+        "w_budget_sensitivity": weights.get("w_budget_sensitivity", 0.4),
+        "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
+        "w_spontaneity":        weights.get("w_spontaneity", 0.5),
+        "w_rest_need":          weights.get("w_rest_need", 0.4),
+    }
+
+    return {
+        "id": result.generation_id,
+        "generatedAt": now_str,
+        "cities": [body.city],
+        "days": days_out,
+        "personaSnapshot": persona_snapshot,
+        "archetypeSnapshot": archetype,
     }
 
 

@@ -154,8 +154,9 @@ export function MapScreen() {
   const [searchPins, setSearchPins] = useState<SearchResultPin[]>([])
   const [showSearchStrip, setShowSearchStrip] = useState(false)
 
-  // Build Itinerary loading state
+  // Build Itinerary loading + error state
   const [buildLoading, setBuildLoading] = useState(false)
+  const [buildError, setBuildError] = useState<string | null>(null)
 
   const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
     selectedPlaces, city, state.persona ?? null, personaProfile,
@@ -376,6 +377,7 @@ export function MapScreen() {
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
     setBuildLoading(true)
+    setBuildError(null)
     try {
       const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
       const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
@@ -385,7 +387,15 @@ export function MapScreen() {
         lon: cityGeo?.lon ?? 0,
         days,
         startDate,
-        selectedPlaceIds: selectedPlaces.map(p => p.id),
+        selectedPlaces: selectedPlaces.map(p => ({
+          id: p.id,
+          place_id: p.place_id,
+          title: p.title,
+          lat: p.lat,
+          lon: p.lon,
+          category: p.category,
+          rating: p.rating,
+        })),
         personaArchetype: personaProfile?.archetype ?? 'explorer',
         engineWeights: null,
       })
@@ -393,8 +403,8 @@ export function MapScreen() {
       dispatch({ type: 'GO_TO', screen: 'route' })
     } catch (err) {
       console.error('[MapScreen] handleBuild failed:', err)
-      setEventsError('Could not build itinerary — try again')
-      setTimeout(() => setEventsError(null), 4000)
+      setBuildError('Could not build itinerary — try again')
+      setTimeout(() => setBuildError(null), 4000)
     } finally {
       setBuildLoading(false)
     }
@@ -692,6 +702,17 @@ export function MapScreen() {
           }}
         >
           <span className="ms text-white/25 animate-spin" style={{ fontSize: 16 }}>autorenew</span>
+        </div>
+      )}
+
+      {/* Build error toast — always visible (not scoped to curated tab) */}
+      {buildError && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 7rem)', zIndex: 25, background: 'rgba(239,68,68,.15)', backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,.3)' }}
+        >
+          <span className="ms fill text-red-400" style={{ fontSize: 15 }}>error</span>
+          <span className="text-red-300 text-xs font-medium">{buildError}</span>
         </div>
       )}
 
