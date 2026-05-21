@@ -4,7 +4,7 @@ import type { Place, PlaceDetails } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights } from './pincard-utils'
-import type { OurPickBadge, AnalysisInsight } from './pincard-utils'
+import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -323,9 +323,9 @@ export function PinCard({
                       <div style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 7 }} />
                       <span style={{ fontSize: '0.75rem', color: textColor, lineHeight: 1.45 }}>
                         {insight.text}
-                        {insight.linkLabel && (details?.website || details?.googleMapsUrl) && (
+                        {insight.linkLabel && details?.website && (
                           <a
-                            href={details.website ?? details.googleMapsUrl ?? '#'}
+                            href={details.website}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
