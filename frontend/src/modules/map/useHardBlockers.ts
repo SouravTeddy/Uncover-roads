@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { getAllCachedDetails } from './usePlaceDetails'
-import type { Place, PlaceDetails } from '../../shared/types'
+import { computeTotalDays } from './trip-capacity-utils'
+import { calculateEstimatedDays } from './journey-legs'
+import { haversineKm } from './journey-utils'
+import type { Place, PlaceDetails, CityFootprint, TransitMode } from '../../shared/types'
 
 export interface HardBlocker {
   placeId: string
@@ -87,16 +90,36 @@ export function computeHardBlockers(
 
 /**
  * React hook that wraps computeHardBlockers with getAllCachedDetails and useMemo.
+ * Also injects a __trip__ sentinel blocker if the multi-city plan exceeds available days.
  */
 export function useHardBlockers(
   selectedPlaces: Place[],
   travelStartDate: string | null,
   travelEndDate: string | null,
+  cityFootprints: CityFootprint[],
+  stopsPerDay: number,
 ): HardBlocker[] {
-  return useMemo(
-    () => computeHardBlockers(selectedPlaces, getAllCachedDetails(), travelStartDate, travelEndDate),
-    [selectedPlaces, travelStartDate, travelEndDate],
-  )
+  return useMemo(() => {
+    const placeBlockers = computeHardBlockers(selectedPlaces, getAllCachedDetails(), travelStartDate, travelEndDate)
+
+    const feasibility = computeMultiCityFeasibility(
+      selectedPlaces,
+      cityFootprints,
+      travelStartDate,
+      travelEndDate,
+      stopsPerDay,
+    )
+
+    const tripBlocker: HardBlocker[] = feasibility
+      ? [{
+          placeId: '__trip__',
+          placeTitle: 'Your travel plan',
+          reason: `Your plan may need ~${feasibility.totalNeeded} days — you've set ${feasibility.availableDays}. Full breakdown in your itinerary.`,
+        }]
+      : []
+
+    return [...tripBlocker, ...placeBlockers]
+  }, [selectedPlaces, travelStartDate, travelEndDate, cityFootprints, stopsPerDay])
 }
 
 /**
@@ -144,6 +167,62 @@ function formatDateShort(dateStr: string): string {
   }
   return formatted
 }
+
+// ─── Multi-city feasibility ───────────────────────────────────────────────────
+
+export interface MultiCityFeasibilityResult {
+  totalNeeded: number
+  availableDays: number
+  cityCount: number
+}
+
+function estimateTransitMinutes(km: number, mode: TransitMode): number {
+  switch (mode) {
+    case 'drive': return (km / 80) * 60
+    case 'train': return (km / 150) * 60
+    case 'flight': return ((km / 900) + 3) * 60
+    default: return ((km / 900) + 3) * 60
+  }
+}
+
+export function computeMultiCityFeasibility(
+  selectedPlaces: Place[],
+  cityFootprints: CityFootprint[],
+  travelStartDate: string | null,
+  travelEndDate: string | null,
+  stopsPerDay: number,
+): MultiCityFeasibilityResult | null {
+  const availableDays = computeTotalDays(travelStartDate, travelEndDate)
+  if (availableDays === 0) return null
+
+  const cityGroups = new Map<string, number>()
+  for (const place of selectedPlaces) {
+    const city = place._city ?? ''
+    cityGroups.set(city, (cityGroups.get(city) ?? 0) + 1)
+  }
+
+  let cityDays = 0
+  for (const count of cityGroups.values()) {
+    cityDays += Math.max(1, calculateEstimatedDays(count, stopsPerDay))
+  }
+
+  let transitDays = 0
+  for (let i = 0; i < cityFootprints.length - 1; i++) {
+    const from = cityFootprints[i]
+    const to = cityFootprints[i + 1]
+    const km = haversineKm(from.lat, from.lon, to.lat, to.lon)
+    const mode: TransitMode = to.transitMode ?? 'flight'
+    if (estimateTransitMinutes(km, mode) > 180) transitDays += 1
+  }
+
+  const totalNeeded = cityDays + transitDays
+  if (totalNeeded > availableDays) {
+    return { totalNeeded, availableDays, cityCount: cityGroups.size }
+  }
+  return null
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 /**
  * Find the first day in the travel range when the place is closed.
