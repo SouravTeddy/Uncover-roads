@@ -3,7 +3,7 @@ import type { Place, GeoData } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { api } from '../../shared/api';
-import { useLastSession } from './useLastSession';
+import { useRecentSessions } from './useRecentSessions';
 import { useSheetDismiss } from '../../shared/useSheetDismiss';
 import { ExploreHero } from './ExploreHero';
 import { ExploreSearchBar } from './ExploreSearchBar';
@@ -14,7 +14,7 @@ import { DateRangeCalendar } from './DateRangeCalendar';
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
   const { city, persona, savedItineraries } = state;
-  const { session } = useLastSession();
+  const { sessions } = useRecentSessions();
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingCity, setPendingCity] = useState<string | null>(null);
   const [userName, setUserName] = useState('Traveller');
@@ -91,7 +91,7 @@ export function DestinationScreen() {
             persona={persona}
             onCitySelect={handleCitySelect}
           />
-          <RecentVisits session={session} onOpenMap={handleOpenMap} />
+          <RecentVisits sessions={sessions} onOpenMap={handleOpenMap} />
         </div>
       )}
 
