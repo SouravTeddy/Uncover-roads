@@ -11,7 +11,7 @@ import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
-import { saveSession } from '../destination/useLastSession';
+import { saveSessionMulti } from '../destination/useRecentSessions';
 import { MapLibreMap } from './MapLibreMap';
 import { JourneyBreadcrumb } from './JourneyBreadcrumb';
 import { getJourneyCities, isJourneyMode } from './journey-utils';
@@ -85,7 +85,7 @@ export function MapScreen() {
   useEffect(() => {
     return () => {
       if (selectedPlacesRef.current.length > 0 && cityRef.current) {
-        saveSession(selectedPlacesRef.current, cityRef.current);
+        saveSessionMulti(selectedPlacesRef.current, cityRef.current);
       }
     };
   }, []);
