@@ -259,7 +259,7 @@ export function PinCard({
           {details === null ? (
             <div style={{ ...shimmerBase, height: 11, width: '55%', marginBottom: 10 }} />
           ) : details?.address ? (
-            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)', animation: 'sectionReveal 360ms cubic-bezier(.22,1,.36,1) forwards' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)', animation: 'sectionReveal 360ms 0ms cubic-bezier(.22,1,.36,1) both' }}>
               {details.address.split(',')[0]}
             </p>
           ) : null}
