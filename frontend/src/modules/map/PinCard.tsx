@@ -256,7 +256,7 @@ export function PinCard({
           </h2>
 
           {/* Address — shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ ...shimmerBase, height: 11, width: '55%', marginBottom: 10 }} />
           ) : details?.address ? (
             <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)', animation: 'sectionReveal 360ms 0ms cubic-bezier(.22,1,.36,1) both' }}>
@@ -265,7 +265,7 @@ export function PinCard({
           ) : null}
 
           {/* Meta chips — rating only, shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
               <div style={{ ...shimmerBase, height: 22, width: 38, borderRadius: 99 }} />
@@ -288,7 +288,7 @@ export function PinCard({
           ) : null}
 
           {/* Analysis strip — shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ ...shimmerBase, height: 62, width: '100%', borderRadius: 10, marginBottom: 14 }} />
           ) : insights.length > 0 ? (
             <div
@@ -306,7 +306,7 @@ export function PinCard({
               <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(to bottom, var(--color-primary), var(--color-primary-dk))', borderRadius: '12px 0 0 12px' }} />
               <div style={{ position: 'absolute', top: -20, left: -20, width: 80, height: 80, borderRadius: '50%', background: 'var(--color-primary-glow)', filter: 'blur(24px)', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative' }}>
-                {insights.map((insight: AnalysisInsight, i) => {
+                {insights.map((insight, i) => {
                   const dotColor = insight.state === 'green' ? '#6b9470' : insight.state === 'red' ? '#c26464' : 'var(--color-primary)'
                   const textColor = insight.state === 'green' ? '#7aaa80' : insight.state === 'red' ? '#d48080' : 'var(--color-text-2)'
                   const hasBg = insight.state !== 'gold'
@@ -333,7 +333,7 @@ export function PinCard({
           ) : null}
 
           {/* Hours toggle — shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ ...shimmerBase, height: 13, width: '40%', marginBottom: 14 }} />
           ) : weekdayText.length > 0 ? (
             <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 150ms cubic-bezier(.22,1,.36,1) both' }}>
@@ -366,7 +366,7 @@ export function PinCard({
           ) : null}
 
           {/* Description — shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
               <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
@@ -389,7 +389,7 @@ export function PinCard({
           ) : null}
 
           {/* CTA — shimmer while loading */}
-          {details === null ? (
+          {details == null ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
             <div style={{ animation: 'sectionReveal 360ms 250ms cubic-bezier(.22,1,.36,1) both' }}>
