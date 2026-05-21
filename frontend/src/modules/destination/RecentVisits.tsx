@@ -10,6 +10,13 @@ interface RecentVisitsProps {
 
 const MAX_VISIBLE = 4;
 const OVERFLOW_THUMB_COUNT = 2;
+const THUMB_SIZE = 120;
+
+function placeImgSrc(place: Place, fallbackCity: string): string {
+  return place.photo_ref
+    ? getPlacePhotoUrl(place.photo_ref, THUMB_SIZE)
+    : (place.imageUrl || getCityPhotoUrl(place._city ?? fallbackCity))
+}
 
 function PlaceThumbnail({
   place,
@@ -20,9 +27,7 @@ function PlaceThumbnail({
   city: string;
   size: number;
 }) {
-  const src = place.photo_ref
-    ? getPlacePhotoUrl(place.photo_ref, 120)
-    : (place.imageUrl || getCityPhotoUrl(place._city ?? city));
+  const src = placeImgSrc(place, city)
   return (
     <img
       src={src}
@@ -187,7 +192,7 @@ function CityGroup({
               {overflow.slice(0, OVERFLOW_THUMB_COUNT).map((p, i) => (
                 <img
                   key={p.id}
-                  src={p.photo_ref ? getPlacePhotoUrl(p.photo_ref, 120) : (p.imageUrl || getCityPhotoUrl(p._city ?? sessionCity))}
+                  src={placeImgSrc(p, sessionCity)}
                   alt={p.title}
                   style={{
                     position: 'absolute',
