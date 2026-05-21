@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { Place, PlaceDetails } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
@@ -12,8 +12,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   museum: '#8b5cf6', historic: '#a16207', tourism: '#0ea5e9',
   event: '#ec4899', place: '#6b7280',
 }
-
-const PRICE: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' }
 
 interface Props {
   place: Place
@@ -30,14 +28,11 @@ interface Props {
   ourPickBadge?: OurPickBadge
 }
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const } },
-}
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
+const shimmerBase: React.CSSProperties = {
+  background: 'var(--color-surface2)',
+  borderRadius: 6,
+  overflow: 'hidden',
+  position: 'relative',
 }
 
 export function PinCard({
@@ -122,12 +117,10 @@ export function PinCard({
   const categoryLabel = CATEGORY_LABELS[place.category] ?? 'Place'
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
-  const priceLevel = details?.price_level ?? null
   const openNow = details?.open_now ?? null
   const weekdayText = details?.weekday_text ?? []
   const description = (place as Place & { description?: string }).description ?? null
 
-  // Prefer explicit start/end dates; fall back to single travelDate
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
 
@@ -168,27 +161,50 @@ export function PinCard({
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)' }} />
         </div>
 
-        {/* Hero — 190px fixed height, does not scroll */}
+        {/* Hero — 190px, does not scroll */}
         <div style={{ height: 190, position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-          {imgSrc ? (
-            <img src={imgSrc} alt={place.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{
-              width: '100%', height: '100%',
-              background: `linear-gradient(135deg, ${catColor}22, ${catColor}44)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="ms fill" style={{ fontSize: 56, color: catColor, opacity: 0.6 }}>{catIcon}</span>
+          {/* Base: category gradient + icon */}
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            background: `linear-gradient(135deg, ${catColor}22, ${catColor}44)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span className="ms fill" style={{ fontSize: 56, color: catColor, opacity: 0.6 }}>{catIcon}</span>
+          </div>
+
+          {/* Sweep overlay — visible while image is loading */}
+          {!imgSrc && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden', pointerEvents: 'none' }}>
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0,
+                width: '38%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.13), transparent)',
+                animation: 'sweep 2s ease-in-out infinite',
+              }} />
             </div>
           )}
-          {/* Bottom gradient fade */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 55%)' }} />
 
-          {/* Heart button — dark glass overlay, same on both themes */}
+          {/* Loaded image — fades in */}
+          {imgSrc && (
+            <img
+              src={imgSrc}
+              alt={place.title}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 3,
+                width: '100%', height: '100%', objectFit: 'cover',
+                animation: 'fadeIn 0.5s ease forwards',
+              }}
+            />
+          )}
+
+          {/* Bottom gradient */}
+          <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 55%)', pointerEvents: 'none' }} />
+
+          {/* Heart button */}
           <button
             onClick={onFavourite}
             style={{
-              position: 'absolute', top: 11, right: 11,
+              position: 'absolute', top: 11, right: 11, zIndex: 5,
               width: 36, height: 36, borderRadius: '50%',
               background: isFavourited ? 'rgba(212,168,83,0.35)' : 'rgba(0,0,0,0.48)',
               border: `1px solid ${isFavourited ? 'rgba(212,168,83,0.5)' : 'rgba(255,255,255,0.18)'}`,
@@ -203,10 +219,7 @@ export function PinCard({
         </div>
 
         {/* Scrollable body */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
+        <div
           style={{
             overflowY: 'auto',
             scrollbarWidth: 'none',
@@ -214,8 +227,8 @@ export function PinCard({
             flex: 1,
           }}
         >
-          {/* Category chip */}
-          <motion.div variants={sectionVariants} style={{ marginBottom: 6 }}>
+          {/* Category chip — immediate */}
+          <div style={{ marginBottom: 6 }}>
             <span style={{
               display: 'inline-block',
               fontSize: '0.7rem', fontWeight: 700,
@@ -226,49 +239,39 @@ export function PinCard({
             }}>
               {categoryLabel}
             </span>
-          </motion.div>
+          </div>
 
-          {/* Place name — Cormorant Garamond, gold gradient */}
-          <motion.h2
-            variants={sectionVariants}
-            style={{
-              margin: '0 0 4px',
-              fontFamily: 'var(--font-heading)',
-              fontSize: 24, fontWeight: 700, lineHeight: 1.1,
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              color: 'transparent',
-            }}
-          >
+          {/* Place name — immediate */}
+          <h2 style={{
+            margin: '0 0 4px',
+            fontFamily: 'var(--font-heading)',
+            fontSize: 24, fontWeight: 700, lineHeight: 1.1,
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'transparent',
+          }}>
             {place.title}
-          </motion.h2>
+          </h2>
 
-          {/* Address */}
-          {details?.address && (
-            <motion.p
-              variants={sectionVariants}
-              style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)' }}
-            >
+          {/* Address — shimmer while loading */}
+          {details === null ? (
+            <div style={{ ...shimmerBase, height: 11, width: '55%', marginBottom: 10 }} />
+          ) : details?.address ? (
+            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)', animation: 'sectionReveal 360ms cubic-bezier(.22,1,.36,1) forwards' }}>
               {details.address.split(',')[0]}
-            </motion.p>
-          )}
+            </p>
+          ) : null}
 
-          {/* Meta chips */}
-          <motion.div variants={sectionVariants} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-            {openNow !== null && (
-              <span style={{
-                fontSize: '0.72rem', fontWeight: 700,
-                padding: '3px 8px', borderRadius: 99,
-                background: openNow ? 'var(--color-sage-bg)' : 'var(--color-amber-bg)',
-                border: `1px solid ${openNow ? 'var(--color-sage-bdr)' : 'var(--color-amber-bdr)'}`,
-                color: openNow ? 'var(--color-sage)' : 'var(--color-amber)',
-              }}>
-                {openNow ? 'Open' : 'Closed'}
-              </span>
-            )}
-            {rating !== null && (
+          {/* Meta chips — rating only, shimmer while loading */}
+          {details === null ? (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
+              <div style={{ ...shimmerBase, height: 22, width: 38, borderRadius: 99 }} />
+            </div>
+          ) : rating !== null ? (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, animation: 'sectionReveal 360ms 50ms cubic-bezier(.22,1,.36,1) both' }}>
               <span style={{
                 fontSize: '0.72rem', fontWeight: 700,
                 padding: '3px 8px', borderRadius: 99,
@@ -281,24 +284,14 @@ export function PinCard({
                   <span style={{ fontWeight: 400, opacity: 0.7 }}> ({(ratingCount as number).toLocaleString()})</span>
                 )}
               </span>
-            )}
-            {priceLevel !== null && priceLevel in PRICE && (
-              <span style={{
-                fontSize: '0.72rem', fontWeight: 700,
-                padding: '3px 8px', borderRadius: 99,
-                background: 'var(--color-surface2)',
-                border: '1px solid var(--color-border-m)',
-                color: 'var(--color-text-3)',
-              }}>
-                {PRICE[priceLevel as keyof typeof PRICE]}
-              </span>
-            )}
-          </motion.div>
+            </div>
+          ) : null}
 
-          {/* Our Analysis aura strip */}
-          {insights.length > 0 && (
-            <motion.div
-              variants={sectionVariants}
+          {/* Analysis strip — shimmer while loading */}
+          {details === null ? (
+            <div style={{ ...shimmerBase, height: 62, width: '100%', borderRadius: 10, marginBottom: 14 }} />
+          ) : insights.length > 0 ? (
+            <div
               style={{
                 position: 'relative',
                 background: 'var(--color-primary-bg)',
@@ -307,64 +300,46 @@ export function PinCard({
                 padding: '10px 12px 10px 16px',
                 marginBottom: 14,
                 overflow: 'hidden',
+                animation: 'sectionReveal 360ms 100ms cubic-bezier(.22,1,.36,1) both',
               }}
             >
-              {/* Left accent bar */}
-              <div style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0,
-                width: 3,
-                background: 'linear-gradient(to bottom, var(--color-primary), var(--color-primary-dk))',
-                borderRadius: '12px 0 0 12px',
-              }} />
-              {/* Glow */}
-              <div style={{
-                position: 'absolute', top: -20, left: -20,
-                width: 80, height: 80, borderRadius: '50%',
-                background: 'var(--color-primary-glow)',
-                filter: 'blur(24px)',
-                pointerEvents: 'none',
-              }} />
-              <p style={{ margin: '0 0 6px', fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-3)', letterSpacing: '0.06em', textTransform: 'uppercase', position: 'relative' }}>
-                Our Analysis
-              </p>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(to bottom, var(--color-primary), var(--color-primary-dk))', borderRadius: '12px 0 0 12px' }} />
+              <div style={{ position: 'absolute', top: -20, left: -20, width: 80, height: 80, borderRadius: '50%', background: 'var(--color-primary-glow)', filter: 'blur(24px)', pointerEvents: 'none' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative' }}>
-                {insights.map((insight: AnalysisInsight, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 5 }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-2)', lineHeight: 1.4 }}>{insight.text}</span>
-                  </div>
-                ))}
+                {insights.map((insight: AnalysisInsight, i) => {
+                  const dotColor = insight.state === 'green' ? '#6b9470' : insight.state === 'red' ? '#c26464' : 'var(--color-primary)'
+                  const textColor = insight.state === 'green' ? '#7aaa80' : insight.state === 'red' ? '#d48080' : 'var(--color-text-2)'
+                  const hasBg = insight.state !== 'gold'
+                  const bgColor = insight.state === 'green' ? 'rgba(107,148,112,.12)' : 'rgba(194,100,100,.12)'
+                  const borderColor = insight.state === 'green' ? 'rgba(107,148,112,.25)' : 'rgba(194,100,100,.22)'
+                  return (
+                    <div key={i} style={{
+                      background: hasBg ? bgColor : 'transparent',
+                      border: hasBg ? `1px solid ${borderColor}` : 'none',
+                      borderRadius: hasBg ? 8 : 0,
+                      padding: hasBg ? '4px 6px' : 0,
+                      marginLeft: hasBg ? -2 : 0,
+                      display: 'flex', alignItems: 'flex-start', gap: 6,
+                    }}>
+                      <div style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 7 }} />
+                      <span style={{ fontSize: '0.75rem', color: textColor, lineHeight: 1.45 }}>
+                        {insight.text}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-            </motion.div>
-          )}
+            </div>
+          ) : null}
 
-          {/* Description */}
-          {description && (
-            <motion.div variants={sectionVariants} style={{ marginBottom: 12 }}>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
-                {descExpanded || description.length <= 120 ? description : description.slice(0, 120) + '…'}
-              </p>
-              {description.length > 120 && (
-                <button
-                  onClick={() => setDescExpanded(e => !e)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', marginTop: 2 }}
-                >
-                  {descExpanded ? 'See less' : 'See more →'}
-                </button>
-              )}
-            </motion.div>
-          )}
-
-          {/* Hours row */}
-          {weekdayText.length > 0 && (
-            <motion.div variants={sectionVariants} style={{ marginBottom: 14 }}>
+          {/* Hours toggle — shimmer while loading */}
+          {details === null ? (
+            <div style={{ ...shimmerBase, height: 13, width: '40%', marginBottom: 14 }} />
+          ) : weekdayText.length > 0 ? (
+            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 150ms cubic-bezier(.22,1,.36,1) both' }}>
               <button
                 onClick={() => setHoursOpen(h => !h)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  background: 'none', border: 'none', padding: 0,
-                  fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)',
-                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
               >
                 <span className="ms" style={{ fontSize: 14 }}>schedule</span>
                 Hours
@@ -387,30 +362,55 @@ export function PinCard({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.div>
-          )}
+            </div>
+          ) : null}
 
-          {/* CTA */}
-          <motion.div variants={sectionVariants}>
-            <button
-              onClick={onAdd}
-              style={{
-                width: '100%', padding: '13px 0', borderRadius: 14,
-                border: isSelected ? '1px solid rgba(212,168,83,.35)' : 'none',
-                cursor: 'pointer',
-                fontSize: '0.9rem', fontWeight: 700,
-                background: isSelected
-                  ? 'transparent'
-                  : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-                color: isSelected ? 'var(--color-primary)' : '#0f0d0c',
-                boxShadow: isSelected ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
-            </button>
-          </motion.div>
-        </motion.div>
+          {/* Description — shimmer while loading */}
+          {details === null ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
+              <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
+              <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
+              <div style={{ ...shimmerBase, height: 10, width: '55%' }} />
+            </div>
+          ) : description ? (
+            <div style={{ marginBottom: 12, animation: 'sectionReveal 360ms 200ms cubic-bezier(.22,1,.36,1) both' }}>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
+                {descExpanded || description.length <= 120 ? description : description.slice(0, 120) + '…'}
+              </p>
+              {description.length > 120 && (
+                <button
+                  onClick={() => setDescExpanded(e => !e)}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', marginTop: 2 }}
+                >
+                  {descExpanded ? 'See less' : 'See more →'}
+                </button>
+              )}
+            </div>
+          ) : null}
+
+          {/* CTA — shimmer while loading */}
+          {details === null ? (
+            <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
+          ) : (
+            <div style={{ animation: 'sectionReveal 360ms 250ms cubic-bezier(.22,1,.36,1) both' }}>
+              <button
+                onClick={onAdd}
+                style={{
+                  width: '100%', padding: '13px 0', borderRadius: 14,
+                  border: isSelected ? '1px solid rgba(212,168,83,.35)' : 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem', fontWeight: 700,
+                  background: isSelected ? 'transparent' : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+                  color: isSelected ? 'var(--color-primary)' : '#0f0d0c',
+                  boxShadow: isSelected ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )
