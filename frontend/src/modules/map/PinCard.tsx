@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Place, PlaceDetails, ReferencePin } from '../../shared/types'
-import type { Persona, PersonaProfile } from '../../shared/types'
+import type { Place, PlaceDetails } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights } from './pincard-utils'
@@ -25,12 +24,9 @@ interface Props {
   onClose: () => void
   onFavourite: () => void
   details?: PlaceDetails | null
-  referencePin?: ReferencePin | null
   travelDate?: string | null
   travelStartDate?: string | null
   travelEndDate?: string | null
-  persona?: Persona | null
-  personaProfile?: PersonaProfile | null
   ourPickBadge?: OurPickBadge
 }
 
@@ -88,6 +84,11 @@ export function PinCard({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [place.id, googlePhotoUrl])
+
+  useEffect(() => {
+    setHoursOpen(false)
+    setDescExpanded(false)
+  }, [place.id])
 
   useSheetDismiss(onClose, true)
 
@@ -319,7 +320,7 @@ export function PinCard({
               <div style={{
                 position: 'absolute', top: -20, left: -20,
                 width: 80, height: 80, borderRadius: '50%',
-                background: 'rgba(212,168,83,.22)',
+                background: 'var(--color-primary-glow)',
                 filter: 'blur(24px)',
                 pointerEvents: 'none',
               }} />

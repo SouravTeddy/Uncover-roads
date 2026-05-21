@@ -742,8 +742,6 @@ export function MapScreen() {
           travelStartDate={state.travelStartDate}
           travelEndDate={state.travelEndDate}
           ourPickBadge={activeOurPickBadge}
-          persona={state.persona ?? null}
-          personaProfile={personaProfile}
         />
       )}
 
