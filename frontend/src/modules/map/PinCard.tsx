@@ -157,21 +157,6 @@ export function PinCard({
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
 
-  // Derive open status from weekday_text on the travel start date.
-  // Google's weekday_text is ordered Mon=0…Sun=6.
-  // Falls back to real-time open_now only when no travel date is set.
-  const openNow = (() => {
-    if (weekdayText.length > 0 && resolvedStart) {
-      const d = new Date(resolvedStart + 'T12:00:00')
-      const jsDay = d.getDay() // 0=Sun … 6=Sat
-      const googleIdx = jsDay === 0 ? 6 : jsDay - 1
-      const dayText = weekdayText[googleIdx] ?? ''
-      if (dayText.toLowerCase().includes('closed')) return false
-      return dayText.includes(':')
-    }
-    return details?.open_now ?? null
-  })()
-
   const insights = computeAnalysisInsights(place, details ?? null, ourPickBadge, resolvedStart, resolvedEnd)
 
   return (
