@@ -14,9 +14,10 @@ describe('MultiCityHeader', () => {
       <MultiCityHeader
         cityFootprints={footprints}
         activeCityIdx={0}
-        transitSummary="Tokyo → Sydney · ✈️ ~9h flight"
+        travelStartDate={null}
+        travelEndDate={null}
         onCityTap={vi.fn()}
-        onAddCity={vi.fn()}
+        onDateTap={vi.fn()}
       />
     );
     expect(screen.getByText('Tokyo')).toBeTruthy();
@@ -29,25 +30,45 @@ describe('MultiCityHeader', () => {
       <MultiCityHeader
         cityFootprints={footprints}
         activeCityIdx={0}
-        transitSummary=""
+        travelStartDate={null}
+        travelEndDate={null}
         onCityTap={onCityTap}
-        onAddCity={vi.fn()}
+        onDateTap={vi.fn()}
       />
     );
     fireEvent.click(screen.getByText('Sydney'));
     expect(onCityTap).toHaveBeenCalledWith(1);
   });
 
-  it('renders transit breadcrumb when provided', () => {
+  it('renders date line when start and end dates provided', () => {
     render(
       <MultiCityHeader
         cityFootprints={footprints}
         activeCityIdx={0}
-        transitSummary="Tokyo → Sydney · ✈️ ~9h flight"
+        travelStartDate="2025-06-01"
+        travelEndDate="2025-06-07"
         onCityTap={vi.fn()}
-        onAddCity={vi.fn()}
+        onDateTap={vi.fn()}
       />
     );
-    expect(screen.getByText('Tokyo → Sydney · ✈️ ~9h flight')).toBeTruthy();
+    // Should show formatted date range and day count (7 days)
+    const dateLine = screen.getByText(/Jun 1.+Jun 7.+7 days/);
+    expect(dateLine).toBeTruthy();
+  });
+
+  it('calls onDateTap when date line is clicked', () => {
+    const onDateTap = vi.fn();
+    render(
+      <MultiCityHeader
+        cityFootprints={footprints}
+        activeCityIdx={0}
+        travelStartDate="2025-06-01"
+        travelEndDate="2025-06-07"
+        onCityTap={vi.fn()}
+        onDateTap={onDateTap}
+      />
+    );
+    fireEvent.click(screen.getByText(/Jun 1.+Jun 7.+7 days/));
+    expect(onDateTap).toHaveBeenCalled();
   });
 });

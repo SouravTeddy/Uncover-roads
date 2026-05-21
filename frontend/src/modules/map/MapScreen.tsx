@@ -24,7 +24,6 @@ import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
 import { CityHopOverlay } from './CityHopOverlay';
-import type { TransitMode } from '../../shared/types';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import type { PlacePickFE } from './OurPicksPinsLayer'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
@@ -35,18 +34,6 @@ import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
 import { GuideBulb } from './GuideBulb'
 import { useGuideMessages } from './useGuideMessages'
-
-// ── Module-level utilities ───────────────────────────────────────
-
-function buildTransitSummary(transit: DetectedTransit | null): string {
-  if (!transit) return '';
-  const icon: Record<TransitMode, string> = { flight: '✈️', train: '🚄', drive: '🚗', bus: '🚌' };
-  const label: Record<TransitMode, string> = { flight: 'flight', train: 'train', drive: 'drive', bus: 'bus' };
-  const hours = transit.durationMinutes
-    ? `~${Math.round(transit.durationMinutes / 60)}h `
-    : '';
-  return `${transit.from} → ${transit.to} · ${icon[transit.mode]} ${hours}${label[transit.mode]}`;
-}
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -121,10 +108,6 @@ export function MapScreen() {
   );
 
   const isMultiCity = cityFootprints.length > 1 || isJourneyMode(selectedPlaces);
-
-  const transitSummary = pendingNewCity?.transit
-    ? buildTransitSummary(pendingNewCity.transit)
-    : '';
 
   const categoryCounts = useMemo(() =>
     places.reduce<Record<string, number>>((acc, p) => {
@@ -502,13 +485,14 @@ export function MapScreen() {
             <MultiCityHeader
               cityFootprints={cityFootprints}
               activeCityIdx={activeCityIndex}
-              transitSummary={transitSummary}
+              travelStartDate={state.travelStartDate}
+              travelEndDate={state.travelEndDate}
               onCityTap={(idx) => {
-                dispatch({ type: 'SET_ACTIVE_CITY_INDEX', index: idx });
-                const f = cityFootprints[idx];
-                if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12);
+                dispatch({ type: 'SET_ACTIVE_CITY_INDEX', index: idx })
+                const f = cityFootprints[idx]
+                if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12)
               }}
-              onAddCity={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
+              onDateTap={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
             />
           </div>
         )}
@@ -560,51 +544,60 @@ export function MapScreen() {
         </div>
       </div>
 
-      {/* Right column — city name, travel dates, guide bulb */}
+      {/* Right column — single-city only */}
+      {!isMultiCity && city && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
+            right: '1rem',
+            zIndex: 25,
+            fontFamily: 'var(--font-heading)',
+            fontSize: 18,
+            fontWeight: 700,
+            lineHeight: 1,
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'transparent',
+          }}
+        >
+          {city}
+        </span>
+      )}
+      {!isMultiCity && state.travelStartDate && state.travelEndDate && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 'calc(env(safe-area-inset-top, 0px) + 2.25rem)',
+            right: '1rem',
+            zIndex: 25,
+            fontSize: 10,
+            fontWeight: 600,
+            color: 'var(--color-text-3)',
+            lineHeight: 1,
+          }}
+        >
+          {new Date(state.travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {' – '}
+          {new Date(state.travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+      )}
       <div
         style={{
           position: 'absolute',
           top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
           right: '1rem',
-          zIndex: 25,
+          zIndex: 26,
           pointerEvents: 'auto',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
           gap: 6,
+          marginTop: isMultiCity ? 0 : '3.5rem',
         }}
       >
-        {city && (
-          <span
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: 18,
-              fontWeight: 700,
-              lineHeight: 1,
-              background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              color: 'transparent',
-            }}
-          >
-            {city}
-          </span>
-        )}
-        {state.travelStartDate && state.travelEndDate && (
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              color: 'var(--color-text-3)',
-              lineHeight: 1,
-            }}
-          >
-            {new Date(state.travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            {' – '}
-            {new Date(state.travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </span>
-        )}
         <GuideBulb
           messages={guideMessages}
           hasUnread={guideHasUnread}
