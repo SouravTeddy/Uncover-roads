@@ -4,7 +4,7 @@ import type { Place, PlaceDetails } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights } from './pincard-utils'
-import type { OurPickBadge } from './pincard-utils'
+import type { OurPickBadge, AnalysisInsight } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -328,10 +328,10 @@ export function PinCard({
                 Our Analysis
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, position: 'relative' }}>
-                {insights.map((text, i) => (
+                {insights.map((insight: AnalysisInsight, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                     <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 5 }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-2)', lineHeight: 1.4 }}>{text}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-2)', lineHeight: 1.4 }}>{insight.text}</span>
                   </div>
                 ))}
               </div>
