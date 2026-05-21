@@ -197,7 +197,7 @@ export function computeMultiCityFeasibility(
 
   const cityGroups = new Map<string, number>()
   for (const place of selectedPlaces) {
-    const city = place._city ?? ''
+    const city = place._city ?? 'Unknown'
     cityGroups.set(city, (cityGroups.get(city) ?? 0) + 1)
   }
 
