@@ -141,6 +141,7 @@ const profile: PersonaProfile = { archetype: 'explorer', stops_per_day: 3, venue
 const place: Place = { id: '1', title: 'Opera House', lat: -33.8, lon: 151.2, category: 'tourism', photo_ref: null, tags: {}, rating: null } as Place
 
 describe('useGuideMessages city reset', () => {
+  // clusterFired resets per city so that cluster message can re-fire on city change
   it('fires area message again when city changes', () => {
     const { result, rerender } = renderHook(
       ({ city }: { city: string }) =>
