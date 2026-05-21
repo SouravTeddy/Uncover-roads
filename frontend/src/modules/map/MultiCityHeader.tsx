@@ -1,14 +1,26 @@
-import type { CityFootprint } from '../../shared/types';
+import type { CityFootprint } from '../../shared/types'
 
 interface Props {
-  cityFootprints: CityFootprint[];
-  activeCityIdx: number;
-  transitSummary: string;   // e.g. "Tokyo → Sydney · ✈️ ~9h flight" — empty string hides row
-  onCityTap: (idx: number) => void;
-  onAddCity: () => void;
+  cityFootprints: CityFootprint[]
+  activeCityIdx: number
+  travelStartDate: string | null
+  travelEndDate: string | null
+  onCityTap: (idx: number) => void
+  onDateTap: () => void
 }
 
-export function MultiCityHeader({ cityFootprints, activeCityIdx, transitSummary, onCityTap, onAddCity }: Props) {
+export function MultiCityHeader({ cityFootprints, activeCityIdx, travelStartDate, travelEndDate, onCityTap, onDateTap }: Props) {
+  const startFmt = travelStartDate
+    ? new Date(travelStartDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : null
+  const endFmt = travelEndDate
+    ? new Date(travelEndDate + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    : null
+
+  const totalDays = (travelStartDate && travelEndDate)
+    ? Math.round((new Date(travelEndDate + 'T12:00:00Z').getTime() - new Date(travelStartDate + 'T12:00:00Z').getTime()) / 86400000) + 1
+    : null
+
   return (
     <div
       className="rounded-2xl overflow-hidden"
@@ -20,11 +32,11 @@ export function MultiCityHeader({ cityFootprints, activeCityIdx, transitSummary,
     >
       {/* City tab strip */}
       <div
-        className="flex items-center gap-2 px-3 pt-3 pb-2 overflow-x-auto"
+        className="flex items-center gap-2 px-3 pt-3 pb-1 overflow-x-auto"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
         {cityFootprints.map((f, idx) => {
-          const isActive = idx === activeCityIdx;
+          const isActive = idx === activeCityIdx
           return (
             <button
               key={f.city}
@@ -40,32 +52,31 @@ export function MultiCityHeader({ cityFootprints, activeCityIdx, transitSummary,
               <span>{f.city}</span>
               <span style={{ opacity: 0.65, fontWeight: 400 }}>· {f.pinCount}</span>
             </button>
-          );
+          )
         })}
-        {/* + city chip */}
-        <button
-          onClick={onAddCity}
-          className="flex-shrink-0 flex items-center gap-1 h-8 px-3 rounded-full text-xs font-semibold"
-          style={{
-            border: '1.5px dashed var(--color-text-3)',
-            color: 'var(--color-text-3)',
-            background: 'transparent',
-          }}
-        >
-          <span className="ms" style={{ fontSize: 14 }}>add</span>
-          city
-        </button>
       </div>
 
-      {/* Breadcrumb row — transit summary */}
-      {transitSummary && (
-        <div
-          className="px-3 pb-2.5 text-[11px] font-medium"
-          style={{ color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+      {/* Date line */}
+      {startFmt && endFmt && totalDays && (
+        <button
+          onClick={onDateTap}
+          style={{
+            display: 'block',
+            background: 'none',
+            border: 'none',
+            padding: '0 12px 10px 13px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-sans)',
+            fontSize: 10,
+            fontWeight: 500,
+            color: 'var(--color-text-3)',
+            textAlign: 'left',
+            width: '100%',
+          }}
         >
-          {transitSummary}
-        </div>
+          {startFmt} – {endFmt} · {totalDays} day{totalDays === 1 ? '' : 's'}
+        </button>
       )}
     </div>
-  );
+  )
 }

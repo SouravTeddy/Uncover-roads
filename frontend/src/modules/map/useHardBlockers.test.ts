@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeHardBlockers } from './useHardBlockers'
-import type { Place, PlaceDetails } from '../../shared/types'
+import { computeHardBlockers, computeMultiCityFeasibility } from './useHardBlockers'
+import type { Place, PlaceDetails, CityFootprint } from '../../shared/types'
 
 function makePlace(overrides: Partial<Place> & { id: string; title: string }): Place {
   return { category: 'cafe', lat: 35.68, lon: 139.69, ...overrides }
@@ -146,5 +146,58 @@ describe('computeHardBlockers', () => {
     })
     const result = computeHardBlockers([place], noCache, '2026-05-20', '2026-05-25')
     expect(result).toEqual([])
+  })
+})
+
+const makePlaces = (city: string, count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `${city}-${i}`,
+    title: `Place ${i}`,
+    _city: city,
+    lat: 0,
+    lon: 0,
+    category: 'tourism',
+    rating: null,
+    tags: {},
+  } as never))
+
+describe('computeMultiCityFeasibility', () => {
+  const parisFp: CityFootprint = { city: 'Paris', emoji: '🗼', pinCount: 3, lat: 48.8566, lon: 2.3522 }
+  const londonFp: CityFootprint = { city: 'London', emoji: '🎡', pinCount: 2, lat: 51.5074, lon: -0.1278 }
+
+  it('returns null when no travel dates set', () => {
+    const places = [...makePlaces('Paris', 3), ...makePlaces('London', 2)]
+    expect(computeMultiCityFeasibility(places, [parisFp, londonFp], null, null, 3)).toBeNull()
+  })
+
+  it('returns null when plan fits within available days', () => {
+    // Paris: ceil(3/3)=1 day + London: ceil(2/3)=1 day = 2 city days
+    // Paris→London: ~340km drive, <3h → 0 transit days
+    // total 2, available 10 → null
+    const places = [...makePlaces('Paris', 3), ...makePlaces('London', 2)]
+    expect(computeMultiCityFeasibility(places, [parisFp, londonFp], '2026-06-01', '2026-06-10', 3)).toBeNull()
+  })
+
+  it('returns blocker when totalNeeded > availableDays', () => {
+    // Paris: ceil(6/3)=2 + London: ceil(6/3)=2 = 4 city days, drive <3h → 0 transit
+    // 4 needed, 3 available → blocker
+    const places = [...makePlaces('Paris', 6), ...makePlaces('London', 6)]
+    const result = computeMultiCityFeasibility(places, [parisFp, londonFp], '2026-06-01', '2026-06-03', 3)
+    expect(result).not.toBeNull()
+    expect(result!.totalNeeded).toBeGreaterThan(result!.availableDays)
+    expect(result!.cityCount).toBe(2)
+  })
+
+  it('flight leg adds 1 transit day', () => {
+    // Tokyo→Sydney: ~7820km flight, >> 180min → +1 transit day
+    // Tokyo: ceil(3/3)=1 + Sydney: ceil(3/3)=1 + 1 transit = 3 needed
+    const tokyoFp: CityFootprint = { city: 'Tokyo', emoji: '🗾', pinCount: 3, lat: 35.6762, lon: 139.6503, transitMode: 'flight' }
+    const sydneyFp: CityFootprint = { city: 'Sydney', emoji: '🦘', pinCount: 3, lat: -33.8688, lon: 151.2093, transitMode: 'flight' }
+    const places = [...makePlaces('Tokyo', 3), ...makePlaces('Sydney', 3)]
+    // 3 needed, 3 available → null (just fits)
+    expect(computeMultiCityFeasibility(places, [tokyoFp, sydneyFp], '2026-06-01', '2026-06-03', 3)).toBeNull()
+    // 2 available → blocker
+    const result = computeMultiCityFeasibility(places, [tokyoFp, sydneyFp], '2026-06-01', '2026-06-02', 3)
+    expect(result).not.toBeNull()
   })
 })

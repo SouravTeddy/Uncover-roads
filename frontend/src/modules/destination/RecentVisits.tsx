@@ -1,14 +1,22 @@
 import type { Place } from '../../shared/types';
-import type { LastSession } from './useLastSession';
+import type { RecentSession } from './useRecentSessions';
 import { getCityPhotoUrl } from '../../shared/cityPhoto';
+import { getPlacePhotoUrl } from '../../shared/api';
 
 interface RecentVisitsProps {
-  session: LastSession | null;
+  sessions: RecentSession[];
   onOpenMap: (places: Place[]) => void;
 }
 
 const MAX_VISIBLE = 4;
 const OVERFLOW_THUMB_COUNT = 2;
+const THUMB_SIZE = 120;
+
+function placeImgSrc(place: Place, fallbackCity: string): string {
+  return place.photo_ref
+    ? getPlacePhotoUrl(place.photo_ref, THUMB_SIZE)
+    : (place.imageUrl || getCityPhotoUrl(place._city ?? fallbackCity))
+}
 
 function PlaceThumbnail({
   place,
@@ -19,7 +27,7 @@ function PlaceThumbnail({
   city: string;
   size: number;
 }) {
-  const src = place.imageUrl ?? getCityPhotoUrl(place._city ?? city);
+  const src = placeImgSrc(place, city)
   return (
     <img
       src={src}
@@ -139,10 +147,10 @@ function CityGroup({
       <div
         style={{
           color: 'var(--color-primary-text)',
-          fontSize: 11,
-          fontWeight: 600,
+          fontSize: 10,
+          fontWeight: 700,
           textTransform: 'uppercase',
-          letterSpacing: '0.07em',
+          letterSpacing: '0.06em',
           marginBottom: 4,
         }}
       >
@@ -184,7 +192,7 @@ function CityGroup({
               {overflow.slice(0, OVERFLOW_THUMB_COUNT).map((p, i) => (
                 <img
                   key={p.id}
-                  src={p.imageUrl ?? getCityPhotoUrl(p._city ?? sessionCity)}
+                  src={placeImgSrc(p, sessionCity)}
                   alt={p.title}
                   style={{
                     position: 'absolute',
@@ -226,194 +234,39 @@ function CityGroup({
   );
 }
 
-export default function RecentVisits({ session, onOpenMap }: RecentVisitsProps) {
-  // ── Empty state ──────────────────────────────────────────────
-  if (!session) {
+export default function RecentVisits({ sessions, onOpenMap }: RecentVisitsProps) {
+  if (sessions.length === 0) {
     return (
       <section className="px-4 pt-4 pb-6">
-        <h2
-          style={{
-            color: 'var(--color-text-3)',
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 600,
-            margin: '0 0 12px',
-          }}
-        >
+        <h2 style={{ color: 'var(--color-text-3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: '0 0 12px' }}>
           Recent visits
         </h2>
         <div
           className="rounded-2xl"
-          style={{
-            border: '1.5px dashed var(--color-border)',
-            background: 'var(--color-surface)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '32px 16px',
-          }}
+          style={{ border: '1.5px dashed var(--color-border)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '32px 16px' }}
         >
-          <span
-            className="material-symbols-outlined"
-            style={{ color: 'var(--color-text-4)', fontSize: 28 }}
-          >
-            pin_drop
-          </span>
-          <p
-            style={{
-              color: 'var(--color-text-3)',
-              fontSize: 13,
-              margin: 0,
-              textAlign: 'center',
-            }}
-          >
-            Your saved pins will appear here
-          </p>
+          <span className="material-symbols-outlined" style={{ color: 'var(--color-text-4)', fontSize: 28 }}>pin_drop</span>
+          <p style={{ color: 'var(--color-text-3)', fontSize: 13, margin: 0, textAlign: 'center' }}>Your saved pins will appear here</p>
         </div>
       </section>
-    );
+    )
   }
 
-  // ── Group places by city ──────────────────────────────────────
-  const cityMap = new Map<string, Place[]>();
-  for (const place of session.places) {
-    const cityKey = place._city ?? session.city;
-    const existing = cityMap.get(cityKey);
-    if (existing) {
-      existing.push(place);
-    } else {
-      cityMap.set(cityKey, [place]);
-    }
-  }
-
-  const isMultiCity = cityMap.size > 1;
-  const cityEntries = Array.from(cityMap.entries());
-
-  // ── Single-city flat layout ───────────────────────────────────
-  if (!isMultiCity) {
-    const places = session.places;
-    const visible = places.slice(0, MAX_VISIBLE);
-    const overflow = places.slice(MAX_VISIBLE);
-    const hasOverflow = overflow.length > 0;
-
-    return (
-      <section className="px-4 pt-4 pb-6">
-        <h2
-          style={{
-            color: 'var(--color-text-3)',
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 600,
-            margin: '0 0 8px',
-          }}
-        >
-          Recent visits · {session.city}
-        </h2>
-
-        {visible.map((place, idx) => (
-          <PlaceRow
-            key={place.id}
-            place={place}
-            city={session.city}
-            showDivider={idx > 0}
-            onTap={() => onOpenMap([place])}
-          />
-        ))}
-
-        {hasOverflow && (
-          <>
-            <div style={{ height: 1, background: 'var(--color-divider)' }} />
-            <button
-              onClick={() => onOpenMap(places)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                height: 56,
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              {/* Stacked thumbnails */}
-              <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-                {overflow.slice(0, OVERFLOW_THUMB_COUNT).map((p, i) => (
-                  <img
-                    key={p.id}
-                    src={p.imageUrl ?? getCityPhotoUrl(p._city ?? session.city)}
-                    alt={p.title}
-                    style={{
-                      position: 'absolute',
-                      width: 24,
-                      height: 24,
-                      borderRadius: 4,
-                      objectFit: 'cover',
-                      top: i === 0 ? 0 : 16,
-                      left: i === 0 ? 0 : 16,
-                      border: '1.5px solid var(--color-surface)',
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <span
-                  style={{
-                    color: 'var(--color-text-2)',
-                    fontSize: 14,
-                    fontWeight: 500,
-                  }}
-                >
-                  +{overflow.length} more {overflow.length === 1 ? 'pin' : 'pins'}
-                </span>
-              </div>
-
-              <span
-                className="material-symbols-outlined"
-                style={{ color: 'var(--color-text-4)', fontSize: 18, flexShrink: 0 }}
-              >
-                chevron_right
-              </span>
-            </button>
-          </>
-        )}
-      </section>
-    );
-  }
-
-  // ── Multi-city grouped layout ─────────────────────────────────
   return (
     <section className="px-4 pt-4 pb-6">
-      <h2
-        style={{
-          color: 'var(--color-text-3)',
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          fontWeight: 600,
-          margin: '0 0 8px',
-        }}
-      >
+      <h2 style={{ color: 'var(--color-text-3)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, margin: '0 0 8px' }}>
         Recent visits
       </h2>
-
-      {cityEntries.map(([cityName, places], idx) => (
+      {sessions.map((session, sIdx) => (
         <CityGroup
-          key={cityName}
-          cityName={cityName}
-          places={places}
+          key={session.city}
+          cityName={session.city}
+          places={session.places}
           sessionCity={session.city}
           onOpenMap={onOpenMap}
-          isFirst={idx === 0}
+          isFirst={sIdx === 0}
         />
       ))}
     </section>
-  );
+  )
 }

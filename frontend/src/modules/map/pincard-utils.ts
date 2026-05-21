@@ -93,90 +93,101 @@ export function getTravelDateBadge(
 
 export type OurPickBadge = 'trending' | 'hidden_gem' | 'getting_busy' | null;
 
+export interface AnalysisInsight {
+  text: string
+  state: 'gold' | 'green' | 'red'
+  linkLabel?: string
+}
+
 /**
- * Returns up to 3 travel-aware insight strings for the Our Analysis aura strip.
- * Priority: trend velocity → hours/open status → best-time heuristic.
+ * Returns up to 3 travel-aware AnalysisInsight objects.
+ * First insight is always open/close status when details are available.
  */
 export function computeAnalysisInsights(
   place: { category: string },
-  details: { weekday_text?: string[] } | null | undefined,
+  details: { weekday_text?: string[]; open_now?: boolean } | null | undefined,
   ourPickBadge: OurPickBadge,
   travelStart: string | null,
   travelEnd: string | null,
-): string[] {
-  const insights: string[] = [];
+): AnalysisInsight[] {
+  const insights: AnalysisInsight[] = []
 
-  // 1. Trend velocity
-  if (ourPickBadge && travelStart) {
-    const month = new Date(travelStart + 'T12:00:00Z').toLocaleString('en-US', {
-      month: 'long', timeZone: 'UTC',
-    });
-    if (ourPickBadge === 'trending') {
-      insights.push(`Popular in ${month} — can get busy around your trip`);
-    } else if (ourPickBadge === 'hidden_gem') {
-      insights.push(`Hidden gem — fewer crowds during your trip`);
-    } else if (ourPickBadge === 'getting_busy') {
-      insights.push(`Getting popular — worth visiting early in your trip`);
+  // 1. Open/close insight — always first
+  if (details?.weekday_text?.length && travelStart && travelEnd) {
+    const closedDay = (() => {
+      const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const endDate1 = new Date(travelEnd + 'T12:00:00Z')
+      for (
+        let d = new Date(travelStart + 'T12:00:00Z');
+        d <= endDate1;
+        d.setUTCDate(d.getUTCDate() + 1)
+      ) {
+        const jsDay = d.getUTCDay()
+        const googleIdx = jsDay === 0 ? 6 : jsDay - 1
+        const line = details.weekday_text![googleIdx]
+        if (line && /closed/i.test(line)) {
+          const day = d.getUTCDate()
+          const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+          return { dayName: DAY[jsDay], dateStr: `${month} ${day}` }
+        }
+      }
+      return null
+    })()
+
+    if (closedDay === null) {
+      const startFmt = new Date(travelStart + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      const endFmt = new Date(travelEnd + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      insights.push({ text: `Open every day ${startFmt}–${endFmt} · no schedule conflicts`, state: 'green' })
+    } else {
+      insights.push({
+        text: `Closed ${closedDay.dayName} · ${closedDay.dateStr} falls in your trip → plan another day`,
+        state: 'red',
+        linkLabel: 'check hours',
+      })
+    }
+  } else if (details?.open_now !== undefined) {
+    if (details.open_now) {
+      insights.push({ text: 'Open now', state: 'green' })
+    } else {
+      insights.push({ text: 'Closed now', state: 'red' })
     }
   }
 
-  // 2. Hours / open status across travel days
-  if (details?.weekday_text?.length && travelStart && travelEnd) {
-    const closedDays: string[] = [];
-    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (
-      let d = new Date(travelStart + 'T12:00:00Z');
-      d <= new Date(travelEnd + 'T12:00:00Z');
-      d.setUTCDate(d.getUTCDate() + 1)
-    ) {
-      const jsDay = d.getUTCDay();
-      const googleIdx = jsDay === 0 ? 6 : jsDay - 1;
-      const line = details.weekday_text[googleIdx];
-      if (line && /closed/i.test(line)) {
-        closedDays.push(DAY_NAMES[jsDay]);
-      }
-    }
-
-    if (closedDays.length === 0) {
-      insights.push(`Open on all your travel days`);
-    } else {
-      insights.push(`Closed on ${closedDays.join(', ')} — check your itinerary`);
+  // 2. Trend velocity
+  if (ourPickBadge && travelStart) {
+    const month = new Date(travelStart + 'T12:00:00Z').toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })
+    if (ourPickBadge === 'trending') {
+      insights.push({ text: `Trending in ${month} · popular during your dates → consider booking ahead`, state: 'gold', linkLabel: 'reserve' })
+    } else if (ourPickBadge === 'hidden_gem') {
+      insights.push({ text: `Hidden gem · fewer crowds during your trip → any time of day works`, state: 'gold' })
+    } else if (ourPickBadge === 'getting_busy') {
+      insights.push({ text: `Getting popular fast · crowds growing → visit early in your trip`, state: 'gold' })
     }
   }
 
   // 3. Best visiting time heuristic
-  if (travelStart && travelEnd) {
-    let includesWeekend = false;
+  if (travelStart && travelEnd && insights.length < 3) {
+    let includesWeekend = false
+    let allWeekdays = true
+    const endDate2 = new Date(travelEnd + 'T12:00:00Z')
     for (
       let d = new Date(travelStart + 'T12:00:00Z');
-      d <= new Date(travelEnd + 'T12:00:00Z');
+      d <= endDate2;
       d.setUTCDate(d.getUTCDate() + 1)
     ) {
-      const day = d.getUTCDay();
-      if (day === 0 || day === 6) { includesWeekend = true; break; }
+      const day = d.getUTCDay()
+      if (day === 0 || day === 6) { includesWeekend = true; allWeekdays = false }
     }
 
-    const cat = place.category;
+    const cat = place.category
     if ((cat === 'tourism' || cat === 'park' || cat === 'historic') && includesWeekend) {
-      insights.push(`Gets busy on weekends — go early morning`);
+      insights.push({ text: `Busiest on weekends · your trip includes Sat–Sun → arrive before 10am`, state: 'gold' })
     } else if (cat === 'restaurant') {
-      insights.push(`Peak lunch 12–2pm — consider booking ahead`);
-    } else if (cat === 'cafe') {
-      let allWeekdays = true;
-      for (
-        let d = new Date(travelStart + 'T12:00:00Z');
-        d <= new Date(travelEnd + 'T12:00:00Z');
-        d.setUTCDate(d.getUTCDate() + 1)
-      ) {
-        const day = d.getUTCDay();
-        if (day === 0 || day === 6) { allWeekdays = false; break; }
-      }
-      if (allWeekdays) {
-        insights.push(`Quieter on weekdays — your trip includes weekday mornings`);
-      }
+      insights.push({ text: `Peak lunch 12–2pm · your trip overlaps weekdays → book a table ahead`, state: 'gold', linkLabel: 'reserve' })
+    } else if (cat === 'cafe' && allWeekdays) {
+      insights.push({ text: `Quieter on weekday mornings · your trip aligns well → no need to rush`, state: 'gold' })
     }
   }
 
-  return insights.slice(0, 3);
+  return insights.slice(0, 3)
 }
