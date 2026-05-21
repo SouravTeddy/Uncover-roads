@@ -137,8 +137,8 @@ describe('isGeographicCluster', () => {
 
 // ── useGuideMessages city reset ───────────────────────────────────────────────
 
-const profile: PersonaProfile = { archetype: 'explorer', stops_per_day: 3, venue_filters: ['tourism'] } as PersonaProfile
-const place: Place = { id: '1', title: 'Opera House', lat: -33.8, lon: 151.2, category: 'tourism', photo_ref: null, tags: {}, rating: null } as Place
+const profile = { archetype: 'explorer', stops_per_day: 3, venue_filters: ['tourism'] } as unknown as PersonaProfile
+const place = { id: '1', title: 'Opera House', lat: -33.8, lon: 151.2, category: 'tourism', photo_ref: null, tags: {} } as unknown as Place
 
 describe('useGuideMessages city reset', () => {
   // clusterFired resets per city so that cluster message can re-fire on city change
