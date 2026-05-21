@@ -2508,7 +2508,7 @@ _ARCHETYPE_PERSONA: dict[str, dict] = {
 
 
 @app.post("/engine-itinerary")
-async def engine_itinerary(body: EngineItineraryPayload, user=Depends(require_auth_or_pack)):
+async def engine_itinerary(body: EngineItineraryPayload):
     """Build an itinerary from user-selected places. Called from MapScreen Build button."""
     from datetime import date as _date, timedelta as _td
 
