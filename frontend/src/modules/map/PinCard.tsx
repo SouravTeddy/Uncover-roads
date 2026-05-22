@@ -152,7 +152,7 @@ export function PinCard({
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
   const weekdayText = details?.weekday_text ?? []
-  const description = details?.editorial_summary ?? details?.top_review ?? null
+  const description = details?.editorial_summary ?? null
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
@@ -440,6 +440,20 @@ export function PinCard({
           ) : null}
 
           {/* Description — shimmer while loading */}
+          {/* Curated recommendation reason */}
+          {place.reason && (
+            <div style={{
+              marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+              background: 'var(--color-primary-bg)',
+              border: '1px solid rgba(212,168,83,.18)',
+              animation: 'sectionReveal 360ms 120ms cubic-bezier(.22,1,.36,1) both',
+            }}>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-primary)', lineHeight: 1.5, fontWeight: 500 }}>
+                <span style={{ marginRight: 5, opacity: 0.8 }}>✦</span>{place.reason}
+              </p>
+            </div>
+          )}
+
           {details == null ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 10, width: '100%' }} />

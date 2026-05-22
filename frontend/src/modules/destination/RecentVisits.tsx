@@ -2,10 +2,11 @@ import type { Place } from '../../shared/types';
 import type { RecentSession } from './useRecentSessions';
 import { getCityPhotoUrl } from '../../shared/cityPhoto';
 import { getPlacePhotoUrl } from '../../shared/api';
+import { CATEGORY_LABELS } from '../map/types';
 
 interface RecentVisitsProps {
   sessions: RecentSession[];
-  onOpenMap: (places: Place[]) => void;
+  onOpenMap: (places: Place[], city: string) => void;
 }
 
 const MAX_VISIBLE = 4;
@@ -104,7 +105,7 @@ function PlaceRow({
               marginTop: 1,
             }}
           >
-            {place.category}
+            {CATEGORY_LABELS[place.category] ?? place.category}
           </div>
         </div>
 
@@ -134,7 +135,7 @@ function CityGroup({
   cityName: string;
   places: Place[];
   sessionCity: string;
-  onOpenMap: (places: Place[]) => void;
+  onOpenMap: (places: Place[], city: string) => void;
   isFirst: boolean;
 }) {
   const visible = places.slice(0, MAX_VISIBLE);
@@ -164,7 +165,7 @@ function CityGroup({
           place={place}
           city={sessionCity}
           showDivider={idx > 0}
-          onTap={() => onOpenMap([place])}
+          onTap={() => onOpenMap([place], sessionCity)}
         />
       ))}
 
@@ -173,7 +174,7 @@ function CityGroup({
         <>
           <div style={{ height: 1, background: 'var(--color-divider)' }} />
           <button
-            onClick={() => onOpenMap(places)}
+            onClick={() => onOpenMap(places, sessionCity)}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -7,9 +7,11 @@ export interface ReelIntroCard {
   city: string;
   imageUrl: string | null;
   totalStops: number;
+  totalDays: number;
   weather: WeatherData | null;
   proTip: string | null;
   persona: string;
+  engineChanges: { type: string; count: number }[];
 }
 
 export interface ReelSummaryCard {

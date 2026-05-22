@@ -70,8 +70,16 @@ export function DestinationScreen() {
 
   useSheetDismiss(handleCalendarDismiss, showCalendar);
 
-  function handleOpenMap(places: Place[]) {
-    places.forEach(p => dispatch({ type: 'SET_PENDING_PLACE', place: p }));
+  function handleOpenMap(places: Place[], city?: string) {
+    const first = places[0];
+    if (!first) return;
+    const targetCity = city ?? first._city ?? '';
+    if (targetCity) dispatch({ type: 'SET_CITY', city: targetCity });
+    // Use the place coords as city-center approximation so MapScreen can load the area
+    if (first.lat && first.lon) {
+      dispatch({ type: 'SET_CITY_GEO', geo: { lat: first.lat, lon: first.lon, bbox: [first.lat - 0.05, first.lat + 0.05, first.lon - 0.05, first.lon + 0.05] } });
+    }
+    dispatch({ type: 'SET_PENDING_PLACE', place: first });
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 

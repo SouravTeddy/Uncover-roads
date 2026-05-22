@@ -6,6 +6,7 @@ import type {
   JourneyLeg,
   WeatherData,
 } from '../../../shared/types';
+import { getPlacePhotoUrl } from '../../../shared/api';
 import { REC_RULES } from '../rec-rules';
 import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard } from './types';
 
@@ -216,33 +217,31 @@ export function buildReelCards(
   const stopCount = allStops.length;
   const cityLabel = itinerary.city ?? itinerary.cities.join(' · ');
 
+  // Resolve intro image: imageUrl → photoRef → null
+  const heroStop = allStops[0];
+  const introImage = heroStop?.imageUrl
+    ?? (heroStop?.photoRef ? getPlacePhotoUrl(heroStop.photoRef, 800) : null)
+    ?? null;
+
+  // Aggregate engine changes for intro summary section
+  const allMessages = itinerary.days.flatMap(d => d.messages ?? []);
+  const changeCounts = allMessages.reduce<Record<string, number>>((acc, m) => {
+    acc[m.type] = (acc[m.type] ?? 0) + 1;
+    return acc;
+  }, {});
+  const engineChanges = Object.entries(changeCounts).map(([type, count]) => ({ type, count }));
+
   cards.push({
     type: 'intro',
     city: cityLabel,
-    imageUrl: allStops[0]?.imageUrl ?? null,
+    imageUrl: introImage,
     totalStops: stopCount,
+    totalDays: itinerary.days.length,
     weather,
     proTip: itinerary.summary?.pro_tip ?? null,
     persona,
+    engineChanges,
   });
-
-  // Build summary card from all engine messages across all days
-  const allMessages = itinerary.days.flatMap(d => d.messages ?? []);
-  if (allMessages.length > 0) {
-    const changeCounts = allMessages.reduce<Record<string, number>>((acc, m) => {
-      acc[m.type] = (acc[m.type] ?? 0) + 1;
-      return acc;
-    }, {});
-    const engineChanges = Object.entries(changeCounts).map(([type, count]) => ({ type, count }));
-    const summaryCard: ReelSummaryCard = {
-      type: 'summary',
-      totalDays: itinerary.days.length,
-      totalStops: stopCount,
-      persona,
-      engineChanges,
-    };
-    cards.push(summaryCard);
-  }
 
   let globalStopNumber = 0;
 

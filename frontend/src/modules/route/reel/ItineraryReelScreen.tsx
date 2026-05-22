@@ -157,7 +157,7 @@ export function ItineraryReelScreen() {
       >
         {cards.map((card, idx) => {
           const isActive = idx === activeIdx;
-          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} />;
+          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} onAddDetail={() => dispatch({ type: 'GO_BACK' })} />;
           if (card.type === 'summary') return <ReelSummaryCard key="summary"                          card={card} active={isActive} />;
           if (card.type === 'stop')    return <ReelStopCard    key={card.stop.id}                     card={card} active={isActive} onRemove={handleRemove} />;
           if (card.type === 'reco')    return <ReelRecoCard    key={card.id}                          card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
@@ -222,6 +222,28 @@ export function ItineraryReelScreen() {
           }} />
         ))}
       </div>
+
+      {/* Scroll-to-top button — appears after first card */}
+      {activeIdx > 0 && (
+        <button
+          onClick={() => {
+            scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+            setActiveIdx(0);
+          }}
+          style={{
+            position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)', right: 16,
+            width: 38, height: 38, borderRadius: '50%', zIndex: 35,
+            background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            animation: 'fadeUp .3s ease both',
+          }}
+          aria-label="Back to top"
+        >
+          <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,.85)' }}>arrow_upward</span>
+        </button>
+      )}
 
       {/* Undo toast */}
       {undoPending && (
