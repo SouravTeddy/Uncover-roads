@@ -328,6 +328,7 @@ export type Action =
   | { type: 'SET_PERSONA_PROFILE'; profile: PersonaProfile }
   | { type: 'SET_JOURNEY_ORIGIN'; place: OriginPlace }
   | { type: 'UPDATE_JOURNEY_LEGS'; legs: JourneyLeg[] }
+  | { type: 'SET_TRANSIT_DETAILS'; from: string; to: string; departureTime: string; arrivalTime: string; durationMinutes: number; transitRef?: string }
   | { type: 'SET_JOURNEY_BUDGET'; days: number }
   | { type: 'ADD_ADVISOR_MESSAGE'; message: AdvisorMessage }
   | { type: 'CLEAR_ADVISOR_MESSAGES' }
@@ -361,7 +362,8 @@ export type Action =
   // ── Phase 3: map UI actions ───────────────────────────────────
   | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
   | { type: 'SET_MAP_FILTER'; filter: MapFilterChip }
-  | { type: 'SET_REEL_SAVED_ID'; id: string | null };
+  | { type: 'SET_REEL_SAVED_ID'; id: string | null }
+  | { type: 'REMOVE_ITINERARY'; id: string };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -504,6 +506,14 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, savedItineraries: updated };
     }
 
+    case 'REMOVE_ITINERARY': {
+      const updated = state.savedItineraries.filter(s => s.id !== action.id);
+      try {
+        localStorage.setItem('ur_saved_itineraries', JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return { ...state, savedItineraries: updated };
+    }
+
     case 'SET_SAVED_ITINERARIES':
       return { ...state, savedItineraries: action.items };
 
@@ -590,6 +600,26 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'UPDATE_JOURNEY_LEGS':
       return { ...state, journey: action.legs };
+
+    case 'SET_TRANSIT_DETAILS': {
+      const updated = (state.journey ?? []).map(leg => {
+        if (
+          leg.type === 'transit' &&
+          leg.from === action.from &&
+          leg.to === action.to
+        ) {
+          return {
+            ...leg,
+            departureTime: action.departureTime,
+            arrivalTime: action.arrivalTime,
+            durationMinutes: action.durationMinutes,
+            transitRef: action.transitRef,
+          };
+        }
+        return leg;
+      });
+      return { ...state, journey: updated };
+    }
 
     case 'SET_JOURNEY_BUDGET':
       return { ...state, journeyBudgetDays: action.days };

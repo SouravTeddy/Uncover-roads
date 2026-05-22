@@ -364,6 +364,10 @@ export type JourneyLeg =
       durationMinutes?: number;
       distanceKm?: number;
       advisorMessage?: string;
+      // Set when the user adds trip details — flips the reel transit card to "actual" state
+      departureTime?: string;   // "HH:MM"
+      arrivalTime?: string;     // "HH:MM"
+      transitRef?: string;      // flight number, train name, "Your rental", etc.
     };
 
 export interface AdvisorMessage {
@@ -412,6 +416,8 @@ export interface FavouritedPin {
   lon: number;
   city: string;
   category?: Category;
+  photoRef?: string | null;
+  travelDate?: string | null;  // travel start date when pin was saved (YYYY-MM-DD)
 }
 
 /** Visual state of a pin on the explore map. */
@@ -636,4 +642,19 @@ export interface LiveEvent {
   genre: string
   url: string
   imageUrl: string | null
+}
+
+// ── Reel recommendation places ────────────────────────────────
+/** A persona-scored nearby place returned by /reel-reco. No AI text. */
+export interface ReelRecoPlace {
+  placeId: string
+  name: string
+  lat: number
+  lon: number
+  category: string
+  rating: number | null
+  priceLevel: number | null
+  distanceM: number
+  affinityScore: number
+  matchReasons: string[]
 }

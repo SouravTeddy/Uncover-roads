@@ -1,36 +1,205 @@
+import { useReelRecommendations } from './useReelRecommendations';
 import type { ReelRecoCard } from './types';
+import type { ReelRecoPlace } from '../../../shared/types';
 
 interface Props {
   card: ReelRecoCard;
   active: boolean;
+  archetype: string;
+  existingPlaceIds: string[];
 }
 
-export function ReelRecoCard({ card }: Props) {
+const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chipLabel: string }> = {
+  lunch:   { icon: 'restaurant',    color: '#c27c4a', bg: 'rgba(194,124,74,.1)',   chipLabel: 'Lunch window' },
+  dinner:  { icon: 'dinner_dining', color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Dinner window' },
+  evening: { icon: 'nightlight',    color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Evening' },
+  culture: { icon: 'museum',        color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Culture' },
+  rest:    { icon: 'local_cafe',    color: '#d4a853', bg: 'rgba(212,168,83,.1)',   chipLabel: 'Rest break' },
+};
+
+const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
+
+function PlaceRow({ place, idx, active }: { place: ReelRecoPlace; idx: number; active: boolean }) {
+  const delay = `${0.55 + idx * 0.1}s`;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '12px 14px', borderRadius: 12,
+      background: 'var(--color-surface)',
+      border: '1px solid var(--color-border)',
+      opacity: active ? 1 : 0,
+      transform: active ? 'translateY(0)' : 'translateY(8px)',
+      transition: `opacity .4s ${delay} ease, transform .4s ${delay} ease`,
+    }}>
+      {/* Rank */}
+      <div style={{
+        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+        background: 'var(--color-surface2)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 10, fontWeight: 700, color: 'var(--color-text-3)',
+        marginTop: 1,
+      }}>
+        {idx + 1}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {place.name}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {place.rating != null && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--color-text-2)' }}>
+              <span className="ms fill" style={{ fontSize: 11, color: '#d4a853' }}>star</span>
+              {place.rating}
+            </span>
+          )}
+          {place.priceLevel != null && (
+            <span style={{ fontSize: 11, color: 'var(--color-text-3)' }}>{PRICE_DOTS[place.priceLevel]}</span>
+          )}
+          <span style={{ fontSize: 11, color: 'var(--color-text-3)' }}>
+            {place.distanceM < 1000
+              ? `${place.distanceM}m`
+              : `${(place.distanceM / 1000).toFixed(1)}km`}
+          </span>
+        </div>
+        {/* Match reasons */}
+        {place.matchReasons.length > 0 && (
+          <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+            {place.matchReasons.map(r => (
+              <span key={r} style={{
+                fontSize: 10, fontWeight: 600,
+                padding: '2px 7px', borderRadius: 999,
+                background: 'var(--color-primary-bg)',
+                border: '1px solid var(--color-primary-glow)',
+                color: 'var(--color-primary-text)',
+              }}>{r}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Maps link */}
+      <a
+        href={`https://www.google.com/maps/place/?q=place_id:${place.placeId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'var(--color-text-4)', flexShrink: 0, marginTop: 1 }}
+        onClick={e => e.stopPropagation()}
+      >
+        <span className="ms" style={{ fontSize: 16 }}>open_in_new</span>
+      </a>
+    </div>
+  );
+}
+
+export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Props) {
+  const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
+  const { places, loading } = useReelRecommendations(card, archetype, existingPlaceIds, active);
+  const hasPlaces = places.length > 0;
+
   return (
     <div className="reel-card" style={{
-      position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden',
+      position: 'relative', width: '100%', height: '100dvh',
       background: 'var(--color-bg)',
-      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      display: 'flex', flexDirection: 'column',
+      justifyContent: 'flex-end',
       padding: '0 22px 88px',
+      overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, background: 'rgba(56,189,248,.08)', border: '1px solid rgba(56,189,248,.18)', padding: '7px 12px', borderRadius: 10 }}>
-        <span className="ms" style={{ fontSize: 15, color: '#38bdf8' }}>near_me</span>
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>Near your next stop</span>
+
+      {/* Background glow */}
+      <div style={{
+        position: 'absolute', bottom: -40, right: -40,
+        width: 260, height: 260, borderRadius: '50%',
+        background: `radial-gradient(circle, ${cfg.bg} 0%, transparent 65%)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Near-stop badge */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7,
+        padding: '6px 12px', borderRadius: 10,
+        background: 'rgba(56,189,248,.07)',
+        border: '1px solid rgba(56,189,248,.16)',
+        marginBottom: 14, alignSelf: 'flex-start',
+        animation: active ? 'fadeUp .45s .05s both' : 'none',
+      }}>
+        <span className="ms" style={{ fontSize: 13, color: '#38bdf8' }}>near_me</span>
+        <span style={{ fontSize: 11, color: 'rgba(56,189,248,.85)', fontWeight: 600 }}>Near your next stop</span>
       </div>
 
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 6 }}>
-        While you&apos;re here
+      {/* Trigger chip */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '5px 10px', borderRadius: 8,
+        background: cfg.bg,
+        border: `1px solid ${cfg.color}26`,
+        marginBottom: 10, alignSelf: 'flex-start',
+        animation: active ? 'fadeUp .45s .1s both' : 'none',
+      }}>
+        <span className="ms fill" style={{ fontSize: 13, color: cfg.color }}>{cfg.icon}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
+      </div>
+
+      {/* Headline */}
+      <p style={{
+        fontFamily: 'var(--font-heading)',
+        fontSize: 26, fontWeight: 600,
+        color: 'var(--color-text-1)',
+        lineHeight: 1.25, marginBottom: 6,
+        animation: active ? 'fadeUp .45s .17s both' : 'none',
+      }}>
+        {card.label}
       </p>
-      <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text-1)', marginBottom: 6 }}>{card.label}</p>
-      <p style={{ fontSize: 13, color: 'var(--color-text-2)', marginBottom: 20 }}>{card.consequence}</p>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['Best match', 'Near route', 'Open now'].map(tag => (
-          <span key={tag} style={{ padding: '6px 14px', borderRadius: 999, background: 'rgba(167,139,250,.12)', border: '1px solid rgba(167,139,250,.22)', fontSize: 12, fontWeight: 600, color: 'rgba(167,139,250,.9)' }}>
-            {tag}
+      {/* Consequence — shown when no places yet */}
+      {!hasPlaces && (
+        <p style={{
+          fontSize: 13, color: 'var(--color-text-2)',
+          lineHeight: 1.6, marginBottom: 20,
+          animation: active ? 'fadeUp .45s .24s both' : 'none',
+        }}>
+          {card.consequence}
+        </p>
+      )}
+
+      {/* Loading shimmer */}
+      {loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, marginBottom: 20 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              height: 64, borderRadius: 12,
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              opacity: 0.5 - i * 0.1,
+              animation: 'pulse 1.6s ease-in-out infinite',
+            }} />
+          ))}
+        </div>
+      )}
+
+      {/* Place recommendations */}
+      {hasPlaces && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, marginBottom: 16 }}>
+          {places.map((p, i) => (
+            <PlaceRow key={p.placeId} place={p} idx={i} active={active} />
+          ))}
+        </div>
+      )}
+
+      {/* Weight indicator */}
+      {card.weightScore != null && card.weightScore > 0.7 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          animation: active ? 'fadeUp .45s .32s both' : 'none',
+        }}>
+          <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)' }}>insights</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>
+            {Math.round(card.weightScore * 100)}% match with your preference
           </span>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

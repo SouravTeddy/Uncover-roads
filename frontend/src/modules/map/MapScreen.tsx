@@ -395,12 +395,13 @@ export function MapScreen() {
           lon: p.lon,
           category: p.category,
           rating: p.rating,
+          photo_ref: p.photo_ref,
         })),
         personaArchetype: personaProfile?.archetype ?? 'explorer',
         engineWeights: null,
       })
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-      dispatch({ type: 'GO_TO', screen: 'route' })
+      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
     } catch (err) {
       console.error('[MapScreen] handleBuild failed:', err)
       setBuildError('Could not build itinerary — try again')
@@ -791,6 +792,8 @@ export function MapScreen() {
                 lon: activePlace.lon,
                 city,
                 category: activePlace.category,
+                photoRef: activePlace.photo_ref ?? null,
+                travelDate: state.travelStartDate ?? null,
               },
             });
           }}

@@ -45,7 +45,7 @@ export function ReelIntroCard({ card, active }: Props) {
         }}>
           {[
             { icon: 'place', label: `${card.totalStops} stops` },
-            { icon: 'wb_sunny', label: card.weather?.condition ?? 'Checking weather' },
+            { icon: 'wb_sunny', label: card.weather?.condition ?? 'Weather loading' },
             { icon: 'person', label: card.persona },
           ].map(pill => (
             <span key={pill.label} style={{

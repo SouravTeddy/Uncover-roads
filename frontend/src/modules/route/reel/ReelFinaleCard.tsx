@@ -54,7 +54,7 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
       </h2>
 
       <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
-        {card.totalStops} stops · Saved to your trips
+        {card.totalStops} stops, all yours
       </p>
 
       <button
@@ -76,7 +76,7 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
       </button>
 
       <p style={{ fontSize: 12, color: 'var(--color-text-3)', textAlign: 'center' }}>
-        Find it in Saved Trips · Tap play to relive it
+        Saved. Come back to it any time.
       </p>
     </div>
   );

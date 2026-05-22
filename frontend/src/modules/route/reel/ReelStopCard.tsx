@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReelStopCard } from './types';
+import { getPlacePhotoUrl } from '../../../shared/api';
 
 interface Props {
   card: ReelStopCard;
@@ -59,6 +60,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
   }
 
   const { stop, stopNumber, totalStops, orderReason, orderConsequence, movedFrom } = card;
+  const imageUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 400) : null);
 
   return (
     <div
@@ -68,8 +70,8 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {stop.imageUrl
-        ? <img src={stop.imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: `translateX(${swipeX * 0.1}px)`, transition: swiping ? 'none' : 'transform .3s ease' }} />
+      {imageUrl
+        ? <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: `translateX(${swipeX * 0.1}px)`, transition: swiping ? 'none' : 'transform .3s ease' }} />
         : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #111114, #1a1420)' }} />
       }
       <div style={{ position: 'absolute', inset: 0, background: GRADIENT }} />
@@ -133,9 +135,9 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
             </div>
           )}
 
-          {stop.localTip && (
+          {(stop.localTip || stop.whyForYou) && (
             <p style={{ fontStyle: 'italic', fontSize: 13, color: 'rgba(255,255,255,.6)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
-              {stop.localTip}
+              {stop.localTip ?? stop.whyForYou}
             </p>
           )}
         </div>

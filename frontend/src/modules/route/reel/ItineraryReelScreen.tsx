@@ -4,9 +4,12 @@ import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
 import { ReelStopCard } from './ReelStopCard';
 import { ReelRecoCard } from './ReelRecoCard';
+import { ReelIntelCard } from './ReelIntelCard';
 import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
+import { ReelSummaryCard } from './ReelSummaryCard';
 import type { ReelCard } from './types';
+import { getPlacePhotoUrl } from '../../../shared/api';
 
 const UNDO_DURATION = 3500;
 
@@ -32,6 +35,14 @@ export function ItineraryReelScreen() {
     personaProfile?.archetype ??
     'Explorer';
 
+  const archetype: string =
+    (activeItinerary as import('../../../shared/types').EngineItinerary | null)?.archetypeSnapshot ??
+    savedItem?.persona?.archetype ??
+    persona?.archetype ??
+    'explorer';
+
+  const existingPlaceIds = state.selectedPlaces.map(p => p.place_id ?? p.id);
+
   const [cards, setCards] = useState<ReelCard[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
@@ -44,8 +55,9 @@ export function ItineraryReelScreen() {
     if (!activeItinerary) return;
     const built = buildReelCards(activeItinerary, journey ?? null, reelSavedId, weather, personaName);
     const filtered = built.filter(c => {
-      if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
-      if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
+      if (c.type === 'stop')  return !removedStopIds.has(c.stop.id);
+      if (c.type === 'reco')  return !removedStopIds.has(c.afterStopId);
+      if (c.type === 'intel') return true;
       return true;
     });
     setCards(filtered);
@@ -61,6 +73,18 @@ export function ItineraryReelScreen() {
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Preload adjacent stop images for instant render
+  useEffect(() => {
+    const preload = (idx: number) => {
+      const card = cards[idx];
+      if (!card || card.type !== 'stop') return;
+      const src = card.stop.imageUrl ?? (card.stop.photoRef ? getPlacePhotoUrl(card.stop.photoRef, 400) : null);
+      if (src) { const img = new Image(); img.src = src; }
+    };
+    preload(activeIdx + 1);
+    preload(activeIdx + 2);
+  }, [activeIdx, cards]);
 
   const handleRemove = useCallback((stopId: string) => {
     const stopCard = cards.find(c => c.type === 'stop' && c.stop.id === stopId);
@@ -114,7 +138,7 @@ export function ItineraryReelScreen() {
     );
   }
 
-  const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit');
+  const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'summary');
   const activeDotIdx = dotCards.findIndex(c => c === cards[activeIdx]);
 
   return (
@@ -133,9 +157,11 @@ export function ItineraryReelScreen() {
       >
         {cards.map((card, idx) => {
           const isActive = idx === activeIdx;
-          if (card.type === 'intro')   return <ReelIntroCard   key={idx}                              card={card} active={isActive} />;
+          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} />;
+          if (card.type === 'summary') return <ReelSummaryCard key="summary"                          card={card} active={isActive} />;
           if (card.type === 'stop')    return <ReelStopCard    key={card.stop.id}                     card={card} active={isActive} onRemove={handleRemove} />;
-          if (card.type === 'reco')    return <ReelRecoCard    key={`reco-${card.afterStopId}`}       card={card} active={isActive} />;
+          if (card.type === 'reco')    return <ReelRecoCard    key={card.id}                          card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
+          if (card.type === 'intel')   return <ReelIntelCard   key={card.id}                          card={card} active={isActive} />;
           if (card.type === 'transit') return <ReelTransitCard key={`transit-${card.from}-${card.to}`} card={card} active={isActive} />;
           if (card.type === 'finale')  return <ReelFinaleCard  key="finale"                           card={card} active={isActive} onSave={handleSave} saved={saved} />;
           return null;
