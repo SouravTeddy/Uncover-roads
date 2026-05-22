@@ -454,7 +454,11 @@ export function MapScreen() {
         <FamousPinsLayer
           places={filteredPlaces.filter(p =>
             !selectedIds.has(p.id) &&
-            !ourPicks.some(pick => pick.place_id === p.id || pick.place_id === p.place_id)
+            !ourPicks.some(pick =>
+              pick.place_id === p.id ||
+              pick.place_id === p.place_id ||
+              pick.name.toLowerCase() === p.title.toLowerCase()
+            )
           )}
           activePlaceId={activePinId}
           discoveryMode="anchor"
@@ -521,8 +525,8 @@ export function MapScreen() {
         {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
       </MapLibreMap>
 
-      {/* Initial load overlay */}
-      <MapLoadingOverlay visible={initialLoading} />
+      {/* Initial load overlay — hide if we already have cached places */}
+      <MapLoadingOverlay visible={initialLoading && places.length === 0} />
 
       {/* Map status — loading / zoomed-out indicator (hidden during initial overlay) */}
       <MapStatusIndicator status={initialLoading ? 'idle' : mapStatus} />

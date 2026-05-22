@@ -145,12 +145,6 @@ export function computeAnalysisInsights(
         linkLabel: 'check hours',
       })
     }
-  } else if (details?.open_now !== undefined) {
-    if (details.open_now) {
-      insights.push({ text: 'Open now', state: 'green' })
-    } else {
-      insights.push({ text: 'Closed now', state: 'red' })
-    }
   }
 
   // 2. Trend velocity
