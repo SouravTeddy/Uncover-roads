@@ -13,6 +13,7 @@ import type {
   NearbyResult,
   EngineWeights,
   EngineItinerary,
+  ReelRecoPlace,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
@@ -269,6 +270,7 @@ export const api = {
       lon: number
       category: string
       rating?: number
+      photo_ref?: string
     }>
     personaArchetype: string
     engineWeights: EngineWeights | null
@@ -283,6 +285,42 @@ export const api = {
     persona: string
   }) =>
     post<EngineItinerary>('/api/surprise-me', body),
+
+  reelReco: async (params: {
+    lat: number
+    lon: number
+    trigger: string
+    archetype: string
+    existingPlaceIds: string[]
+  }): Promise<ReelRecoPlace[]> => {
+    try {
+      const data = await post<{ places: Array<{
+        place_id: string; name: string; lat: number; lon: number
+        category: string; rating: number | null; price_level: number | null
+        distance_m: number; affinity_score: number; match_reasons: string[]
+      }> }>('/reel-reco', {
+        lat: params.lat,
+        lon: params.lon,
+        trigger: params.trigger,
+        archetype: params.archetype,
+        existing_place_ids: params.existingPlaceIds,
+      });
+      return (data.places ?? []).map(p => ({
+        placeId:       p.place_id,
+        name:          p.name,
+        lat:           p.lat,
+        lon:           p.lon,
+        category:      p.category,
+        rating:        p.rating,
+        priceLevel:    p.price_level,
+        distanceM:     p.distance_m,
+        affinityScore: p.affinity_score,
+        matchReasons:  p.match_reasons,
+      }));
+    } catch {
+      return [];
+    }
+  },
 
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),

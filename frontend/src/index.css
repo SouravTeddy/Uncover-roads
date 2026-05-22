@@ -248,6 +248,11 @@ html, body {
   100% { transform: translateY(0);    opacity: 1; }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 0.25; }
+}
+
 @keyframes titleReveal {
   0%   { transform: translateY(48px) skewY(2deg); opacity: 0; }
   100% { transform: translateY(0)    skewY(0deg); opacity: 1; }
