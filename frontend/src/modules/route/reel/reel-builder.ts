@@ -175,29 +175,18 @@ function buildPersonaRecos(
 
 // ── Intel cards from engine messages ─────────────────────────
 
-function buildIntelCards(day: EngineItineraryDay): ReelIntelCard[] {
+function buildIntelCards(day: EngineItineraryDay, anchorImageUrl: string | null): ReelIntelCard[] {
   if (!day.messages?.length) return [];
 
-  return day.messages.map(msg => {
-    const INTEL_MAP: Record<string, { headline: string; detail: string }> = {
-      swap:        { headline: msg.what, detail: msg.why },
-      insert:      { headline: msg.what, detail: msg.why },
-      resequence:  { headline: msg.what, detail: msg.why },
-      weather:     { headline: msg.what, detail: msg.why },
-      transit:     { headline: msg.what, detail: msg.why },
-      advisory:    { headline: msg.what, detail: msg.why },
-      event:       { headline: msg.what, detail: msg.why },
-    };
-    const text = INTEL_MAP[msg.type] ?? { headline: msg.what, detail: msg.why };
-    return {
-      type: 'intel' as const,
-      id: msg.id,
-      messageType: msg.type as ReelIntelCard['messageType'],
-      headline: text.headline,
-      detail: text.detail,
-      afterStopId: null,
-    };
-  });
+  return day.messages.map(msg => ({
+    type: 'intel' as const,
+    id: msg.id,
+    messageType: msg.type as ReelIntelCard['messageType'],
+    headline: msg.what,
+    detail: `${msg.why}${msg.consequence ? ' · ' + msg.consequence : ''}`,
+    afterStopId: null,
+    imageUrl: anchorImageUrl,
+  }));
 }
 
 // ── Main builder ─────────────────────────────────────────────
@@ -275,28 +264,29 @@ export function buildReelCards(
       }
     }
 
-    // Intel cards at the start of each day (engine decisions for this day)
-    const intelCards = buildIntelCards(day);
-    cards.push(...intelCards);
+    // Sort stops chronologically — engine may return them out of order
+    const sortedStops = [...day.stops].sort(
+      (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
+    );
 
-    // Build all reco cards for this day keyed by afterStopId
-    const mealRecos = buildMealRecos(day.stops, persona, day.city);
-    const personaRecos = buildPersonaRecos(day.stops, persona, day.city, weights);
+    // Build reco cards keyed by afterStopId
+    const mealRecos = buildMealRecos(sortedStops, persona, day.city);
+    const personaRecos = buildPersonaRecos(sortedStops, persona, day.city, weights);
     const allRecos = [...mealRecos, ...personaRecos];
 
-    // Group by afterStopId (multiple recos can follow the same stop)
     const recosByStop = new Map<string, ReelRecoCard[]>();
     for (const reco of allRecos) {
       const existing = recosByStop.get(reco.afterStopId) ?? [];
-      // Deduplicate by trigger
-      if (!existing.some(r => r.trigger === reco.trigger)) {
-        existing.push(reco);
-      }
+      if (!existing.some(r => r.trigger === reco.trigger)) existing.push(reco);
       recosByStop.set(reco.afterStopId, existing);
     }
 
-    for (const stop of day.stops) {
+    for (const stop of sortedStops) {
       globalStopNumber += 1;
+
+      // Resolve stop image for intel card background
+      const stopImageUrl = stop.imageUrl
+        ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 600) : null);
 
       const stopCard: ReelStopCard = {
         type: 'stop',
@@ -311,7 +301,24 @@ export function buildReelCards(
 
       const recos = recosByStop.get(stop.id);
       if (recos) cards.push(...recos);
+
+      // Intel cards that reference this stop (by matching stop title in headline)
+      const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
+        ic => ic.headline.toLowerCase().includes(stop.title.toLowerCase()),
+      );
+      cards.push(...stopIntelCards);
     }
+
+    // Remaining intel cards not matched to a specific stop — push after all stops
+    const lastStop = sortedStops.at(-1);
+    const lastStopImage = lastStop
+      ? (lastStop.imageUrl ?? (lastStop.photoRef ? getPlacePhotoUrl(lastStop.photoRef, 600) : null))
+      : null;
+    const allIntelIds = new Set(cards.filter(c => c.type === 'intel').map(c => (c as ReelIntelCard).id));
+    const unplacedIntel = buildIntelCards(day, lastStopImage).filter(
+      ic => !allIntelIds.has(ic.id),
+    );
+    cards.push(...unplacedIntel);
   }
 
   cards.push({

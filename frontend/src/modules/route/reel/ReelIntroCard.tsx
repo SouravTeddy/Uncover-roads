@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReelIntroCard } from './types';
+import { WeatherCanvas } from '../WeatherCanvas';
 
 interface Props {
   card: ReelIntroCard;
@@ -82,6 +83,8 @@ export function ReelIntroCard({ card, active, onAddDetail }: Props) {
         ? <img src={card.imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0c0c0e, #1a1420)' }} />
       }
+      {/* Weather particle layer — rendered above photo, below gradient */}
+      {card.weather && <WeatherCanvas condition={card.weather.condition} />}
       <div style={{ position: 'absolute', inset: 0, background: GRADIENT }} />
 
       {/* Add detail button — top right */}

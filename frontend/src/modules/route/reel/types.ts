@@ -60,7 +60,8 @@ export interface ReelIntelCard {
   messageType: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'evening' | 'culture';
   headline: string;
   detail: string;
-  afterStopId: string | null; // null = placed at day start
+  afterStopId: string | null;
+  imageUrl: string | null; // background image from the anchor stop
 }
 
 export interface ReelTransitCard {
