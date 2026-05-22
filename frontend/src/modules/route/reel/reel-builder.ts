@@ -8,7 +8,7 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────
 
