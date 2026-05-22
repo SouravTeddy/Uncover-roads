@@ -2,15 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ReelIntroCard } from './types';
 import { WeatherCanvas } from '../WeatherCanvas';
 import { useAppStore } from '../../../shared/store';
-import type { StartType } from '../../../shared/types';
-
-const START_TYPES: { value: StartType; icon: string; label: string }[] = [
-  { value: 'hotel',   icon: 'hotel',            label: 'Hotel' },
-  { value: 'airport', icon: 'flight_land',      label: 'Airport' },
-  { value: 'station', icon: 'train',            label: 'Station' },
-  { value: 'airbnb',  icon: 'home',             label: 'Airbnb' },
-  { value: 'pin',     icon: 'location_on',      label: 'Custom' },
-];
+import { OriginInputSheet } from '../../journey/OriginInputSheet';
+import type { OriginPlace } from '../../../shared/types';
 
 interface Props {
   card: ReelIntroCard;
@@ -75,11 +68,9 @@ function WeatherIcon({ condition }: { condition: string }) {
 }
 
 export function ReelIntroCard({ card, active }: Props) {
-  const { state, dispatch } = useAppStore();
+  const { state } = useAppStore();
   const [visible, setVisible] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [startType, setStartType] = useState<StartType>(state.tripContext.startType);
-  const [arrivalTime, setArrivalTime] = useState(state.tripContext.arrivalTime ?? '');
 
   useEffect(() => {
     if (active) {
@@ -89,11 +80,7 @@ export function ReelIntroCard({ card, active }: Props) {
     setVisible(false);
   }, [active]);
 
-  function handleSave() {
-    dispatch({
-      type: 'SET_TRIP_CONTEXT',
-      ctx: { startType, arrivalTime: arrivalTime || null },
-    });
+  function handleOriginDone(_origin: OriginPlace | null) {
     setSheetOpen(false);
   }
 
@@ -116,106 +103,30 @@ export function ReelIntroCard({ card, active }: Props) {
           position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', right: 14,
           display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '7px 12px', borderRadius: 999,
-          background: state.tripContext.arrivalTime
+          background: state.journey?.some(l => l.type === 'origin')
             ? 'rgba(212,168,83,.18)' : 'rgba(255,255,255,.12)',
           backdropFilter: 'blur(8px)',
-          border: state.tripContext.arrivalTime
+          border: state.journey?.some(l => l.type === 'origin')
             ? '1px solid rgba(212,168,83,.35)' : '1px solid rgba(255,255,255,.18)',
           fontSize: 11, fontWeight: 600,
-          color: state.tripContext.arrivalTime ? '#d4a853' : 'rgba(255,255,255,.85)',
+          color: state.journey?.some(l => l.type === 'origin') ? '#d4a853' : 'rgba(255,255,255,.85)',
           cursor: 'pointer',
         }}
       >
         <span className="ms" style={{ fontSize: 13 }}>
-          {state.tripContext.arrivalTime ? 'schedule' : 'edit'}
+          {state.journey?.some(l => l.type === 'origin') ? 'hotel' : 'edit'}
         </span>
-        {state.tripContext.arrivalTime
-          ? `Arriving ${state.tripContext.arrivalTime}`
+        {state.journey?.some(l => l.type === 'origin')
+          ? 'Starting point set'
           : 'Add arrival details'}
       </button>
 
-      {/* Trip details sheet */}
+      {/* Origin input sheet — approved design from OriginInputSheet */}
       {sheetOpen && (
-        <div
-          onClick={() => setSheetOpen(false)}
-          style={{
-            position: 'absolute', inset: 0, zIndex: 50,
-            background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'flex-end',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', borderRadius: '20px 20px 0 0',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderBottom: 'none',
-              padding: '20px 20px 44px',
-            }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)', margin: '0 auto 20px' }} />
-
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 600, color: 'var(--color-text-1)', marginBottom: 4 }}>
-              Your arrival in {card.city}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--color-text-3)', marginBottom: 20 }}>
-              Helps us schedule the right stops at the right time
-            </p>
-
-            {/* Start type selector */}
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 10 }}>
-              Where are you arriving from?
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              {START_TYPES.map(({ value, icon, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setStartType(value)}
-                  style={{
-                    flex: 1, padding: '10px 4px', borderRadius: 12, border: 'none',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                    background: startType === value ? 'var(--color-primary-bg)' : 'var(--color-bg)',
-                    outline: startType === value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    cursor: 'pointer', transition: 'background .15s, outline .15s',
-                  }}
-                >
-                  <span className="ms fill" style={{ fontSize: 18, color: startType === value ? 'var(--color-primary)' : 'var(--color-text-3)' }}>{icon}</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: startType === value ? 'var(--color-primary-text)' : 'var(--color-text-4)', letterSpacing: '.04em', textTransform: 'uppercase' }}>{label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Arrival time */}
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 8 }}>
-              {startType === 'hotel' ? 'Check-in time' : startType === 'airport' ? 'Landing time' : startType === 'station' ? 'Arrival time' : 'Start time'}
-            </p>
-            <input
-              type="time"
-              value={arrivalTime}
-              onChange={e => setArrivalTime(e.target.value)}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 10, marginBottom: 18,
-                background: 'var(--color-bg)', border: '1px solid var(--color-border-m)',
-                color: 'var(--color-text-1)', fontSize: 16, fontFamily: 'var(--font-sans)',
-                outline: 'none',
-              }}
-            />
-
-            <button
-              onClick={handleSave}
-              style={{
-                width: '100%', padding: '13px', borderRadius: 12, border: 'none',
-                background: 'var(--color-primary)',
-                color: '#0f0d0c',
-                fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Save arrival details
-            </button>
-          </div>
-        </div>
+        <OriginInputSheet
+          onDone={handleOriginDone}
+          onClose={() => setSheetOpen(false)}
+        />
       )}
 
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px' }}>

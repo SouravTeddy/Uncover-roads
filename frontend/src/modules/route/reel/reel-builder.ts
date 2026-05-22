@@ -8,7 +8,7 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -60,10 +60,14 @@ function buildMealRecos(
   for (const window of REC_RULES.MEAL_WINDOWS) {
     if (hasMealInWindow(stops, window.start, window.end)) continue;
 
-    const hasStopAtOrAfterWindow = stops.some(
-      s => timeToMinutes(s.time) >= timeToMinutes(window.start),
-    );
-    if (!hasStopAtOrAfterWindow) continue;
+    // For lunch, require there's activity at or after the window (day reaches lunch time)
+    // For dinner, always surface it if day has any stops — dinner is always relevant
+    if (window.type === 'lunch') {
+      const hasStopAtOrAfterWindow = stops.some(
+        s => timeToMinutes(s.time) >= timeToMinutes(window.start),
+      );
+      if (!hasStopAtOrAfterWindow) continue;
+    }
 
     const beforeWindow = stops
       .filter(s => timeToMinutes(s.time) < timeToMinutes(window.start))
@@ -97,6 +101,11 @@ function buildMealRecos(
 
 // ── Persona-weight reco cards (deterministic templates) ───────
 
+// Archetypes that strongly care about each reco type — threshold drops to 0 for these
+const CULTURE_ARCHETYPES  = ['slowscholar', 'aesthete', 'historian'];
+const EVENING_ARCHETYPES  = ['nightcreature', 'pulse'];
+const REST_ARCHETYPES     = ['ritualseeker', 'flaneur'];
+
 function buildPersonaRecos(
   stops: EngineItineraryStop[],
   persona: string,
@@ -106,11 +115,13 @@ function buildPersonaRecos(
   const recos: ReelRecoCard[] = [];
   if (stops.length === 0) return recos;
 
+  const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
   const lastStop = stops.at(-1)!;
   const lastEndMin = timeToMinutes(lastStop.time) + lastStop.durationMin;
 
-  // Evening: nightlife weight > 0.65, day wraps before 21:00
-  if (weights.w_nightlife > 0.65 && lastEndMin < 21 * 60) {
+  // Evening: nightlife weight > 0.55 (or archetype match), day wraps before 21:00
+  const eveningThreshold = EVENING_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
+  if (weights.w_nightlife >= eveningThreshold && lastEndMin < 21 * 60) {
     recos.push({
       type: 'reco',
       id: `evening-${lastStop.id}`,
@@ -126,8 +137,9 @@ function buildPersonaRecos(
     });
   }
 
-  // Culture: culture depth > 0.65, no museum/gallery/historic in day
-  if (weights.w_culture_depth > 0.65) {
+  // Culture: culture depth > 0.55 (or archetype match), no museum/gallery/historic in day
+  const cultureThreshold = CULTURE_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
+  if (weights.w_culture_depth >= cultureThreshold) {
     const hasCulture = stops.some(s =>
       s.category === 'museum' || s.category === 'gallery' || s.category === 'historic',
     );
@@ -149,17 +161,18 @@ function buildPersonaRecos(
     }
   }
 
-  // Rest: rest need > 0.70, 4+ consecutive stops with no cafe break
-  if (weights.w_rest_need > 0.7 && stops.length >= 4) {
+  // Rest: rest need > 0.55 (or archetype match), 3+ stops with no cafe break
+  const restThreshold = REST_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
+  if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
     const hasCafeBreak = stops.some(s => s.category === 'cafe');
     if (!hasCafeBreak) {
-      const midStop = stops[1];
+      const midStop = stops[1] ?? stops[0];
       recos.push({
         type: 'reco',
         id: `rest-${midStop.id}`,
         trigger: 'rest',
-        label: `${stops.length} consecutive stops, no break scheduled`,
-        consequence: `Nothing in between them.`,
+        label: `${stops.length} stops, no break scheduled`,
+        consequence: 'A cafe or rest spot nearby could fit in here.',
         nearbyCity: city,
         persona,
         afterStopId: midStop.id,
@@ -231,6 +244,16 @@ export function buildReelCards(
     persona,
     engineChanges,
   });
+
+  // "Before you go" summary card — always shown, gives full trip overview + engine changes
+  const summaryCard: ReelSummaryCard = {
+    type: 'summary',
+    totalDays: itinerary.days.length,
+    totalStops: stopCount,
+    persona,
+    engineChanges,
+  };
+  cards.push(summaryCard);
 
   let globalStopNumber = 0;
 
