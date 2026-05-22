@@ -24,6 +24,7 @@ from engine.builder import build_itinerary
 from engine.types import EngineStop, EngineContext
 from city.data_model import load_city, CityData
 from city.sync_job import start_scheduler as _start_sync_scheduler
+from city.persona_affinity import get_persona_affinity
 from pydantic import BaseModel
 
 load_dotenv()
@@ -96,6 +97,7 @@ class EngineItineraryPlace(BaseModel):
     lon: float
     category: str
     rating: Optional[float] = None
+    photo_ref: Optional[str] = None
 
 
 class EngineItineraryPayload(BaseModel):
@@ -2347,6 +2349,137 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
     return RedirectResponse(url=url, status_code=302)
 
 
+# ── Reel Recommendations ─────────────────────────────────────────────────────
+
+_TRIGGER_TYPES: dict[str, list[str]] = {
+    "lunch":   ["restaurant", "food"],
+    "dinner":  ["restaurant", "bar"],
+    "evening": ["bar", "night_club"],
+    "culture": ["museum", "art_gallery"],
+    "rest":    ["cafe", "coffee_shop"],
+}
+
+_TRIGGER_RADIUS: dict[str, int] = {
+    "lunch":   600,
+    "dinner":  800,
+    "evening": 1000,
+    "culture": 1000,
+    "rest":    400,
+}
+
+def _reel_match_reasons(affinity: float, rating: float | None, distance_m: int, price_level: int | None) -> list[str]:
+    reasons = []
+    if distance_m < 250:
+        reasons.append("3-min walk")
+    elif distance_m < 450:
+        reasons.append("5-min walk")
+    elif distance_m < 800:
+        reasons.append("10-min walk")
+    if affinity >= 0.85:
+        reasons.append("Strong match for your taste")
+    elif affinity >= 0.65:
+        reasons.append("Fits your style")
+    if rating is not None:
+        if rating >= 4.5:
+            reasons.append(f"Rated {rating}")
+        elif rating >= 4.0:
+            reasons.append(f"Rated {rating}")
+    if price_level is not None:
+        if price_level <= 2:
+            reasons.append("Budget-friendly")
+        elif price_level == 4:
+            reasons.append("Upscale")
+    return reasons[:3]
+
+
+class ReelRecoRequest(BaseModel):
+    lat: float
+    lon: float
+    trigger: str
+    archetype: str
+    existing_place_ids: list[str] = []
+    radius: int = 600
+
+
+@app.post("/reel-reco")
+def reel_reco(body: ReelRecoRequest, request: Request, response: Response):
+    """Persona-scored nearby recommendations for reel reco cards. No LLM."""
+    if not GOOGLE_PLACES_API_KEY:
+        return {"places": []}
+
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    response.headers["Cache-Control"] = "max-age=300"
+
+    google_types = _TRIGGER_TYPES.get(body.trigger, ["restaurant"])
+    radius = _TRIGGER_RADIUS.get(body.trigger, body.radius)
+    archetype = body.archetype.lower()
+
+    seen_ids: set[str] = set(body.existing_place_ids)
+    candidates: list[dict] = []
+
+    for gtype in google_types:
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                params={
+                    "location": f"{body.lat},{body.lon}",
+                    "radius": radius,
+                    "type": gtype,
+                    "key": GOOGLE_PLACES_API_KEY,
+                },
+                timeout=5,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get("status") not in ("OK", "ZERO_RESULTS"):
+                continue
+            for place in data.get("results", [])[:8]:
+                pid = place.get("place_id", "")
+                if pid in seen_ids:
+                    continue
+                seen_ids.add(pid)
+                loc = place.get("geometry", {}).get("location", {})
+                plat, plon = loc.get("lat", 0.0), loc.get("lng", 0.0)
+                dlat = math.radians(plat - body.lat)
+                dlon = math.radians(plon - body.lon)
+                a = (math.sin(dlat / 2) ** 2
+                     + math.cos(math.radians(body.lat))
+                     * math.cos(math.radians(plat))
+                     * math.sin(dlon / 2) ** 2)
+                dist_m = int(6371000 * 2 * math.asin(math.sqrt(a)))
+                rating = place.get("rating")
+                price_level = place.get("price_level")
+                primary_type = (place.get("types") or [gtype])[0]
+                affinity = get_persona_affinity(primary_type).get(archetype, 0.5)
+                rating_norm = (min(float(rating), 5.0) / 5.0) if rating is not None else 0.5
+                dist_norm = max(0.0, 1.0 - dist_m / (radius * 1.5))
+                score = affinity * 0.5 + rating_norm * 0.3 + dist_norm * 0.2
+                candidates.append({
+                    "place_id":    pid,
+                    "name":        place.get("name", ""),
+                    "lat":         plat,
+                    "lon":         plon,
+                    "category":    gtype,
+                    "rating":      rating,
+                    "price_level": price_level,
+                    "distance_m":  dist_m,
+                    "affinity_score": round(affinity, 3),
+                    "match_reasons": _reel_match_reasons(affinity, rating, dist_m, price_level),
+                    "_score":      score,
+                })
+        except Exception:
+            continue
+
+    candidates.sort(key=lambda x: x["_score"], reverse=True)
+    for c in candidates:
+        c.pop("_score", None)
+
+    return {"places": candidates[:4]}
+
+
 @app.get("/nearby")
 def nearby(
     request: Request,
@@ -2497,14 +2630,49 @@ async def build_itinerary_endpoint(
 # ── Frontend-facing build itinerary endpoint ─────────────────────────────────
 
 _ARCHETYPE_PERSONA: dict[str, dict] = {
-    "explorer":      {"archetype": "explorer",      "arrival_time": "09:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
-    "wanderer":      {"archetype": "wanderer",      "arrival_time": "10:00", "day_buffer_min": 40, "weights": {"w_walk_affinity": 0.8, "w_scenic": 0.7, "w_efficiency": 0.3, "w_food_density": 0.6, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.7, "w_spontaneity": 0.8, "w_rest_need": 0.5}},
-    "historian":     {"archetype": "historian",     "arrival_time": "09:00", "day_buffer_min": 25, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.6, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.4, "w_spontaneity": 0.3, "w_rest_need": 0.4}},
-    "epicurean":     {"archetype": "epicurean",     "arrival_time": "10:00", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.5, "w_food_density": 0.9, "w_culture_depth": 0.5, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.4, "w_spontaneity": 0.5, "w_rest_need": 0.3}},
-    "pulse":         {"archetype": "pulse",         "arrival_time": "10:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.6, "w_culture_depth": 0.4, "w_nightlife": 0.9, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.7, "w_rest_need": 0.3}},
-    "slowtraveller": {"archetype": "slowtraveller", "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.7, "w_efficiency": 0.2, "w_food_density": 0.6, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.6, "w_spontaneity": 0.6, "w_rest_need": 0.7}},
-    "voyager":       {"archetype": "voyager",       "arrival_time": "08:00", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.9, "w_food_density": 0.4, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.3, "w_spontaneity": 0.3, "w_rest_need": 0.3}},
+    # ── Legacy archetypes ──────────────────────────────────────────────────────
+    "explorer":           {"archetype": "explorer",           "arrival_time": "09:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
+    "wanderer":           {"archetype": "wanderer",           "arrival_time": "10:00", "day_buffer_min": 40, "weights": {"w_walk_affinity": 0.8, "w_scenic": 0.7, "w_efficiency": 0.3, "w_food_density": 0.6, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.7, "w_spontaneity": 0.8, "w_rest_need": 0.5}},
+    "historian":          {"archetype": "historian",          "arrival_time": "09:00", "day_buffer_min": 25, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.6, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.4, "w_spontaneity": 0.3, "w_rest_need": 0.4}},
+    "epicurean":          {"archetype": "epicurean",          "arrival_time": "10:00", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.5, "w_food_density": 0.9, "w_culture_depth": 0.5, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.4, "w_spontaneity": 0.5, "w_rest_need": 0.3}},
+    "pulse":              {"archetype": "pulse",              "arrival_time": "10:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.6, "w_culture_depth": 0.4, "w_nightlife": 0.9, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.7, "w_rest_need": 0.3}},
+    "slowtraveller":      {"archetype": "slowtraveller",      "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.7, "w_efficiency": 0.2, "w_food_density": 0.6, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.6, "w_spontaneity": 0.6, "w_rest_need": 0.7}},
+    "voyager":            {"archetype": "voyager",            "arrival_time": "08:00", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.9, "w_food_density": 0.4, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.3, "w_spontaneity": 0.3, "w_rest_need": 0.3}},
+    # ── New frontend archetypes ────────────────────────────────────────────────
+    "flaneur":            {"archetype": "flaneur",            "arrival_time": "10:00", "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.9, "w_scenic": 0.8, "w_efficiency": 0.2, "w_food_density": 0.5, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.8, "w_spontaneity": 0.9, "w_rest_need": 0.5}},
+    "gastronaut":         {"archetype": "gastronaut",         "arrival_time": "10:30", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.95, "w_culture_depth": 0.4, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.3, "w_spontaneity": 0.6, "w_rest_need": 0.3}},
+    "slowscholar":        {"archetype": "slowscholar",        "arrival_time": "09:30", "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.5, "w_efficiency": 0.2, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.3, "w_rest_need": 0.75}},
+    "neighbourhoodlocal": {"archetype": "neighbourhoodlocal", "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.85, "w_scenic": 0.6, "w_efficiency": 0.2, "w_food_density": 0.7, "w_culture_depth": 0.4, "w_nightlife": 0.3, "w_budget_sensitivity": 0.6, "w_crowd_aversion": 0.85, "w_spontaneity": 0.7, "w_rest_need": 0.5}},
+    "efficientexplorer":  {"archetype": "efficientexplorer",  "arrival_time": "08:30", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.55, "w_scenic": 0.55, "w_efficiency": 0.9, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.3, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.3, "w_spontaneity": 0.4, "w_rest_need": 0.25}},
+    "aesthete":           {"archetype": "aesthete",           "arrival_time": "09:30", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.9, "w_efficiency": 0.35, "w_food_density": 0.45, "w_culture_depth": 0.85, "w_nightlife": 0.25, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.6, "w_spontaneity": 0.5, "w_rest_need": 0.4}},
+    "nightcreature":      {"archetype": "nightcreature",      "arrival_time": "11:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.3, "w_efficiency": 0.4, "w_food_density": 0.65, "w_culture_depth": 0.3, "w_nightlife": 0.95, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.85, "w_rest_need": 0.35}},
+    "ritualseeker":       {"archetype": "ritualseeker",       "arrival_time": "09:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.65, "w_scenic": 0.6, "w_efficiency": 0.3, "w_food_density": 0.55, "w_culture_depth": 0.75, "w_nightlife": 0.2, "w_budget_sensitivity": 0.45, "w_crowd_aversion": 0.6, "w_spontaneity": 0.2, "w_rest_need": 0.8}},
 }
+
+
+_WHY_FOR_YOU: dict[str, tuple[str, str]] = {
+    "museum":     ("w_culture_depth",  "Well-regarded in this area. Sits naturally in your route."),
+    "gallery":    ("w_culture_depth",  "One of the better-rated galleries nearby."),
+    "historic":   ("w_culture_depth",  "Significant site — often skipped, rarely regretted."),
+    "restaurant": ("w_food_density",   "Well-rated and fits the timing of your day."),
+    "cafe":       ("w_rest_need",      "Six consecutive stops with nothing in between."),
+    "park":       ("w_scenic",         "Good open space at this point in the route."),
+    "viewpoint":  ("w_scenic",         "High vantage point — clear views from here."),
+    "nightlife":  ("w_nightlife",      "Active later in the evening. Fits where your day ends."),
+    "bar":        ("w_nightlife",      "Well-reviewed. Good spot for this time of day."),
+    "shopping":   ("w_spontaneity",    "Lively area — good for a wander between stops."),
+    "market":     ("w_spontaneity",    "Best earlier in the day before it fills up."),
+    "beach":      ("w_scenic",         "Open stretch at a natural break in your route."),
+    "spa":        ("w_rest_need",      "Scheduled after a long stretch of stops."),
+}
+
+
+def _why_for_you(category: str, weights: dict) -> str:
+    cfg = _WHY_FOR_YOU.get(category)
+    if not cfg:
+        return ""
+    weight_key, phrase = cfg
+    return phrase if weights.get(weight_key, 0.5) >= 0.6 else ""
 
 
 @app.post("/engine-itinerary")
@@ -2561,6 +2729,14 @@ async def engine_itinerary(body: EngineItineraryPayload):
 
     now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
+    # Build lookup: place_id → photo_ref (from submitted places)
+    _photo_ref_lookup: dict[str, str] = {
+        p.place_id or p.id: p.photo_ref
+        for p in body.selectedPlaces
+        if p.photo_ref
+    }
+    weights_for_why = persona.get("weights", {})
+
     all_messages = [
         {
             "id": str(uuid.uuid4()),
@@ -2602,11 +2778,11 @@ async def engine_itinerary(body: EngineItineraryPayload):
                     "priceLevel": None,
                     "rating": s.rating if s.rating != 4.0 else None,
                     "weekdayText": None,
-                    "whyForYou": "",
+                    "whyForYou": _why_for_you(s.category, weights_for_why),
                     "localTip": None,
                     "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                     "website": None,
-                    "photoRef": None,
+                    "photoRef": _photo_ref_lookup.get(s.place_id or "", None),
                     "tags": s.tags or [],
                 }
                 for s in day.stops
