@@ -38,7 +38,6 @@ export function ReelSummaryCard({ card, active }: Props) {
   }, [active]);
 
   const { totalDays, totalStops, engineChanges } = card;
-  const totalChanges = engineChanges.reduce((s, c) => s + c.count, 0);
 
   return (
     <div
