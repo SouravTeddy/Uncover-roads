@@ -13,6 +13,17 @@ import { getPlacePhotoUrl } from '../../../shared/api';
 
 const UNDO_DURATION = 3500;
 
+function preloadImages(srcs: string[]): Promise<void> {
+  if (srcs.length === 0) return Promise.resolve();
+  return Promise.all(
+    srcs.map(src => new Promise<void>(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = () => resolve();
+      img.src = src;
+    })),
+  ).then(() => undefined);
+}
+
 export function ItineraryReelScreen() {
   const { state, dispatch } = useAppStore();
   const {
@@ -48,11 +59,13 @@ export function ItineraryReelScreen() {
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
   const [undoPending, setUndoPending] = useState<{ id: string; label: string } | null>(null);
   const [saved, setSaved] = useState(!!savedItem);
+  const [imagesReady, setImagesReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!activeItinerary) return;
+    setImagesReady(false);
     const built = buildReelCards(activeItinerary, journey ?? null, reelSavedId, weather, personaName);
     const filtered = built.filter(c => {
       if (c.type === 'stop')  return !removedStopIds.has(c.stop.id);
@@ -61,6 +74,20 @@ export function ItineraryReelScreen() {
       return true;
     });
     setCards(filtered);
+
+    // Collect all image URLs from stop and intro cards, then preload before revealing
+    const srcs: string[] = [];
+    for (const c of filtered) {
+      if (c.type === 'stop') {
+        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 400) : null);
+        if (url) srcs.push(url);
+      } else if (c.type === 'intro' && c.imageUrl) {
+        srcs.push(c.imageUrl);
+      } else if (c.type === 'intel' && c.imageUrl) {
+        srcs.push(c.imageUrl);
+      }
+    }
+    preloadImages(srcs).then(() => setImagesReady(true));
   }, [activeItinerary, journey, weather, personaName, removedStopIds, reelSavedId]);
 
   useEffect(() => {
@@ -74,17 +101,6 @@ export function ItineraryReelScreen() {
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Preload adjacent stop images for instant render
-  useEffect(() => {
-    const preload = (idx: number) => {
-      const card = cards[idx];
-      if (!card || card.type !== 'stop') return;
-      const src = card.stop.imageUrl ?? (card.stop.photoRef ? getPlacePhotoUrl(card.stop.photoRef, 400) : null);
-      if (src) { const img = new Image(); img.src = src; }
-    };
-    preload(activeIdx + 1);
-    preload(activeIdx + 2);
-  }, [activeIdx, cards]);
 
   const handleRemove = useCallback((stopId: string) => {
     const stopCard = cards.find(c => c.type === 'stop' && c.stop.id === stopId);
@@ -130,10 +146,11 @@ export function ItineraryReelScreen() {
     setSaved(true);
   }, [saved, activeItinerary, city, dispatch, state, persona]);
 
-  if (!activeItinerary) {
+  if (!activeItinerary || !imagesReady) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span className="ms" style={{ fontSize: 32, color: 'var(--color-text-4)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <span className="ms" style={{ fontSize: 36, color: 'rgba(212,168,83,.6)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,.35)', letterSpacing: '.04em' }}>Preparing your trip</p>
       </div>
     );
   }
