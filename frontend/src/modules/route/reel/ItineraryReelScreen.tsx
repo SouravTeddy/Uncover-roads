@@ -174,7 +174,7 @@ export function ItineraryReelScreen() {
       >
         {cards.map((card, idx) => {
           const isActive = idx === activeIdx;
-          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} onAddDetail={() => dispatch({ type: 'GO_BACK' })} />;
+          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} />;
           if (card.type === 'summary') return <ReelSummaryCard key="summary"                          card={card} active={isActive} />;
           if (card.type === 'stop')    return <ReelStopCard    key={card.stop.id}                     card={card} active={isActive} onRemove={handleRemove} />;
           if (card.type === 'reco')    return <ReelRecoCard    key={card.id}                          card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
