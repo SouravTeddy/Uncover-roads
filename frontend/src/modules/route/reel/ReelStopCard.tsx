@@ -9,8 +9,6 @@ interface Props {
   onRemove: (stopId: string) => void;
 }
 
-const GRADIENT = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,.04) 35%, rgba(0,0,0,.52) 60%, rgba(0,0,0,.88) 80%, rgba(0,0,0,.97) 100%)';
-
 const REASON_ICONS: Record<string, string> = {
   opening_hours: 'schedule',
   golden_hour:   'wb_sunny',
