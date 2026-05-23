@@ -8,7 +8,7 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard, ReelDayDividerCard } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -47,6 +47,46 @@ const DEFAULT_WEIGHTS: EngineWeights = {
   w_spontaneity: 0.5,
   w_rest_need: 0.5,
 };
+
+// ── Geo helpers ───────────────────────────────────────────────
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Returns the earliest closing minute across all weekday entries, or null if unparseable.
+// Regex targets "– 6:00 PM" style (Google Places format).
+function parseEarliestClosingMinute(weekdayText: string[] | null): number | null {
+  if (!weekdayText?.length) return null;
+  let earliest: number | null = null;
+  for (const entry of weekdayText) {
+    const match = entry.match(/–\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) continue;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const period = match[3].toUpperCase();
+    if (period === 'PM' && h !== 12) h += 12;
+    if (period === 'AM' && h === 12) h = 0;
+    const totalMin = h * 60 + m;
+    if (earliest === null || totalMin < earliest) earliest = totalMin;
+  }
+  return earliest;
+}
+
+const OUTDOOR_CATEGORIES = new Set([
+  'park', 'viewpoint', 'beach', 'market', 'street_art', 'amusement_park', 'zoo',
+]);
+const BAD_WEATHER_CONDITIONS = new Set([
+  'rain', 'drizzle', 'storm', 'thunderstorm', 'snow', 'sleet', 'hail', 'blizzard', 'fog',
+]);
 
 // ── Meal reco cards (existing logic) ─────────────────────────
 
@@ -183,7 +223,101 @@ function buildPersonaRecos(
     }
   }
 
+  // TODO (crowd_peak): when Popular Times data is available on EngineItineraryStop,
+  // add a trigger here: if stop.popularTimes shows a peak hour overlapping stop.time,
+  // and w_crowd_aversion > 0.55, push a 'crowd_peak' reco suggesting an off-peak visit.
+
   return recos;
+}
+
+// ── Weather reco cards ────────────────────────────────────────
+
+function buildWeatherReco(
+  stops: EngineItineraryStop[],
+  weather: WeatherData | null,
+  persona: string,
+  city: string,
+): ReelRecoCard[] {
+  if (!weather) return [];
+  const conditionLower = weather.condition.toLowerCase();
+  const isBadWeather = [...BAD_WEATHER_CONDITIONS].some(c => conditionLower.includes(c));
+  if (!isBadWeather) return [];
+
+  const outdoorStop = stops.find(s => OUTDOOR_CATEGORIES.has(s.category));
+  if (!outdoorStop) return [];
+
+  return [{
+    type: 'reco',
+    id: `weather-${outdoorStop.id}`,
+    trigger: 'weather',
+    label: `${weather.condition} forecast today`,
+    consequence: 'Outdoor stops may be affected. Indoor alternatives nearby.',
+    nearbyCity: city,
+    persona,
+    afterStopId: outdoorStop.id,
+    stopLat: outdoorStop.lat,
+    stopLon: outdoorStop.lon,
+  }];
+}
+
+// ── Closing-conflict reco cards ───────────────────────────────
+
+function buildClosingConflictRecos(
+  stops: EngineItineraryStop[],
+  persona: string,
+  city: string,
+): ReelRecoCard[] {
+  const recos: ReelRecoCard[] = [];
+  for (const stop of stops) {
+    const closingMin = parseEarliestClosingMinute(stop.weekdayText);
+    if (closingMin === null) continue;
+    const stopEndMin = timeToMinutes(stop.time) + stop.durationMin;
+    if (stopEndMin <= closingMin) continue;
+    recos.push({
+      type: 'reco',
+      id: `closing-${stop.id}`,
+      trigger: 'closing_conflict',
+      label: `${stop.title} may close before you finish`,
+      consequence: `Your visit runs until ${minutesToTime(stopEndMin)} — check hours before heading over.`,
+      nearbyCity: city,
+      persona,
+      afterStopId: stop.id,
+      stopLat: stop.lat,
+      stopLon: stop.lon,
+    });
+  }
+  return recos;
+}
+
+// ── Walking-gap reco cards ────────────────────────────────────
+
+function buildWalkingGapRecos(
+  stops: EngineItineraryStop[],
+  persona: string,
+  city: string,
+  weights: EngineWeights,
+): ReelRecoCard[] {
+  if (weights.w_walk_affinity >= 0.45) return [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i];
+    const b = stops[i + 1];
+    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
+    if (distKm > 2.0) {
+      return [{
+        type: 'reco',
+        id: `walking-${a.id}-${b.id}`,
+        trigger: 'walking_gap',
+        label: `${distKm.toFixed(1)} km walk to next stop`,
+        consequence: `That's a long stretch on foot. A rest spot or transit option could help.`,
+        nearbyCity: city,
+        persona,
+        afterStopId: a.id,
+        stopLat: a.lat,
+        stopLon: a.lon,
+      }];
+    }
+  }
+  return [];
 }
 
 // ── Intel cards from engine messages ─────────────────────────
@@ -287,6 +421,19 @@ export function buildReelCards(
       }
     }
 
+    // Day divider card — shown after any transit card, before the day's stops
+    // Skip day 1 (no need to announce the first day before any cards)
+    if (day.day > 1) {
+      const dividerCard: ReelDayDividerCard = {
+        type: 'day_divider',
+        day: day.day,
+        city: day.city,
+        date: day.date,
+        stopCount: day.stops.length,
+      };
+      cards.push(dividerCard);
+    }
+
     // Sort stops chronologically — engine may return them out of order
     const sortedStops = [...day.stops].sort(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
@@ -295,7 +442,11 @@ export function buildReelCards(
     // Build reco cards keyed by afterStopId
     const mealRecos = buildMealRecos(sortedStops, persona, day.city);
     const personaRecos = buildPersonaRecos(sortedStops, persona, day.city, weights);
-    const allRecos = [...mealRecos, ...personaRecos];
+    const weatherRecos = buildWeatherReco(sortedStops, weather, persona, day.city);
+    const closingRecos = buildClosingConflictRecos(sortedStops, persona, day.city);
+    const walkingRecos = buildWalkingGapRecos(sortedStops, persona, day.city, weights);
+    // TODO (crowd_peak): add buildCrowdPeakRecos() here once Popular Times data is available on EngineItineraryStop
+    const allRecos = [...mealRecos, ...personaRecos, ...weatherRecos, ...closingRecos, ...walkingRecos];
 
     const recosByStop = new Map<string, ReelRecoCard[]>();
     for (const reco of allRecos) {
@@ -319,6 +470,7 @@ export function buildReelCards(
         orderReason: stop.orderReason ?? null,
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
+        weather: weather ?? null,
       };
       cards.push(stopCard);
 
