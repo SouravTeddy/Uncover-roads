@@ -1,6 +1,6 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
-export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale';
+export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider';
 
 export interface ReelIntroCard {
   type: 'intro';
@@ -30,9 +30,19 @@ export interface ReelStopCard {
   orderReason: string | null;
   orderConsequence: string | null;
   movedFrom: number | null;
+  weather: WeatherData | null;
 }
 
-export type RecoTrigger = 'lunch' | 'dinner' | 'evening' | 'culture' | 'rest';
+export type RecoTrigger =
+  | 'lunch'
+  | 'dinner'
+  | 'evening'
+  | 'culture'
+  | 'rest'
+  | 'weather'
+  | 'closing_conflict'
+  | 'walking_gap'
+  | 'crowd_peak'; // TODO: implement once Popular Times data is available on EngineItineraryStop
 
 export interface ReelRecoCard {
   type: 'reco';
@@ -66,7 +76,7 @@ export interface ReelIntelCard {
 
 export interface ReelTransitCard {
   type: 'transit';
-  mode: 'flight' | 'drive' | 'train' | 'bus';
+  mode: 'flight' | 'drive' | 'train' | 'bus' | 'ferry';
   from: string;
   to: string;
   durationMinutes: number | null;
@@ -75,7 +85,7 @@ export interface ReelTransitCard {
   isEstimated: boolean;
   departureTime?: string | null;
   arrivalTime?: string | null;
-  ref?: string | null; // flight number, "Your rental", etc.
+  ref?: string | null; // flight number, train service, ferry route, etc.
 }
 
 export interface ReelFinaleCard {
@@ -85,6 +95,14 @@ export interface ReelFinaleCard {
   persona: string;
 }
 
+export interface ReelDayDividerCard {
+  type: 'day_divider';
+  day: number;       // day number (2, 3, …)
+  city: string;      // city name for this day
+  date: string;      // ISO date string e.g. "2026-05-21"
+  stopCount: number; // number of stops planned this day
+}
+
 export type ReelCard =
   | ReelIntroCard
   | ReelSummaryCard
@@ -92,4 +110,5 @@ export type ReelCard =
   | ReelRecoCard
   | ReelIntelCard
   | ReelTransitCard
-  | ReelFinaleCard;
+  | ReelFinaleCard
+  | ReelDayDividerCard;

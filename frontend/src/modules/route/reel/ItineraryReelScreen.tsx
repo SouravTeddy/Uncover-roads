@@ -8,6 +8,7 @@ import { ReelIntelCard } from './ReelIntelCard';
 import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelSummaryCard } from './ReelSummaryCard';
+import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 
@@ -181,6 +182,7 @@ export function ItineraryReelScreen() {
           if (card.type === 'intel')   return <ReelIntelCard   key={card.id}                          card={card} active={isActive} />;
           if (card.type === 'transit') return <ReelTransitCard key={`transit-${card.from}-${card.to}`} card={card} active={isActive} />;
           if (card.type === 'finale')  return <ReelFinaleCard  key="finale"                           card={card} active={isActive} onSave={handleSave} saved={saved} />;
+          if (card.type === 'day_divider') return <ReelDayDividerCard key={`day-divider-${card.day}`} card={card} active={isActive} />;
           return null;
         })}
       </div>

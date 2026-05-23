@@ -57,10 +57,11 @@ const ITIN = (stops: EngineItineraryStop[]): EngineItinerary => ({
 });
 
 describe('buildReelCards', () => {
-  it('wraps stops in intro + stops + finale for single city', () => {
+  it('wraps stops in intro + summary + stops + finale for single city', () => {
     const cards = buildReelCards(ITIN([STOP()]), null, null, WEATHER, 'explorer');
     expect(cards[0].type).toBe('intro');
-    expect(cards[1].type).toBe('stop');
+    expect(cards[1].type).toBe('summary');
+    expect(cards.some(c => c.type === 'stop')).toBe(true);
     expect(cards[cards.length - 1].type).toBe('finale');
   });
 
@@ -74,14 +75,14 @@ describe('buildReelCards', () => {
     expect(recos.length).toBeGreaterThan(0);
   });
 
-  it('does not inject a reco card when a restaurant stop exists in lunch window', () => {
+  it('does not inject a lunch reco when a restaurant stop exists in lunch window', () => {
     const stops = [
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '12:30', category: 'restaurant' }),
     ];
     const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'epicurean');
     const recos = cards.filter(c => c.type === 'reco');
-    expect(recos.length).toBe(0);
+    expect(recos.every(c => c.type === 'reco' && (c as import('./types').ReelRecoCard).trigger !== 'lunch')).toBe(true);
   });
 
   it('inserts transit card between cities in multi-city journey', () => {
