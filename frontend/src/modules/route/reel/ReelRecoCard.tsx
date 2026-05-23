@@ -10,23 +10,29 @@ interface Props {
 }
 
 const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chipLabel: string }> = {
-  lunch:   { icon: 'restaurant',    color: '#c27c4a', bg: 'rgba(194,124,74,.1)',   chipLabel: 'Lunch window' },
-  dinner:  { icon: 'dinner_dining', color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Dinner window' },
-  evening: { icon: 'nightlight',    color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Evening' },
-  culture: { icon: 'museum',        color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Culture' },
-  rest:    { icon: 'local_cafe',    color: '#d4a853', bg: 'rgba(212,168,83,.1)',   chipLabel: 'Rest break' },
+  lunch:            { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.1)',  chipLabel: 'Lunch window' },
+  dinner:           { icon: 'dinner_dining',   color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Dinner window' },
+  evening:          { icon: 'nightlight',      color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Evening' },
+  culture:          { icon: 'museum',          color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Culture' },
+  rest:             { icon: 'local_cafe',      color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Rest break' },
+  weather:          { icon: 'wb_cloudy',       color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Weather alert' },
+  closing_conflict: { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Timing conflict' },
+  walking_gap:      { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Long walk' },
+  // TODO (crowd_peak): implement trigger logic once Popular Times data is available on EngineItineraryStop
+  crowd_peak:       { icon: 'groups',          color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Peak hours' },
 };
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
-function PlaceRow({ place, idx, active }: { place: ReelRecoPlace; idx: number; active: boolean }) {
+function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; idx: number; active: boolean; accentColor: string }) {
   const delay = `${0.55 + idx * 0.1}s`;
+  const isFirst = idx === 0;
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 12,
       padding: '12px 14px', borderRadius: 12,
       background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
+      border: isFirst ? `1.5px solid ${accentColor}47` : '1px solid var(--color-border)',
       opacity: active ? 1 : 0,
       transform: active ? 'translateY(0)' : 'translateY(8px)',
       transition: `opacity .4s ${delay} ease, transform .4s ${delay} ease`,
@@ -34,9 +40,11 @@ function PlaceRow({ place, idx, active }: { place: ReelRecoPlace; idx: number; a
       {/* Rank */}
       <div style={{
         width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-        background: 'var(--color-surface2)',
+        background: isFirst ? `${accentColor}22` : 'var(--color-surface2)',
+        border: isFirst ? `1px solid ${accentColor}55` : 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 700, color: 'var(--color-text-3)',
+        fontSize: 10, fontWeight: 700,
+        color: isFirst ? accentColor : 'var(--color-text-3)',
         marginTop: 1,
       }}>
         {idx + 1}
@@ -96,7 +104,6 @@ function PlaceRow({ place, idx, active }: { place: ReelRecoPlace; idx: number; a
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
   const { places, loading } = useReelRecommendations(card, archetype, existingPlaceIds, active);
-  const hasPlaces = places.length > 0;
 
   return (
     <div className="reel-card" style={{
@@ -126,7 +133,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Prop
         animation: active ? 'fadeUp .45s .05s both' : 'none',
       }}>
         <span className="ms" style={{ fontSize: 13, color: '#38bdf8' }}>near_me</span>
-        <span style={{ fontSize: 11, color: 'rgba(56,189,248,.85)', fontWeight: 600 }}>Near your next stop</span>
+        <span style={{ fontSize: 11, color: 'rgba(56,189,248,.85)', fontWeight: 600 }}>Near {card.nearbyCity}</span>
       </div>
 
       {/* Trigger chip */}
@@ -153,20 +160,18 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Prop
         {card.label}
       </p>
 
-      {/* Consequence — shown when no places yet */}
-      {!hasPlaces && (
-        <p style={{
-          fontSize: 13, color: 'var(--color-text-2)',
-          lineHeight: 1.6, marginBottom: 20,
-          animation: active ? 'fadeUp .45s .24s both' : 'none',
-        }}>
-          {card.consequence}
-        </p>
-      )}
+      {/* Consequence — always visible, above place list */}
+      <p style={{
+        fontSize: 13, color: 'var(--color-text-2)',
+        lineHeight: 1.6, marginBottom: 16,
+        animation: active ? 'fadeUp .45s .24s both' : 'none',
+      }}>
+        {card.consequence}
+      </p>
 
       {/* Loading shimmer */}
       {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8, marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{
               height: 64, borderRadius: 12,
@@ -180,24 +185,11 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Prop
       )}
 
       {/* Place recommendations */}
-      {hasPlaces && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4, marginBottom: 16 }}>
+      {places.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
           {places.map((p, i) => (
-            <PlaceRow key={p.placeId} place={p} idx={i} active={active} />
+            <PlaceRow key={p.placeId} place={p} idx={i} active={active} accentColor={cfg.color} />
           ))}
-        </div>
-      )}
-
-      {/* Weight indicator */}
-      {card.weightScore != null && card.weightScore > 0.7 && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          animation: active ? 'fadeUp .45s .32s both' : 'none',
-        }}>
-          <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)' }}>insights</span>
-          <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>
-            {Math.round(card.weightScore * 100)}% match with your preference
-          </span>
         </div>
       )}
     </div>
