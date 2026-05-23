@@ -307,6 +307,94 @@ html, body {
   scroll-snap-stop: always;
 }
 
+/* ── Atmospheric weather overlay keyframes ───────────── */
+@keyframes precip {
+  0%   { transform: translateY(-10px) rotate(15deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 0.7; }
+  100% { transform: translateY(100vh) rotate(15deg); opacity: 0; }
+}
+@keyframes snowFall {
+  0%   { transform: translateY(-10px); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+@keyframes snowSway1 {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(18px); }
+}
+@keyframes snowSway2 {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(-22px); }
+}
+@keyframes snowSway3 {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(14px); }
+}
+@keyframes fogDriftL {
+  0%   { transform: translateX(-30px); opacity: 0; }
+  20%  { opacity: 0.55; }
+  80%  { opacity: 0.45; }
+  100% { transform: translateX(30px); opacity: 0; }
+}
+@keyframes fogDriftR {
+  0%   { transform: translateX(30px); opacity: 0; }
+  20%  { opacity: 0.50; }
+  80%  { opacity: 0.40; }
+  100% { transform: translateX(-30px); opacity: 0; }
+}
+@keyframes flashFlicker {
+  0%, 89%, 91%, 93%, 96%, 100% { opacity: 0; }
+  90%, 92%, 94%                { opacity: 0.85; }
+}
+@keyframes rayRotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes sunGlow {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50%      { opacity: 0.65; transform: scale(1.08); }
+}
+
+/* ── Transit cinematic keyframes ─────────────────────── */
+@keyframes par {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes parRev {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: .25; }
+  50%       { opacity: 1; }
+}
+@keyframes tickFast {
+  from { background-position: 0 0; }
+  to   { background-position: -120px 0; }
+}
+@keyframes speedLine {
+  0%   { transform: translateX(-30%); opacity: 0; }
+  50%  { opacity: .7; }
+  100% { transform: translateX(30%);  opacity: 0; }
+}
+@keyframes planeBob {
+  0%, 100% { transform: translate(-50%, -50%); }
+  50%       { transform: translate(-50%, calc(-50% - 8px)); }
+}
+@keyframes busBob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50%       { transform: translate(-50%, -1.5px); }
+}
+@keyframes ferryBob {
+  0%, 100% { transform: translate(-50%, 0) rotate(-.8deg); }
+  50%       { transform: translate(-50%, -4px) rotate(.8deg); }
+}
+@keyframes wheelSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 @keyframes sweep {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(260%); }
