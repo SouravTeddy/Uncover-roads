@@ -59,7 +59,7 @@ export function ReelIntelCard({ card, active }: Props) {
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: cfg.color }}>{cfg.label}</span>
         </div>
 
-        <p style={{
+        <p className="reel-h2" style={{
           fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 700,
           color: '#fff', lineHeight: 1.2, marginBottom: 12,
           opacity: visible ? 1 : 0,
@@ -69,7 +69,7 @@ export function ReelIntelCard({ card, active }: Props) {
           {card.headline}
         </p>
 
-        <p style={{
+        <p className="reel-meta" style={{
           fontSize: 14, color: 'rgba(255,255,255,.72)', lineHeight: 1.65,
           opacity: visible ? 1 : 0,
           transform: visible ? 'translateY(0)' : 'translateY(12px)',

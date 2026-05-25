@@ -166,7 +166,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
   }
 
   const { stop, stopNumber, totalStops, orderReason, orderConsequence, movedFrom, weather } = card;
-  const imageUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 400) : null);
+  const imageUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800) : null);
   const categoryLabel = CATEGORY_LABELS[stop.category] ?? stop.category;
   const tod = timeOfDay(stop.time);
   const safeAreaTop = 'calc(env(safe-area-inset-top, 0px) + 14px)';
@@ -177,13 +177,13 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
   const condition = (weather?.condition ?? '').toLowerCase();
 
   // Sky tint (z-index 2)
-  let skyTint = 'rgba(0,0,0,.20)';
-  if (condition.includes('rain') || condition.includes('drizzle')) skyTint = 'rgba(25,38,62,.65)';
-  else if (condition.includes('thunderstorm'))                      skyTint = 'rgba(85,40,125,.60)';
-  else if (condition.includes('snow'))                              skyTint = 'rgba(200,215,240,.30)';
-  else if (condition.includes('fog') || condition.includes('mist')) skyTint = 'rgba(180,185,195,.45)';
-  else if (condition.includes('clear') || condition.includes('sunny')) skyTint = 'rgba(255,210,140,.18)';
-  else if (condition.includes('cloud') || condition.includes('overcast') || condition.includes('partly')) skyTint = 'rgba(140,150,165,.35)';
+  let skyTint = 'rgba(0,0,0,.15)';
+  if (condition.includes('rain') || condition.includes('drizzle')) skyTint = 'rgba(25,38,62,.32)';
+  else if (condition.includes('thunderstorm'))                      skyTint = 'rgba(85,40,125,.30)';
+  else if (condition.includes('snow'))                              skyTint = 'rgba(200,215,240,.14)';
+  else if (condition.includes('fog') || condition.includes('mist')) skyTint = 'rgba(180,185,195,.22)';
+  else if (condition.includes('clear') || condition.includes('sunny')) skyTint = 'rgba(255,210,140,.12)';
+  else if (condition.includes('cloud') || condition.includes('overcast') || condition.includes('partly')) skyTint = 'rgba(140,150,165,.18)';
 
   // Time-of-day gradient (z-index 4)
   let todGradient: string | null = null;
@@ -254,14 +254,13 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       )}
       {condition.includes('thunderstorm') && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {makeRainStreaks(24, 'rgba(140,160,200,.65)')}
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              position: 'absolute', inset: 0,
-              background: 'rgba(255,245,230,.7)',
-              animation: `flashFlicker 6s step-end ${i * 2.1}s infinite`,
-            }} />
-          ))}
+          {makeRainStreaks(24, 'rgba(230,220,255,.85)')}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(ellipse at 50% 25%, rgba(230,220,255,.95), rgba(180,150,230,.5) 32%, rgba(120,80,180,0) 70%)',
+            mixBlendMode: 'screen',
+            animation: 'flashFlicker 3.4s ease-out -1.3s infinite',
+          }} />
         </div>
       )}
       {condition.includes('snow') && (
@@ -320,14 +319,14 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       <div style={{
         position: 'absolute', top: safeAreaTop, left: 13, zIndex: 11,
         display: 'inline-flex', alignItems: 'center', gap: 5,
-        padding: '3px 8px', borderRadius: 6,
+        padding: '3px 8px', borderRadius: 999,
         background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,.12)',
         maxWidth: 170, overflow: 'hidden',
         opacity: visible ? 1 : 0, transition: 'opacity .4s',
       }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: tod.color, flexShrink: 0 }} />
-        <span style={{
+        <span className="reel-meta" style={{
           fontSize: 9.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase',
           color: 'rgba(255,255,255,.80)',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -373,7 +372,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
           {/* Stop counter — frosted glass pill */}
           <div style={{ marginBottom: 8, opacity: visible ? 1 : 0, transition: 'opacity .4s' }}>
-            <span style={{
+            <span className="reel-meta" style={{
               display: 'inline-flex', alignItems: 'center',
               padding: '2px 8px', borderRadius: 5,
               background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)',
@@ -391,12 +390,12 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
               padding: '3px 9px', borderRadius: 6,
               background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)',
             }}>
-              <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.40)' }}>schedule</span>
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>
+              <span className="ms reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.40)' }}>schedule</span>
+              <span className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>
                 {formatTime(stop.time)}
               </span>
-              <span style={{ color: 'rgba(255,255,255,.30)' }}>·</span>
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,.50)' }}>
+              <span className="reel-meta" style={{ color: 'rgba(255,255,255,.30)' }}>·</span>
+              <span className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.50)' }}>
                 {formatDuration(stop.durationMin)}
               </span>
               {movedFrom !== null && (
@@ -406,23 +405,23 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
           </div>
 
           {/* Title */}
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1.05, marginBottom: 12, animation: visible ? 'fadeUp .5s .12s both' : 'none' }}>
+          <h2 className="reel-h1" style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1.05, marginBottom: 12, animation: visible ? 'fadeUp .5s .12s both' : 'none' }}>
             {stop.title}
           </h2>
 
           {/* Metadata pills */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, animation: visible ? 'fadeUp .5s .2s both' : 'none' }}>
-            <span style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
+            <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
               {categoryLabel}
             </span>
             {stop.area && (
-              <span style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
+              <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
                 <span className="ms" style={{ fontSize: 10, verticalAlign: 'middle', marginRight: 3 }}>place</span>
                 {stop.area}
               </span>
             )}
             {stop.rating != null && (
-              <span style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.08)', backdropFilter: 'blur(8px)', fontSize: 11, color: '#d4a853', fontWeight: 600 }}>
+              <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.08)', backdropFilter: 'blur(8px)', fontSize: 11, color: '#d4a853', fontWeight: 600 }}>
                 {stop.rating.toFixed(1)} ★
               </span>
             )}
@@ -435,7 +434,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
           {trendBadges.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12, animation: visible ? 'fadeUp .5s .22s both' : 'none' }}>
               {trendBadges.map(badge => (
-                <span key={badge.label} style={{
+                <span key={badge.label} className="reel-meta" style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '4px 9px', borderRadius: 999,
                   border: `1px solid ${badge.color}33`,
@@ -452,8 +451,8 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
           {/* Scheduling intelligence — reason strip */}
           {orderReason && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: orderConsequence ? 6 : 12, background: 'rgba(0,0,0,.32)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', padding: '10px 12px', borderRadius: 12, animation: visible ? 'fadeUp .5s .25s both' : 'none' }}>
-              <span className="ms" style={{ fontSize: 14, color: 'rgba(212,168,83,.7)', flexShrink: 0, marginTop: 1 }}>{inferReasonIcon(orderReason)}</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.65)', lineHeight: 1.55 }}>
+              <span className="ms reel-meta" style={{ fontSize: 14, color: 'rgba(212,168,83,.7)', flexShrink: 0, marginTop: 1 }}>{inferReasonIcon(orderReason)}</span>
+              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.65)', lineHeight: 1.55 }}>
                 {orderReason}
               </span>
             </div>
@@ -462,8 +461,8 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
           {/* Scheduling intelligence — consequence strip */}
           {orderConsequence && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, background: 'rgba(0,0,0,.22)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.06)', padding: '8px 12px', borderRadius: 12, animation: visible ? 'fadeUp .5s .28s both' : 'none' }}>
-              <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.30)', flexShrink: 0, marginTop: 1 }}>arrow_forward</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', lineHeight: 1.55 }}>
+              <span className="ms reel-meta" style={{ fontSize: 14, color: 'rgba(255,255,255,.30)', flexShrink: 0, marginTop: 1 }}>arrow_forward</span>
+              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', lineHeight: 1.55 }}>
                 {orderConsequence}
               </span>
             </div>
@@ -471,7 +470,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
           {/* Why for you */}
           {stop.whyForYou && (
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.65, marginBottom: stop.localTip ? 8 : 0, animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
+            <p className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.65, marginBottom: stop.localTip ? 8 : 0, animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
               <span style={{ color: '#d4a853', marginRight: 6 }}>✦</span>
               {stop.whyForYou}
             </p>
@@ -479,7 +478,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
           {/* Local tip */}
           {stop.localTip && (
-            <p style={{ fontStyle: 'italic', fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.6, animation: visible ? 'fadeUp .5s .36s both' : 'none' }}>
+            <p className="reel-meta" style={{ fontStyle: 'italic', fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.6, animation: visible ? 'fadeUp .5s .36s both' : 'none' }}>
               {stop.localTip}
             </p>
           )}

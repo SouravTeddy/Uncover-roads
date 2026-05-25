@@ -277,6 +277,7 @@ export interface SavedItinerary {
   persona: Persona;
   lastUpdateCheck: string | null; // ISO datetime of last update check
   pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
+  journeyLegs: JourneyLeg[] | null; // inter-city transit legs — needed for multi-city reel transit cards
 }
 
 // ── City search ───────────────────────────────────────────────
