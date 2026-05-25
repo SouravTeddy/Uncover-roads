@@ -113,5 +113,6 @@ export async function loadSavedItineraries(userId: string): Promise<SavedItinera
     selectedPlaces: row.selected_places ?? [],
     lastUpdateCheck: null,
     pendingSwapCards: [],
+    journeyLegs: row.journey_legs ?? null,
   }));
 }

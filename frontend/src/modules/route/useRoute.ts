@@ -163,6 +163,7 @@ export function useRoute() {
       persona,
       lastUpdateCheck: null,
       pendingSwapCards: [],
+      journeyLegs: state.journey ?? null,
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
     const { data: { user } } = await supabase.auth.getUser();
