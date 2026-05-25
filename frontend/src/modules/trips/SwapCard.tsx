@@ -70,15 +70,15 @@ export function SwapCard({ card, onResolve }: Props) {
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             borderRadius: 16,
-            background: 'rgba(99,102,241,.06)',
-            border: '1px solid rgba(99,102,241,.25)',
+            background: 'var(--color-sky-bg)',
+            border: '1px solid var(--color-sky-bdr)',
             padding: 16,
             display: 'flex', flexDirection: 'column', gap: 8,
           }}
         >
           <div className="flex items-center gap-2">
             <span className="text-base">✦</span>
-            <span className="text-indigo-400 text-[10px] uppercase tracking-widest font-bold">Suggested</span>
+            <span style={{ color: 'var(--color-sky)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700 }}>Suggested</span>
           </div>
           <p className="text-[var(--color-text-1)] font-semibold text-sm leading-snug">{card.stopName}</p>
           <p className="text-[var(--color-text-2)] text-xs leading-snug flex-1">{card.suggestedNote}</p>
@@ -86,7 +86,7 @@ export function SwapCard({ card, onResolve }: Props) {
             <button
               onClick={e => { e.stopPropagation(); onResolve(card.id, 'new'); }}
               className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white"
-              style={{ background: 'rgba(99,102,241,.3)', border: '1px solid rgba(99,102,241,.5)' }}
+              style={{ background: 'var(--color-sky-bg)', border: '1px solid var(--color-sky-bdr)' }}
             >
               Use this
             </button>

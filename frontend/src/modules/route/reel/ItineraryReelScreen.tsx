@@ -67,7 +67,8 @@ export function ItineraryReelScreen() {
   useEffect(() => {
     if (!activeItinerary) return;
     setImagesReady(false);
-    const built = buildReelCards(activeItinerary, journey ?? null, reelSavedId, weather, personaName);
+    const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
+    const built = buildReelCards(activeItinerary, journeyLegs, reelSavedId, weather, personaName);
     const filtered = built.filter(c => {
       if (c.type === 'stop')  return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco')  return !removedStopIds.has(c.afterStopId);
@@ -142,6 +143,7 @@ export function ItineraryReelScreen() {
         persona: persona!,
         lastUpdateCheck: null,
         pendingSwapCards: [],
+        journeyLegs: journey ?? null,
       },
     });
     setSaved(true);

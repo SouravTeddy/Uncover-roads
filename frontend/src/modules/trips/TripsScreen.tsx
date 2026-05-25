@@ -3,6 +3,10 @@ import { useAppStore } from '../../shared/store';
 import type { SavedItinerary, FavouritedPin } from '../../shared/types';
 import { ARCHETYPE_COLORS, ARCHETYPE_EMOJI, ARCHETYPE_SHORT } from '../persona/types';
 import { getPlacePhotoUrl } from '../../shared/api';
+import { TripCountdown } from './TripCountdown';
+import { SmartUpdates } from './SmartUpdates';
+import { ArrivalBanner } from './ArrivalBanner';
+import { RecalibrationStack } from './RecalibrationStack';
 
 // ── Utilities ────────────────────────────────────────────────
 
@@ -58,6 +62,7 @@ const CITY_FALLBACK = (city: string) =>
 function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: number; onDelete: (id: string) => void }) {
   const { dispatch } = useAppStore();
   const [expanded, setExpanded] = useState(false);
+  const [autoRunRecal, setAutoRunRecal] = useState(false);
 
   const archetypeKey    = item.persona?.archetype ?? '';
   const archetypeColors = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
@@ -71,6 +76,7 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
 
   const numDays = engineDays?.length ?? 1;
   const { status, daysUntil } = getTripStatus(item);
+  const hasUnresolvedSwaps = (item.pendingSwapCards ?? []).some((c: any) => !c.resolved);
 
   // Hero: first stop with imageUrl → photoRef → city fallback
   const heroStop = allStops.find((s: any) => s.imageUrl || s.photoRef);
@@ -99,7 +105,7 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
     <div style={{ marginBottom: 12, opacity: isPast ? 0.72 : 1, filter: isPast ? 'saturate(0.6)' : 'none', animation: `cardEntry 0.4s ease ${index * 0.08}s both` }}>
       {/* Card */}
       <div
-        onClick={() => setExpanded(e => !e)}
+        onClick={() => !hasUnresolvedSwaps && setExpanded(e => !e)}
         style={{
           position: 'relative',
           height: 152,
@@ -168,6 +174,17 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
           </div>
         </div>
 
+        {/* Intelligence: countdown + arrival banner */}
+        <div style={{ position: 'absolute', bottom: 44, left: 16, right: 90 }} onClick={e => e.stopPropagation()}>
+          <TripCountdown travelDate={item.travelDate ?? null} />
+          <ArrivalBanner
+            tripId={item.id}
+            travelDate={item.travelDate ?? null}
+            city={item.city}
+            onCheckNow={() => { setExpanded(true); setAutoRunRecal(true); }}
+          />
+        </div>
+
         {/* Continue pill */}
         <div
           onClick={handlePlay}
@@ -203,7 +220,7 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
       </div>
 
       {/* Expanded stop list */}
-      {expanded && (
+      {(expanded || hasUnresolvedSwaps) && (
         <div style={{
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
@@ -212,6 +229,12 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
           padding: '12px 16px 16px',
           animation: 'springUp 0.25s ease both',
         }}>
+          {/* Smart updates strip */}
+          {status !== 'past' && <SmartUpdates trip={item} />}
+
+          {/* Swap recalibration cards */}
+          <RecalibrationStack trip={item} autoRun={autoRunRecal} />
+
           {allStops.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--color-text-4)', textAlign: 'center', padding: '12px 0' }}>No stops</p>
           ) : (
@@ -291,6 +314,7 @@ function PlaceCard({ pin, onRemove, onOpen }: { pin: FavouritedPin; onRemove: ()
         overflow: 'hidden',
         cursor: 'pointer',
         background: gradient,
+        boxShadow: 'var(--shadow-md)',
       }}
     >
       {photoUrl && (

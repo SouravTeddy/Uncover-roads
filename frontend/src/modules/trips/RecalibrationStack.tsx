@@ -117,7 +117,7 @@ export function RecalibrationStack({ trip, autoRun }: Props) {
   return (
     <div className="mt-3">
       {unresolved.length > 0 && (
-        <p className="text-indigo-400 text-[10px] uppercase tracking-widest font-bold mb-3">
+        <p className="text-[10px] uppercase tracking-widest font-bold mb-3" style={{ color: 'var(--color-sky)' }}>
           Last-minute suggestions · {unresolved.length} to review
         </p>
       )}
@@ -128,7 +128,7 @@ export function RecalibrationStack({ trip, autoRun }: Props) {
 
       {allDone && (
         <>
-          <p className="text-green-400 text-xs text-center mb-3">All suggestions reviewed ✓</p>
+          <p className="text-xs text-center mb-3" style={{ color: 'var(--color-sage)' }}>All suggestions reviewed ✓</p>
           <button
             onClick={handleDone}
             className="w-full py-3 rounded-2xl font-bold text-white text-sm bg-primary"

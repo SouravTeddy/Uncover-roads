@@ -1,9 +1,9 @@
 import type { TripUpdateCard } from '../../shared/types';
 
 const KIND_CONFIG: Record<string, { emoji: string; borderColour: string; bgColour: string }> = {
-  event:        { emoji: '🎉', borderColour: 'rgba(99,102,241,.3)',  bgColour: 'rgba(99,102,241,.06)'  },
-  hours_change: { emoji: '⚠️', borderColour: 'rgba(245,158,11,.3)',  bgColour: 'rgba(245,158,11,.06)'  },
-  weather:      { emoji: '🌧', borderColour: 'rgba(96,165,250,.3)',  bgColour: 'rgba(96,165,250,.06)'  },
+  event:        { emoji: '🎉', borderColour: 'var(--color-sky-bdr)',   bgColour: 'var(--color-sky-bg)'   },
+  hours_change: { emoji: '⚠️', borderColour: 'var(--color-amber-bdr)', bgColour: 'var(--color-amber-bg)' },
+  weather:      { emoji: '🌧', borderColour: 'var(--color-sky-bdr)',   bgColour: 'var(--color-sky-bg)'   },
 };
 
 interface Props {
@@ -46,7 +46,7 @@ export function UpdateCard({ card, onAction, onDismiss }: Props) {
         <button
           onClick={() => onAction(card)}
           className="w-full py-1.5 rounded-xl text-[10px] font-bold text-white"
-          style={{ background: 'rgba(99,102,241,.3)', border: '1px solid rgba(99,102,241,.4)' }}
+          style={{ background: 'var(--color-sky-bg)', border: '1px solid var(--color-sky-bdr)' }}
         >
           {card.actionLabel}
         </button>

@@ -132,7 +132,7 @@ export function ReelIntroCard({ card, active }: Props) {
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px' }}>
 
         {/* Label */}
-        <p style={{
+        <p className="reel-meta" style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
           color: 'rgba(255,255,255,.5)', marginBottom: 8,
           animation: visible ? 'fadeUp .5s .05s both' : 'none',
@@ -141,7 +141,7 @@ export function ReelIntroCard({ card, active }: Props) {
         </p>
 
         {/* City */}
-        <h1 style={{
+        <h1 className="reel-h1" style={{
           fontFamily: 'var(--font-heading)', fontSize: 52, fontWeight: 700,
           color: '#fff', lineHeight: 1, marginBottom: 18,
           animation: visible ? 'fadeUp .5s .15s both' : 'none',
@@ -152,50 +152,48 @@ export function ReelIntroCard({ card, active }: Props) {
           display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16,
           animation: visible ? 'fadeUp .5s .25s both' : 'none',
         }}>
-          <span style={{
+          <span className="reel-meta" style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '5px 11px', borderRadius: 999,
-            border: '1px solid rgba(255,255,255,.12)',
-            background: 'rgba(255,255,255,.08)',
+            border: '1px solid var(--color-border)',
+            background: 'rgba(255,255,255,.07)',
           }}>
             <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>place</span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>{card.totalStops} stops</span>
+            {card.totalStops} stops
           </span>
 
           {card.totalDays > 1 && (
-            <span style={{
+            <span className="reel-meta" style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '5px 11px', borderRadius: 999,
               border: '1px solid rgba(255,255,255,.12)',
               background: 'rgba(255,255,255,.08)',
             }}>
               <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>calendar_today</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>{card.totalDays} days</span>
+              {card.totalDays} days
             </span>
           )}
 
           {card.weather && (
-            <span style={{
+            <span className="reel-meta" style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
               padding: '5px 11px', borderRadius: 999,
               border: '1px solid rgba(255,255,255,.12)',
               background: 'rgba(255,255,255,.08)',
             }}>
               <WeatherIcon condition={card.weather.condition} />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>
-                {card.weather.temp}° · {card.weather.condition}
-              </span>
+              {card.weather.temp}° · {card.weather.condition}
             </span>
           )}
 
-          <span style={{
+          <span className="reel-meta" style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
             padding: '5px 11px', borderRadius: 999,
-            border: '1px solid rgba(255,255,255,.12)',
-            background: 'rgba(255,255,255,.08)',
+            border: '1px solid var(--color-border)',
+            background: 'rgba(255,255,255,.07)',
           }}>
             <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>person</span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.7)' }}>{card.persona}</span>
+            {card.persona}
           </span>
         </div>
 
@@ -203,7 +201,7 @@ export function ReelIntroCard({ card, active }: Props) {
         {(card.proTip || topChanges.length > 0) && (
           <div style={{ animation: visible ? 'fadeUp .5s .35s both' : 'none', marginBottom: 16 }}>
             {card.proTip && (
-              <p style={{
+              <p className="reel-meta" style={{
                 fontStyle: 'italic', fontSize: 13, color: 'rgba(255,255,255,.6)', lineHeight: 1.6, marginBottom: topChanges.length > 0 ? 10 : 0,
               }}>{card.proTip}</p>
             )}
@@ -217,8 +215,8 @@ export function ReelIntroCard({ card, active }: Props) {
                     border: '1px solid rgba(255,255,255,.1)',
                     backdropFilter: 'blur(6px)',
                   }}>
-                    <span className="ms" style={{ fontSize: 13, color: 'rgba(212,168,83,.85)' }}>{CHANGE_ICONS[type] ?? 'tune'}</span>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.65)' }}>
+                    <span className="ms reel-meta" style={{ fontSize: 13, color: 'rgba(212,168,83,.85)' }}>{CHANGE_ICONS[type] ?? 'tune'}</span>
+                    <span className="reel-meta" style={{ fontSize: 11, color: 'rgba(255,255,255,.65)' }}>
                       {CHANGE_LABELS[type] ?? type}{count > 1 ? ` ×${count}` : ''}
                     </span>
                   </div>

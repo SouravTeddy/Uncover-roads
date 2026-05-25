@@ -104,7 +104,7 @@ export function WeatherCanvas({ condition }: Props) {
             top: `-${5 + (i % 8) * 3}%`,
             background: `rgba(147,197,253,${0.35 + (i % 3) * 0.1})`,
             borderRadius: 2,
-            animation: `weather-fall-full ${0.8 + (i % 5) * 0.18}s linear infinite`,
+            animation: `weather-fall-full ${0.45 + (i % 5) * 0.09}s linear infinite`,
             animationDelay: `${(i / RAIN_COUNT) * 1.5}s`,
             transform: 'rotate(-14deg)',
           }} />
@@ -173,7 +173,7 @@ export function WeatherCanvas({ condition }: Props) {
               top: `-${3 + (i % 6) * 2}%`,
               borderRadius: '50%',
               background: `rgba(255,255,255,${0.5 + (i % 3) * 0.15})`,
-              animation: `weather-fall-full ${2.2 + (i % 6) * 0.45}s linear infinite`,
+              animation: `weather-fall-full ${3.5 + (i % 6) * 0.8}s linear infinite`,
               animationDelay: `${(i / SNOW_COUNT) * 3.5}s`,
               filter: 'blur(0.4px)',
             }} />
@@ -187,24 +187,57 @@ export function WeatherCanvas({ condition }: Props) {
     );
   }
 
-  // cloud / overcast / fog / mist
+  // fog / mist — uses fogDriftL/R for horizontal sweep
+  const isFog = /fog|mist|haze/.test(condition.toLowerCase());
+  if (isFog) {
+    return (
+      <div style={base} aria-hidden>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(175deg, rgba(180,185,195,.18) 0%, rgba(160,165,175,.10) 55%, transparent 85%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: '20%', left: '-50%',
+          width: '200%', height: '60%',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(200,205,215,.55) 30%, rgba(210,215,225,.65) 50%, rgba(200,205,215,.55) 70%, transparent 100%)',
+          animation: 'fogDriftL 8s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute', top: '35%', left: '-50%',
+          width: '200%', height: '50%',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(205,210,220,.50) 35%, rgba(215,218,228,.60) 50%, rgba(205,210,220,.50) 65%, transparent 100%)',
+          animation: 'fogDriftR 11s ease-in-out 2s infinite',
+          opacity: 0.8,
+        }} />
+      </div>
+    );
+  }
+
+  // cloud / overcast / partly cloudy — cloud shapes drifting with cloudDrift
   return (
     <div style={base} aria-hidden>
       <div style={{
         position: 'absolute', inset: 0,
         background: 'linear-gradient(175deg, rgba(71,85,105,.18) 0%, rgba(51,65,85,.10) 50%, transparent 80%)',
       }} />
-      {[0, 1, 2].map(i => (
+      {[
+        { top: '4%',  w: 110, h: 39, op: 0.36, dur: 28, delay: -4  },
+        { top: '18%', w: 150, h: 53, op: 0.44, dur: 38, delay: -11 },
+        { top: '30%', w: 130, h: 46, op: 0.40, dur: 46, delay: -20 },
+        { top: '44%', w: 180, h: 63, op: 0.50, dur: 55, delay: -8  },
+        { top: '56%', w: 120, h: 42, op: 0.38, dur: 34, delay: -16 },
+      ].map((c, i) => (
         <div key={i} style={{
           position: 'absolute',
-          width: '160%',
-          height: `${22 + i * 12}%`,
           left: '-30%',
-          top: `${i * 14}%`,
-          background: `linear-gradient(to bottom, rgba(148,163,184,${0.07 + i * 0.025}) 0%, transparent 100%)`,
-          animation: `weather-drift ${9 + i * 4}s ease-in-out infinite alternate`,
-          animationDelay: `${i * 2.5}s`,
+          top: c.top,
+          width: c.w,
+          height: c.h,
           borderRadius: '50%',
+          background: 'radial-gradient(ellipse at center, rgba(220,225,235,1), rgba(220,225,235,0) 65%)',
+          opacity: c.op,
+          filter: 'blur(6px)',
+          animation: `cloudDrift ${c.dur}s linear ${c.delay}s infinite`,
         }} />
       ))}
     </div>

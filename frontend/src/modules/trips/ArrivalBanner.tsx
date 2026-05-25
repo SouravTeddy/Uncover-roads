@@ -51,8 +51,8 @@ export function ArrivalBanner({ tripId, travelDate, city, onCheckNow }: Props) {
     <div
       className="rounded-2xl p-4 border mt-3"
       style={{
-        background: 'rgba(34,197,94,.06)',
-        borderColor: 'rgba(34,197,94,.2)',
+        background: 'var(--color-sage-bg)',
+        borderColor: 'var(--color-sage-bdr)',
       }}
     >
       <div className="flex items-start gap-2 mb-3">
@@ -68,7 +68,7 @@ export function ArrivalBanner({ tripId, travelDate, city, onCheckNow }: Props) {
         <button
           onClick={handleYes}
           className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
-          style={{ background: 'rgba(34,197,94,.25)', border: '1px solid rgba(34,197,94,.3)' }}
+          style={{ background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)' }}
         >
           Yes, check now
         </button>
