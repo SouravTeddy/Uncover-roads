@@ -120,7 +120,7 @@ export function ReelIntroCard({ card, active }: Props) {
   }
 
   const condition = (card.weather?.condition ?? '').toLowerCase();
-  const introHour = 9; // default midday; startTime not on card type
+  const introHour = new Date().getHours();
   const skyTint = introSkyTint(condition);
   const todGrad = introTodGradient(introHour);
   const showSun = (condition.includes('clear') || condition.includes('sunny')) && introHour >= 8 && introHour < 18;
