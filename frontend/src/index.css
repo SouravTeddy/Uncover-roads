@@ -358,6 +358,14 @@ html, body {
   0%, 100% { opacity: .65; }
   50%      { opacity: 1;   }
 }
+@keyframes flashFlicker {
+  0%, 88%, 100% { opacity: 0;   }
+  90%           { opacity: .95; }
+  92%           { opacity: .35; }
+  94%           { opacity: 1;   }
+  96%           { opacity: .15; }
+  97%           { opacity: 0;   }
+}
 
 /* ── Transit cinematic keyframes ─────────────────────── */
 @keyframes par {
