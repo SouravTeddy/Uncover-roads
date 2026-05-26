@@ -94,7 +94,7 @@ export function ReelIntroCard({ card, active, onInteract }: Props) {
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED), []);
 
-  useEffect(() => { if (active) onInteract?.('viewed'); }, [active]);
+  useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
     if (active) {
       lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
@@ -102,7 +102,7 @@ export function ReelIntroCard({ card, active, onInteract }: Props) {
       if (lingerTimer.current) clearTimeout(lingerTimer.current);
     }
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
-  }, [active]);
+  }, [active, onInteract]);
 
   const dayCount = card.totalDays ?? 1;
   const tripLabel = dayCount === 1 ? 'Your day in' : `Your ${dayCount}-day trip`;
@@ -133,9 +133,9 @@ export function ReelIntroCard({ card, active, onInteract }: Props) {
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
           {isSnow
             ? snowParticles.map((f, i) => (
-                <div key={i} style={f.outer}><div style={f.inner as React.CSSProperties} /></div>
+                <div key={`snow-${i}`} style={f.outer}><div style={f.inner as React.CSSProperties} /></div>
               ))
-            : rainParticles.map((s, i) => <div key={i} style={s} />)
+            : rainParticles.map((s, i) => <div key={`rain-${i}`} style={s} />)
           }
           {isThunder && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'radial-gradient(ellipse at 50% 25%,rgba(230,220,255,.95),rgba(180,150,230,.5) 32%,rgba(120,80,180,0) 70%)', mixBlendMode: 'screen', pointerEvents: 'none', animation: 'flashFlicker 3.4s ease-out -1.3s infinite' }} />
