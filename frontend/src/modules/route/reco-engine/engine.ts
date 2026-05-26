@@ -178,6 +178,28 @@ export function gapToCard(
         ? `More walking than your profile suggests. Consider a transit option between some stops.`
         : `Most stops are compact — room for a walk if you want one.`,
     },
+    hasHiddenGem: {
+      trigger: 'hidden_gem',
+      label: 'A local spot worth knowing about',
+      consequence: `Close to your route — the kind of place most visitors walk past.`,
+    },
+    categoryDiversity: {
+      trigger: 'category_diversity',
+      label: 'All similar stops today',
+      consequence: `One different kind of stop often makes the rest feel better.`,
+    },
+    timeBalance: {
+      trigger: 'time_balance',
+      label: gap.direction === 'excess' ? 'Heavy start, quiet finish' : 'Light start to the day',
+      consequence: gap.direction === 'excess'
+        ? `Most of today is front-loaded. The afternoon is clear if you want to add something.`
+        : `The morning is quiet — room to add something before the day picks up.`,
+    },
+    geoEfficiency: {
+      trigger: 'geo_efficiency',
+      label: 'Route doubles back today',
+      consequence: `A couple of stops are out of sequence — reordering saves meaningful time.`,
+    },
   };
 
   const tmpl = templates[gap.dimension];
