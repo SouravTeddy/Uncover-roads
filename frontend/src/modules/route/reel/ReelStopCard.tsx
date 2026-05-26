@@ -368,7 +368,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
       {/* Card content */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 10, transform: `translateX(${swipeX}px)`, transition: swiping ? 'none' : 'transform .3s cubic-bezier(.25,0,0,1)' }}>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 80px' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 15px 26px' }}>
 
           {/* Stop counter — frosted glass pill */}
           <div style={{ marginBottom: 8, opacity: visible ? 1 : 0, transition: 'opacity .4s' }}>
@@ -390,12 +390,12 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
               padding: '3px 9px', borderRadius: 6,
               background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)',
             }}>
-              <span className="ms reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.40)' }}>schedule</span>
-              <span className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>
+              <span className="ms reel-meta" style={{ fontSize: 11, color: 'rgba(255,255,255,.40)' }}>schedule</span>
+              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>
                 {formatTime(stop.time)}
               </span>
               <span className="reel-meta" style={{ color: 'rgba(255,255,255,.30)' }}>·</span>
-              <span className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.50)' }}>
+              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.50)' }}>
                 {formatDuration(stop.durationMin)}
               </span>
               {movedFrom !== null && (
@@ -405,7 +405,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
           </div>
 
           {/* Title */}
-          <h2 className="reel-h1" style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: '#fff', lineHeight: 1.05, marginBottom: 12, animation: visible ? 'fadeUp .5s .12s both' : 'none' }}>
+          <h2 className="reel-h1" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1.05, marginBottom: 12, animation: visible ? 'fadeUp .5s .12s both' : 'none' }}>
             {stop.title}
           </h2>
 
