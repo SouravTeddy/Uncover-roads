@@ -67,7 +67,7 @@ describe('computeAreaText', () => {
     const persona = makePersona(['cafe'])
     const places = [makePlace({ id: '1', category: 'cafe' })]
     const text = computeAreaText('Lisbon', persona, places)
-    expect(text).toContain('based on your interests')
+    expect(text).toContain('Based on your interests')
   })
 })
 

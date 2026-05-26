@@ -68,6 +68,15 @@ export function computeAreaText(
     return `There are ${mapPlaces.length} spots on this map — tap any pin to start exploring ${city}`
   }
 
+  // Tally by category and build readable label (combine top 2 if within 20%)
+  const catCount: Record<string, number> = {}
+  for (const p of matching) catCount[p.category] = (catCount[p.category] ?? 0) + 1
+  const sorted = Object.entries(catCount).sort((a, b) => b[1] - a[1])
+  const categoryStr =
+    sorted.length >= 2 && sorted[1][1] >= sorted[0][1] * 0.8
+      ? `${CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0]} and ${CATEGORY_LABELS[sorted[1][0]] ?? sorted[1][0]}`
+      : (CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0])
+
   // Find centroid of matching pins
   const avgLat = matching.reduce((s, p) => s + p.lat, 0) / matching.length
   const avgLon = matching.reduce((s, p) => s + p.lon, 0) / matching.length
@@ -87,7 +96,7 @@ export function computeAreaText(
     return `Since you enjoy taking it slow, start at ${startPlace.title} — it's central to the ${matching.length} spots we think you'll love in ${city}`
   }
 
-  return `Based on your interests, ${startPlace.title} is a great first stop — ${matching.length} spots nearby match your travel style`
+  return `Based on your interests, ${city} has ${matching.length} ${categoryStr} worth exploring — ${startPlace.title} is a great first stop`
 }
 
 /**
