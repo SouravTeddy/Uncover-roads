@@ -340,7 +340,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
         <div style={{
           position: 'absolute', top: safeAreaTop, right: 13, zIndex: 11,
           display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '3px 8px', borderRadius: 6,
+          padding: '3px 8px', borderRadius: 999,
           background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255,255,255,.10)',
           opacity: visible ? 1 : 0, transition: 'opacity .4s',
