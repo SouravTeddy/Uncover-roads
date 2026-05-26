@@ -42,43 +42,50 @@ export interface RecoSignal {
 }
 
 export function computeRecoSignal(
-  state: Pick<AppState, 'obAnswers' | 'persona' | 'travelStartDate' | 'tripContext' | 'weather' | 'savedEvents' | 'dismissedPinIds' | 'pendingTripDetails' | 'journey'>,
+  state: Pick<AppState, 'rawOBAnswers' | 'persona' | 'travelStartDate' | 'tripContext' | 'weather' | 'savedEvents' | 'dismissedPinIds' | 'pendingTripDetails' | 'journey'>,
   dayIdx: number,
   itinerary: EngineItinerary,
 ): RecoSignal {
-  const ob = state.obAnswers;
+  const raw = state.rawOBAnswers;
   const weights: EngineWeights = itinerary.personaSnapshot;
   const archetype = (itinerary.archetypeSnapshot as string) ?? state.persona?.archetype ?? 'explorer';
   const archetypeKey = archetype.toLowerCase().replace(/\s+/g, '');
 
+  // pace: first entry in raw.pace array
   const paceMap: Record<string, 'slow' | 'moderate' | 'fast'> = {
-    walking: 'slow', transit: 'fast', self: 'moderate', any: 'moderate',
+    slow: 'slow', balanced: 'moderate', pack: 'fast', spontaneous: 'moderate',
   };
-  const pace = ob.pace ? (paceMap[ob.pace] ?? 'moderate') : 'moderate';
+  const pace = raw?.pace?.[0] ? (paceMap[raw.pace[0]] ?? 'moderate') : 'moderate';
 
+  // social
   const socialMap: Record<string, 'solo' | 'duo' | 'group'> = {
-    solo: 'solo', couple: 'duo', group: 'group', family: 'group',
+    solo: 'solo', couple: 'duo', family: 'group', friends: 'group',
   };
-  const social = ob.social ? (socialMap[ob.social] ?? 'solo') : 'solo';
-  const isFamily = ob.social === 'family';
+  const social = raw?.group ? (socialMap[raw.group] ?? 'solo') : 'solo';
+  const isFamily = raw?.group === 'family';
 
-  const ritualMap: Record<string, number> = { coffee: 0.8, tea: 0.6, alcohol: 0.4, neither: 0.1 };
-  const ritualStrength = ob.ritual ? (ritualMap[ob.ritual] ?? 0.4) : 0.4;
+  // ritual strength from day_open answer
+  const ritualMap: Record<string, number> = {
+    coffee: 0.8, breakfast: 0.5, grab_go: 0.3, straight: 0.1,
+  };
+  const ritualStrength = raw?.day_open ? (ritualMap[raw.day_open] ?? 0.4) : 0.4;
 
-  const sensoryMap: Record<string, number> = { visual: 0.8, taste: 0.7, movement: 0.6, history: 0.5 };
-  const sensoryIntensity = ob.sensory ? (sensoryMap[ob.sensory] ?? 0.4) : 0.4;
+  // sensory intensity: max of mood array values
+  const sensoryMap: Record<string, number> = {
+    culture: 0.7, eat_drink: 0.7, explore: 0.6, relax: 0.4,
+  };
+  const sensoryIntensity = raw?.mood?.length
+    ? Math.max(...raw.mood.map(m => sensoryMap[m] ?? 0.4))
+    : 0.4;
 
-  const spontaneityBias = Math.min(1, weights.w_spontaneity * 0.6 + (ob.style === 'spontaneous' ? 0.4 : 0));
+  // spontaneity bias
+  const spontaneityBias = Math.min(
+    1,
+    weights.w_spontaneity * 0.6 + (raw?.pace?.includes('spontaneous') ? 0.4 : 0),
+  );
 
-  const answeredCount = [
-    ob.ritual !== null,
-    ob.sensory !== null,
-    ob.style !== null,
-    ob.pace !== null,
-    ob.social !== null,
-    ob.attractions.length > 0,
-  ].filter(Boolean).length;
-  const archetypeConfidence = answeredCount / 6;
+  // archetypeConfidence: OB is mandatory — always 1.0
+  const archetypeConfidence = 1.0;
 
   const day = itinerary.days[dayIdx];
   const totalDays = itinerary.days.length;
