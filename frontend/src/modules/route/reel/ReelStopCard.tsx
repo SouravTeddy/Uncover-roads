@@ -178,11 +178,9 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
   // Sky tint (z-index 2)
   let skyTint = 'rgba(0,0,0,.15)';
-  if (condition.includes('rain') || condition.includes('drizzle')) skyTint = 'rgba(25,38,62,.32)';
-  else if (condition.includes('thunderstorm'))                      skyTint = 'rgba(85,40,125,.30)';
-  else if (condition.includes('snow'))                              skyTint = 'rgba(200,215,240,.14)';
-  else if (condition.includes('fog') || condition.includes('mist')) skyTint = 'rgba(180,185,195,.22)';
-  else if (condition.includes('clear') || condition.includes('sunny')) skyTint = 'rgba(255,210,140,.12)';
+  if (condition.includes('snow'))                                          skyTint = 'rgba(200,215,240,.14)';
+  else if (condition.includes('fog') || condition.includes('mist'))        skyTint = 'rgba(180,185,195,.22)';
+  else if (condition.includes('clear') || condition.includes('sunny'))     skyTint = 'rgba(255,210,140,.12)';
   else if (condition.includes('cloud') || condition.includes('overcast') || condition.includes('partly')) skyTint = 'rgba(140,150,165,.18)';
 
   // Time-of-day gradient (z-index 4)
@@ -210,8 +208,20 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
         : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #111114, #1a1420)' }} />
       }
 
-      {/* z-index 2: Sky tint */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: skyTint, pointerEvents: 'none' }} />
+      {/* z-index 2: Sky tint — single layer for most conditions, double layer for rain/storm */}
+      {(condition.includes('rain') || condition.includes('drizzle')) ? (
+        <>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))', mixBlendMode: 'multiply', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))', opacity: 0.6, pointerEvents: 'none' }} />
+        </>
+      ) : condition.includes('thunderstorm') ? (
+        <>
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))', mixBlendMode: 'multiply', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))', opacity: 0.6, pointerEvents: 'none' }} />
+        </>
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: skyTint, pointerEvents: 'none' }} />
+      )}
 
       {/* z-index 3: Legibility scrim (always present) */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'linear-gradient(180deg, transparent 0%, transparent 35%, rgba(0,0,0,.45) 65%, rgba(0,0,0,.85) 90%, rgba(10,10,13,.95) 100%)', pointerEvents: 'none' }} />
