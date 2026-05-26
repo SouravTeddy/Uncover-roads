@@ -105,6 +105,7 @@ export interface AppState {
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
   reelSavedId: string | null;
+  pendingTripDetails: import('./types').TripDetails | null;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -286,6 +287,7 @@ export const initialState: AppState = {
   activePinId: null,
   mapFilter: 'all' as MapFilterChip,
   reelSavedId: null,
+  pendingTripDetails: null,
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -363,7 +365,8 @@ export type Action =
   | { type: 'SET_ACTIVE_PIN_ID'; id: string | null }
   | { type: 'SET_MAP_FILTER'; filter: MapFilterChip }
   | { type: 'SET_REEL_SAVED_ID'; id: string | null }
-  | { type: 'REMOVE_ITINERARY'; id: string };
+  | { type: 'REMOVE_ITINERARY'; id: string }
+  | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -487,13 +490,16 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, route: action.route };
 
     case 'SAVE_ITINERARY': {
-      const updated = [...state.savedItineraries, action.saved];
+      const saved = state.pendingTripDetails
+        ? { ...action.saved, tripDetails: state.pendingTripDetails }
+        : action.saved;
+      const updated = [...state.savedItineraries, saved];
       try {
         localStorage.setItem('ur_saved_itineraries', JSON.stringify(updated));
       } catch {
         // ignore
       }
-      return { ...state, savedItineraries: updated };
+      return { ...state, savedItineraries: updated, pendingTripDetails: null };
     }
 
     case 'UPDATE_SAVED_ITINERARY': {
@@ -776,6 +782,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_REEL_SAVED_ID':
       return { ...state, reelSavedId: action.id };
+
+    case 'SET_PENDING_TRIP_DETAILS':
+      return { ...state, pendingTripDetails: action.details };
 
     default:
       return state;

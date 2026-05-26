@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ReelIntroCard } from './types';
 import { WeatherCanvas } from '../WeatherCanvas';
 import { useAppStore } from '../../../shared/store';
-import { OriginInputSheet } from '../../journey/OriginInputSheet';
-import type { OriginPlace } from '../../../shared/types';
+import { TripDetailsSheet } from './TripDetailsSheet';
+import type { TripDetails } from '../../../shared/types';
 
 interface Props {
   card: ReelIntroCard;
@@ -68,7 +68,7 @@ function WeatherIcon({ condition }: { condition: string }) {
 }
 
 export function ReelIntroCard({ card, active }: Props) {
-  const { state } = useAppStore();
+  const { state, dispatch } = useAppStore();
   const [visible, setVisible] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -80,8 +80,23 @@ export function ReelIntroCard({ card, active }: Props) {
     setVisible(false);
   }, [active]);
 
-  function handleOriginDone(_origin: OriginPlace | null) {
-    setSheetOpen(false);
+  // Resolve saved trip vs. fresh reel
+  const savedItem = state.reelSavedId
+    ? state.savedItineraries.find(s => s.id === state.reelSavedId) ?? null
+    : null;
+  const existingDetails: TripDetails | null = savedItem?.tripDetails ?? state.pendingTripDetails ?? null;
+  const cities: string[] = state.engineItinerary?.cities?.length
+    ? state.engineItinerary.cities
+    : [card.city];
+  const journeyLegs = savedItem?.journeyLegs ?? state.journey ?? null;
+  const hasDetails = !!(existingDetails?.arrivalDate);
+
+  function handleTripDetailsSave(details: TripDetails) {
+    if (savedItem) {
+      dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedItem.id, patch: { tripDetails: details } });
+    } else {
+      dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
+    }
   }
 
   const topChanges = card.engineChanges.slice(0, 2);
@@ -96,40 +111,40 @@ export function ReelIntroCard({ card, active }: Props) {
       {card.weather && <WeatherCanvas condition={card.weather.condition} />}
       <div style={{ position: 'absolute', inset: 0, background: GRADIENT }} />
 
-      {/* Add detail button — top right */}
+      {/* Trip details button — top right */}
       <button
         onClick={() => setSheetOpen(true)}
         style={{
           position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', right: 14,
+          zIndex: 10,
           display: 'inline-flex', alignItems: 'center', gap: 5,
           padding: '7px 12px', borderRadius: 999,
-          background: state.journey?.some(l => l.type === 'origin')
-            ? 'rgba(212,168,83,.18)' : 'rgba(255,255,255,.12)',
+          background: hasDetails ? 'rgba(212,168,83,.18)' : 'rgba(255,255,255,.12)',
           backdropFilter: 'blur(8px)',
-          border: state.journey?.some(l => l.type === 'origin')
-            ? '1px solid rgba(212,168,83,.35)' : '1px solid rgba(255,255,255,.18)',
+          border: hasDetails ? '1px solid rgba(212,168,83,.35)' : '1px solid rgba(255,255,255,.18)',
           fontSize: 11, fontWeight: 600,
-          color: state.journey?.some(l => l.type === 'origin') ? '#d4a853' : 'rgba(255,255,255,.85)',
+          color: hasDetails ? '#d4a853' : 'rgba(255,255,255,.85)',
           cursor: 'pointer',
         }}
       >
         <span className="ms" style={{ fontSize: 13 }}>
-          {state.journey?.some(l => l.type === 'origin') ? 'hotel' : 'edit'}
+          {hasDetails ? 'hotel' : 'edit_calendar'}
         </span>
-        {state.journey?.some(l => l.type === 'origin')
-          ? 'Starting point set'
-          : 'Add arrival details'}
+        {hasDetails ? 'Trip details set' : 'Add trip details'}
       </button>
 
-      {/* Origin input sheet — approved design from OriginInputSheet */}
       {sheetOpen && (
-        <OriginInputSheet
-          onDone={handleOriginDone}
+        <TripDetailsSheet
+          cities={cities}
+          journeyLegs={journeyLegs}
+          existingDetails={existingDetails}
+          travelDate={savedItem?.travelDate ?? state.travelStartDate ?? null}
+          onSave={handleTripDetailsSave}
           onClose={() => setSheetOpen(false)}
         />
       )}
 
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px', zIndex: 10 }}>
 
         {/* Label */}
         <p className="reel-meta" style={{

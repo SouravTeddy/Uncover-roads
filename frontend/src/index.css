@@ -91,7 +91,7 @@ html, body {
 
 /* ── Material Symbols helper ──────────────────────── */
 .ms {
-  font-family: 'Material Symbols Outlined';
+  font-family: 'Material Symbols Rounded';
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   font-size: 24px;
   line-height: 1;
@@ -193,6 +193,11 @@ html, body {
 }
 
 /* ── UI entry animations ──────────────────────────────── */
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 @keyframes springUp {
   0%   { transform: translateY(32px); opacity: 0; }
   60%  { transform: translateY(-6px); opacity: 1; }

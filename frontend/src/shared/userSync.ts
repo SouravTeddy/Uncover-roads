@@ -39,6 +39,7 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
     date: item.date,
     itinerary: item.itinerary,
     persona: item.persona,
+    trip_details: item.tripDetails ?? null,
   });
 }
 
@@ -114,5 +115,6 @@ export async function loadSavedItineraries(userId: string): Promise<SavedItinera
     lastUpdateCheck: null,
     pendingSwapCards: [],
     journeyLegs: row.journey_legs ?? null,
+    tripDetails: row.trip_details ?? null,
   }));
 }
