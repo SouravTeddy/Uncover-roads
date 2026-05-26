@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { deriveRecos } from './engine';
+import { deriveRecos, gapToCard } from './engine';
+import type { Gap } from './engine';
 import type { RecoSignal } from './signal';
+import type { ItineraryProfile } from './profile';
 import type { EngineItineraryStop } from '../../../shared/types';
 
 const HIGH_FOOD_WEIGHTS = { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.9, w_culture_depth: 0.3, w_nightlife: 0.2, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.5, w_spontaneity: 0.5, w_rest_need: 0.5 };
@@ -67,5 +69,51 @@ describe('deriveRecos', () => {
     );
     const recos = deriveRecos(manyStops, signal);
     expect(Array.isArray(recos)).toBe(true);
+  });
+});
+
+describe('gapToCard — previously missing templates', () => {
+  const BASE_STOPS: EngineItineraryStop[] = [{
+    id: 's1', placeId: 'p1', title: 'Test Place', area: 'Shinjuku', day: 1,
+    time: '10:00', durationMin: 60, category: 'museum', lat: 35.6, lon: 139.7,
+    priceLevel: 2, rating: 4.2, weekdayText: null, whyForYou: '', localTip: null,
+    googleMapsUrl: null, website: null, photoRef: null,
+  }];
+
+  const BASE_SIGNAL: RecoSignal = {
+    weights: { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.5, w_budget_sensitivity: 0.5, w_crowd_aversion: 0.5, w_spontaneity: 0.5, w_rest_need: 0.5 },
+    archetype: 'explorer', archetypeGroup: 'explorer', archetypeConfidence: 1.0,
+    pace: 'moderate', social: 'solo', isFamily: false,
+    ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.5,
+    trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Tokyo', currentDayDate: '2026-05-26' },
+    weather: null, dismissedPinIds: new Set(), savedEvents: [],
+  };
+
+  function makeGap(dimension: keyof ItineraryProfile, direction: 'missing' | 'excess' = 'missing'): Gap {
+    return { dimension, target: 1, actual: 0, delta: direction === 'missing' ? 1 : -1, dimensionWeight: 0.5, significance: 0.5, direction, conflictPresent: false };
+  }
+
+  it('hasHiddenGem returns a card with trigger hidden_gem', () => {
+    const card = gapToCard(makeGap('hasHiddenGem'), BASE_STOPS, BASE_SIGNAL);
+    expect(card).not.toBeNull();
+    expect(card?.trigger).toBe('hidden_gem');
+  });
+
+  it('categoryDiversity returns a card with trigger category_diversity', () => {
+    const card = gapToCard(makeGap('categoryDiversity'), BASE_STOPS, BASE_SIGNAL);
+    expect(card).not.toBeNull();
+    expect(card?.trigger).toBe('category_diversity');
+  });
+
+  it('timeBalance missing returns time_balance card', () => {
+    const card = gapToCard(makeGap('timeBalance', 'missing'), BASE_STOPS, BASE_SIGNAL);
+    expect(card).not.toBeNull();
+    expect(card?.trigger).toBe('time_balance');
+  });
+
+  it('geoEfficiency returns a card with trigger geo_efficiency', () => {
+    const card = gapToCard(makeGap('geoEfficiency'), BASE_STOPS, BASE_SIGNAL);
+    expect(card).not.toBeNull();
+    expect(card?.trigger).toBe('geo_efficiency');
   });
 });

@@ -79,7 +79,7 @@ export function ItineraryReelScreen() {
 
     // Compute recos per day using the engine (skip for saved trips — use legacy path)
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
-    if (itinerary && state.persona && !savedItem) {
+    if (itinerary && state.persona) {
       itinerary.days.forEach((_, dayIdx) => {
         const signal = computeRecoSignal(
           { ...state, weather: w },
@@ -244,7 +244,7 @@ export function ItineraryReelScreen() {
               onInteract={(action) => {
                 const interaction = buildInteraction(
                   card, action, card.id.includes('-conflict'),
-                  archetype, state.obAnswers.pace ?? 'moderate', null, 1, state.weather?.condition ?? null,
+                  archetype, state.rawOBAnswers?.pace?.[0] ?? 'moderate', null, 1, state.weather?.condition ?? null,
                 );
                 dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
               }}
