@@ -1,313 +1,204 @@
-import { useEffect, useState } from 'react';
-import type { ReelIntroCard } from './types';
-import { WeatherCanvas } from '../WeatherCanvas';
-import { useAppStore } from '../../../shared/store';
-import { TripDetailsSheet } from './TripDetailsSheet';
-import type { TripDetails } from '../../../shared/types';
+import { useEffect, useRef, useMemo } from 'react';
+import type { ReelIntroCard as ReelIntroCardType } from './types';
+import {
+  REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
+  todGradient, todDotColor, todLabel, skyTintForCondition,
+  RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
+  RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
+  THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
+  SNOW_COUNT, SNOW_SEED,
+  INTRO_CITY_FS, INTRO_CITY_MB, INTRO_LABEL_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
+  INTRO_STRIP_BR, INTRO_STRIP_GAP, INTRO_TEXT_SHADOW,
+  TOD_BADGE_TOP, TOD_BADGE_LEFT,
+  WEATHER_ICON, ENGINE_STRIP_COPY, makeRng,
+} from './reel-constants';
 
 interface Props {
-  card: ReelIntroCard;
+  card: ReelIntroCardType;
   active: boolean;
-  onAddDetail?: () => void;
+  onInteract?: (action: 'viewed' | 'lingered') => void;
 }
 
-function introSkyTint(condition: string): string {
-  const c = condition.toLowerCase();
-  if (c.includes('rain') || c.includes('drizzle')) return 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))';
-  if (c.includes('thunder') || c.includes('storm'))  return 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))';
-  if (c.includes('snow'))                            return 'rgba(55,72,100,.55)';
-  if (c.includes('fog') || c.includes('mist'))       return 'rgba(110,118,132,.55)';
-  if (c.includes('clear') || c.includes('sunny'))    return 'linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%)';
-  if (c.includes('cloud') || c.includes('overcast') || c.includes('partly')) return 'rgba(150,165,185,.16)';
-  return 'rgba(0,0,0,.12)';
+function makeRainParticles(count: number, seedVal: number, lenMin: number, lenRange: number, color: string) {
+  const rng = makeRng(seedVal);
+  return Array.from({ length: count }, () => ({
+    position: 'absolute' as const,
+    left: `${rng() * 100}%`,
+    top: '-15%',
+    width: RAIN_WIDTH,
+    height: `${lenMin + rng() * lenRange}px`,
+    background: color === 'rain' ? RAIN_BG : `linear-gradient(to bottom,transparent,${color})`,
+    opacity: RAIN_OPACITY_MIN + rng() * RAIN_OPACITY_RANGE,
+    animation: `precip ${RAIN_DUR_MIN + rng() * RAIN_DUR_RANGE}s linear ${-rng() * RAIN_DELAY_RANGE}s infinite`,
+  }));
 }
 
-function introTodGradient(hour: number): string | null {
-  if (hour >= 6 && hour < 8)   return 'linear-gradient(180deg,rgba(255,210,180,.08) 0%,rgba(255,180,140,.18) 40%,rgba(250,150,110,.40) 72%,rgba(228,118,86,.62) 92%,rgba(212,98,68,.68) 100%)';
-  if (hour >= 8 && hour < 11)  return 'linear-gradient(180deg,rgba(255,225,180,.05) 0%,rgba(255,205,140,.16) 50%,rgba(238,168,100,.40) 78%,rgba(216,138,80,.62) 100%)';
-  if (hour >= 11 && hour < 16) return 'linear-gradient(180deg,rgba(180,210,235,.14) 0%,rgba(220,225,210,.08) 35%,rgba(245,225,170,.24) 70%,rgba(232,205,150,.40) 92%,rgba(218,188,130,.50) 100%)';
-  if (hour >= 18 && hour < 20) return 'linear-gradient(180deg,rgba(80,55,120,.18) 0%,rgba(180,70,110,.28) 38%,rgba(200,80,90,.44) 60%,rgba(160,55,110,.60) 82%,rgba(95,40,130,.68) 100%)';
-  if (hour >= 20)               return 'linear-gradient(180deg,rgba(20,28,55,.24) 0%,rgba(35,50,98,.36) 45%,rgba(40,55,110,.52) 75%,rgba(22,32,72,.68) 100%)';
-  return null;
+function makeSnowParticles(seedVal: number) {
+  const rng = makeRng(seedVal);
+  return Array.from({ length: SNOW_COUNT }, (_, i) => {
+    const size = 3 + rng() * 3;
+    return {
+      outer: {
+        position: 'absolute' as const,
+        left: `${rng() * 100}%`,
+        top: '-10%',
+        animation: `snowSway${(i % 3) + 1} ${2.5 + rng() * 2}s ease-in-out ${-rng() * 3}s infinite, snowFall ${3 + rng() * 4}s linear ${-rng() * 6}s infinite`,
+      } as React.CSSProperties,
+      inner: {
+        width: size, height: size, borderRadius: '50%',
+        background: 'rgba(220,235,255,0.85)', filter: 'blur(0.5px)',
+      } as React.CSSProperties,
+    };
+  });
 }
 
-const GRADIENT = 'linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%)';
-
-const CHANGE_LABELS: Record<string, string> = {
-  swap:       'Swapped a stop to fit your style',
-  insert:     'Added something you might love',
-  resequence: 'Rearranged for a smoother day',
-  weather:    'Worked around the forecast',
-  transit:    'Accounted for travel time',
-  advisory:   'Flagged something important',
-  event:      'Planned around a local event',
-};
-
-const CHANGE_ICONS: Record<string, string> = {
-  swap:       'swap_horiz',
-  insert:     'add_circle',
-  resequence: 'swap_vert',
-  weather:    'wb_cloudy',
-  transit:    'directions_transit',
-  advisory:   'info',
-  event:      'event',
-};
-
-function WeatherIcon({ condition }: { condition: string }) {
-  const lower = condition.toLowerCase();
-  const isRain = /rain|drizzle|shower/.test(lower);
-  const isThunder = /thunder|storm|lightning/.test(lower);
-  const isCloudy = /cloud|overcast/.test(lower);
-
-  if (isThunder) {
+function SkyTintLayers({ condition }: { condition: string }) {
+  const result = skyTintForCondition(condition);
+  if ('double' in result) {
     return (
-      <span className="ms fill" style={{ fontSize: 15, color: 'rgba(255,255,255,.8)', animation: 'weather-flicker 2.4s ease-in-out infinite' }}>
-        bolt
-      </span>
+      <>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, mixBlendMode: 'multiply', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, opacity: 0.6, pointerEvents: 'none' }} />
+      </>
     );
   }
-  if (isRain) {
-    return (
-      <span className="ms fill" style={{ fontSize: 15, color: 'rgba(255,255,255,.7)', animation: 'weather-fall .9s ease-in-out infinite alternate' }}>
-        water_drop
-      </span>
-    );
-  }
-  if (isCloudy) {
-    return (
-      <span className="ms fill" style={{ fontSize: 15, color: 'rgba(255,255,255,.7)', animation: 'weather-drift 3s ease-in-out infinite alternate' }}>
-        cloud
-      </span>
-    );
-  }
+  return <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.single, pointerEvents: 'none' }} />;
+}
+
+function SunRays() {
   return (
-    <span className="ms fill" style={{ fontSize: 15, color: 'rgba(255,255,255,.8)', animation: 'weather-pulse 2.5s ease-in-out infinite' }}>
-      wb_sunny
-    </span>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', right: '-20%', top: '-20%', width: '90%', height: '80%', background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.40),rgba(255,215,150,0) 60%)', filter: 'blur(6px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', top: '-40%', right: '-10%', width: '90%', height: '180%', transformOrigin: 'top right', animation: 'rayRotate 80s linear infinite' }}>
+        <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
+      </div>
+    </div>
   );
 }
 
-export function ReelIntroCard({ card, active }: Props) {
-  const { state, dispatch } = useAppStore();
-  const [visible, setVisible] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+export function ReelIntroCard({ card, active, onInteract }: Props) {
+  const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hour = new Date().getHours();
+  const condition = (card.weather?.condition ?? 'clear').toLowerCase();
+  const isSunny = condition === 'sunny' || condition === 'clear';
+  const isRain = condition === 'rain' || condition === 'drizzle';
+  const isThunder = condition.includes('thunder') || condition.includes('storm');
+  const isSnow = condition.includes('snow') || condition.includes('blizzard');
 
+  const rainParticles = useMemo(
+    () => isThunder
+      ? makeRainParticles(THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR)
+      : makeRainParticles(RAIN_COUNT, RAIN_SEED, RAIN_LEN_MIN, RAIN_LEN_RANGE, 'rain'),
+    [isThunder],
+  );
+  const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED), []);
+
+  useEffect(() => { if (active) onInteract?.('viewed'); }, [active]);
   useEffect(() => {
     if (active) {
-      const t = setTimeout(() => setVisible(true), 80);
-      return () => clearTimeout(t);
+      lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
+    } else {
+      if (lingerTimer.current) clearTimeout(lingerTimer.current);
     }
-    setVisible(false);
+    return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active]);
 
-  // Resolve saved trip vs. fresh reel
-  const savedItem = state.reelSavedId
-    ? state.savedItineraries.find(s => s.id === state.reelSavedId) ?? null
-    : null;
-  const existingDetails: TripDetails | null = savedItem?.tripDetails ?? state.pendingTripDetails ?? null;
-  const cities: string[] = state.engineItinerary?.cities?.length
-    ? state.engineItinerary.cities
-    : [card.city];
-  const journeyLegs = savedItem?.journeyLegs ?? state.journey ?? null;
-  const hasDetails = !!(existingDetails?.arrivalDate);
-
-  function handleTripDetailsSave(details: TripDetails) {
-    if (savedItem) {
-      dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedItem.id, patch: { tripDetails: details } });
-    } else {
-      dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
-    }
-  }
-
-  const condition = (card.weather?.condition ?? '').toLowerCase();
-  const introHour = new Date().getHours();
-  const skyTint = introSkyTint(condition);
-  const todGrad = introTodGradient(introHour);
-  const showSun = (condition.includes('clear') || condition.includes('sunny')) && introHour >= 8 && introHour < 18;
-
-  const topChanges = card.engineChanges.slice(0, 2);
+  const dayCount = card.totalDays ?? 1;
+  const tripLabel = dayCount === 1 ? 'Your day in' : `Your ${dayCount}-day trip`;
+  const dotColor = todDotColor(hour);
 
   return (
-    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden' }}>
-      {card.imageUrl
-        ? <img src={card.imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0c0c0e, #1a1420)' }} />
-      }
-      {/* Sky tint */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: skyTint, pointerEvents: 'none' }} />
+    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
 
-      {/* Time-of-day gradient */}
-      {todGrad && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGrad, pointerEvents: 'none' }} />
+      {/* City photo z-index:0 */}
+      {card.imageUrl && (
+        <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
       )}
 
-      {/* Sun rays — clear daytime only */}
-      {showSun && (
-        <>
-          <div style={{
-            position: 'absolute', zIndex: 4,
-            right: '-20%', top: '-20%',
-            width: '90%', height: '80%',
-            background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.38),rgba(255,215,150,0) 60%)',
-            filter: 'blur(6px)',
-            animation: 'sunGlow 6s ease-in-out infinite',
-            pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', zIndex: 4,
-            top: '-40%', right: '-10%',
-            width: '90%', height: '180%',
-            transformOrigin: 'top right',
-            animation: 'rayRotate 80s linear infinite',
-            pointerEvents: 'none',
-          }}>
-            <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
-            <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
-          </div>
-        </>
-      )}
+      {/* Sky tint z-index:2 */}
+      <SkyTintLayers condition={condition} />
 
-      {/* Weather particle layer — rendered above atmospheric layers, below scrim */}
-      {card.weather && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none' }}>
-          <WeatherCanvas condition={card.weather.condition} />
+      {/* GRADIENT scrim z-index:3 */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
+
+      {/* ToD gradient z-index:4 */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGradient(hour), pointerEvents: 'none' }} />
+
+      {/* Sun rays z-index:4 (sunny only) */}
+      {isSunny && <SunRays />}
+
+      {/* Weather particles z-index:5 */}
+      {(isRain || isThunder || isSnow) && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
+          {isSnow
+            ? snowParticles.map((f, i) => (
+                <div key={i} style={f.outer}><div style={f.inner as React.CSSProperties} /></div>
+              ))
+            : rainParticles.map((s, i) => <div key={i} style={s} />)
+          }
+          {isThunder && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'radial-gradient(ellipse at 50% 25%,rgba(230,220,255,.95),rgba(180,150,230,.5) 32%,rgba(120,80,180,0) 70%)', mixBlendMode: 'screen', pointerEvents: 'none', animation: 'flashFlicker 3.4s ease-out -1.3s infinite' }} />
+          )}
         </div>
       )}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: GRADIENT }} />
 
-      {/* Trip details button — top right */}
-      <button
-        onClick={() => setSheetOpen(true)}
-        style={{
-          position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 14px)', right: 14,
-          zIndex: 10,
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          padding: '7px 12px', borderRadius: 999,
-          background: hasDetails ? 'rgba(212,168,83,.18)' : 'rgba(255,255,255,.12)',
-          backdropFilter: 'blur(8px)',
-          border: hasDetails ? '1px solid rgba(212,168,83,.35)' : '1px solid rgba(255,255,255,.18)',
-          fontSize: 11, fontWeight: 600,
-          color: hasDetails ? '#d4a853' : 'rgba(255,255,255,.85)',
-          cursor: 'pointer',
-        }}
-      >
-        <span className="ms" style={{ fontSize: 13 }}>
-          {hasDetails ? 'hotel' : 'edit_calendar'}
+      {/* ToD badge z-index:11 */}
+      <div style={{ position: 'absolute', top: TOD_BADGE_TOP, left: TOD_BADGE_LEFT, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {todLabel(hour)}
         </span>
-        {hasDetails ? 'Trip details set' : 'Add trip details'}
+      </div>
+
+      {/* Trip details button z-index:10 */}
+      <button style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid var(--color-border-m)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer' }}>
+        <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
+        Add trip details
       </button>
 
-      {sheetOpen && (
-        <TripDetailsSheet
-          cities={cities}
-          journeyLegs={journeyLegs}
-          existingDetails={existingDetails}
-          travelDate={savedItem?.travelDate ?? state.travelStartDate ?? null}
-          onSave={handleTripDetailsSave}
-          onClose={() => setSheetOpen(false)}
-        />
-      )}
-
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 17px 32px', zIndex: 10 }}>
-
-        {/* Label */}
-        <p className="reel-meta" style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,.5)', marginBottom: 7,
-          animation: visible ? 'fadeUp .5s .05s both' : 'none',
-        }}>
-          {card.totalDays === 1 ? 'Your day' : `Your ${card.totalDays}-day trip`}
+      {/* Content z-index:10 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: INTRO_LABEL_MB }}>
+          {tripLabel}
         </p>
+        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: INTRO_CITY_FS, fontWeight: 700, color: '#fff', lineHeight: 1, marginBottom: INTRO_CITY_MB, textShadow: INTRO_TEXT_SHADOW }}>
+          {card.city}
+        </h1>
 
-        {/* City */}
-        <h1 className="reel-h1" style={{
-          fontFamily: 'var(--font-heading)', fontSize: 50, fontWeight: 700,
-          color: '#fff', lineHeight: 1, marginBottom: 13,
-          animation: visible ? 'fadeUp .5s .15s both' : 'none',
-        }}>{card.city}</h1>
-
-        {/* Stats + weather row */}
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16,
-          animation: visible ? 'fadeUp .5s .25s both' : 'none',
-        }}>
-          <span className="reel-meta" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '5px 11px', borderRadius: 999,
-            border: '1px solid var(--color-border)',
-            background: 'rgba(255,255,255,.07)',
-          }}>
-            <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>place</span>
+        {/* Pills */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: INTRO_PILL_GAP, marginBottom: INTRO_PILL_MB }}>
+          <span className="pill pg">
+            <span className="ms fill" style={{ fontSize: 11 }}>place</span>
             {card.totalStops} stops
           </span>
-
-          {card.totalDays > 1 && (
-            <span className="reel-meta" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '5px 11px', borderRadius: 999,
-              border: '1px solid rgba(255,255,255,.12)',
-              background: 'rgba(255,255,255,.08)',
-            }}>
-              <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>calendar_today</span>
-              {card.totalDays} days
-            </span>
-          )}
-
           {card.weather && (
-            <span className="reel-meta" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '5px 11px', borderRadius: 999,
-              border: '1px solid rgba(255,255,255,.12)',
-              background: 'rgba(255,255,255,.08)',
-            }}>
-              <WeatherIcon condition={card.weather.condition} />
+            <span className="pill pg">
+              <span className="ms fill" style={{ fontSize: 11 }}>{WEATHER_ICON[condition] ?? 'wb_sunny'}</span>
               {card.weather.temp}° · {card.weather.condition}
             </span>
           )}
-
-          <span className="reel-meta" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '5px 11px', borderRadius: 999,
-            border: '1px solid var(--color-border)',
-            background: 'rgba(255,255,255,.07)',
-          }}>
-            <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.55)' }}>person</span>
-            {card.persona}
-          </span>
         </div>
 
-        {/* Pro tip or engine intelligence */}
-        {(card.proTip || topChanges.length > 0) && (
-          <div style={{ animation: visible ? 'fadeUp .5s .35s both' : 'none', marginBottom: 16 }}>
-            {card.proTip && (
-              <p className="reel-meta" style={{
-                fontStyle: 'italic', fontSize: 13, color: 'rgba(255,255,255,.6)', lineHeight: 1.6, marginBottom: topChanges.length > 0 ? 10 : 0,
-              }}>{card.proTip}</p>
-            )}
-            {topChanges.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {topChanges.map(({ type, count }) => (
-                  <div key={type} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                    padding: '5px 10px', borderRadius: 9,
-                    background: 'rgba(0,0,0,.28)',
-                    border: '1px solid rgba(255,255,255,.09)',
-                    backdropFilter: 'blur(6px)',
-                  }}>
-                    <span className="ms reel-meta" style={{ fontSize: 13, color: 'rgba(212,168,83,.85)' }}>{CHANGE_ICONS[type] ?? 'tune'}</span>
-                    <span className="reel-meta" style={{ fontSize: 11, color: 'rgba(255,255,255,.65)' }}>
-                      {CHANGE_LABELS[type] ?? type}{count > 1 ? ` ×${count}` : ''}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* Engine strips */}
+        {card.engineChanges.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: INTRO_STRIP_GAP }}>
+            {card.engineChanges.slice(0, 2).map((change, i) => {
+              const copy = ENGINE_STRIP_COPY[change.type];
+              if (!copy) return null;
+              return (
+                <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: INTRO_STRIP_BR, background: 'rgba(0,0,0,.28)', border: '1px solid var(--color-border)', backdropFilter: 'blur(6px)' }}>
+                  <span className="ms" style={{ fontSize: 12, color: 'var(--color-primary)' }}>{copy.icon}</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-2)' }}>{copy.text(change.count)}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 
         {/* Swipe hint */}
-        <div style={{ textAlign: 'center', marginTop: 8, animation: visible ? 'fadeUp .5s .45s both' : 'none' }}>
-          <span className="ms" style={{ fontSize: 20, color: 'rgba(255,255,255,.3)' }}>swipe_up</span>
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.2)' }}>swipe_up</span>
         </div>
       </div>
     </div>
