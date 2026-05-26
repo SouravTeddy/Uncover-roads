@@ -1,147 +1,61 @@
-import type React from 'react';
-import type { ReelDayDividerCard } from './types';
-
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-function formatDate(isoDate: string): string {
-  // Parse "YYYY-MM-DD" without Date constructor to avoid timezone drift
-  const [year, month, dayOfMonth] = isoDate.split('-').map(Number);
-  const d = new Date(year, month - 1, dayOfMonth);
-  const dayName = DAYS[d.getDay()];
-  const monthName = MONTHS[d.getMonth()];
-  return `${dayName}, ${String(dayOfMonth).padStart(2, '0')} ${monthName}`;
-}
+import type { ReelDayDividerCard as ReelDayDividerCardType } from './types';
+import {
+  DIVIDER_BG, DIVIDER_GHOST_FS, DIVIDER_CITY_FS, DIVIDER_DATE_FS, DIVIDER_LINE_W,
+  todGradient,
+} from './reel-constants';
 
 interface Props {
-  card: ReelDayDividerCard;
+  card: ReelDayDividerCardType;
   active: boolean;
 }
 
+function formatDividerDate(isoDate: string): string {
+  try {
+    const d = new Date(isoDate + 'T12:00:00Z');
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  } catch {
+    return isoDate;
+  }
+}
+
 export function ReelDayDividerCard({ card, active }: Props) {
-  const anim = (delay: number): React.CSSProperties => ({
-    animation: active ? `fadeUp .5s ${delay}s both` : 'none',
-  });
+  const hour = new Date().getHours();
 
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100svh',
-        scrollSnapAlign: 'start',
-        position: 'relative',
-        overflow: 'hidden',
-        background: 'linear-gradient(160deg, #0c1018 0%, #141820 50%, #0e1410 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-end',
-      }}
-    >
-      {/* Radial glow overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: 1,
-          background:
-            'radial-gradient(ellipse 200px 300px at 50% 40%, rgba(79,143,171,.07), transparent)',
-          pointerEvents: 'none',
-        }}
-      />
+    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: DIVIDER_BG }}>
 
-      {/* Large background day number watermark */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '30%',
-          left: 0,
-          right: 0,
-          textAlign: 'center',
-          zIndex: 2,
-          fontSize: 88,
-          fontWeight: 800,
-          color: 'rgba(255,255,255,.06)',
-          lineHeight: 1,
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}
-      >
-        DAY {card.day}
-      </div>
+      {/* City texture overlay */}
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 200px 300px at 50% 40%,rgba(79,143,171,.07),transparent)', pointerEvents: 'none' }} />
 
-      {/* Content block */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 10,
-          padding: '0 28px 100px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-        }}
-      >
-        {/* Divider line */}
-        <div
-          style={{
-            width: 40,
-            height: 1,
-            background: 'rgba(56,189,248,.4)',
-            marginBottom: 20,
-            ...anim(0.05),
-          }}
-        />
+      {/* Top fade */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to bottom,rgba(0,0,0,.5),transparent)', pointerEvents: 'none' }} />
 
-        {/* Date label */}
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: '0.14em',
-            color: '#38bdf8',
-            marginBottom: 12,
-            textTransform: 'uppercase',
-            ...anim(0.12),
-          }}
-        >
-          {formatDate(card.date)}
+      {/* ToD gradient z-index:4 */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGradient(hour), pointerEvents: 'none' }} />
+
+      {/* Horizon scrim z-index:4 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(0,0,0,.88),transparent)', zIndex: 4, pointerEvents: 'none' }} />
+
+      {/* Centered content */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px', zIndex: 5 }}>
+        <div style={{ fontSize: DIVIDER_DATE_FS, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--color-sky, #4f8fab)', opacity: 0.7, marginBottom: 12 }}>
+          {formatDividerDate(card.date)}
         </div>
-
-        {/* City name */}
-        <div
-          style={{
-            fontSize: 42,
-            fontFamily: 'var(--font-heading)',
-            color: '#ffffff',
-            fontWeight: 600,
-            lineHeight: 1.1,
-            marginBottom: 14,
-            ...anim(0.22),
-          }}
-        >
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: DIVIDER_GHOST_FS, fontWeight: 700, color: 'rgba(255,255,255,.06)', lineHeight: 1, marginBottom: -8 }}>
+          {card.day}
+        </div>
+        <div style={{ fontFamily: 'var(--font-heading)', fontSize: DIVIDER_CITY_FS, fontWeight: 700, color: '#fff', lineHeight: 1, marginBottom: 10 }}>
           {card.city}
         </div>
-
-        {/* Stop count */}
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--color-text-3)',
-            ...anim(0.34),
-          }}
-        >
-          {card.stopCount} stops planned
+        <div style={{ height: 1, width: DIVIDER_LINE_W, background: 'rgba(79,143,171,.4)', marginBottom: 10 }} />
+        <div style={{ fontSize: 11, color: 'var(--color-text-3)' }}>
+          {card.stopCount} stops
         </div>
+      </div>
 
-        {/* Swipe hint */}
-        <div
-          style={{
-            fontSize: 10,
-            color: 'rgba(255,255,255,.25)',
-            marginTop: 20,
-            ...anim(0.46),
-          }}
-        >
-          Swipe to explore →
-        </div>
+      {/* Swipe hint */}
+      <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center', zIndex: 8 }}>
+        <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.18)' }}>swipe_up</span>
       </div>
     </div>
   );
