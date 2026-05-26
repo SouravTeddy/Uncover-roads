@@ -16,7 +16,7 @@ import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
 
-const UNDO_DURATION = 3500;
+
 
 function preloadImages(srcs: string[]): Promise<void> {
   if (srcs.length === 0) return Promise.resolve();
