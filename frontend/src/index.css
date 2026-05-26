@@ -319,67 +319,44 @@ html, body {
 
 /* ── Atmospheric weather overlay keyframes ───────────── */
 @keyframes precip {
-  0%   { transform: translateY(-10px) rotate(15deg); opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 0.7; }
-  100% { transform: translateY(100vh) rotate(15deg); opacity: 0; }
+  from { transform: translateY(-40px); }
+  to   { transform: translateY(700px); }
 }
 @keyframes snowFall {
-  0%   { transform: translateY(-10px); opacity: 0; }
-  10%  { opacity: 1; }
-  100% { transform: translateY(100vh); opacity: 0; }
-}
-@keyframes snowSway1 {
-  0%, 100% { transform: translateX(0); }
-  50%       { transform: translateX(18px); }
-}
-@keyframes snowSway2 {
-  0%, 100% { transform: translateX(0); }
-  50%       { transform: translateX(-22px); }
-}
-@keyframes snowSway3 {
-  0%, 100% { transform: translateX(0); }
-  50%       { transform: translateX(14px); }
-}
-@keyframes fogDriftL {
-  0%   { transform: translateX(-30px); opacity: 0; }
-  20%  { opacity: 0.55; }
-  80%  { opacity: 0.45; }
-  100% { transform: translateX(30px); opacity: 0; }
-}
-@keyframes fogDriftR {
-  0%   { transform: translateX(30px); opacity: 0; }
-  20%  { opacity: 0.50; }
-  80%  { opacity: 0.40; }
-  100% { transform: translateX(-30px); opacity: 0; }
-}
-@keyframes flashFlicker {
-  0%, 88%, 100% { opacity: 0; }
-  90%           { opacity: .95; }
-  92%           { opacity: .35; }
-  94%           { opacity: 1; }
-  96%           { opacity: .15; }
-  97%           { opacity: 0; }
-}
-@keyframes rayRotate {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-@keyframes cloudDrift {
-  from { transform: translateX(0); }
-  to   { transform: translateX(160%); }
-}
-@keyframes windBlow {
-  from { transform: translateX(0) rotate(-8deg); }
-  to   { transform: translateX(180%) rotate(-8deg); }
+  from { transform: translateY(-40px); }
+  to   { transform: translateY(700px); }
 }
 @keyframes hailFall {
   from { transform: translateY(-40px); }
   to   { transform: translateY(700px); }
 }
+@keyframes snowSway1 {
+  0%, 100% { margin-left: -8px; }
+  50%      { margin-left:  8px; }
+}
+@keyframes snowSway2 {
+  0%, 100% { margin-left:  6px; }
+  50%      { margin-left: -6px; }
+}
+@keyframes snowSway3 {
+  0%, 100% { margin-left: -4px; }
+  50%      { margin-left:  4px; }
+}
+@keyframes fogDriftL {
+  from { transform: translateX(-15%); }
+  to   { transform: translateX(25%);  }
+}
+@keyframes fogDriftR {
+  from { transform: translateX(25%);  }
+  to   { transform: translateX(-15%); }
+}
+@keyframes rayRotate {
+  from { transform: rotate(-2deg); }
+  to   { transform: rotate(2deg);  }
+}
 @keyframes sunGlow {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50%      { opacity: 0.65; transform: scale(1.08); }
+  0%, 100% { opacity: .65; }
+  50%      { opacity: 1;   }
 }
 
 /* ── Transit cinematic keyframes ─────────────────────── */
