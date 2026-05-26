@@ -264,7 +264,7 @@ export function ItineraryReelScreen() {
             card.type === 'day_divider' ? `day-${card.day}` :
             card.type;
           return (
-            <div key={cardKey} ref={setRef}>
+            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0 }}>
               {child}
             </div>
           );
