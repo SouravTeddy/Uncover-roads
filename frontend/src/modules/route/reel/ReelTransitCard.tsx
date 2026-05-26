@@ -532,7 +532,7 @@ export function ReelTransitCard({ card, active }: Props) {
           {/* FROM */}
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,.38)', marginBottom: 2 }}>From</p>
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: '#fff', lineHeight: 1.1 }}>{card.from}</p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.1 }}>{card.from}</p>
           </div>
 
           {/* Connector */}
@@ -545,10 +545,10 @@ export function ReelTransitCard({ card, active }: Props) {
                 strokeDashoffset={on ? 0 : PATH_LEN}
                 style={{ transition: `stroke-dashoffset 1.2s .35s cubic-bezier(.4,0,.2,1)` }}
               />
-              <circle cx="50" cy="16" r="10"
-                fill="rgba(0,0,0,.7)" stroke={cfg.color} strokeWidth="1.5"
+              <circle cx="50" cy="16" r="4"
+                fill="var(--sky)"
                 opacity={on ? 1 : 0}
-                style={{ transition: 'opacity .35s .9s ease' }}
+                style={{ filter: 'drop-shadow(0 0 4px rgba(79,143,171,.7))', transition: 'opacity .35s .9s ease' }}
               />
             </svg>
             <span className="ms fill" style={{
@@ -566,7 +566,7 @@ export function ReelTransitCard({ card, active }: Props) {
           {/* TO */}
           <div style={{ flex: 1, textAlign: 'right' }}>
             <p style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,.38)', marginBottom: 2 }}>To</p>
-            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: '#fff', lineHeight: 1.1 }}>{card.to}</p>
+            <p style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.1 }}>{card.to}</p>
           </div>
         </div>
 
@@ -593,7 +593,9 @@ export function ReelTransitCard({ card, active }: Props) {
         {/* Mode badge — service name + meta */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          marginBottom: 10,
+          padding: '9px 18px', borderRadius: 13,
+          background: 'rgba(79,143,171,.1)', border: '1px solid rgba(79,143,171,.24)',
+          backdropFilter: 'blur(8px)', marginBottom: 20,
           ...fade('.7s'),
         }}>
           <span className="ms fill" style={{ fontSize: 15, color: cfg.color }}>{cfg.icon}</span>
