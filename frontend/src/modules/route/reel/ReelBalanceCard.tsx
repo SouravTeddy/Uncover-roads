@@ -25,7 +25,7 @@ export function ReelBalanceCard({ card, active }: Props) {
         pointerEvents: 'none',
       }} />
 
-      <span className="ms fill" style={{ fontSize: 48, color: '#6b9470', marginBottom: 20 }}>
+      <span className="ms fill" style={{ fontSize: 48, color: 'var(--sage)', marginBottom: 20 }}>
         check_circle
       </span>
 
