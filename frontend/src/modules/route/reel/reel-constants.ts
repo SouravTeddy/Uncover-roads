@@ -61,7 +61,7 @@ export function todLabel(hour: number): string {
 }
 
 // ── Sky tint helper ───────────────────────────────────────────
-// Returns the tint gradient string(s). Double-layer conditions return an array.
+// Returns a tint gradient. Double-layer conditions (rain, thunder) use the double key.
 export type SkyTintResult = { single: string } | { double: string }
 
 export function skyTintForCondition(condition: string): SkyTintResult {
