@@ -66,6 +66,8 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     savedEvents: [],
     reelSavedId: null,
     pendingTripDetails: null,
+    dismissedPinIds: [],
+    recoInteractions: [],
     ...overrides,
   };
 }

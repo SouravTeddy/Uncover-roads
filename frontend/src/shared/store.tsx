@@ -106,6 +106,14 @@ export interface AppState {
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
   reelSavedId: string | null;
   pendingTripDetails: import('./types').TripDetails | null;
+  dismissedPinIds: string[];
+  recoInteractions: Array<{
+    recoId: string; dimension: string; archetype: string;
+    action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan';
+    conflictPresent: boolean; significance: number;
+    signalSnapshot: { archetype: string; pace: string; densityScore: number | null; dayNumber: number; weather: string | null };
+    timestamp: string;
+  }>;
 }
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
@@ -288,6 +296,8 @@ export const initialState: AppState = {
   mapFilter: 'all' as MapFilterChip,
   reelSavedId: null,
   pendingTripDetails: null,
+  dismissedPinIds: [],
+  recoInteractions: [],
 };
 
 // ── Actions ───────────────────────────────────────────────────
@@ -366,7 +376,9 @@ export type Action =
   | { type: 'SET_MAP_FILTER'; filter: MapFilterChip }
   | { type: 'SET_REEL_SAVED_ID'; id: string | null }
   | { type: 'REMOVE_ITINERARY'; id: string }
-  | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null };
+  | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null }
+  | { type: 'DISMISS_PIN'; pinId: string }
+  | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -785,6 +797,12 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_PENDING_TRIP_DETAILS':
       return { ...state, pendingTripDetails: action.details };
+
+    case 'DISMISS_PIN':
+      return { ...state, dismissedPinIds: [...state.dismissedPinIds, action.pinId] };
+
+    case 'ADD_RECO_INTERACTION':
+      return { ...state, recoInteractions: [...state.recoInteractions, action.interaction] };
 
     default:
       return state;
