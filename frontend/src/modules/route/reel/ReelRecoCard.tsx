@@ -107,7 +107,7 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
         style={{ color: 'var(--color-text-4)', flexShrink: 0, marginTop: 1 }}
         onClick={e => e.stopPropagation()}
       >
-        <span className="ms" style={{ fontSize: 16 }}>open_in_new</span>
+        <span className="ms" style={{ fontSize: 15, color: 'var(--color-text-4)' }}>map</span>
       </a>
     </div>
   );
@@ -142,13 +142,19 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
       overflow: 'hidden',
     }}>
 
-      {/* Background glow */}
-      <div style={{
-        position: 'absolute', bottom: -40, right: -40,
-        width: 260, height: 260, borderRadius: '50%',
-        background: `radial-gradient(circle, ${cfg.bg} 0%, transparent 65%)`,
-        pointerEvents: 'none',
-      }} />
+      {/* Background glow — position varies by trigger */}
+      {(() => {
+        const glowLeft = card.trigger === 'culture' || card.trigger === 'walking_gap' || card.trigger === 'geo_efficiency';
+        return (
+          <div style={{
+            position: 'absolute', bottom: -40,
+            ...(glowLeft ? { left: -40 } : { right: -40 }),
+            width: 260, height: 260, borderRadius: '50%',
+            background: `radial-gradient(circle, ${cfg.bg} 0%, transparent 65%)`,
+            pointerEvents: 'none',
+          }} />
+        );
+      })()}
 
       {/* Near-stop badge */}
       <div style={{
@@ -189,7 +195,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
 
       {/* Consequence — always visible, above place list */}
       <p style={{
-        fontSize: 13, color: 'var(--color-text-2)',
+        fontSize: 12, color: 'var(--color-text-2)',
         lineHeight: 1.6, marginBottom: 16,
         animation: active ? 'fadeUp .45s .24s both' : 'none',
       }}>
