@@ -6,7 +6,6 @@ import {
 
 interface Props {
   card: ReelDayDividerCardType;
-  active: boolean;
 }
 
 function formatDividerDate(isoDate: string): string {
@@ -18,7 +17,7 @@ function formatDividerDate(isoDate: string): string {
   }
 }
 
-export function ReelDayDividerCard({ card, active }: Props) {
+export function ReelDayDividerCard({ card }: Props) {
   const hour = new Date().getHours();
 
   return (

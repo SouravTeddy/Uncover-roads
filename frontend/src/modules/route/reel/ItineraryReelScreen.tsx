@@ -235,7 +235,7 @@ export function ItineraryReelScreen() {
           let child: ReactNode = null;
           if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} />;
           else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
-          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} onRemove={handleRemove} />;
+          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} />;
           else if (card.type === 'reco')    child = (
             <ReelRecoCard
               card={card} active={isActive}
@@ -254,7 +254,7 @@ export function ItineraryReelScreen() {
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
           else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
-          else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} active={isActive} />;
+          else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
           if (!child) return null;
           const cardKey =
             card.type === 'stop' ? card.stop.id :

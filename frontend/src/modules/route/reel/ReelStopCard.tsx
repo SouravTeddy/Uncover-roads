@@ -20,7 +20,6 @@ interface Props {
   active: boolean;
   archetype?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
-  onRemove?: () => void;
 }
 
 function fmt12h(time: string): string {
@@ -87,7 +86,7 @@ function SunRays() {
   );
 }
 
-export function ReelStopCard({ card, active, onInteract, onRemove }: Props) {
+export function ReelStopCard({ card, active, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour = new Date().getHours();
