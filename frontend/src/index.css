@@ -366,6 +366,14 @@ html, body {
   96%           { opacity: .15; }
   97%           { opacity: 0;   }
 }
+@keyframes cloudDrift {
+  from { transform: translateX(0);      }
+  to   { transform: translateX(160%);   }
+}
+@keyframes windBlow {
+  from { transform: translateX(0) rotate(-8deg);    }
+  to   { transform: translateX(180%) rotate(-8deg); }
+}
 
 /* ── Transit cinematic keyframes ─────────────────────── */
 @keyframes par {
