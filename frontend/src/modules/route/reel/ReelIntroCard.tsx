@@ -31,7 +31,7 @@ function introTodGradient(hour: number): string | null {
   return null;
 }
 
-const GRADIENT = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,.05) 35%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.9) 80%, rgba(0,0,0,.97) 100%)';
+const GRADIENT = 'linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%)';
 
 const CHANGE_LABELS: Record<string, string> = {
   swap:       'Swapped a stop to fit your style',
@@ -208,12 +208,12 @@ export function ReelIntroCard({ card, active }: Props) {
         />
       )}
 
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px', zIndex: 10 }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 17px 32px', zIndex: 10 }}>
 
         {/* Label */}
         <p className="reel-meta" style={{
           fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,.5)', marginBottom: 8,
+          color: 'rgba(255,255,255,.5)', marginBottom: 7,
           animation: visible ? 'fadeUp .5s .05s both' : 'none',
         }}>
           {card.totalDays === 1 ? 'Your day' : `Your ${card.totalDays}-day trip`}
@@ -221,8 +221,8 @@ export function ReelIntroCard({ card, active }: Props) {
 
         {/* City */}
         <h1 className="reel-h1" style={{
-          fontFamily: 'var(--font-heading)', fontSize: 52, fontWeight: 700,
-          color: '#fff', lineHeight: 1, marginBottom: 18,
+          fontFamily: 'var(--font-heading)', fontSize: 50, fontWeight: 700,
+          color: '#fff', lineHeight: 1, marginBottom: 13,
           animation: visible ? 'fadeUp .5s .15s both' : 'none',
         }}>{card.city}</h1>
 
@@ -289,9 +289,9 @@ export function ReelIntroCard({ card, active }: Props) {
                 {topChanges.map(({ type, count }) => (
                   <div key={type} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 7,
-                    padding: '6px 10px', borderRadius: 10,
-                    background: 'rgba(255,255,255,.08)',
-                    border: '1px solid rgba(255,255,255,.1)',
+                    padding: '5px 10px', borderRadius: 9,
+                    background: 'rgba(0,0,0,.28)',
+                    border: '1px solid rgba(255,255,255,.09)',
                     backdropFilter: 'blur(6px)',
                   }}>
                     <span className="ms reel-meta" style={{ fontSize: 13, color: 'rgba(212,168,83,.85)' }}>{CHANGE_ICONS[type] ?? 'tune'}</span>
