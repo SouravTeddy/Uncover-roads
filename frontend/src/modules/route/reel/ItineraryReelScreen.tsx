@@ -9,8 +9,10 @@ import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
-import type { ReelCard } from './types';
+import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
+import { ReelBalanceCard } from './ReelBalanceCard';
+import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 
 const UNDO_DURATION = 3500;
 
@@ -72,7 +74,23 @@ export function ItineraryReelScreen() {
 
   function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName);
+
+    // Compute recos per day using the engine (skip for saved trips — use legacy path)
+    const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
+    if (itinerary && state.persona && !savedItem) {
+      itinerary.days.forEach((_, dayIdx) => {
+        const signal = computeRecoSignal(
+          { ...state, weather: w },
+          dayIdx,
+          itinerary,
+        );
+        const dayStops = itinerary.days[dayIdx]?.stops ?? [];
+        const recos = deriveRecos(dayStops, signal);
+        recosByDayIdx.set(dayIdx, recos);
+      });
+    }
+
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName, recosByDayIdx);
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
@@ -207,9 +225,23 @@ export function ItineraryReelScreen() {
           if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} />;
           else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
           else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} onRemove={handleRemove} />;
-          else if (card.type === 'reco')    child = <ReelRecoCard     card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
+          else if (card.type === 'reco')    child = (
+            <ReelRecoCard
+              card={card} active={isActive}
+              archetype={archetype}
+              existingPlaceIds={existingPlaceIds}
+              onInteract={(action) => {
+                const interaction = buildInteraction(
+                  card, action, card.id.includes('-conflict'),
+                  archetype, state.obAnswers.pace ?? 'moderate', null, 1, state.weather?.condition ?? null,
+                );
+                dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
+              }}
+            />
+          );
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
+          else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} active={isActive} />;
           if (!child) return null;
