@@ -149,21 +149,6 @@ export function ItineraryReelScreen() {
   }, [cards]);
 
 
-  const handleRemove = useCallback((stopId: string) => {
-    const stopCard = cards.find(c => c.type === 'stop' && c.stop.id === stopId);
-    const label = stopCard?.type === 'stop' ? stopCard.stop.title : 'Stop';
-
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    setUndoPending({ id: stopId, label });
-    setRemovedStopIds(prev => new Set([...prev, stopId]));
-
-    undoTimer.current = setTimeout(() => {
-      setUndoPending(null);
-      dispatch({ type: 'SET_SELECTED_PLACES', places: state.selectedPlaces.filter(p => p.id !== stopId) });
-      dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
-      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: null });
-    }, UNDO_DURATION);
-  }, [cards, dispatch, state.selectedPlaces]);
 
   const handleUndo = useCallback(() => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
