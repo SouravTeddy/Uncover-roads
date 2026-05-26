@@ -103,21 +103,25 @@ const TREND_BADGE_CFG: Record<string, TrendBadge> = {
 };
 
 function makeRainStreaks(count: number, color: string) {
+  let seed = 42;
+  function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
   return Array.from({ length: count }, (_, i) => {
-    const left = (i * 7.3) % 95;
-    const dur = 0.55 + (i % 4) * 0.1;
-    const delay = (i * 0.31) % 1.5;
+    const left = rng() * 100;
+    const dur = 0.45 + rng() * 0.45;
+    const delay = -rng() * 1.8;
+    const len = 20 + rng() * 26;
+    const op = 0.6 + rng() * 0.4;
     return (
       <div
         key={i}
         style={{
           position: 'absolute',
           left: `${left}%`,
-          top: 0,
-          width: 1,
-          height: 28,
+          top: '-15%',
+          width: 1.5,
+          height: len,
           background: color,
-          borderRadius: 1,
+          opacity: op,
           animation: `precip ${dur}s linear ${delay}s infinite`,
         }}
       />
@@ -259,12 +263,12 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       {/* z-index 5: Weather particles */}
       {(condition.includes('rain') || condition.includes('drizzle')) && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {makeRainStreaks(18, 'rgba(180,210,240,.55)')}
+          {makeRainStreaks(64, 'rgba(180,210,240,.55)')}
         </div>
       )}
       {condition.includes('thunderstorm') && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {makeRainStreaks(24, 'rgba(230,220,255,.85)')}
+          {makeRainStreaks(56, 'rgba(230,220,255,.85)')}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'radial-gradient(ellipse at 50% 25%, rgba(230,220,255,.95), rgba(180,150,230,.5) 32%, rgba(120,80,180,0) 70%)',
@@ -275,32 +279,37 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       )}
       {condition.includes('snow') && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {Array.from({ length: 16 }, (_, i) => {
-            const left = (i * 6.4) % 95;
-            const size = i % 2 === 0 ? 4 : 6;
-            const dur = 3.5 + (i % 5) * 0.6;
-            const delay = (i * 0.43) % 2.5;
-            const swayVariant = 1 + (i % 3);
-            const swayDur = 2.5 + (i % 3) * 0.8;
-            const swayDelay = (i * 0.27) % 1.8;
-            return (
-              <div key={i} style={{
-                position: 'absolute',
-                left: `${left}%`,
-                top: `-${size}px`,
-                pointerEvents: 'none',
-                animation: `snowSway${swayVariant} ${swayDur}s ease-in-out ${swayDelay}s infinite`,
-              }}>
-                <div style={{
-                  width: size,
-                  height: size,
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,.85)',
-                  animation: `snowFall ${dur}s linear ${delay}s infinite`,
-                }} />
-              </div>
-            );
-          })}
+          {(() => {
+            let seed = 2;
+            function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+            const sways = ['snowSway1', 'snowSway2', 'snowSway3'] as const;
+            return Array.from({ length: 44 }, (_, i) => {
+              const left = rng() * 100;
+              const dur = 3.5 + rng() * 4;
+              const delay = -rng() * 5;
+              const sz = 3 + Math.round(rng() * 4);
+              const op = 0.65 + rng() * 0.35;
+              const sw = sways[i % 3];
+              const swd = 2 + rng() * 2;
+              return (
+                <div key={i} style={{
+                  position: 'absolute',
+                  left: `${left}%`,
+                  top: `-${sz}px`,
+                  pointerEvents: 'none',
+                  animation: `${sw} ${swd}s ease-in-out infinite`,
+                }}>
+                  <div style={{
+                    width: sz, height: sz, borderRadius: '50%',
+                    background: '#f8fafc',
+                    opacity: op,
+                    boxShadow: '0 0 6px rgba(255,255,255,.4)',
+                    animation: `snowFall ${dur}s linear ${delay}s infinite`,
+                  }} />
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
       {(condition.includes('fog') || condition.includes('mist')) && (
