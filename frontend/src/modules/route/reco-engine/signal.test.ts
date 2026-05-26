@@ -109,4 +109,13 @@ describe('computeRecoSignal', () => {
     expect(signal.trip.isFirstDay).toBe(true);
     expect(signal.trip.isLastDay).toBe(true);
   });
+
+  it('defaults all signals when rawOBAnswers is null', () => {
+    const signal = computeRecoSignal({ ...makeState(), rawOBAnswers: null }, 0, BASE_ITIN);
+    expect(signal.pace).toBe('moderate');
+    expect(signal.social).toBe('solo');
+    expect(signal.ritualStrength).toBe(0.4);
+    expect(signal.sensoryIntensity).toBe(0.4);
+    expect(signal.isFamily).toBe(false);
+  });
 });
