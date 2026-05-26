@@ -77,7 +77,7 @@ export function ItineraryReelScreen() {
   function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
-    // Compute recos per day using the engine (skip for saved trips — use legacy path)
+    // Compute recos per day using the engine (applies to both new and saved itineraries)
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
     if (itinerary && state.persona) {
       itinerary.days.forEach((_, dayIdx) => {
