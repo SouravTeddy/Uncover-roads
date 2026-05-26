@@ -65,6 +65,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     mapFilter: 'all',
     savedEvents: [],
     reelSavedId: null,
+    pendingTripDetails: null,
     ...overrides,
   };
 }
