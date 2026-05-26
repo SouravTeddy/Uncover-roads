@@ -1,6 +1,6 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
-export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider';
+export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance';
 
 export interface ReelIntroCard {
   type: 'intro';
@@ -34,15 +34,12 @@ export interface ReelStopCard {
 }
 
 export type RecoTrigger =
-  | 'lunch'
-  | 'dinner'
-  | 'evening'
-  | 'culture'
-  | 'rest'
-  | 'weather'
-  | 'closing_conflict'
-  | 'walking_gap'
-  | 'crowd_peak'; // TODO: implement once Popular Times data is available on EngineItineraryStop
+  | 'lunch' | 'dinner' | 'evening' | 'culture' | 'rest'
+  | 'weather' | 'closing_conflict' | 'walking_gap' | 'crowd_peak'
+  // New engine dimensions:
+  | 'density_excess' | 'density_sparse' | 'geo_efficiency'
+  | 'time_balance' | 'category_diversity' | 'social_gap'
+  | 'budget_mismatch' | 'live_event' | 'hidden_gem';
 
 export interface ReelRecoCard {
   type: 'reco';
@@ -103,6 +100,12 @@ export interface ReelDayDividerCard {
   stopCount: number; // number of stops planned this day
 }
 
+export interface ReelBalanceCard {
+  type: 'balance';
+  message: string;
+  persona: string;
+}
+
 export type ReelCard =
   | ReelIntroCard
   | ReelSummaryCard
@@ -111,4 +114,5 @@ export type ReelCard =
   | ReelIntelCard
   | ReelTransitCard
   | ReelFinaleCard
-  | ReelDayDividerCard;
+  | ReelDayDividerCard
+  | ReelBalanceCard;
