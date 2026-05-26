@@ -164,6 +164,7 @@ export function useRoute() {
       lastUpdateCheck: null,
       pendingSwapCards: [],
       journeyLegs: state.journey ?? null,
+      tripDetails: null,
     };
     dispatch({ type: 'SAVE_ITINERARY', saved });
     const { data: { user } } = await supabase.auth.getUser();

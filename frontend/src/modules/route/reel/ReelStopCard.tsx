@@ -325,7 +325,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
         maxWidth: 170, overflow: 'hidden',
         opacity: visible ? 1 : 0, transition: 'opacity .4s',
       }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: tod.color, flexShrink: 0 }} />
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: tod.color, boxShadow: `0 0 6px ${tod.color}`, flexShrink: 0 }} />
         <span className="reel-meta" style={{
           fontSize: 9.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase',
           color: 'rgba(255,255,255,.80)',
@@ -367,7 +367,7 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
       </div>
 
       {/* Card content */}
-      <div style={{ position: 'absolute', inset: 0, transform: `translateX(${swipeX}px)`, transition: swiping ? 'none' : 'transform .3s cubic-bezier(.25,0,0,1)' }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: 10, transform: `translateX(${swipeX}px)`, transition: swiping ? 'none' : 'transform .3s cubic-bezier(.25,0,0,1)' }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 80px' }}>
 
           {/* Stop counter — frosted glass pill */}

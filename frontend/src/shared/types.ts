@@ -265,6 +265,14 @@ export interface RouteData {
 }
 
 // ── Saved itineraries ─────────────────────────────────────────
+export interface TripDetails {
+  arrivalDate: string | null;    // YYYY-MM-DD
+  arrivalTime: string | null;    // HH:MM (24h)
+  departureDate: string | null;  // YYYY-MM-DD
+  departureTime: string | null;  // HH:MM (24h)
+  hotels: { city: string; name: string | null }[];
+}
+
 export interface SavedItinerary {
   id: string;
   city: string;
@@ -278,6 +286,7 @@ export interface SavedItinerary {
   lastUpdateCheck: string | null; // ISO datetime of last update check
   pendingSwapCards: SwapCard[];   // unresolved day-of swap cards
   journeyLegs: JourneyLeg[] | null; // inter-city transit legs — needed for multi-city reel transit cards
+  tripDetails: TripDetails | null;
 }
 
 // ── City search ───────────────────────────────────────────────

@@ -96,7 +96,7 @@ export function ItineraryReelScreen() {
     const el = scrollRef.current;
     if (!el) return;
     const handleScroll = () => {
-      const idx = Math.round(el.scrollTop / window.innerHeight);
+      const idx = Math.round(el.scrollTop / el.clientHeight);
       setActiveIdx(idx);
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
@@ -144,6 +144,7 @@ export function ItineraryReelScreen() {
         lastUpdateCheck: null,
         pendingSwapCards: [],
         journeyLegs: journey ?? null,
+        tripDetails: null,
       },
     });
     setSaved(true);
