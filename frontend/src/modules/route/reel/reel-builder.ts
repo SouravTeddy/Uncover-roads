@@ -344,6 +344,7 @@ export function buildReelCards(
   _savedId: string | null,
   weather: WeatherData | null,
   persona: string,
+  recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
@@ -439,14 +440,16 @@ export function buildReelCards(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
 
-    // Build reco cards keyed by afterStopId
-    const mealRecos = buildMealRecos(sortedStops, persona, day.city);
-    const personaRecos = buildPersonaRecos(sortedStops, persona, day.city, weights);
-    const weatherRecos = buildWeatherReco(sortedStops, weather, persona, day.city);
-    const closingRecos = buildClosingConflictRecos(sortedStops, persona, day.city);
-    const walkingRecos = buildWalkingGapRecos(sortedStops, persona, day.city, weights);
-    // TODO (crowd_peak): add buildCrowdPeakRecos() here once Popular Times data is available on EngineItineraryStop
-    const allRecos = [...mealRecos, ...personaRecos, ...weatherRecos, ...closingRecos, ...walkingRecos];
+    // Use pre-computed recos from the engine; fall back to legacy functions when not provided
+    const allRecos: ReelRecoCard[] = recosByDayIdx.has(dayIdx)
+      ? (recosByDayIdx.get(dayIdx) ?? [])
+      : [
+          ...buildMealRecos(sortedStops, persona, day.city),
+          ...buildPersonaRecos(sortedStops, persona, day.city, weights),
+          ...buildWeatherReco(sortedStops, weather, persona, day.city),
+          ...buildClosingConflictRecos(sortedStops, persona, day.city),
+          ...buildWalkingGapRecos(sortedStops, persona, day.city, weights),
+        ];
 
     const recosByStop = new Map<string, ReelRecoCard[]>();
     for (const reco of allRecos) {
@@ -494,6 +497,12 @@ export function buildReelCards(
       ic => !allIntelIds.has(ic.id),
     );
     cards.push(...unplacedIntel);
+  }
+
+  // Balance card: when engine ran but found zero recos for all days — surface a positive message
+  const allRecosCount = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
+  if (recosByDayIdx.size > 0 && allRecosCount === 0) {
+    cards.push({ type: 'balance', message: 'Your day looks well-balanced for your style.', persona });
   }
 
   cards.push({

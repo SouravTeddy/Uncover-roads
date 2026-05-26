@@ -126,4 +126,26 @@ describe('buildReelCards', () => {
     const transit = cards.find(c => c.type === 'transit');
     expect(transit).toBeUndefined();
   });
+
+  it('uses pre-computed recos when recosByDayIdx is provided', () => {
+    const stops = [
+      STOP({ id: 's1', time: '09:00', category: 'museum' }),
+      STOP({ id: 's2', time: '15:00', category: 'park' }),
+    ];
+    const fakeReco: import('./types').ReelRecoCard = {
+      type: 'reco', id: 'hasLunch-s1', trigger: 'lunch',
+      label: 'No lunch', consequence: 'Find something nearby',
+      nearbyCity: 'Paris', persona: 'explorer', afterStopId: 's1', weightScore: 0.5,
+    };
+    const recosByDayIdx = new Map([[0, [fakeReco]]]);
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'explorer', recosByDayIdx);
+    expect(cards.some(c => c.type === 'reco')).toBe(true);
+  });
+
+  it('injects balance card when engine returns empty recos map', () => {
+    const stops = [STOP()];
+    const recosByDayIdx = new Map([[0, []]]);
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'explorer', recosByDayIdx);
+    expect(cards.some(c => c.type === 'balance')).toBe(true);
+  });
 });
