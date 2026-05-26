@@ -1,507 +1,239 @@
-import { useEffect, useRef, useState } from 'react';
-import type { ReelStopCard } from './types';
+import { useEffect, useRef, useMemo } from 'react';
+import type { ReelStopCard as ReelStopCardType } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
-import { CATEGORY_LABELS } from '../../map/types';
+import {
+  REEL_SCRIM, REEL_CONTENT_PADDING_STOP,
+  todGradient, todDotColor, todLabel, skyTintForCondition,
+  RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
+  RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
+  THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
+  SNOW_COUNT, SNOW_SEED,
+  STOP_H2_FS, STOP_H2_LH, STOP_H2_MB, STOP_H2_TEXT_SHADOW,
+  STOP_COUNTER_BR, STOP_COUNTER_PAD, STOP_COUNTER_MB,
+  STOP_TIME_ROW_BR, STOP_TIME_ROW_PAD, STOP_TIME_ROW_MB, STOP_META_ROW_MB,
+  TOD_BADGE_TOP, TOD_BADGE_LEFT,
+  WEATHER_ICON, makeRng,
+} from './reel-constants';
 
 interface Props {
-  card: ReelStopCard;
+  card: ReelStopCardType;
   active: boolean;
-  onRemove: (stopId: string) => void;
+  archetype?: string;
+  onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
+  onRemove?: () => void;
 }
 
-const REASON_ICONS: Record<string, string> = {
-  opening_hours: 'schedule',
-  golden_hour:   'wb_sunny',
-  walking:       'directions_walk',
-  crowd:         'groups',
-  meal:          'restaurant',
-  default:       'auto_fix_high',
-};
-
-function inferReasonIcon(reason: string | null): string {
-  if (!reason) return REASON_ICONS.default;
-  if (/hour|open|clos/i.test(reason)) return REASON_ICONS.opening_hours;
-  if (/light|golden|sunset|sunrise/i.test(reason)) return REASON_ICONS.golden_hour;
-  if (/walk|distance|km/i.test(reason)) return REASON_ICONS.walking;
-  if (/crowd|busy|quiet/i.test(reason)) return REASON_ICONS.crowd;
-  return REASON_ICONS.default;
-}
-
-function formatTime(t: string): string {
-  const [hStr, mStr] = t.split(':');
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
+function fmt12h(time: string): string {
+  const [h, m] = time.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  const hour = h % 12 || 12;
+  return m === 0 ? `${hour}:00 ${ampm}` : `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-function formatDuration(min: number): string {
+function fmtDuration(min: number): string {
   if (min < 60) return `${min}m`;
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-interface TimeOfDay {
-  label: string;
-  range: string;
-  color: string;
+function makeRainParticles(count: number, seedVal: number, lenMin: number, lenRange: number, color: string) {
+  const rng = makeRng(seedVal);
+  return Array.from({ length: count }, () => ({
+    position: 'absolute' as const,
+    left: `${rng() * 100}%`,
+    top: '-15%',
+    width: RAIN_WIDTH,
+    height: `${lenMin + rng() * lenRange}px`,
+    background: color === 'rain' ? RAIN_BG : `linear-gradient(to bottom,transparent,${color})`,
+    opacity: RAIN_OPACITY_MIN + rng() * RAIN_OPACITY_RANGE,
+    animation: `precip ${RAIN_DUR_MIN + rng() * RAIN_DUR_RANGE}s linear ${-rng() * RAIN_DELAY_RANGE}s infinite`,
+  }));
 }
 
-function timeOfDay(hhmm: string): TimeOfDay {
-  const [h, m] = hhmm.split(':').map(Number);
-  const total = h * 60 + m;
-  if (total >= 4 * 60 && total < 6 * 60)   return { label: 'Dawn',          range: '04:00–06:00', color: '#e88f88' };
-  if (total >= 6 * 60 && total < 8 * 60)   return { label: 'Early morning', range: '06:00–08:00', color: '#f0a079' };
-  if (total >= 8 * 60 && total < 11 * 60)  return { label: 'Morning',       range: '08:00–11:00', color: '#f0b878' };
-  if (total >= 11 * 60 && total < 16 * 60) return { label: 'Afternoon',     range: '11:00–16:00', color: '#e8d292' };
-  if (total >= 16 * 60 && total < 18 * 60) return { label: 'Evening',       range: '16:00–18:00', color: '#e09060' };
-  if (total >= 18 * 60 && total < 20 * 60) return { label: 'Dusk',          range: '18:00–20:00', color: '#d4706a' };
-  return { label: 'Night', range: '20:00+', color: '#6a82c8' };
-}
-
-function weatherIcon(condition: string): string {
-  const c = condition.toLowerCase();
-  if (c.includes('thunder') || c.includes('storm')) return 'thunderstorm';
-  if (c.includes('snow') || c.includes('blizzard') || c.includes('sleet')) return 'ac_unit';
-  if (c.includes('hail')) return 'grain';
-  if (c.includes('rain') || c.includes('drizzle') || c.includes('shower')) return 'rainy';
-  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return 'foggy';
-  if (c.includes('cloud') && c.includes('part')) return 'partly_cloudy_day';
-  if (c.includes('cloud') || c.includes('overcast')) return 'cloud';
-  if (c.includes('wind')) return 'air';
-  return 'wb_sunny';
-}
-
-interface TrendBadge {
-  icon: string;
-  label: string;
-  color: string;
-  bg: string;
-}
-
-const TREND_BADGE_CFG: Record<string, TrendBadge> = {
-  trending: {
-    icon: 'trending_up',
-    label: 'Trending · visit early',
-    color: '#d4a853',
-    bg: 'rgba(212,168,83,.12)',
-  },
-  hidden_gem: {
-    icon: 'explore',
-    label: 'Hidden gem · most visitors miss this',
-    color: '#6b9470',
-    bg: 'rgba(107,148,112,.12)',
-  },
-  getting_busy: {
-    icon: 'trending_up',
-    label: 'Getting busy · visit this trip',
-    color: '#4f8fab',
-    bg: 'rgba(79,143,171,.12)',
-  },
-};
-
-function makeRainStreaks(count: number, color: string) {
-  let seed = 42;
-  function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
-  return Array.from({ length: count }, (_, i) => {
-    const left = rng() * 100;
-    const dur = 0.45 + rng() * 0.45;
-    const delay = -rng() * 1.8;
-    const len = 20 + rng() * 26;
-    const op = 0.6 + rng() * 0.4;
-    return (
-      <div
-        key={i}
-        style={{
-          position: 'absolute',
-          left: `${left}%`,
-          top: '-15%',
-          width: 1.5,
-          height: len,
-          background: color,
-          opacity: op,
-          animation: `precip ${dur}s linear ${delay}s infinite`,
-        }}
-      />
-    );
+function makeSnowParticles(seedVal: number) {
+  const rng = makeRng(seedVal);
+  return Array.from({ length: SNOW_COUNT }, (_, i) => {
+    const size = 3 + rng() * 3;
+    return {
+      outer: { position: 'absolute' as const, left: `${rng() * 100}%`, top: '-10%', animation: `snowSway${(i % 3) + 1} ${2.5 + rng() * 2}s ease-in-out ${-rng() * 3}s infinite, snowFall ${3 + rng() * 4}s linear ${-rng() * 6}s infinite` } as React.CSSProperties,
+      inner: { width: size, height: size, borderRadius: '50%', background: 'rgba(220,235,255,0.85)', filter: 'blur(0.5px)' } as React.CSSProperties,
+    };
   });
 }
 
-function PriceLevel({ level }: { level: number }) {
-  const signs = '$'.repeat(Math.min(level, 4));
+function SkyTintLayers({ condition }: { condition: string }) {
+  const result = skyTintForCondition(condition);
+  if ('double' in result) {
+    return (
+      <>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, mixBlendMode: 'multiply', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, opacity: 0.6, pointerEvents: 'none' }} />
+      </>
+    );
+  }
+  return <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.single, pointerEvents: 'none' }} />;
+}
+
+function SunRays() {
   return (
-    <span style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(212,168,83,.85)' }}>
-      {signs}
-    </span>
+    <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', right: '-20%', top: '-20%', width: '90%', height: '80%', background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.38),rgba(255,215,150,0) 60%)', filter: 'blur(6px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', top: '-40%', right: '-10%', width: '90%', height: '180%', transformOrigin: 'top right', animation: 'rayRotate 80s linear infinite' }}>
+        <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
+      </div>
+    </div>
   );
 }
 
-export function ReelStopCard({ card, active, onRemove }: Props) {
-  const [visible, setVisible] = useState(false);
-  const [swipeX, setSwipeX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const startX = useRef(0);
+export function ReelStopCard({ card, active, onInteract, onRemove }: Props) {
+  const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { stop } = card;
+  const hour = new Date().getHours();
+  const condition = (card.weather?.condition ?? 'clear').toLowerCase();
+  const isSunny = condition === 'sunny' || condition === 'clear';
+  const isThunder = condition.includes('thunder') || condition.includes('storm');
+  const isSnow = condition.includes('snow') || condition.includes('blizzard');
+  const hasParticles = ['rain', 'drizzle'].includes(condition) || isThunder || isSnow;
 
+  // Use stop index as seed variation so each stop has different rain pattern
+  const stopSeed = RAIN_SEED + (stop.day * 100 + card.stopNumber);
+  const rainParticles = useMemo(
+    () => isThunder
+      ? makeRainParticles(THUNDER_COUNT, THUNDER_SEED + stopSeed, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR)
+      : makeRainParticles(RAIN_COUNT, stopSeed, RAIN_LEN_MIN, RAIN_LEN_RANGE, 'rain'),
+    [isThunder, stopSeed],
+  );
+  const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
+
+  const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800) : null);
+  const dotColor = todDotColor(hour);
+
+  useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
     if (active) {
-      const t = setTimeout(() => setVisible(true), 80);
-      return () => clearTimeout(t);
-    }
-    setVisible(false);
-  }, [active]);
-
-  function onTouchStart(e: React.TouchEvent) {
-    startX.current = e.touches[0].clientX;
-    setSwiping(true);
-  }
-  function onTouchMove(e: React.TouchEvent) {
-    const dx = e.touches[0].clientX - startX.current;
-    if (dx < 0) setSwipeX(Math.max(dx, -120));
-  }
-  function onTouchEnd() {
-    setSwiping(false);
-    if (swipeX < -80) {
-      onRemove(card.stop.id);
+      lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
     } else {
-      setSwipeX(0);
+      if (lingerTimer.current) clearTimeout(lingerTimer.current);
     }
-  }
+    return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
+  }, [active, onInteract]);
 
-  const { stop, stopNumber, totalStops, orderReason, orderConsequence, movedFrom, weather } = card;
-  const imageUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800) : null);
-  const categoryLabel = CATEGORY_LABELS[stop.category] ?? stop.category;
-  const tod = timeOfDay(stop.time);
-  const safeAreaTop = 'calc(env(safe-area-inset-top, 0px) + 14px)';
-  const trendBadges = (stop.tags ?? []).map(t => TREND_BADGE_CFG[t]).filter(Boolean);
-
-  // ── Atmospheric overlays ──────────────────────────────────────────────────
-  const hour = parseInt(stop.time.slice(0, 2), 10);
-  const condition = (weather?.condition ?? '').toLowerCase();
-
-  // Sky tint (z-index 2)
-  let skyTint = 'rgba(0,0,0,.15)';
-  if (condition.includes('snow'))                                          skyTint = 'rgba(200,215,240,.14)';
-  else if (condition.includes('fog') || condition.includes('mist'))        skyTint = 'rgba(180,185,195,.22)';
-  else if (condition.includes('clear') || condition.includes('sunny'))     skyTint = 'rgba(255,210,140,.12)';
-  else if (condition.includes('cloud') || condition.includes('overcast') || condition.includes('partly')) skyTint = 'rgba(140,150,165,.18)';
-
-  // Time-of-day gradient (z-index 4)
-  let todGradient: string | null = null;
-  if (hour >= 6 && hour < 8)   todGradient = 'linear-gradient(180deg, rgba(255,210,180,.08) 0%, rgba(255,180,140,.18) 40%, rgba(250,150,110,.40) 72%, rgba(228,118,86,.62) 92%, rgba(212,98,68,.68) 100%)';
-  else if (hour >= 8 && hour < 11)  todGradient = 'linear-gradient(180deg, rgba(255,225,180,.05) 0%, rgba(255,205,140,.16) 50%, rgba(238,168,100,.40) 78%, rgba(216,138,80,.62) 100%)';
-  else if (hour >= 11 && hour < 16) todGradient = 'linear-gradient(180deg, rgba(180,210,235,.14) 0%, rgba(220,225,210,.08) 35%, rgba(245,225,170,.24) 70%, rgba(232,205,150,.40) 92%, rgba(218,188,130,.50) 100%)';
-  else if (hour >= 18 && hour < 20) todGradient = 'linear-gradient(180deg, rgba(80,55,120,.18) 0%, rgba(180,70,110,.28) 38%, rgba(200,80,90,.44) 60%, rgba(160,55,110,.60) 82%, rgba(95,40,130,.68) 100%)';
-  else if (hour >= 20)               todGradient = 'linear-gradient(180deg, rgba(20,28,55,.24) 0%, rgba(35,50,98,.36) 45%, rgba(40,55,110,.52) 75%, rgba(22,32,72,.68) 100%)';
-
-  const isSunnyClear = condition.includes('clear') || condition.includes('sunny');
-  const isDaytime = hour >= 8 && hour < 18;
-  const showSun = isSunnyClear && isDaytime;
+  const weatherIcon = WEATHER_ICON[condition] ?? 'wb_sunny';
+  const weatherColor = isThunder ? '#a78bfa' : condition === 'rain' || condition === 'drizzle' ? '#60a5fa' : '#fbbf24';
+  const weatherBg = isThunder ? 'rgba(8,4,18,.88)' : 'rgba(9,12,22,.82)';
+  const weatherBorder = isThunder ? '1px solid rgba(124,58,237,.2)' : '1px solid var(--color-border)';
 
   return (
-    <div
-      className="reel-card"
-      style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden' }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {imageUrl
-        ? <img src={imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: `translateX(${swipeX * 0.1}px)`, transition: swiping ? 'none' : 'transform .3s ease' }} />
-        : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #111114, #1a1420)' }} />
-      }
+    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
 
-      {/* z-index 2: Sky tint — single layer for most conditions, double layer for rain/storm */}
-      {(condition.includes('rain') || condition.includes('drizzle')) ? (
-        <>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))', mixBlendMode: 'multiply', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))', opacity: 0.6, pointerEvents: 'none' }} />
-        </>
-      ) : condition.includes('thunderstorm') ? (
-        <>
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))', mixBlendMode: 'multiply', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))', opacity: 0.6, pointerEvents: 'none' }} />
-        </>
-      ) : (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: skyTint, pointerEvents: 'none' }} />
+      {/* Photo z-index:0 */}
+      {photoUrl && (
+        <img src={photoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
       )}
 
-      {/* z-index 3: Legibility scrim (always present) */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'linear-gradient(180deg, transparent 0%, transparent 35%, rgba(0,0,0,.45) 65%, rgba(0,0,0,.85) 90%, rgba(10,10,13,.95) 100%)', pointerEvents: 'none' }} />
+      {/* Sky tint z-index:2 */}
+      <SkyTintLayers condition={condition} />
 
-      {/* z-index 4: Time-of-day gradient + sun */}
-      {todGradient && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGradient, pointerEvents: 'none' }} />
-      )}
-      {showSun && (
-        <>
-          {/* Sun rays */}
-          <div style={{
-            position: 'absolute', zIndex: 4,
-            top: '-40%', left: '50%',
-            width: '200%', height: '200%',
-            transform: 'translateX(-50%)',
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(255,220,100,.18) 0%, transparent 65%)',
-            animation: 'rayRotate 18s linear infinite',
-            pointerEvents: 'none',
-            opacity: 0.5,
-          }} />
-          {/* Sun glow */}
-          <div style={{
-            position: 'absolute', zIndex: 4,
-            top: '-10%', left: '50%',
-            width: '60%', height: '40%',
-            transform: 'translateX(-50%)',
-            background: 'radial-gradient(ellipse at 50% 30%, rgba(255,230,120,.35) 0%, transparent 70%)',
-            animation: 'sunGlow 4s ease-in-out infinite',
-            pointerEvents: 'none',
-          }} />
-        </>
-      )}
+      {/* GRADIENT scrim z-index:3 */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
 
-      {/* z-index 5: Weather particles */}
-      {(condition.includes('rain') || condition.includes('drizzle')) && (
+      {/* ToD gradient z-index:4 */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGradient(hour), pointerEvents: 'none' }} />
+
+      {/* Sun rays z-index:4 */}
+      {isSunny && <SunRays />}
+
+      {/* Weather particles z-index:5 */}
+      {hasParticles && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {makeRainStreaks(64, 'rgba(180,210,240,.55)')}
-        </div>
-      )}
-      {condition.includes('thunderstorm') && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {makeRainStreaks(56, 'rgba(230,220,255,.85)')}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'radial-gradient(ellipse at 50% 25%, rgba(230,220,255,.95), rgba(180,150,230,.5) 32%, rgba(120,80,180,0) 70%)',
-            mixBlendMode: 'screen',
-            animation: 'flashFlicker 3.4s ease-out -1.3s infinite',
-          }} />
-        </div>
-      )}
-      {condition.includes('snow') && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {(() => {
-            let seed = 2;
-            function rng() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
-            const sways = ['snowSway1', 'snowSway2', 'snowSway3'] as const;
-            return Array.from({ length: 44 }, (_, i) => {
-              const left = rng() * 100;
-              const dur = 3.5 + rng() * 4;
-              const delay = -rng() * 5;
-              const sz = 3 + Math.round(rng() * 4);
-              const op = 0.65 + rng() * 0.35;
-              const sw = sways[i % 3];
-              const swd = 2 + rng() * 2;
-              return (
-                <div key={i} style={{
-                  position: 'absolute',
-                  left: `${left}%`,
-                  top: `-${sz}px`,
-                  pointerEvents: 'none',
-                  animation: `${sw} ${swd}s ease-in-out infinite`,
-                }}>
-                  <div style={{
-                    width: sz, height: sz, borderRadius: '50%',
-                    background: '#f8fafc',
-                    opacity: op,
-                    boxShadow: '0 0 6px rgba(255,255,255,.4)',
-                    animation: `snowFall ${dur}s linear ${delay}s infinite`,
-                  }} />
-                </div>
-              );
-            });
-          })()}
-        </div>
-      )}
-      {(condition.includes('fog') || condition.includes('mist')) && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {/* Fog layer 1 */}
-          <div style={{
-            position: 'absolute',
-            top: '20%', left: '-50%',
-            width: '200%', height: '60%',
-            background: 'linear-gradient(90deg, transparent 0%, rgba(200,205,215,.55) 30%, rgba(210,215,225,.65) 50%, rgba(200,205,215,.55) 70%, transparent 100%)',
-            animation: 'fogDriftL 8s ease-in-out infinite',
-          }} />
-          {/* Fog layer 2 */}
-          <div style={{
-            position: 'absolute',
-            top: '35%', left: '-50%',
-            width: '200%', height: '50%',
-            background: 'linear-gradient(90deg, transparent 0%, rgba(205,210,220,.50) 35%, rgba(215,218,228,.60) 50%, rgba(205,210,220,.50) 65%, transparent 100%)',
-            animation: 'fogDriftR 11s ease-in-out 2s infinite',
-            opacity: 0.8,
-          }} />
+          {isSnow
+            ? snowParticles.map((f, i) => <div key={`snow-${i}`} style={f.outer}><div style={f.inner} /></div>)
+            : rainParticles.map((s, i) => <div key={`rain-${i}`} style={s} />)
+          }
+          {isThunder && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'radial-gradient(ellipse at 50% 25%,rgba(230,220,255,.95),rgba(180,150,230,.5) 32%,rgba(120,80,180,0) 70%)', mixBlendMode: 'screen', animation: 'flashFlicker 3.4s ease-out -1.3s infinite', pointerEvents: 'none' }} />
+          )}
         </div>
       )}
 
-      {/* Time-of-day badge — top-left */}
-      <div style={{
-        position: 'absolute', top: safeAreaTop, left: 13, zIndex: 11,
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        padding: '3px 8px', borderRadius: 999,
-        background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,.12)',
-        maxWidth: 170, overflow: 'hidden',
-        opacity: visible ? 1 : 0, transition: 'opacity .4s',
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: tod.color, boxShadow: `0 0 6px ${tod.color}`, flexShrink: 0 }} />
-        <span className="reel-meta" style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,.80)',
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>
-          {tod.label} · {tod.range}
-        </span>
+      {/* ToD badge z-index:11 */}
+      <div style={{ position: 'absolute', top: TOD_BADGE_TOP, left: TOD_BADGE_LEFT, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{todLabel(hour)}</span>
       </div>
 
-      {/* Weather pill — top-right */}
-      {weather && (
-        <div style={{
-          position: 'absolute', top: safeAreaTop, right: 13, zIndex: 11,
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '3px 8px', borderRadius: 999,
-          background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,.10)',
-          opacity: visible ? 1 : 0, transition: 'opacity .4s',
-        }}>
-          <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.80)' }}>{weatherIcon(weather.condition)}</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.85)' }}>
-            {Math.round(weather.temp)}°
+      {/* Weather badge z-index:10 */}
+      {card.weather && (
+        <div style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: weatherBg, backdropFilter: 'blur(10px)', border: weatherBorder }}>
+          <span className="ms fill" style={{ fontSize: 12, color: weatherColor }}>{weatherIcon}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{card.weather.temp}°</span>
+          <span style={{ fontSize: 10, color: 'var(--color-text-3)' }}>{card.weather.condition}</span>
+        </div>
+      )}
+
+      {/* Content z-index:10 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_STOP }}>
+
+        {/* Stop counter */}
+        <div style={{ display: 'inline-flex', marginBottom: STOP_COUNTER_MB }}>
+          <div style={{ padding: STOP_COUNTER_PAD, borderRadius: STOP_COUNTER_BR, background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)' }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.58)', margin: 0 }}>
+              Stop {card.stopNumber} of {card.totalStops}
+            </p>
+          </div>
+        </div>
+
+        {/* Time row */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: STOP_TIME_ROW_MB, padding: STOP_TIME_ROW_PAD, borderRadius: STOP_TIME_ROW_BR, background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)' }}>
+          <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>schedule</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,.88)', fontWeight: 600 }}>{fmt12h(stop.time)}</span>
+          <span style={{ color: 'rgba(255,255,255,.18)' }}>·</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>{fmtDuration(stop.durationMin)}</span>
+          {card.movedFrom != null && (
+            <span style={{ fontSize: 10, color: 'var(--color-primary)', fontWeight: 700, marginLeft: 3 }}>↑ rescheduled</span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: STOP_H2_FS, fontWeight: 700, color: '#fff', lineHeight: STOP_H2_LH, marginBottom: STOP_H2_MB, textShadow: STOP_H2_TEXT_SHADOW }}>
+          {stop.title}
+        </h2>
+
+        {/* Metadata row */}
+        <div style={{ display: 'flex', gap: 5, marginBottom: STOP_META_ROW_MB, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="pill" style={{ fontSize: 10, background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.14)', color: 'rgba(255,255,255,.72)' }}>
+            {stop.area}
           </span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{weather.condition}</span>
-        </div>
-      )}
-
-      {/* Delete reveal */}
-      <div style={{
-        position: 'absolute', right: 24, top: '50%', transform: 'translateY(-50%)',
-        opacity: Math.min(1, Math.abs(swipeX) / 80),
-        transition: swiping ? 'none' : 'opacity .3s ease',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,.2)', border: '1px solid rgba(239,68,68,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span className="ms" style={{ fontSize: 22, color: '#ef4444' }}>delete</span>
-        </div>
-        <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>Remove</span>
-      </div>
-
-      {/* Card content */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 10, transform: `translateX(${swipeX}px)`, transition: swiping ? 'none' : 'transform .3s cubic-bezier(.25,0,0,1)' }}>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 15px 26px' }}>
-
-          {/* Stop counter — frosted glass pill */}
-          <div style={{ marginBottom: 8, opacity: visible ? 1 : 0, transition: 'opacity .4s' }}>
-            <span className="reel-meta" style={{
-              display: 'inline-flex', alignItems: 'center',
-              padding: '2px 8px', borderRadius: 5,
-              background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)',
-              fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
-              color: 'rgba(255,255,255,.50)',
-            }}>
-              Stop {stopNumber} of {totalStops}
-            </span>
-          </div>
-
-          {/* Time + duration row — frosted glass pill */}
-          <div style={{ marginBottom: 10, opacity: visible ? 1 : 0, transition: 'opacity .4s .06s' }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '3px 9px', borderRadius: 6,
-              background: 'rgba(0,0,0,.40)', backdropFilter: 'blur(6px)',
-            }}>
-              <span className="ms reel-meta" style={{ fontSize: 11, color: 'rgba(255,255,255,.40)' }}>schedule</span>
-              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>
-                {formatTime(stop.time)}
-              </span>
-              <span className="reel-meta" style={{ color: 'rgba(255,255,255,.30)' }}>·</span>
-              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.50)' }}>
-                {formatDuration(stop.durationMin)}
-              </span>
-              {movedFrom !== null && (
-                <span style={{ fontSize: 11, color: '#d4a853', fontWeight: 700 }}>↑ rescheduled</span>
-              )}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h2 className="reel-h1" style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1.05, marginBottom: 12, animation: visible ? 'fadeUp .5s .12s both' : 'none' }}>
-            {stop.title}
-          </h2>
-
-          {/* Metadata pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, animation: visible ? 'fadeUp .5s .2s both' : 'none' }}>
-            <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
-              {categoryLabel}
-            </span>
-            {stop.area && (
-              <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(8px)', fontSize: 11, color: 'rgba(255,255,255,.72)' }}>
-                <span className="ms" style={{ fontSize: 10, verticalAlign: 'middle', marginRight: 3 }}>place</span>
-                {stop.area}
-              </span>
-            )}
-            {stop.rating != null && (
-              <span className="reel-meta" style={{ padding: '4px 9px', borderRadius: 999, border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.08)', backdropFilter: 'blur(8px)', fontSize: 11, color: '#d4a853', fontWeight: 600 }}>
-                {stop.rating.toFixed(1)} ★
-              </span>
-            )}
-            {stop.priceLevel != null && stop.priceLevel > 0 && (
-              <PriceLevel level={stop.priceLevel} />
-            )}
-          </div>
-
-          {/* Trend velocity badges */}
-          {trendBadges.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12, animation: visible ? 'fadeUp .5s .22s both' : 'none' }}>
-              {trendBadges.map(badge => (
-                <span key={badge.label} className="reel-meta" style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '4px 9px', borderRadius: 999,
-                  border: `1px solid ${badge.color}33`,
-                  background: badge.bg,
-                  fontSize: 11, color: badge.color, fontWeight: 600,
-                }}>
-                  <span className="ms" style={{ fontSize: 12 }}>{badge.icon}</span>
-                  {badge.label}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Scheduling intelligence — reason strip */}
-          {orderReason && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: orderConsequence ? 6 : 12, background: 'rgba(0,0,0,.32)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', padding: '10px 12px', borderRadius: 12, animation: visible ? 'fadeUp .5s .25s both' : 'none' }}>
-              <span className="ms reel-meta" style={{ fontSize: 14, color: 'rgba(212,168,83,.7)', flexShrink: 0, marginTop: 1 }}>{inferReasonIcon(orderReason)}</span>
-              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.65)', lineHeight: 1.55 }}>
-                {orderReason}
-              </span>
-            </div>
-          )}
-
-          {/* Scheduling intelligence — consequence strip */}
-          {orderConsequence && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, background: 'rgba(0,0,0,.22)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.06)', padding: '8px 12px', borderRadius: 12, animation: visible ? 'fadeUp .5s .28s both' : 'none' }}>
-              <span className="ms reel-meta" style={{ fontSize: 14, color: 'rgba(255,255,255,.30)', flexShrink: 0, marginTop: 1 }}>arrow_forward</span>
-              <span className="reel-meta" style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', lineHeight: 1.55 }}>
-                {orderConsequence}
-              </span>
-            </div>
-          )}
-
-          {/* Why for you */}
-          {stop.whyForYou && (
-            <p className="reel-meta" style={{ fontSize: 12, fontStyle: 'italic', color: '#c0b0a4', lineHeight: 1.6, marginBottom: stop.localTip ? 8 : 0, animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
-              <span style={{ color: '#d4a853', fontStyle: 'normal', marginRight: 6 }}>✦</span>
-              {stop.whyForYou}
-            </p>
-          )}
-
-          {/* Local tip */}
-          {stop.localTip && (
-            <p className="reel-meta" style={{ fontStyle: 'italic', fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.6, animation: visible ? 'fadeUp .5s .36s both' : 'none' }}>
-              {stop.localTip}
-            </p>
+          {stop.rating != null && (
+            <span className="pill pa" style={{ fontSize: 10 }}>{stop.rating} ★</span>
           )}
         </div>
+
+        {/* Order reason */}
+        {card.orderReason && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
+            <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>schedule</span>
+            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55 }}>{card.orderReason}</p>
+          </div>
+        )}
+
+        {/* Order consequence */}
+        {card.orderConsequence && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
+            <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sage)', flexShrink: 0, marginTop: 1 }}>check_circle</span>
+            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55 }}>{card.orderConsequence}</p>
+          </div>
+        )}
+
+        {/* AI line (whyForYou) */}
+        {stop.whyForYou && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
+            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0 }}>✦</span>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.55, fontStyle: 'italic' }}>{stop.whyForYou}</p>
+          </div>
+        )}
       </div>
     </div>
   );
