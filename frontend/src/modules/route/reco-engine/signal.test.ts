@@ -19,8 +19,16 @@ const BASE_ITIN: EngineItinerary = {
 
 function makeState(overrides: Partial<AppState> = {}): AppState {
   return {
-    obAnswers: { ritual: 'coffee', sensory: 'visual', style: 'spontaneous', attractions: ['historic'], pace: 'walking', social: 'solo' },
-    persona: { archetype: 'explorer', archetype_name: 'Explorer', archetype_desc: '', ritual: 'coffee', sensory: 'visual', style: 'spontaneous', attractions: ['historic'], pace: 'walking', social: 'solo', archetypeData: { name: 'Explorer', desc: '', venue_filters: [], itinerary_bias: [] }, venue_filters: [], itinerary_bias: [] },
+    rawOBAnswers: {
+      group: 'solo',
+      mood: ['explore', 'culture'],
+      pace: ['slow'],
+      day_open: 'coffee',
+      dietary: [],
+      budget: 'mid_range',
+      evening: 'dinner_wind',
+    },
+    persona: { archetype: 'explorer', archetype_name: 'Explorer', archetype_desc: '', ritual: null, sensory: null, style: null, attractions: [], pace: null, social: null, archetypeData: { name: 'Explorer', desc: '', venue_filters: [], itinerary_bias: [] }, venue_filters: [], itinerary_bias: [] },
     travelStartDate: '2026-05-26',
     travelEndDate: null,
     tripContext: { startType: 'hotel', arrivalTime: null, date: '2026-05-26', days: 1, dayNumber: 1, flightTime: null, isLongHaul: false, locationLat: null, locationLon: null, locationName: null },
@@ -34,33 +42,59 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
 }
 
 describe('computeRecoSignal', () => {
-  it('maps pace walking → slow', () => {
+  it('maps pace slow → slow', () => {
     const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
     expect(signal.pace).toBe('slow');
   });
 
-  it('maps social solo → solo', () => {
+  it('maps pace pack → fast', () => {
+    const signal = computeRecoSignal(makeState({ rawOBAnswers: { ...makeState().rawOBAnswers!, pace: ['pack'] } }), 0, BASE_ITIN);
+    expect(signal.pace).toBe('fast');
+  });
+
+  it('maps pace balanced → moderate', () => {
+    const signal = computeRecoSignal(makeState({ rawOBAnswers: { ...makeState().rawOBAnswers!, pace: ['balanced'] } }), 0, BASE_ITIN);
+    expect(signal.pace).toBe('moderate');
+  });
+
+  it('maps group solo → solo', () => {
     const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
     expect(signal.social).toBe('solo');
   });
 
-  it('maps social family → group and sets isFamily true', () => {
-    const signal = computeRecoSignal(makeState({ obAnswers: { ritual: null, sensory: null, style: null, attractions: [], pace: null, social: 'family' } }), 0, BASE_ITIN);
+  it('maps group family → group and sets isFamily true', () => {
+    const signal = computeRecoSignal(makeState({ rawOBAnswers: { ...makeState().rawOBAnswers!, group: 'family' } }), 0, BASE_ITIN);
     expect(signal.social).toBe('group');
     expect(signal.isFamily).toBe(true);
   });
 
-  it('computes archetypeConfidence from answered OB questions', () => {
+  it('maps group couple → duo', () => {
+    const signal = computeRecoSignal(makeState({ rawOBAnswers: { ...makeState().rawOBAnswers!, group: 'couple' } }), 0, BASE_ITIN);
+    expect(signal.social).toBe('duo');
+  });
+
+  it('sets archetypeConfidence to 1.0 (mandatory OB)', () => {
     const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
-    expect(signal.archetypeConfidence).toBeCloseTo(1.0);
+    expect(signal.archetypeConfidence).toBe(1.0);
   });
 
-  it('sets archetypeConfidence to 0 when no OB answers', () => {
-    const signal = computeRecoSignal(makeState({ obAnswers: { ritual: null, sensory: null, style: null, attractions: [], pace: null, social: null } }), 0, BASE_ITIN);
-    expect(signal.archetypeConfidence).toBe(0);
+  it('maps day_open coffee → ritualStrength 0.8', () => {
+    const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
+    expect(signal.ritualStrength).toBe(0.8);
   });
 
-  it('sets weather.isOutdoorFriendly true for sunny weather above 10°', () => {
+  it('maps day_open straight → ritualStrength 0.1', () => {
+    const signal = computeRecoSignal(makeState({ rawOBAnswers: { ...makeState().rawOBAnswers!, day_open: 'straight' } }), 0, BASE_ITIN);
+    expect(signal.ritualStrength).toBe(0.1);
+  });
+
+  it('sets sensoryIntensity from mood max', () => {
+    // culture → 0.7, explore → 0.6 — max = 0.7
+    const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
+    expect(signal.sensoryIntensity).toBe(0.7);
+  });
+
+  it('sets weather.isOutdoorFriendly true for sunny above 10°', () => {
     const signal = computeRecoSignal(makeState(), 0, BASE_ITIN);
     expect(signal.weather?.isOutdoorFriendly).toBe(true);
   });
