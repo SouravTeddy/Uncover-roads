@@ -162,6 +162,15 @@ function getStoredPersona(): Persona | null {
   }
 }
 
+function getStoredPersonaProfile(): import('./types').PersonaProfile | null {
+  try {
+    const stored = localStorage.getItem('ur_persona_profile');
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getStoredItineraries(): SavedItinerary[] {
   try {
     const stored = localStorage.getItem('ur_saved_itineraries');
@@ -251,7 +260,7 @@ export const initialState: AppState = {
   screenStack: [getInitialScreen()],
   obAnswers: defaultObAnswers,
   rawOBAnswers: null,
-  personaProfile: null,
+  personaProfile: getStoredPersonaProfile(),
   obPreResolved: [],
   persona: getStoredPersona(),
   city:           ssGet<string>('ur_ss_city')    ?? '',
@@ -607,6 +616,7 @@ export function reducer(state: AppState, action: Action): AppState {
       // closes before hitting "Start Planning" on the PersonaScreen.
       try {
         localStorage.setItem('ur_persona', JSON.stringify({ archetype: action.profile.archetype }));
+        localStorage.setItem('ur_persona_profile', JSON.stringify(action.profile));
       } catch { /* ignore */ }
       return { ...state, personaProfile: action.profile };
 
