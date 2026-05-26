@@ -162,7 +162,7 @@ function getStoredPersona(): Persona | null {
   }
 }
 
-function getStoredPersonaProfile(): import('./types').PersonaProfile | null {
+function getStoredPersonaProfile(): PersonaProfile | null {
   try {
     const stored = localStorage.getItem('ur_persona_profile');
     return stored ? JSON.parse(stored) : null;
