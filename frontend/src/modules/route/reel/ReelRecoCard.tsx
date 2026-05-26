@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { useReelRecommendations } from './useReelRecommendations';
+import { useAppStore } from '../../../shared/store';
 import type { ReelRecoCard } from './types';
 import type { ReelRecoPlace } from '../../../shared/types';
 
@@ -7,6 +9,7 @@ interface Props {
   active: boolean;
   archetype: string;
   existingPlaceIds: string[];
+  onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan') => void;
 }
 
 const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chipLabel: string }> = {
@@ -20,6 +23,15 @@ const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chi
   walking_gap:      { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Long walk' },
   // TODO (crowd_peak): implement trigger logic once Popular Times data is available on EngineItineraryStop
   crowd_peak:       { icon: 'groups',          color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Peak hours' },
+  density_excess:   { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Packed day' },
+  density_sparse:   { icon: 'explore',         color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Room to add' },
+  geo_efficiency:   { icon: 'route',           color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Route' },
+  time_balance:     { icon: 'balance',         color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Time balance' },
+  category_diversity: { icon: 'grid_view',     color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Variety' },
+  social_gap:       { icon: 'people',          color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Social' },
+  budget_mismatch:  { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Budget' },
+  live_event:       { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.1)',  chipLabel: 'Live event' },
+  hidden_gem:       { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Hidden gem' },
 };
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
@@ -101,9 +113,24 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
   );
 }
 
-export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Props) {
+export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract }: Props) {
+  const { dispatch } = useAppStore();
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
   const { places, loading } = useReelRecommendations(card, archetype, existingPlaceIds, active);
+  const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (active) onInteract?.('viewed');
+  }, [active]);
+
+  useEffect(() => {
+    if (active) {
+      lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
+    } else {
+      if (lingerTimer.current) clearTimeout(lingerTimer.current);
+    }
+    return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
+  }, [active]);
 
   return (
     <div className="reel-card" style={{
@@ -192,6 +219,24 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds }: Prop
           ))}
         </div>
       )}
+
+      {/* Add to plan CTA */}
+      <button
+        onClick={() => {
+          onInteract?.('added_to_plan');
+          dispatch({ type: 'GO_TO', screen: 'map' });
+        }}
+        style={{
+          marginTop: 8, padding: '8px 16px', borderRadius: 999,
+          background: 'rgba(107,148,112,.18)', border: '1px solid rgba(107,148,112,.35)',
+          color: '#6b9470', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 6,
+          animation: active ? 'fadeUp .45s .5s both' : 'none',
+        }}
+      >
+        <span className="ms" style={{ fontSize: 15 }}>add_circle</span>
+        Add to plan
+      </button>
     </div>
   );
 }
