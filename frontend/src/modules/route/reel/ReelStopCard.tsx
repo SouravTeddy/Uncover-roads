@@ -489,8 +489,8 @@ export function ReelStopCard({ card, active, onRemove }: Props) {
 
           {/* Why for you */}
           {stop.whyForYou && (
-            <p className="reel-meta" style={{ fontSize: 13, color: 'rgba(255,255,255,.72)', lineHeight: 1.65, marginBottom: stop.localTip ? 8 : 0, animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
-              <span style={{ color: '#d4a853', marginRight: 6 }}>✦</span>
+            <p className="reel-meta" style={{ fontSize: 12, fontStyle: 'italic', color: '#c0b0a4', lineHeight: 1.6, marginBottom: stop.localTip ? 8 : 0, animation: visible ? 'fadeUp .5s .3s both' : 'none' }}>
+              <span style={{ color: '#d4a853', fontStyle: 'normal', marginRight: 6 }}>✦</span>
               {stop.whyForYou}
             </p>
           )}
