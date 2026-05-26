@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useAppStore } from '../../../shared/store';
 import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
@@ -62,22 +62,31 @@ export function ItineraryReelScreen() {
   const [saved, setSaved] = useState(!!savedItem);
   const [imagesReady, setImagesReady] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const weatherRef = useRef(weather);
+  const personaNameRef = useRef(personaName);
 
+  useEffect(() => { weatherRef.current = weather; }, [weather]);
+  useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
+
+  function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string) {
+    const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName);
+    return built.filter(c => {
+      if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
+      if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
+      return true;
+    });
+  }
+
+  // Full rebuild + image preload — only on structural changes (not weather/personaName)
   useEffect(() => {
     if (!activeItinerary) return;
     setImagesReady(false);
-    const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
-    const built = buildReelCards(activeItinerary, journeyLegs, reelSavedId, weather, personaName);
-    const filtered = built.filter(c => {
-      if (c.type === 'stop')  return !removedStopIds.has(c.stop.id);
-      if (c.type === 'reco')  return !removedStopIds.has(c.afterStopId);
-      if (c.type === 'intel') return true;
-      return true;
-    });
+    const filtered = buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current);
     setCards(filtered);
 
-    // Collect all image URLs from stop and intro cards, then preload before revealing
     const srcs: string[] = [];
     for (const c of filtered) {
       if (c.type === 'stop') {
@@ -90,18 +99,34 @@ export function ItineraryReelScreen() {
       }
     }
     preloadImages(srcs).then(() => setImagesReady(true));
-  }, [activeItinerary, journey, weather, personaName, removedStopIds, reelSavedId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
+  // Enrichment-only update — updates card data when weather/personaName arrive without resetting scroll
+  useEffect(() => {
+    if (!activeItinerary || cards.length === 0) return;
+    setCards(buildFiltered(activeItinerary, weather, personaName));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weather, personaName]);
+
+  // IntersectionObserver for active card tracking (replaces scroll event + Math.round)
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      const idx = Math.round(el.scrollTop / el.clientHeight);
-      setActiveIdx(idx);
-    };
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (!el || cards.length === 0) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const idx = cardRefs.current.indexOf(entry.target as HTMLDivElement);
+            if (idx !== -1) setActiveIdx(idx);
+          }
+        });
+      },
+      { root: el, threshold: 0.5 },
+    );
+    cardRefs.current.forEach(ref => { if (ref) observer.observe(ref); });
+    return () => observer.disconnect();
+  }, [cards]);
 
 
   const handleRemove = useCallback((stopId: string) => {
@@ -172,21 +197,34 @@ export function ItineraryReelScreen() {
           width: '100%', height: '100%',
           overflowY: 'scroll', overflowX: 'hidden',
           scrollSnapType: 'y mandatory',
-          scrollBehavior: 'smooth',
         }}
         className="no-scrollbar"
       >
         {cards.map((card, idx) => {
           const isActive = idx === activeIdx;
-          if (card.type === 'intro')   return <ReelIntroCard    key={idx}                              card={card} active={isActive} />;
-          if (card.type === 'summary') return <ReelSummaryCard key="summary"                          card={card} active={isActive} />;
-          if (card.type === 'stop')    return <ReelStopCard    key={card.stop.id}                     card={card} active={isActive} onRemove={handleRemove} />;
-          if (card.type === 'reco')    return <ReelRecoCard    key={card.id}                          card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
-          if (card.type === 'intel')   return <ReelIntelCard   key={card.id}                          card={card} active={isActive} />;
-          if (card.type === 'transit') return <ReelTransitCard key={`transit-${card.from}-${card.to}`} card={card} active={isActive} />;
-          if (card.type === 'finale')  return <ReelFinaleCard  key="finale"                           card={card} active={isActive} onSave={handleSave} saved={saved} />;
-          if (card.type === 'day_divider') return <ReelDayDividerCard key={`day-divider-${card.day}`} card={card} active={isActive} />;
-          return null;
+          const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
+          let child: ReactNode = null;
+          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} />;
+          else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
+          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} onRemove={handleRemove} />;
+          else if (card.type === 'reco')    child = <ReelRecoCard     card={card} active={isActive} archetype={archetype} existingPlaceIds={existingPlaceIds} />;
+          else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
+          else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
+          else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
+          else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} active={isActive} />;
+          if (!child) return null;
+          const cardKey =
+            card.type === 'stop' ? card.stop.id :
+            card.type === 'reco' ? card.id :
+            card.type === 'intel' ? card.id :
+            card.type === 'transit' ? `transit-${card.from}-${card.to}` :
+            card.type === 'day_divider' ? `day-${card.day}` :
+            card.type;
+          return (
+            <div key={cardKey} ref={setRef}>
+              {child}
+            </div>
+          );
         })}
       </div>
 
