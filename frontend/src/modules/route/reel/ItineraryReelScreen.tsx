@@ -13,6 +13,8 @@ import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
+import { syncRecoInteractions } from '../../../shared/userSync';
+import { supabase } from '../../../shared/supabase';
 
 const UNDO_DURATION = 3500;
 
@@ -192,6 +194,15 @@ export function ItineraryReelScreen() {
     });
     setSaved(true);
   }, [saved, activeItinerary, city, dispatch, state, persona]);
+
+  useEffect(() => {
+    return () => {
+      if (state.recoInteractions.length === 0) return;
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) syncRecoInteractions(user.id, state.recoInteractions as any).catch(console.warn);
+      });
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!activeItinerary || !imagesReady) {
     return (

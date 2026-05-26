@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Persona, SavedItinerary } from './types';
+import type { RecoInteraction } from '../modules/route/reco-engine';
 
 // Called on SIGNED_IN — upserts the user's profile from their Google data
 export async function syncProfile(user: User) {
@@ -91,6 +92,25 @@ export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 
 // Increment generation count in Supabase
 export async function incrementGenerationCount(userId: string) {
   await supabase.rpc('increment_generation_count', { uid: userId });
+}
+
+export async function syncRecoInteractions(
+  userId: string,
+  interactions: RecoInteraction[],
+): Promise<void> {
+  if (interactions.length === 0) return;
+  const rows = interactions.map(i => ({
+    user_id: userId,
+    reco_id: i.recoId,
+    dimension: i.dimension,
+    archetype: i.archetype,
+    action: i.action,
+    conflict_present: i.conflictPresent,
+    significance: i.significance,
+    signal_snapshot: i.signalSnapshot,
+    created_at: i.timestamp,
+  }));
+  await supabase.from('reco_interactions').insert(rows);
 }
 
 // Load saved itineraries from Supabase for the signed-in user
