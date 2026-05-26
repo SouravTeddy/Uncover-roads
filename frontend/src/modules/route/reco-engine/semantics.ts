@@ -44,7 +44,7 @@ export function computeStopSemantics(
   }
 
   // Cultural deep: museum/gallery/historic with long duration
-  if ((stop.category === 'museum' || stop.category === 'gallery' || stop.category === 'historic' || stop.category === 'heritage') && stop.durationMin >= 120) {
+  if ((stop.category === 'museum' || stop.category === 'gallery' || stop.category === 'historic') && stop.durationMin >= 120) {
     return 'cultural_deep';
   }
 
@@ -62,8 +62,7 @@ export function computeStopSemantics(
 
   // Anchor: main category attractions
   if (stop.category === 'museum' || stop.category === 'gallery' || stop.category === 'historic' ||
-      stop.category === 'heritage' || stop.category === 'landmark' || stop.category === 'tourism' ||
-      SCENIC_CATS.has(stop.category)) {
+      stop.category === 'tourism' || SCENIC_CATS.has(stop.category)) {
     return 'anchor';
   }
 
