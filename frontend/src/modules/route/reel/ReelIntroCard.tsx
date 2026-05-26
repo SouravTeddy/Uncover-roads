@@ -11,6 +11,26 @@ interface Props {
   onAddDetail?: () => void;
 }
 
+function introSkyTint(condition: string): string {
+  const c = condition.toLowerCase();
+  if (c.includes('rain') || c.includes('drizzle')) return 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))';
+  if (c.includes('thunder') || c.includes('storm'))  return 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))';
+  if (c.includes('snow'))                            return 'rgba(55,72,100,.55)';
+  if (c.includes('fog') || c.includes('mist'))       return 'rgba(110,118,132,.55)';
+  if (c.includes('clear') || c.includes('sunny'))    return 'linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%)';
+  if (c.includes('cloud') || c.includes('overcast') || c.includes('partly')) return 'rgba(150,165,185,.16)';
+  return 'rgba(0,0,0,.12)';
+}
+
+function introTodGradient(hour: number): string | null {
+  if (hour >= 6 && hour < 8)   return 'linear-gradient(180deg,rgba(255,210,180,.08) 0%,rgba(255,180,140,.18) 40%,rgba(250,150,110,.40) 72%,rgba(228,118,86,.62) 92%,rgba(212,98,68,.68) 100%)';
+  if (hour >= 8 && hour < 11)  return 'linear-gradient(180deg,rgba(255,225,180,.05) 0%,rgba(255,205,140,.16) 50%,rgba(238,168,100,.40) 78%,rgba(216,138,80,.62) 100%)';
+  if (hour >= 11 && hour < 16) return 'linear-gradient(180deg,rgba(180,210,235,.14) 0%,rgba(220,225,210,.08) 35%,rgba(245,225,170,.24) 70%,rgba(232,205,150,.40) 92%,rgba(218,188,130,.50) 100%)';
+  if (hour >= 18 && hour < 20) return 'linear-gradient(180deg,rgba(80,55,120,.18) 0%,rgba(180,70,110,.28) 38%,rgba(200,80,90,.44) 60%,rgba(160,55,110,.60) 82%,rgba(95,40,130,.68) 100%)';
+  if (hour >= 20)               return 'linear-gradient(180deg,rgba(20,28,55,.24) 0%,rgba(35,50,98,.36) 45%,rgba(40,55,110,.52) 75%,rgba(22,32,72,.68) 100%)';
+  return null;
+}
+
 const GRADIENT = 'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,.05) 35%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.9) 80%, rgba(0,0,0,.97) 100%)';
 
 const CHANGE_LABELS: Record<string, string> = {
@@ -99,6 +119,12 @@ export function ReelIntroCard({ card, active }: Props) {
     }
   }
 
+  const condition = (card.weather?.condition ?? '').toLowerCase();
+  const introHour = 9; // default midday; startTime not on card type
+  const skyTint = introSkyTint(condition);
+  const todGrad = introTodGradient(introHour);
+  const showSun = (condition.includes('clear') || condition.includes('sunny')) && introHour >= 8 && introHour < 18;
+
   const topChanges = card.engineChanges.slice(0, 2);
 
   return (
@@ -107,9 +133,47 @@ export function ReelIntroCard({ card, active }: Props) {
         ? <img src={card.imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #0c0c0e, #1a1420)' }} />
       }
-      {/* Weather particle layer — rendered above photo, below gradient */}
-      {card.weather && <WeatherCanvas condition={card.weather.condition} />}
-      <div style={{ position: 'absolute', inset: 0, background: GRADIENT }} />
+      {/* Sky tint */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: skyTint, pointerEvents: 'none' }} />
+
+      {/* Time-of-day gradient */}
+      {todGrad && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGrad, pointerEvents: 'none' }} />
+      )}
+
+      {/* Sun rays — clear daytime only */}
+      {showSun && (
+        <>
+          <div style={{
+            position: 'absolute', zIndex: 4,
+            right: '-20%', top: '-20%',
+            width: '90%', height: '80%',
+            background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.38),rgba(255,215,150,0) 60%)',
+            filter: 'blur(6px)',
+            animation: 'sunGlow 6s ease-in-out infinite',
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', zIndex: 4,
+            top: '-40%', right: '-10%',
+            width: '90%', height: '180%',
+            transformOrigin: 'top right',
+            animation: 'rayRotate 80s linear infinite',
+            pointerEvents: 'none',
+          }}>
+            <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
+            <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
+          </div>
+        </>
+      )}
+
+      {/* Weather particle layer — rendered above atmospheric layers, below scrim */}
+      {card.weather && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none' }}>
+          <WeatherCanvas condition={card.weather.condition} />
+        </div>
+      )}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: GRADIENT }} />
 
       {/* Trip details button — top right */}
       <button
