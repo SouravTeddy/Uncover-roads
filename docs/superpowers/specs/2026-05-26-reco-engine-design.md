@@ -78,21 +78,37 @@ frontend/src/modules/route/reco-engine/
 Computed once per day, passed to all downstream functions. No function reaches into global state.
 
 ```ts
+// Defined in signal.ts
+type ArchetypeGroup = 'sensory' | 'cultural' | 'social' | 'explorer';
+
+// Mapping: archetype → group
+const ARCHETYPE_GROUPS: Record<string, ArchetypeGroup> = {
+  slowscholar: 'cultural',  aesthete: 'sensory',   historian: 'cultural',
+  nightcreature: 'social',  pulse: 'social',        ritualseeker: 'sensory',
+  flaneur: 'explorer',      drifter: 'explorer',    // extend as archetypes are added
+};
+
 interface RecoSignal {
   // ── Persona ──────────────────────────────────────────────────
   weights: EngineWeights;           // w_nightlife, w_culture_depth, etc.
   archetype: string;                // 'slowscholar', 'pulse', 'flaneur', etc.
-  archetypeGroup: ArchetypeGroup;   // 'sensory' | 'cultural' | 'social' | 'explorer'
-  archetypeConfidence: number;      // 0–1; low = fewer OB signals answered
+  archetypeGroup: ArchetypeGroup;
+  archetypeConfidence: number;      // 0–1; computed as (answered OB questions / total OB questions)
 
-  // ── Raw behavioral patterns (from OB, not just derived archetype) ──
+  // ── Raw behavioral patterns (from state.obAnswers, not just derived archetype) ──
+  // Derived in computeRecoSignal() from obAnswers fields:
+  //   pace       → obAnswers.pace ('slow'|'moderate'|'fast') direct
+  //   social     → obAnswers.social ('solo'|'duo'|'group') direct
+  //   ritual     → obAnswers.ritual: map answer options to 0.0/0.4/0.7/1.0
+  //   sensory    → obAnswers.sensory: map answer options to 0.0/0.4/0.7/1.0
+  //   style      → obAnswers.style: used for spontaneityBias + isFamily
   pace: 'slow' | 'moderate' | 'fast';
   social: 'solo' | 'duo' | 'group';
-  isFamily: boolean;                // Phase 1: derived from group + OB style answers
+  isFamily: boolean;                // Phase 1: social==='group' && pace==='slow' && style includes 'family'
                                     // Phase 2: explicit OB flag
-  ritualStrength: number;           // 0–1 from OB ritual answer
-  sensoryIntensity: number;         // 0–1 from OB sensory answer
-  spontaneityBias: number;          // 0–1 from w_spontaneity + OB style answer
+  ritualStrength: number;           // 0–1 mapped from obAnswers.ritual
+  sensoryIntensity: number;         // 0–1 mapped from obAnswers.sensory
+  spontaneityBias: number;          // 0–1: w_spontaneity * 0.6 + (style==='spontaneous' ? 0.4 : 0)
 
   // ── Trip context ─────────────────────────────────────────────
   trip: {
@@ -100,26 +116,28 @@ interface RecoSignal {
     dayNumber: number;
     isFirstDay: boolean;
     isLastDay: boolean;
-    isWeekend: boolean;
+    isWeekend: boolean;             // derived from travelStartDate + dayNumber
     isLongHaul: boolean;
     startType: 'hotel' | 'airport' | 'other';
-    arrivalTime: string | null;      // ISO time string
-    departureTime: string | null;    // for last day
+    arrivalTime: string | null;
+    departureTime: string | null;   // from pendingTripDetails or savedItem.tripDetails
     city: string;
-    countryCode: string | null;
+    // countryCode omitted — not in current state, add in Phase 2 if needed
   };
 
   // ── Context ──────────────────────────────────────────────────
   weather: {
     condition: string;
     tempC: number;
-    isOutdoorFriendly: boolean;
+    isOutdoorFriendly: boolean;     // computed: not in BAD_WEATHER_CONDITIONS && tempC > 10
   } | null;
 
-  // ── Viewed/dismissed pins ────────────────────────────────────
-  dismissedPinIds: Set<string>;     // pins user explicitly dismissed
-  viewedEventIds: Set<string>;      // event pins viewed but not saved
-  savedEventIds: Set<string>;       // events in savedEvents state
+  // ── Viewed/dismissed pins ─────────────────────────────────────
+  // viewedEventIds removed: we don't track event views, only saves and explicit dismissals.
+  // Phase 1: liveEventOverlap uses savedEventIds + dismissedPinIds only.
+  // Phase 2: add view tracking when event detail screen is built.
+  dismissedPinIds: Set<string>;     // from new state.dismissedPinIds
+  savedEventIds: Set<string>;       // from state.savedEvents mapped to ids
 }
 ```
 
@@ -153,7 +171,12 @@ interface ItineraryProfile {
   // ── Context alignment ─────────────────────────────────────────
   weatherAlignment: number | null;  // outdoor stop ratio vs forecast friendliness
   crowdOptimization: number | null; // popular stops timed against peak hours
+                                    // Phase 1: use stop.category + hardcoded peak windows
+                                    // (museums 10-12, markets 9-11, beaches 11-15)
+                                    // Phase 2: real-time crowd data per place_id
   budgetAlignment: number | null;   // cost tier distribution vs w_budget_sensitivity
+                                    // Phase 1: use stop.priceLevel (Google Places field, 0-4)
+                                    // null if no stops have priceLevel set
 
   // ── Live / event ──────────────────────────────────────────────
   liveEventOverlap: number | null;  // viewed/dismissed events within trip dates
@@ -255,7 +278,16 @@ function detectGaps(
 For each dimension:
 1. If either `target[dim]` or `actual[dim]` is `null` → skip
 2. Compute `delta = target - actual`
-3. `dimensionWeight = getDimensionWeight(dim, signal)` — maps dimension to the most relevant persona weight
+3. `dimensionWeight = getDimensionWeight(dim, signal)` — defined in `dimensions.ts`. Maps each dimension to a composite weight derived from the signal. Examples:
+   - `hasLunch` → `signal.weights.w_food_density * 0.7 + 0.3` (food is near-universal so floor at 0.3)
+   - `hasCulture` → `signal.weights.w_culture_depth`
+   - `hasRest` → `signal.weights.w_rest_need * 0.6 + (signal.pace === 'slow' ? 0.4 : 0)`
+   - `densityScore` → `Math.max(signal.weights.w_efficiency, 1 - signal.weights.w_rest_need)`
+   - `weatherAlignment` → `signal.weights.w_scenic * 0.5 + 0.5` (context safety, always relevant)
+   - `liveEventOverlap` → `signal.spontaneityBias`
+   - `crowdOptimization` → `signal.weights.w_crowd_aversion`
+   - `budgetAlignment` → `signal.weights.w_budget_sensitivity`
+   Full mapping table lives in `dimensions.ts`
 4. `significance = Math.abs(delta) * dimensionWeight`
 5. If `significance < threshold` → below noise floor, skip
 
@@ -350,7 +382,7 @@ created_at    timestamptz default now()
 
 | Case | Handling |
 |---|---|
-| **Zero delta** | Return `{ type: 'zero_delta' }`. Reel shows "Your day looks balanced" state card. Never silent. |
+| **Zero delta** | `deriveRecos()` returns `[]`. `reel-builder.ts` detects empty result and injects a `balance` card: "Your day is well-balanced for your style." Never silent. |
 | **Insufficient data** | Dimension returns `null`. If high-value for persona, show a "couldn't find X — search the map" redirect card. |
 | **Conflict** | `conflictPresent: true`. Significance × 1.4. Card acknowledges tension. Behavior captured as high-value event. |
 | **Single stop day** | Sequence-dependent dimensions (densityScore, geoEfficiency, walkIntensity) return `null`. Categorical dimensions still compute. Engine runs on available dimensions only. |
@@ -405,15 +437,27 @@ const recos = await deriveRecos(day.stops, signal);
 // recos is ReelRecoCard[]
 ```
 
+**In `shared/types.ts`:**
+- Add `balance` to the `ReelCard` union type:
+  ```ts
+  | { type: 'balance'; message: string }
+  ```
+
 **In `ReelRecoCard.tsx`:**
 - Add behavior tracking: `onView`, `onTap`, `onDismiss`, `onLingerTimeout` callbacks
 - These call `trackRecoInteraction()` from `behavior.ts`
 - "Add to plan" CTA: dispatch `GO_TO: 'map'` with category + geo hint prefilled
 
+**New `ReelBalanceCard.tsx`:**
+- Lightweight card rendered when `deriveRecos()` returns `[]`
+- Shows "Your day is well-balanced for your style" with persona archetype context
+- No CTA needed
+
 **In `store.tsx`:**
 - Add `dismissedPinIds: string[]` to `AppState`
 - Add `SET_DISMISSED_PIN` action
 - Add `recoInteractions: RecoInteraction[]` to `AppState` (in-memory, synced async)
+- Add `ADD_RECO_INTERACTION` action
 
 **In `userSync.ts`:**
 - Add `syncRecoInteractions(userId, interactions)` — batch upload to Supabase
