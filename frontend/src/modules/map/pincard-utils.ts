@@ -113,6 +113,14 @@ export function computeAnalysisInsights(
   const insights: AnalysisInsight[] = []
 
   // 1. Open/close insight — always first
+  if (!travelStart && !travelEnd && details?.open_now !== undefined) {
+    insights.push(
+      details.open_now
+        ? { text: 'Open now', state: 'green' as const }
+        : { text: 'Currently closed', state: 'red' as const },
+    )
+  }
+
   if (details?.weekday_text?.length && travelStart && travelEnd) {
     const closedDay = (() => {
       const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
