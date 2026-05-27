@@ -2,14 +2,13 @@ import { useEffect, useRef, useMemo } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
-  todGradient, todDotColor, todLabel, skyTintForCondition,
+  todGradient, skyTintForCondition,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
   SNOW_COUNT, SNOW_SEED,
   INTRO_CITY_FS, INTRO_CITY_MB, INTRO_LABEL_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
   INTRO_STRIP_BR, INTRO_STRIP_GAP, INTRO_TEXT_SHADOW,
-  TOD_BADGE_TOP, TOD_BADGE_LEFT,
   WEATHER_ICON, ENGINE_STRIP_COPY, makeRng,
 } from './reel-constants';
 
@@ -17,7 +16,6 @@ interface Props {
   card: ReelIntroCardType;
   active: boolean;
   onInteract?: (action: 'viewed' | 'lingered') => void;
-  onAddTripDetails?: () => void;
 }
 
 function makeRainParticles(count: number, seedVal: number, lenMin: number, lenRange: number, color: string) {
@@ -78,7 +76,7 @@ function SunRays() {
   );
 }
 
-export function ReelIntroCard({ card, active, onInteract, onAddTripDetails }: Props) {
+export function ReelIntroCard({ card, active, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hour = new Date().getHours();
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
@@ -107,7 +105,6 @@ export function ReelIntroCard({ card, active, onInteract, onAddTripDetails }: Pr
 
   const dayCount = card.totalDays ?? 1;
   const tripLabel = dayCount === 1 ? 'Your day in' : `Your ${dayCount}-day trip`;
-  const dotColor = todDotColor(hour);
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
@@ -143,20 +140,6 @@ export function ReelIntroCard({ card, active, onInteract, onAddTripDetails }: Pr
           )}
         </div>
       )}
-
-      {/* ToD badge z-index:11 */}
-      <div style={{ position: 'absolute', top: TOD_BADGE_TOP, left: TOD_BADGE_LEFT, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {todLabel(hour)}
-        </span>
-      </div>
-
-      {/* Trip details button z-index:10 */}
-      <button onClick={onAddTripDetails} style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid var(--color-border-m)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer' }}>
-        <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
-        Add trip details
-      </button>
 
       {/* Content z-index:10 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>
