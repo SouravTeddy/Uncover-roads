@@ -100,7 +100,7 @@ function ScreenRouter() {
       try {
         const raw = localStorage.getItem('ur_ss_screen');
         const savedScreen = raw ? (JSON.parse(raw) as string) : null;
-        const midSessionScreens = ['map', 'route', 'destination', 'journey', 'saved'];
+        const midSessionScreens = ['map', 'route', 'destination', 'journey', 'saved', 'itinerary-reel'];
         if (savedScreen && midSessionScreens.includes(savedScreen)) {
           dispatch({ type: 'GO_TO', screen: savedScreen as Screen });
           return;
@@ -143,7 +143,7 @@ function ScreenRouter() {
     // already on one of these, a spurious SIGNED_IN event (e.g. token refresh
     // on Android app resume) must NOT kick them back to the welcome screen.
     const activeMidSessionScreens = new Set([
-      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'saved', 'profile', 'subscription',
+      'map', 'route', 'destination', 'journey', 'persona', 'nav', 'trips', 'saved', 'profile', 'subscription', 'itinerary-reel',
     ]);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
