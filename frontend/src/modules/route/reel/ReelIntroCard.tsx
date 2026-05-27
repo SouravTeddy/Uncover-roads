@@ -2,12 +2,12 @@ import { useEffect, useRef, useMemo } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
-  todGradient, todDotColor, todLabel, skyTintForCondition,
+  todGradient, skyTintForCondition,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
   SNOW_COUNT, SNOW_SEED,
-  INTRO_CITY_FS, INTRO_CITY_MB, INTRO_LABEL_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
+  INTRO_CITY_FS, INTRO_CITY_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
   INTRO_STRIP_BR, INTRO_STRIP_GAP, INTRO_TEXT_SHADOW,
   WEATHER_ICON, ENGINE_STRIP_COPY, makeRng,
 } from './reel-constants';
@@ -77,10 +77,16 @@ function SunRays() {
   );
 }
 
+function fmtDuration(min: number): string {
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hour = new Date().getHours();
-  const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny = condition === 'sunny' || condition === 'clear';
   const isRain = condition === 'rain' || condition === 'drizzle';
@@ -105,9 +111,6 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active, onInteract]);
 
-  const dayCount = card.totalDays ?? 1;
-  const tripLabel = dayCount === 1 ? 'Your day in' : `Your ${dayCount}-day trip`;
-
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
 
@@ -116,11 +119,14 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
         <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
       )}
 
-      {/* TOD badge z-index:11 — top:48px left:13px per mock */}
-      <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{todLabel(hour)}</span>
-      </div>
+      {/* Weather pill z-index:11 — top:48px left:13px */}
+      {card.weather && (
+        <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)' }}>
+          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition.toLowerCase()] ?? 'wb_sunny'}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{card.weather.temp}°</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{card.weather.condition}</span>
+        </div>
+      )}
 
       {/* Trip details button z-index:10 — top:48px right:13px per mock */}
       <button
@@ -160,23 +166,24 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
 
       {/* Content z-index:10 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: INTRO_LABEL_MB }}>
-          {tripLabel}
-        </p>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: INTRO_CITY_FS, fontWeight: 700, color: '#fff', lineHeight: 1, marginBottom: INTRO_CITY_MB, textShadow: INTRO_TEXT_SHADOW }}>
           {card.city}
         </h1>
 
-        {/* Pills */}
+        {/* Info pills — stops · total time · distance */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: INTRO_PILL_GAP, marginBottom: INTRO_PILL_MB }}>
           <span className="pill pg">
             <span className="ms fill" style={{ fontSize: 11 }}>place</span>
-            {card.totalStops} stops
+            {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}
           </span>
-          {card.weather && (
+          <span className="pill pg">
+            <span className="ms fill" style={{ fontSize: 11 }}>schedule</span>
+            {fmtDuration(card.totalDurationMin)}
+          </span>
+          {card.totalDistanceKm > 0 && (
             <span className="pill pg">
-              <span className="ms fill" style={{ fontSize: 11 }}>{WEATHER_ICON[condition] ?? 'wb_sunny'}</span>
-              {card.weather.temp}° · {card.weather.condition}
+              <span className="ms fill" style={{ fontSize: 11 }}>directions_walk</span>
+              {card.totalDistanceKm} km
             </span>
           )}
         </div>

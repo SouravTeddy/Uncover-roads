@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOD Gradient Concept</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#09080a;color:#f5f0ea;padding:40px 20px}
+.ms{font-family:'Material Symbols Rounded';font-style:normal;line-height:1;display:inline-block}
+.ms.fill{font-variation-settings:'FILL' 1}
+h2{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:20px}
+.row{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;margin-bottom:40px}
+.cap{font-size:10px;color:rgba(255,255,255,.35);margin-top:8px;text-align:center}
+.ph{width:260px;height:520px;border-radius:36px;overflow:hidden;position:relative;flex-shrink:0;border:1.5px solid rgba(255,255,255,.1);box-shadow:0 24px 64px rgba(0,0,0,.75)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:500}
+.pill.pg{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.75)}
+@keyframes sunGlow{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes rayRotate{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<h2>TOD gradient concept — current vs proposed</h2>
+<p style="font-size:12px;color:rgba(255,255,255,.45);margin-bottom:28px">Current: full-card color overlay (feels heavy, washes out photo). Proposed: no full-card overlay — instead a sharp accent border at the bottom content area using the TOD dot color, with a soft glow gradient outward. Photo reads cleaner.</p>
+
+<div class="row">
+
+  <!-- CURRENT: Morning — full card TOD gradient overlay -->
+  <div>
+    <div class="ph">
+      <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&q=80" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0">
+      <!-- Sky tint -->
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%);pointer-events:none"></div>
+      <!-- Scrim -->
+      <div style="position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%);pointer-events:none"></div>
+      <!-- CURRENT: full-card morning TOD overlay -->
+      <div style="position:absolute;inset:0;z-index:4;background:linear-gradient(180deg,rgba(255,225,180,.05) 0%,rgba(255,205,140,.16) 50%,rgba(238,168,100,.40) 78%,rgba(216,138,80,.62) 100%);pointer-events:none"></div>
+      <!-- Content -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 17px 28px">
+        <h1 style="font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#fff;line-height:1;margin-bottom:10px;text-shadow:0 1px 6px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.6)">Paris</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">place</span>6 stops</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">schedule</span>9h 30m</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">directions_walk</span>4.2 km</span>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Current — full card morning gradient overlay</p>
+  </div>
+
+  <!-- PROPOSED: Morning — no full-card overlay, sharp TOD accent border -->
+  <div>
+    <div class="ph">
+      <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&q=80" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0">
+      <!-- Sky tint only -->
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%);pointer-events:none"></div>
+      <!-- Scrim -->
+      <div style="position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%);pointer-events:none"></div>
+      <!-- NO full-card TOD gradient -->
+      <!-- PROPOSED: TOD accent — sharp border + outward glow at content area -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;height:220px;background:linear-gradient(to top, rgba(238,168,100,.22) 0%, rgba(238,168,100,.08) 40%, transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:5;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(238,168,100,.55) 20%,rgba(238,168,100,.8) 50%,rgba(238,168,100,.55) 80%,transparent 100%);box-shadow:0 0 18px 4px rgba(238,168,100,.35);pointer-events:none"></div>
+      <!-- Content -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 17px 28px">
+        <h1 style="font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#fff;line-height:1;margin-bottom:10px;text-shadow:0 1px 6px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.6)">Paris</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">place</span>6 stops</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">schedule</span>9h 30m</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">directions_walk</span>4.2 km</span>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Proposed — sharp bottom accent + soft glow (morning: amber)</p>
+  </div>
+
+  <!-- PROPOSED: Dusk variant -->
+  <div>
+    <div class="ph">
+      <img src="https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=600&q=80" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0">
+      <!-- Sky tint -->
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%);pointer-events:none"></div>
+      <!-- Scrim -->
+      <div style="position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%);pointer-events:none"></div>
+      <!-- PROPOSED: Dusk accent — rose/violet -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;height:220px;background:linear-gradient(to top, rgba(212,112,106,.22) 0%, rgba(212,112,106,.08) 40%, transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:5;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(212,112,106,.55) 20%,rgba(212,112,106,.85) 50%,rgba(212,112,106,.55) 80%,transparent 100%);box-shadow:0 0 18px 4px rgba(212,112,106,.35);pointer-events:none"></div>
+      <!-- Content -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 17px 28px">
+        <h1 style="font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#fff;line-height:1;margin-bottom:10px;text-shadow:0 1px 6px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.6)">Kyoto</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">place</span>9 stops</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">schedule</span>12h</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">directions_walk</span>6.1 km</span>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Proposed — sharp bottom accent (dusk: rose)</p>
+  </div>
+
+  <!-- PROPOSED: Night variant -->
+  <div>
+    <div class="ph">
+      <img src="https://images.unsplash.com/photo-1542051841857-5f90071e7989?w=600&q=80" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0">
+      <!-- Night sky tint -->
+      <div style="position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(20,28,55,.30),rgba(35,50,98,.45) 45%,rgba(40,55,110,.65) 75%,rgba(22,32,72,.85));pointer-events:none"></div>
+      <!-- Scrim -->
+      <div style="position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%);pointer-events:none"></div>
+      <!-- PROPOSED: Night accent — indigo/blue -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:4;height:220px;background:linear-gradient(to top, rgba(106,130,200,.20) 0%, rgba(106,130,200,.06) 40%, transparent 100%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:5;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(106,130,200,.50) 20%,rgba(106,130,200,.80) 50%,rgba(106,130,200,.50) 80%,transparent 100%);box-shadow:0 0 18px 4px rgba(106,130,200,.30);pointer-events:none"></div>
+      <!-- Content -->
+      <div style="position:absolute;bottom:0;left:0;right:0;z-index:10;padding:0 17px 28px">
+        <h1 style="font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:700;color:#fff;line-height:1;margin-bottom:10px;text-shadow:0 1px 6px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.6)">Tokyo</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">place</span>11 stops</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">schedule</span>14h</span>
+          <span class="pill pg"><span class="ms fill" style="font-size:11px">directions_walk</span>7.8 km</span>
+        </div>
+      </div>
+    </div>
+    <p class="cap">Proposed — sharp bottom accent (night: indigo)</p>
+  </div>
+
+</div>
+
+<p style="font-size:11px;color:rgba(255,255,255,.35);max-width:700px;line-height:1.6">
+  <b style="color:rgba(255,255,255,.6)">What changed:</b> The current approach tints the entire card with a colour wash (morning amber, dusk rose, night indigo) — this competes with the photo. The proposed approach removes the full-card overlay entirely and replaces it with: (1) a 2px sharp accent line at the very bottom of the card, fading left/right, with a box-shadow glow — colour comes from the existing TOD dot colours in the mock. (2) a subtle matching gradient that only rises from the content area upward (~220px), so the colour reads in the dark zone where text sits but the photo zone above is clean. The sky tint layer (existing) is kept as-is — it handles the top of the card independently.
+</p>
+
+</body>
+</html>
