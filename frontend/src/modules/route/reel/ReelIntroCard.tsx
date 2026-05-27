@@ -17,6 +17,7 @@ interface Props {
   card: ReelIntroCardType;
   active: boolean;
   onInteract?: (action: 'viewed' | 'lingered') => void;
+  onAddTripDetails?: () => void;
 }
 
 function makeRainParticles(count: number, seedVal: number, lenMin: number, lenRange: number, color: string) {
@@ -77,7 +78,7 @@ function SunRays() {
   );
 }
 
-export function ReelIntroCard({ card, active, onInteract }: Props) {
+export function ReelIntroCard({ card, active, onInteract, onAddTripDetails }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hour = new Date().getHours();
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
@@ -152,7 +153,7 @@ export function ReelIntroCard({ card, active, onInteract }: Props) {
       </div>
 
       {/* Trip details button z-index:10 */}
-      <button style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid var(--color-border-m)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer' }}>
+      <button onClick={onAddTripDetails} style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid var(--color-border-m)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer' }}>
         <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
         Add trip details
       </button>

@@ -2,9 +2,9 @@
 // All values extracted from frontend/public/reel-mock.html — do not edit without checking mock first.
 
 // ── Layout ────────────────────────────────────────────────────
-export const REEL_CONTENT_PADDING_INTRO = '0 17px 32px'
-export const REEL_CONTENT_PADDING_STOP  = '0 15px 26px'
-export const REEL_CONTENT_PADDING_RECO  = '0 18px 88px'
+export const REEL_CONTENT_PADDING_INTRO = '0 17px 96px'
+export const REEL_CONTENT_PADDING_STOP  = '0 15px 96px'
+export const REEL_CONTENT_PADDING_RECO  = '0 18px 96px'
 
 // ── Shared scrim (identical on all photo cards) ───────────────
 export const REEL_SCRIM =
@@ -118,7 +118,8 @@ export const INTRO_STRIP_BR         = 9
 export const INTRO_STRIP_GAP        = 5
 export const INTRO_TEXT_SHADOW      = '0 1px 6px rgba(0,0,0,.9),0 2px 18px rgba(0,0,0,.6)'
 export const TOD_BADGE_TOP          = 48
-export const TOD_BADGE_LEFT         = 13
+// Left offset clears the 38px back button (starting at left:16) with 8px breathing room
+export const TOD_BADGE_LEFT         = 62
 
 // ── Stop card ─────────────────────────────────────────────────
 export const STOP_H2_FS             = 30
