@@ -10,11 +10,12 @@ import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
-import { getPlacePhotoUrl } from '../../../shared/api';
+import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
+import { TripDetailsSheet } from './TripDetailsSheet';
 
 
 
@@ -65,6 +66,7 @@ export function ItineraryReelScreen() {
   const [undoPending, setUndoPending] = useState<{ id: string; label: string } | null>(null);
   const [saved, setSaved] = useState(!!savedItem);
   const [imagesReady, setImagesReady] = useState(false);
+  const [showTripDetails, setShowTripDetails] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -128,6 +130,24 @@ export function ItineraryReelScreen() {
     setCards(buildFiltered(activeItinerary, weather, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weather, personaName]);
+
+  // Fetch weather if not already in state (e.g. opening saved trip without going through route screen)
+  useEffect(() => {
+    if (state.weather) return;
+    const cityName = city || activeItinerary?.city || activeItinerary?.cities?.[0];
+    if (!cityName) return;
+    api.weather(cityName).then(wx => {
+      if (wx) dispatch({ type: 'SET_WEATHER', weather: wx });
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [city]);
+
+  // Re-run reco engine when persona arrives after initial itinerary load
+  useEffect(() => {
+    if (!activeItinerary || !state.persona || cards.length === 0) return;
+    setCards(buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.persona]);
 
   // IntersectionObserver for active card tracking (replaces scroll event + Math.round)
   useEffect(() => {
@@ -218,7 +238,7 @@ export function ItineraryReelScreen() {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
           let child: ReactNode = null;
-          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} />;
+          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} onAddTripDetails={() => setShowTripDetails(true)} />;
           else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
           else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} />;
           else if (card.type === 'reco')    child = (
@@ -331,6 +351,21 @@ export function ItineraryReelScreen() {
         >
           <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,.85)' }}>arrow_upward</span>
         </button>
+      )}
+
+      {/* Trip details sheet */}
+      {showTripDetails && activeItinerary && (
+        <TripDetailsSheet
+          cities={activeItinerary.cities ?? [activeItinerary.city ?? '']}
+          journeyLegs={savedItem?.journeyLegs ?? journey ?? null}
+          existingDetails={savedItem?.tripDetails ?? state.pendingTripDetails ?? null}
+          travelDate={state.travelStartDate}
+          onSave={(details) => {
+            dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
+            setShowTripDetails(false);
+          }}
+          onClose={() => setShowTripDetails(false)}
+        />
       )}
 
       {/* Undo toast */}
