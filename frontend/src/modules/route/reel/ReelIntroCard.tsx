@@ -1,8 +1,8 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
-  todGradient, skyTintForCondition,
+  todGradient, todDotColor, todLabel, skyTintForCondition,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
@@ -15,6 +15,7 @@ import {
 interface Props {
   card: ReelIntroCardType;
   active: boolean;
+  onShowTripDetails?: () => void;
   onInteract?: (action: 'viewed' | 'lingered') => void;
 }
 
@@ -76,9 +77,10 @@ function SunRays() {
   );
 }
 
-export function ReelIntroCard({ card, active, onInteract }: Props) {
+export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hour = new Date().getHours();
+  const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny = condition === 'sunny' || condition === 'clear';
   const isRain = condition === 'rain' || condition === 'drizzle';
@@ -113,6 +115,21 @@ export function ReelIntroCard({ card, active, onInteract }: Props) {
       {card.imageUrl && (
         <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
       )}
+
+      {/* TOD badge z-index:11 — top:48px left:13px per mock */}
+      <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{todLabel(hour)}</span>
+      </div>
+
+      {/* Trip details button z-index:10 — top:48px right:13px per mock */}
+      <button
+        onClick={onShowTripDetails}
+        style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.18)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer', fontFamily: 'inherit' }}
+      >
+        <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
+        Add trip details
+      </button>
 
       {/* Sky tint z-index:2 */}
       <SkyTintLayers condition={condition} />

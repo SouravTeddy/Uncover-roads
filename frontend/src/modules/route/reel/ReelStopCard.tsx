@@ -3,7 +3,8 @@ import type { ReelStopCard as ReelStopCardType } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_STOP,
-  todGradient, skyTintForCondition,
+  todGradient, todDotColor, todLabel, skyTintForCondition,
+  WEATHER_ICON,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
@@ -18,6 +19,7 @@ interface Props {
   card: ReelStopCardType;
   active: boolean;
   archetype?: string;
+  weather?: { condition: string; temp: number } | null;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
 }
 
@@ -85,10 +87,11 @@ function SunRays() {
   );
 }
 
-export function ReelStopCard({ card, active, onInteract }: Props) {
+export function ReelStopCard({ card, active, weather, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour = new Date().getHours();
+  const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny = condition === 'sunny' || condition === 'clear';
   const isThunder = condition.includes('thunder') || condition.includes('storm');
@@ -123,6 +126,21 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       {/* Photo z-index:0 */}
       {photoUrl && (
         <img src={photoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
+      )}
+
+      {/* TOD badge z-index:11 — top:48px left:13px per mock */}
+      <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{todLabel(hour)}</span>
+      </div>
+
+      {/* Weather chip z-index:10 — top:48px right:13px per mock */}
+      {weather && (
+        <div style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)' }}>
+          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[weather.condition.toLowerCase()] ?? 'wb_sunny'}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{weather.temp}°</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{weather.condition}</span>
+        </div>
       )}
 
       {/* Sky tint z-index:2 */}
