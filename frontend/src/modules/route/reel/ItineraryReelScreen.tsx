@@ -11,6 +11,7 @@ import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
+import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
@@ -58,6 +59,11 @@ export function ItineraryReelScreen() {
     persona?.archetype ??
     'explorer';
 
+  const itineraryCities = activeItinerary
+    ? (activeItinerary.cities?.length ? activeItinerary.cities : [activeItinerary.city ?? city].filter(Boolean))
+    : [];
+  const cityPhotoMap = useCityPhotoBatch(itineraryCities as string[]);
+
   const existingPlaceIds = state.selectedPlaces.map(p => p.place_id ?? p.id);
 
   const [cards, setCards] = useState<ReelCard[]>([]);
@@ -77,7 +83,7 @@ export function ItineraryReelScreen() {
   useEffect(() => { weatherRef.current = weather; }, [weather]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
 
-  function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string) {
+  function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string, photoMap = cityPhotoMap) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
@@ -94,7 +100,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName, recosByDayIdx);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName, recosByDayIdx, photoMap);
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
@@ -124,12 +130,18 @@ export function ItineraryReelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
-  // Enrichment-only update — updates card data when weather/personaName arrive without resetting scroll
+  // Enrichment-only updates — when weather, personaName, or city photos arrive
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
     setCards(buildFiltered(activeItinerary, weather, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weather, personaName]);
+
+  useEffect(() => {
+    if (!activeItinerary || cards.length === 0) return;
+    setCards(prev => buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current, cityPhotoMap));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cityPhotoMap]);
 
   // Fetch weather if not already in state (e.g. opening saved trip without going through route screen)
   useEffect(() => {
@@ -169,24 +181,17 @@ export function ItineraryReelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary]);
 
-  // IntersectionObserver for active card tracking (replaces scroll event + Math.round)
+  // Scroll-based active card tracking
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || cards.length === 0) return;
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const idx = cardRefs.current.indexOf(entry.target as HTMLDivElement);
-            if (idx !== -1) setActiveIdx(idx);
-          }
-        });
-      },
-      { root: el, threshold: 0.5 },
-    );
-    cardRefs.current.forEach(ref => { if (ref) observer.observe(ref); });
-    return () => observer.disconnect();
-  }, [cards]);
+    const handleScroll = () => {
+      const idx = Math.round(el.scrollTop / el.clientHeight);
+      setActiveIdx(Math.min(Math.max(idx, 0), cards.length - 1));
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [cards.length]);
 
 
 

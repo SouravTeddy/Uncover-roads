@@ -8,6 +8,8 @@ export interface ReelIntroCard {
   imageUrl: string | null;
   totalStops: number;
   totalDays: number;
+  totalDurationMin: number;
+  totalDistanceKm: number;
   weather: WeatherData | null;
   proTip: string | null;
   persona: string;

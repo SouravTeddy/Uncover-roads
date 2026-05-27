@@ -12,6 +12,14 @@ import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCa
 
 // ── Helpers ───────────────────────────────────────────────────
 
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
@@ -345,6 +353,7 @@ export function buildReelCards(
   weather: WeatherData | null,
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
+  cityPhotoMap: Map<string, string> = new Map(),
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
@@ -354,10 +363,18 @@ export function buildReelCards(
   const stopCount = allStops.length;
   const cityLabel = itinerary.city ?? itinerary.cities.join(' · ');
 
-  // Resolve intro image: imageUrl → photoRef → null
-  const heroStop = allStops[0];
-  const introImage = heroStop?.imageUrl
-    ?? (heroStop?.photoRef ? getPlacePhotoUrl(heroStop.photoRef, 800) : null)
+  // Totals for intro card
+  const totalDurationMin = allStops.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);
+  const totalDistanceKm = allStops.reduce((sum, s, i) => {
+    if (i === 0) return sum;
+    const prev = allStops[i - 1];
+    return sum + haversineKm(prev.lat, prev.lon, s.lat, s.lon);
+  }, 0);
+
+  // City image: prefer city-level photo, fall back to first stop photo
+  const primaryCity = itinerary.city ?? itinerary.cities[0] ?? '';
+  const introImage = cityPhotoMap.get(primaryCity.toLowerCase())
+    ?? cityPhotoMap.get(primaryCity)
     ?? null;
 
   // Aggregate engine changes for intro summary section
@@ -374,6 +391,8 @@ export function buildReelCards(
     imageUrl: introImage,
     totalStops: stopCount,
     totalDays: itinerary.days.length,
+    totalDurationMin,
+    totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
     weather,
     proTip: itinerary.summary?.pro_tip ?? null,
     persona,
