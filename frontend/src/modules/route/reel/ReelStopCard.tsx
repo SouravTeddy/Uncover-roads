@@ -3,7 +3,7 @@ import type { ReelStopCard as ReelStopCardType } from './types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_STOP,
-  todGradient, todDotColor, todLabel, skyTintForCondition,
+  todGradient, skyTintForCondition,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
@@ -11,8 +11,7 @@ import {
   STOP_H2_FS, STOP_H2_LH, STOP_H2_MB, STOP_H2_TEXT_SHADOW,
   STOP_COUNTER_BR, STOP_COUNTER_PAD, STOP_COUNTER_MB,
   STOP_TIME_ROW_BR, STOP_TIME_ROW_PAD, STOP_TIME_ROW_MB, STOP_META_ROW_MB,
-  TOD_BADGE_TOP, TOD_BADGE_LEFT,
-  WEATHER_ICON, makeRng,
+  makeRng,
 } from './reel-constants';
 
 interface Props {
@@ -107,7 +106,6 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
   const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800) : null);
-  const dotColor = todDotColor(hour);
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -118,11 +116,6 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
     }
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active, onInteract]);
-
-  const weatherIcon = WEATHER_ICON[condition] ?? 'wb_sunny';
-  const weatherColor = isThunder ? '#a78bfa' : condition === 'rain' || condition === 'drizzle' ? '#60a5fa' : '#fbbf24';
-  const weatherBg = isThunder ? 'rgba(8,4,18,.88)' : 'rgba(9,12,22,.82)';
-  const weatherBorder = isThunder ? '1px solid rgba(124,58,237,.2)' : '1px solid var(--color-border)';
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
@@ -154,21 +147,6 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           {isThunder && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'radial-gradient(ellipse at 50% 25%,rgba(230,220,255,.95),rgba(180,150,230,.5) 32%,rgba(120,80,180,0) 70%)', mixBlendMode: 'screen', animation: 'flashFlicker 3.4s ease-out -1.3s infinite', pointerEvents: 'none' }} />
           )}
-        </div>
-      )}
-
-      {/* ToD badge z-index:11 */}
-      <div style={{ position: 'absolute', top: TOD_BADGE_TOP, left: TOD_BADGE_LEFT, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{todLabel(hour)}</span>
-      </div>
-
-      {/* Weather badge z-index:10 */}
-      {card.weather && (
-        <div style={{ position: 'absolute', top: TOD_BADGE_TOP, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: weatherBg, backdropFilter: 'blur(10px)', border: weatherBorder }}>
-          <span className="ms fill" style={{ fontSize: 12, color: weatherColor }}>{weatherIcon}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{card.weather.temp}°</span>
-          <span style={{ fontSize: 10, color: 'var(--color-text-3)' }}>{card.weather.condition}</span>
         </div>
       )}
 

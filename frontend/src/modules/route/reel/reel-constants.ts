@@ -156,14 +156,17 @@ export const DIVIDER_LINE_W   = 40
 
 // ── Weather icon map ──────────────────────────────────────────
 export const WEATHER_ICON: Record<string, string> = {
-  sunny: 'wb_sunny', clear: 'wb_sunny',
-  partly_cloudy: 'partly_cloudy_day',
-  overcast: 'cloud', cloud: 'cloud',
-  drizzle: 'rainy_light',
-  rain: 'water_drop',
+  sunny: 'wb_sunny', clear: 'wb_sunny', 'clear sky': 'wb_sunny',
+  partly_cloudy: 'partly_cloudy_day', 'partly cloudy': 'partly_cloudy_day',
+  'few clouds': 'partly_cloudy_day', 'scattered clouds': 'partly_cloudy_day',
+  overcast: 'cloud', cloud: 'cloud', clouds: 'cloud', 'broken clouds': 'cloud',
+  drizzle: 'rainy_light', 'light drizzle': 'rainy_light',
+  rain: 'water_drop', 'light rain': 'rainy_light', 'moderate rain': 'water_drop',
+  'heavy rain': 'water_drop', 'heavy intensity rain': 'water_drop',
   thunderstorm: 'thunderstorm', storm: 'thunderstorm',
-  snow: 'ac_unit', sleet: 'weather_mix', blizzard: 'ac_unit',
-  fog: 'foggy', mist: 'foggy',
+  snow: 'ac_unit', 'light snow': 'ac_unit', 'heavy snow': 'ac_unit',
+  sleet: 'weather_mix', blizzard: 'ac_unit',
+  fog: 'foggy', mist: 'foggy', haze: 'foggy', smoke: 'foggy', dust: 'foggy',
   night: 'bedtime', 'clear night': 'bedtime',
 }
 

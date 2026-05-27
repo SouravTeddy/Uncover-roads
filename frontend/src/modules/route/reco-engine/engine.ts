@@ -17,7 +17,7 @@ export interface Gap {
 }
 
 const CONFIDENCE_THRESHOLD_BOOST = 0.15;
-const BASE_THRESHOLD = 0.28;
+const BASE_THRESHOLD = 0.20;
 const MAX_RECOS = 3;
 const CONFLICT_BOOST = 1.4;
 
