@@ -11,7 +11,6 @@ import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
-import { WEATHER_ICON } from './reel-constants';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';

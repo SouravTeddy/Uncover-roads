@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
