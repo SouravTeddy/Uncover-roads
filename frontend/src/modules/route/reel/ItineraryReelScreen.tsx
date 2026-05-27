@@ -11,7 +11,7 @@ import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
-import { todDotColor, todLabel } from './reel-constants';
+import { WEATHER_ICON } from './reel-constants';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
@@ -81,9 +81,8 @@ export function ItineraryReelScreen() {
   function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
-    // Compute recos per day using the engine (applies to both new and saved itineraries)
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
-    if (itinerary && state.persona) {
+    if (itinerary) {
       itinerary.days.forEach((_, dayIdx) => {
         const signal = computeRecoSignal(
           { ...state, weather: w },
@@ -143,13 +142,6 @@ export function ItineraryReelScreen() {
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [city]);
-
-  // Re-run reco engine when persona arrives after initial itinerary load
-  useEffect(() => {
-    if (!activeItinerary || !state.persona || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.persona]);
 
   // Auto-save new itinerary on first view (before user manually saves)
   useEffect(() => {
@@ -238,11 +230,7 @@ export function ItineraryReelScreen() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hour = new Date().getHours();
-  const dotColor = todDotColor(hour);
-  const activeCardType = cards[activeIdx]?.type;
-
-  if (!activeItinerary || !imagesReady) {
+  if (!activeItinerary || !imagesReady || !state.persona) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <span className="ms" style={{ fontSize: 36, color: 'rgba(212,168,83,.6)', animation: 'spin 1s linear infinite' }}>autorenew</span>
@@ -271,9 +259,9 @@ export function ItineraryReelScreen() {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
           let child: ReactNode = null;
-          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} />;
+          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} onShowTripDetails={() => setShowTripDetails(true)} />;
           else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
-          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} />;
+          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} weather={weather} />;
           else if (card.type === 'reco')    child = (
             <ReelRecoCard
               card={card} active={isActive}
@@ -309,76 +297,23 @@ export function ItineraryReelScreen() {
         })}
       </div>
 
-      {/* Floating header */}
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30,
-        paddingTop: 48, paddingLeft: 16, paddingRight: 16, paddingBottom: 14,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'linear-gradient(to bottom, rgba(0,0,0,.52), transparent)',
-        pointerEvents: 'none',
-      }}>
-        {/* Left: back + TOD badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={() => {
-              dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
-              dispatch({ type: 'GO_BACK' });
-            }}
-            style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: 'rgba(0,0,0,.38)', backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255,255,255,.18)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', pointerEvents: 'all', flexShrink: 0,
-            }}
-          >
-            <span className="ms" style={{ fontSize: 18, color: '#fff' }}>arrow_back</span>
-          </button>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 9px', borderRadius: 99,
-            background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,.08)',
-            maxWidth: 160, overflow: 'hidden',
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {todLabel(hour)}
-            </span>
-          </div>
-        </div>
-
-        {/* Right: add trip details (intro only) + weather */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'all' }}>
-          {activeCardType === 'intro' && (
-            <button
-              onClick={() => setShowTripDetails(true)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '7px 11px', borderRadius: 999,
-                background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255,255,255,.18)',
-                fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)',
-                cursor: 'pointer',
-              }}
-            >
-              <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
-              Add trip details
-            </button>
-          )}
-          {weather && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', borderRadius: 999,
-              background: 'rgba(18,18,22,.75)', backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(242,237,230,.07)',
-            }}>
-              <span className="ms fill" style={{ fontSize: 14, color: '#4a7fa0' }}>{weather.icon}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{weather.temp}°</span>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Floating back button — top-left, screen layer, back button only */}
+      <button
+        onClick={() => {
+          dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
+          dispatch({ type: 'GO_BACK' });
+        }}
+        style={{
+          position: 'fixed', top: 8, left: 16, zIndex: 30,
+          width: 38, height: 38, borderRadius: '50%',
+          background: 'rgba(0,0,0,.38)', backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,.18)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+        }}
+      >
+        <span className="ms" style={{ fontSize: 18, color: '#fff' }}>arrow_back</span>
+      </button>
 
       {/* Progress dots */}
       <div style={{

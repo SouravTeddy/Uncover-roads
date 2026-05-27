@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import type { ReelSummaryCard } from './types';
 
 interface Props {
@@ -26,17 +25,7 @@ const CHANGE_ICONS: Record<string, string> = {
   event:       'event',
 };
 
-export function ReelSummaryCard({ card, active }: Props) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    if (active) {
-      const t = setTimeout(() => setVisible(true), 80);
-      return () => clearTimeout(t);
-    }
-    setVisible(false);
-  }, [active]);
-
+export function ReelSummaryCard({ card }: Props) {
   const { totalDays, totalStops, engineChanges } = card;
 
   return (
@@ -61,7 +50,6 @@ export function ReelSummaryCard({ card, active }: Props) {
         <p style={{
           fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
           color: 'var(--color-primary)', marginBottom: 14,
-          opacity: visible ? 1 : 0, transition: 'opacity .4s',
         }}>
           Before you go
         </p>
@@ -69,7 +57,6 @@ export function ReelSummaryCard({ card, active }: Props) {
         {/* Stats row */}
         <div style={{
           display: 'flex', gap: 12, marginBottom: 28,
-          opacity: visible ? 1 : 0, transition: 'opacity .45s .08s',
         }}>
           {[
             { value: totalDays, label: totalDays === 1 ? 'day' : 'days' },
@@ -92,9 +79,7 @@ export function ReelSummaryCard({ card, active }: Props) {
         </div>
 
         {/* Engine changes */}
-        <div style={{
-          opacity: visible ? 1 : 0, transition: 'opacity .45s .18s',
-        }}>
+        <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-3)', letterSpacing: '.04em' }}>
               We shaped a few things to fit you better
@@ -134,7 +119,6 @@ export function ReelSummaryCard({ card, active }: Props) {
         <p style={{
           fontSize: 11, color: 'var(--color-text-4)', textAlign: 'center',
           marginTop: 20,
-          opacity: visible ? 1 : 0, transition: 'opacity .45s .3s',
         }}>
           It's ready when you are
         </p>
