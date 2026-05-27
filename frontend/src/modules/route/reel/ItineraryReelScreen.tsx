@@ -139,7 +139,7 @@ export function ItineraryReelScreen() {
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(prev => buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current, cityPhotoMap));
+    setCards(buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
 
