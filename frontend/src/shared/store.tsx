@@ -145,6 +145,20 @@ function getInitialScreen(): Screen {
     }
     const stored = localStorage.getItem('ur_persona');
     if (stored) {
+      // Restore the last screen the user was on, with guards for screens
+      // that require transient state to be present.
+      const lastScreen = localStorage.getItem('ur_ss_screen');
+      if (lastScreen) {
+        const parsed = JSON.parse(lastScreen) as Screen;
+        // Reel requires an itinerary — only restore if one is persisted.
+        if (parsed === 'reel' && localStorage.getItem('ur_ss_engine_itin')) {
+          return 'reel';
+        }
+        // For all other screens, restore directly.
+        if (parsed !== 'reel' && parsed !== 'login') {
+          return parsed;
+        }
+      }
       return 'destination';
     }
   } catch {
