@@ -151,11 +151,11 @@ function getInitialScreen(): Screen {
       if (lastScreen) {
         const parsed = JSON.parse(lastScreen) as Screen;
         // Reel requires an itinerary — only restore if one is persisted.
-        if (parsed === 'reel' && localStorage.getItem('ur_ss_engine_itin')) {
-          return 'reel';
+        if (parsed === 'itinerary-reel' && localStorage.getItem('ur_ss_engine_itin')) {
+          return 'itinerary-reel';
         }
         // For all other screens, restore directly.
-        if (parsed !== 'reel' && parsed !== 'login') {
+        if (parsed !== 'itinerary-reel' && parsed !== 'login') {
           return parsed;
         }
       }
