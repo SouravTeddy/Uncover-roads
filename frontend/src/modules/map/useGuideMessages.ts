@@ -138,7 +138,7 @@ type ConditionKey = 'area' | 'event' | 'build-ready' | 'cluster' | 'pair'
 function evaluateConditions(
   selectedPlaces: Place[],
   city: string | null,
-  persona: Persona | null,
+  _persona: Persona | null,
   personaProfile: PersonaProfile | null,
   mapPlaces: Place[],
   activePlace: Place | null,
