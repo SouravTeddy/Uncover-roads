@@ -106,24 +106,25 @@ describe('computePackSpend', () => {
     const pack: TripPack = { id: '1', trips: 5, usedTrips: 0, expiresAt: '2099-01-01' };
     expect(computePackSpend([pack])).toBeCloseTo(2.99);
   });
-  it('prices 10-trip pack at 4.99', () => {
+  it('returns 0 for unknown pack size', () => {
     const pack: TripPack = { id: '1', trips: 10, usedTrips: 0, expiresAt: '2099-01-01' };
-    expect(computePackSpend([pack])).toBeCloseTo(4.99);
+    expect(computePackSpend([pack])).toBe(0);
   });
-  it('sums multiple packs', () => {
+  it('sums multiple 5-trip packs', () => {
     const packs: TripPack[] = [
       { id: '1', trips: 5, usedTrips: 0, expiresAt: '2099-01-01' },
-      { id: '2', trips: 10, usedTrips: 0, expiresAt: '2099-01-01' },
+      { id: '2', trips: 5, usedTrips: 0, expiresAt: '2099-01-01' },
     ];
-    expect(computePackSpend(packs)).toBeCloseTo(7.98);
+    expect(computePackSpend(packs)).toBeCloseTo(5.98);
   });
 });
 
 describe('clampedNudgeSavings', () => {
   it('returns 0 when pro would cost more', () => {
-    expect(clampedNudgeSavings(1, 9.99)).toBe(0);
+    expect(clampedNudgeSavings(1, 6.99)).toBe(0);
   });
   it('returns positive savings when packs exceed monthly cost', () => {
-    expect(clampedNudgeSavings(11.96, 9.99)).toBeCloseTo(1.97);
+    // 3 packs of 5 trips = $8.97 spent; pro at $6.99 would have cost less
+    expect(clampedNudgeSavings(8.97, 6.99)).toBeCloseTo(1.98);
   });
 });
