@@ -12,7 +12,7 @@ beforeEach(() => {
 describe('AiDisclaimerSheet', () => {
   it('renders when disclaimer has not been shown', () => {
     render(<AiDisclaimerSheet onContinue={() => {}} />);
-    expect(screen.getByText('A heads up')).toBeDefined();
+    expect(screen.getByText('A heads up')).toBeInTheDocument();
   });
 
   it('does not render when disclaimer was already shown', () => {

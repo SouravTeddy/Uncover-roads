@@ -49,6 +49,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           Verify times and prices before heading out.
         </p>
 
+        {/* gold tint — var(--color-primary) is #d4a853 = rgb(212 168 83) */}
         <div style={{
           background: 'rgba(212,168,83,.06)', border: '1px solid rgba(212,168,83,.15)',
           borderRadius: 10, padding: '10px 12px', marginBottom: 16,
@@ -69,7 +70,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
             type="checkbox"
             checked={checked}
             onChange={e => setChecked(e.target.checked)}
-            style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+            style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
           />
           <div style={{
             width: 20, height: 20, borderRadius: 6, flexShrink: 0,
@@ -79,7 +80,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
             transition: 'all .15s',
           }}>
             {checked && (
-              <span className="ms fill" style={{ fontSize: 14, color: '#0f0d0c', fontVariationSettings: "'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24" }}>
+              <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-bg)', fontVariationSettings: "'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24" }}>
                 check
               </span>
             )}
@@ -97,7 +98,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
             background: checked ? 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))' : 'rgba(255,255,255,.08)',
             border: 'none',
             fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700,
-            color: checked ? '#0f0d0c' : 'rgba(255,255,255,.25)',
+            color: checked ? 'var(--color-bg)' : 'rgba(255,255,255,.25)',
             cursor: checked ? 'pointer' : 'not-allowed',
             transition: 'all .2s',
           }}
