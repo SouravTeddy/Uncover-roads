@@ -110,7 +110,7 @@ function SunsetDialViz({ accent }: { accent: string }) {
   );
 }
 
-function ElevationViz({ accent, from, to }: { accent: string; from: string; to: string }) {
+function ElevationViz({ accent, from }: { accent: string; from: string; to: string }) {
   const gId = `elev-${useId().replace(/:/g, '')}`;
   return (
     <VizCard label="ELEVATION" value="2,640 m peak" accent={accent}>
