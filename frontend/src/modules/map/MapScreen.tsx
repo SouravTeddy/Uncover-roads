@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AiDisclaimerSheet } from './AiDisclaimerSheet';
 import { useMap } from './useMap';
 import { FilterBar } from './FilterBar';
 import { PinCard } from './PinCard';
@@ -157,6 +158,8 @@ export function MapScreen() {
   // Build Itinerary loading + error state
   const [buildLoading, setBuildLoading] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
+  const [showDisclaimer, setShowDisclaimer] = useState(false)
+  const [pendingBuild, setPendingBuild] = useState(false)
 
   const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
     selectedPlaces, city, state.persona ?? null, personaProfile,
@@ -374,7 +377,7 @@ export function MapScreen() {
     dispatch({ type: 'SET_ACTIVE_PIN_ID', id: eventId })
   }, [liveEvents, setActivePlace, fetchDetails, trackViewedCategory, dispatch])
 
-  const handleBuild = useCallback(async () => {
+  const executeBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return
     setBuildLoading(true)
     setBuildError(null)
@@ -410,6 +413,16 @@ export function MapScreen() {
       setBuildLoading(false)
     }
   }, [buildLoading, selectedPlaces, state, city, cityGeo, personaProfile, dispatch])
+
+  const handleBuild = useCallback(async () => {
+    if (buildLoading || selectedPlaces.length === 0) return;
+    if (!localStorage.getItem('ur_ai_disclaimer_shown')) {
+      setPendingBuild(true);
+      setShowDisclaimer(true);
+      return;
+    }
+    await executeBuild();
+  }, [buildLoading, selectedPlaces, executeBuild])
 
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
@@ -863,6 +876,18 @@ export function MapScreen() {
           days={activeCityDays}
           buildLoading={buildLoading}
           onBuild={handleBuild}
+        />
+      )}
+
+      {showDisclaimer && (
+        <AiDisclaimerSheet
+          onContinue={() => {
+            setShowDisclaimer(false);
+            if (pendingBuild) {
+              setPendingBuild(false);
+              executeBuild();
+            }
+          }}
         />
       )}
 
