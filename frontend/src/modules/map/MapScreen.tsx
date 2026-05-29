@@ -36,11 +36,17 @@ import { SearchResultsStrip } from './SearchResultsStrip'
 import { GuideBulb } from './GuideBulb'
 import { useGuideMessages } from './useGuideMessages'
 import { shouldShowPaywall } from '../../shared/tier'
+import { useNeighborhoods } from './useNeighborhoods'
+import { AreaBlobLayer } from './AreaBlobLayer'
+import { AreaPillsOverlay } from './AreaPillsOverlay'
 
 // ── Main screen ─────────────────────────────────────────────────
 
 export function MapScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [mapZoom, setMapZoom] = useState(13)
+  const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
 
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
@@ -117,6 +123,26 @@ export function MapScreen() {
       return acc;
     }, {}),
   [places]);
+
+  const neighborhoods = useNeighborhoods(city, places)
+
+  // Empty area detection
+  const isFilterActive = activeCategories.length > 0
+  const activeCategoryLabel = (() => {
+    const SUB_CHIP_LABELS: Record<string, string> = {
+      restaurant: 'eateries', cafe: 'cafés', park: 'parks', museum: 'museums',
+      historic: 'landmarks', tourism: 'attractions', viewpoint: 'viewpoints',
+      bar: 'bars', nightlife: 'nightlife spots',
+    }
+    return activeCategories.length === 1 ? (SUB_CHIP_LABELS[activeCategories[0]] ?? activeCategories[0]) : 'spots'
+  })()
+  const matchingInView = isFilterActive && mapBbox
+    ? filteredPlaces.filter(p =>
+        p.lat >= mapBbox[0] && p.lat <= mapBbox[1] &&
+        p.lon >= mapBbox[2] && p.lon <= mapBbox[3]
+      ).length
+    : 1  // non-zero default when no filter
+  const emptyArea = isFilterActive && matchingInView === 0
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
@@ -215,8 +241,10 @@ export function MapScreen() {
     }, []),
   });
 
-  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, _bbox: [number, number, number, number]) => {
+  const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, bbox: [number, number, number, number]) => {
     handleMoveEnd(center, zoom);
+    setMapZoom(zoom)
+    setMapBbox(bbox)
   }, [handleMoveEnd]);
 
   // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
@@ -541,6 +569,20 @@ export function MapScreen() {
         )}
 
         {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
+
+        <AreaBlobLayer
+          neighborhoods={neighborhoods}
+          visible={activeFilter === 'all' && activeCategories.length === 0}
+        />
+        <AreaPillsOverlay
+          neighborhoods={neighborhoods}
+          mapZoom={mapZoom}
+          selectedAreaId={selectedAreaId}
+          onSelectArea={setSelectedAreaId}
+          activeFilter={activeFilter}
+          activeCategoryLabel={activeCategoryLabel}
+          empty={emptyArea}
+        />
       </MapLibreMap>
 
       {/* Initial load overlay — hide if we already have cached places */}
@@ -582,6 +624,7 @@ export function MapScreen() {
             categoryCounts={categoryCounts}
             onSelect={handleFilterSelect}
             onCategoriesSelect={setActiveCategories}
+            empty={emptyArea && activeCategories.length > 0}
           />
         </div>
 
