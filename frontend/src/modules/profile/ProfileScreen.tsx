@@ -209,13 +209,13 @@ export function ProfileScreen() {
             {/* 36×20px toggle pill */}
             <button
               onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
-              className="w-9 h-5 rounded-full relative overflow-hidden transition-colors duration-200 flex-shrink-0"
+              className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
               style={{ background: theme === 'dark' ? 'var(--color-primary)' : 'var(--color-border-m)' }}
               aria-label="Toggle appearance"
             >
               <span
-                className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
-                style={{ transform: theme === 'dark' ? 'translateX(17px)' : 'translateX(2px)' }}
+                className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ transform: theme === 'dark' ? 'translateX(16px)' : 'translateX(0px)' }}
               />
             </button>
           </div>
