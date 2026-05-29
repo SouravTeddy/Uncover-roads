@@ -25,11 +25,13 @@ interface Props {
   categoryCounts: Record<string, number>
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
+  empty?: boolean
+  emptyLabel?: string
 }
 
 export function FilterBar({
   active, activeCategories, displayCount, curatedCount,
-  categoryCounts, onSelect, onCategoriesSelect,
+  categoryCounts, onSelect, onCategoriesSelect, empty, emptyLabel,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
@@ -141,26 +143,48 @@ export function FilterBar({
 
           {visibleChips.map(chip => {
             const isActive = activeChip?.label === chip.label
+            const isEmptyActive = isActive && empty
             const count = chipCount(chip.categories)
             return (
-              <button
+              <div
                 key={chip.label}
-                onClick={() => handleSubChip(chip.categories)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-                  padding: '4px 10px', height: 26, borderRadius: 999,
-                  background: isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
-                  border: isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  color: isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
-                  fontSize: '0.72rem', fontWeight: 600,
-                  backdropFilter: 'blur(8px)', cursor: 'pointer',
-                  whiteSpace: 'nowrap', transition: 'all 0.12s ease',
+                  animation: isEmptyActive ? 'pillPulse 1.3s ease-in-out infinite' : 'none',
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  display: 'inline-flex',
                 }}
               >
-                <span className="ms" style={{ fontSize: 12 }}>{chip.icon}</span>
-                {chip.label}
-                <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {count}</span>
-              </button>
+                <button
+                  onClick={() => handleSubChip(chip.categories)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '4px 10px', height: 26, borderRadius: 999,
+                    background: isEmptyActive ? 'rgba(232,97,90,.14)' : isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
+                    border: isEmptyActive ? '1.5px solid #e8615a' : isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                    color: isEmptyActive ? '#e8615a' : isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
+                    fontSize: '0.72rem', fontWeight: 600,
+                    backdropFilter: 'blur(8px)', cursor: 'pointer',
+                    whiteSpace: 'nowrap', transition: 'all 0.12s ease',
+                  }}
+                >
+                  <span className="ms" style={{ fontSize: 12 }}>{chip.icon}</span>
+                  {chip.label}
+                  <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {count}</span>
+                  {isActive && (
+                    <span
+                      className="ms"
+                      style={{
+                        fontSize: 12,
+                        marginLeft: 1,
+                        animation: isEmptyActive ? 'xBounce 1s ease-in-out infinite' : 'none',
+                      }}
+                    >
+                      close
+                    </span>
+                  )}
+                </button>
+              </div>
             )
           })}
         </div>

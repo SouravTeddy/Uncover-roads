@@ -449,3 +449,11 @@ html, body {
   0%, 100% { transform: translateY(0); opacity: .5; }
   50%       { transform: translateY(3px); opacity: 1; }
 }
+
+/* ── Areas of interest / Empty area keyframes ───────────────── */
+@keyframes pillPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(232,97,90,.5) } 50% { box-shadow: 0 0 0 7px rgba(232,97,90,0) } }
+@keyframes xBounce   { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-2px) scale(1.12) } }
+@keyframes pinDrop   { 0% { transform: translateY(-14px) scale(.4); opacity: 0 } 60% { transform: translateY(0) scale(1.08); opacity: 1 } 100% { transform: translateY(0) scale(1) } }
+@keyframes pinPop    { 0% { transform: scale(0); opacity: 0 } 60% { transform: scale(1.15); opacity: 1 } 100% { transform: scale(1) } }
+@keyframes stripIn   { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes bannerIn  { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
