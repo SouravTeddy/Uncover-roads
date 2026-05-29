@@ -118,13 +118,13 @@ export function ProfileScreen() {
           </div>
         </div>
 
-        {/* Archetype hero card */}
+        {/* Archetype card — compact horizontal */}
         {archetypeData && (
           <div className="mx-4 mt-4">
             <div
-              className="rounded-[20px] p-5 relative overflow-hidden"
+              className="rounded-[20px] px-4 py-3 relative overflow-hidden flex items-center gap-3"
               style={{
-                background: `linear-gradient(150deg, ${archetypeData.glow}, var(--color-surface))`,
+                background: `linear-gradient(135deg, ${archetypeData.glow}, var(--color-surface))`,
                 border: `1px solid ${archetypeData.primary}28`,
               }}
             >
@@ -132,26 +132,33 @@ export function ProfileScreen() {
                 className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
                 style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}18, transparent 70%)` }}
               />
-              <span className="text-[42px] relative" style={{ filter: `drop-shadow(0 0 16px ${archetypeData.primary}70)` }}>
+              <span
+                className="text-[28px] relative flex-shrink-0"
+                style={{ filter: `drop-shadow(0 0 10px ${archetypeData.primary}70)` }}
+              >
                 {archetypeData.emoji}
               </span>
-              <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mt-2">
-                {archetypeData.name}
+              <div className="flex-1 min-w-0 relative">
+                <div className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--color-text-1)] leading-tight">
+                  {archetypeData.name}
+                </div>
+                <div className="text-[11px] text-[var(--color-text-4)] mt-0.5 uppercase tracking-[.06em] font-semibold">
+                  Travel Persona
+                </div>
               </div>
-              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
               <button
                 onClick={startOBRedo}
+                className="relative flex-shrink-0 flex items-center gap-1"
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  marginTop: 10, fontSize: 11, fontWeight: 600,
+                  fontSize: 11, fontWeight: 600,
                   color: 'var(--color-primary)',
                   background: 'var(--color-primary-bg)',
                   border: '1px solid rgba(212,168,83,.22)',
                   padding: '4px 10px', borderRadius: 99,
                 }}
               >
-                <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>tune</span>
-                Retune persona
+                <span aria-hidden="true" className="ms" style={{ fontSize: 12, color: 'var(--color-primary)' }}>tune</span>
+                Retune
               </button>
             </div>
           </div>
