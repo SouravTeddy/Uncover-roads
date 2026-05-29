@@ -30,7 +30,6 @@ export function ProfileScreen() {
   const { persona, userTier, generationCount, startOBRedo, goToSubscription } = useProfile();
   const [view, setView] = useState<ProfileView>('main');
   const [signingOut, setSigningOut] = useState(false);
-  const [saved, setSaved] = React.useState(false);
 
   const theme = state.theme;
 
@@ -74,12 +73,6 @@ export function ProfileScreen() {
     dispatch({ type: 'GO_TO', screen: 'login' });
   }
 
-  function handleSave() {
-    // Save logic placeholder — persists any pending settings
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
   function openUrl(url: string) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
@@ -93,17 +86,10 @@ export function ProfileScreen() {
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 flex items-center justify-between">
+      <div className="px-4 pt-6 pb-4 flex items-center">
         <h1 className="font-[family-name:var(--font-heading)] text-[18px] font-bold text-[var(--color-text-1)]">
           Profile
         </h1>
-        <button
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="text-[var(--color-text-3)] text-[13px]"
-        >
-          {signingOut ? 'Signing out…' : 'Sign out'}
-        </button>
       </div>
 
       {/* Body */}
@@ -152,57 +138,39 @@ export function ProfileScreen() {
                 {archetypeData.name}
               </div>
               <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">{archetypeData.tagline}</div>
+              <button
+                onClick={startOBRedo}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  marginTop: 10, fontSize: 11, fontWeight: 600,
+                  color: 'var(--color-primary)',
+                  background: 'var(--color-primary-bg)',
+                  border: '1px solid rgba(212,168,83,.22)',
+                  padding: '4px 10px', borderRadius: 99,
+                }}
+              >
+                <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>tune</span>
+                Retune persona
+              </button>
             </div>
           </div>
         )}
 
-        {/* OB persona retune button */}
-        <button
-          onClick={startOBRedo}
-          className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl border mx-4 mt-4"
-          style={{
-            width: 'calc(100% - 2rem)',
-            background: 'var(--color-surface)',
-            borderColor: userTier === 'free' ? 'rgba(249,115,22,.5)' : 'rgba(245,158,11,.5)',
-          }}
-        >
-          <div className="flex-1 text-left min-w-0">
-            <p className="text-[var(--color-text-4)] text-[11px] uppercase tracking-widest mb-0.5">Travel Persona</p>
-            <p className="text-[11px]" style={{ color: '#f97316' }}>Retune your persona →</p>
-          </div>
-        </button>
-
-        {/* Itinerary attempts counter — free only */}
-        {userTier === 'free' && (
-          <div className="mx-4 mt-4">
-            <AttemptsCounter count={generationCount} />
-          </div>
-        )}
-
-        {/* Account section */}
+        {/* Plan row */}
         <div className="mt-5 px-4">
-          <SectionLabel>Account</SectionLabel>
+          <SectionLabel>Settings</SectionLabel>
+        </div>
+        <div className="mx-4 mb-2">
+          <PlanRow
+            userTier={userTier}
+            generationCount={generationCount}
+            onUpgrade={goToSubscription}
+            onManage={() => setView('subscription-details')}
+          />
         </div>
         <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
-          {userTier === 'free' ? (
-            <SettingsRow
-              label="Upgrade to Pro"
-              labelClass="font-bold text-white"
-              right={<span className="text-[11px] font-bold" style={{ color: '#f97316' }}>Unlock all →</span>}
-              rowStyle={{ background: 'rgba(249,115,22,.06)' }}
-              onTap={goToSubscription}
-            />
-          ) : (
-            <SettingsRow
-              label={userTier === 'pro' ? 'Pro Plan' : 'Unlimited Plan'}
-              sublabel={`Renews ${formatRenewal()}`}
-              right={<span className="text-[11px] font-semibold" style={{ color: '#f59e0b' }}>Active ›</span>}
-              onTap={() => setView('subscription-details')}
-            />
-          )}
           <SettingsRow
             label="Notifications"
-            divider
             onTap={() => setView('notifications')}
           />
         </div>
@@ -252,28 +220,11 @@ export function ProfileScreen() {
           </div>
         </div>
 
-        {/* Save changes button */}
-        <div className="px-4 mb-4">
-          <button
-            onClick={handleSave}
-            className={`w-full h-[52px] rounded-[18px] font-heading font-bold text-[15px] text-white transition-all active:scale-[.97] ${
-              saved
-                ? 'bg-green-600'
-                : 'bg-gradient-to-br from-[#d4a853] to-[#b8893a] [box-shadow:var(--shadow-primary)]'
-            }`}
-          >
-            {saved
-              ? <><span className="ms fill text-[20px] mr-2">check_circle</span>Saved</>
-              : 'Save changes'
-            }
-          </button>
-        </div>
-
-        {/* Legal */}
+        {/* Legal & Support */}
         <div className="mt-2 px-4">
-          <p className="text-[11px] uppercase tracking-widest font-bold mb-2 px-1" style={{ color: 'var(--color-text-4)' }}>Legal</p>
+          <SectionLabel>Legal & Support</SectionLabel>
         </div>
-        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
+        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-8 mx-4" style={{ background: 'var(--color-surface)' }}>
           <SettingsRow
             label="Privacy Policy"
             onTap={() => openUrl('https://uncoverroads.com/privacy')}
@@ -283,17 +234,21 @@ export function ProfileScreen() {
             divider
             onTap={() => openUrl('https://uncoverroads.com/terms')}
           />
-        </div>
-
-        {/* Feedback */}
-        <div className="flex justify-center mt-2 mb-6">
-          <a
-            href="mailto:sourav@uncoverroads.com?subject=Feedback on Uncover Roads"
-            className="flex items-center gap-2 text-[var(--color-text-4)] text-[13px] hover:text-[var(--color-text-3)] transition-colors"
-          >
-            <span className="ms text-sm">mail</span>
-            Send Feedback
-          </a>
+          <SettingsRow
+            label="Send Feedback"
+            divider
+            onTap={() => window.open('mailto:sourav@uncoverroads.com?subject=Feedback on Uncover Roads', '_blank')}
+          />
+          <SettingsRow
+            label="Sign Out"
+            divider
+            labelClass="text-[#f87171]"
+            right={signingOut
+              ? <span className="text-[11px] text-[var(--color-text-4)]">Signing out…</span>
+              : <span className="ms" style={{ fontSize: 18, color: '#f87171' }}>logout</span>
+            }
+            onTap={handleSignOut}
+          />
         </div>
 
       </div>
@@ -303,26 +258,89 @@ export function ProfileScreen() {
 
 // ── Sub-components ─────────────────────────────────────────────
 
-function AttemptsCounter({ count }: { count: number }) {
-  const used = Math.min(count, 3);
+function PlanRow({
+  userTier,
+  generationCount,
+  onUpgrade,
+  onManage,
+}: {
+  userTier: string;
+  generationCount: number;
+  onUpgrade: () => void;
+  onManage: () => void;
+}) {
+  const usedDots = Math.min(generationCount, 3);
+  const isPaywalled = userTier === 'free' && generationCount >= 3;
+
+  if (userTier === 'pro') {
+    return (
+      <button
+        onClick={onManage}
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border"
+        style={{ background: 'var(--color-surface)', borderColor: 'rgba(212,168,83,.25)' }}
+      >
+        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
+          <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>star</span>
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
+          <p className="text-[13px] font-semibold text-[var(--color-text-1)]">Pro · Unlimited trips</p>
+          <p className="text-[11px] text-[var(--color-text-3)] mt-0.5">{`Renews ${formatRenewal()}`}</p>
+        </div>
+        <span className="text-[11px] font-bold text-[var(--color-primary)]">Manage →</span>
+      </button>
+    );
+  }
+
+  if (userTier === 'pack') {
+    return (
+      <button
+        onClick={onManage}
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border"
+        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
+      >
+        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
+          <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>confirmation_number</span>
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
+          <p className="text-[13px] font-semibold text-[var(--color-text-1)]">Trip Pack</p>
+        </div>
+        <span className="text-[11px] font-bold text-[var(--color-primary)]">Manage →</span>
+      </button>
+    );
+  }
+
+  // Free tier
   return (
-    <div className="rounded-2xl border border-[var(--color-border)] px-4 py-3" style={{ background: 'var(--color-surface)' }}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[var(--color-text-1)] text-sm font-semibold">Itinerary Attempts</span>
-        <div className="flex gap-1.5">
+    <button
+      onClick={onUpgrade}
+      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border"
+      style={{
+        background: isPaywalled ? 'rgba(212,168,83,.06)' : 'var(--color-surface)',
+        borderColor: isPaywalled ? 'rgba(212,168,83,.35)' : 'var(--color-border)',
+      }}
+    >
+      <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
+        <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>auto_awesome</span>
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
+        <p className="text-[13px] font-semibold text-[var(--color-text-1)]">
+          {`Free · ${usedDots} of 3 trips used`}
+        </p>
+        <div className="flex gap-1 mt-1">
           {[0, 1, 2].map(i => (
             <div
               key={i}
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ background: i < used ? 'var(--color-primary)' : 'var(--color-surface2)' }}
+              className="w-2 h-2 rounded-full"
+              style={{ background: i < usedDots ? 'var(--color-primary)' : 'rgba(255,255,255,.12)' }}
             />
           ))}
         </div>
       </div>
-      <p className="text-[var(--color-text-3)] text-[11px]">
-        {used} of 3 used · 1st–2nd: full · 3rd: no curation · 4th+: upgrade
-      </p>
-    </div>
+      <span className="text-[11px] font-bold text-[var(--color-primary)] flex-shrink-0">Upgrade →</span>
+    </button>
   );
 }
 
