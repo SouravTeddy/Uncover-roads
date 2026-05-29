@@ -95,3 +95,35 @@ describe('shouldShowConversionNudge', () => {
     expect(shouldShowConversionNudge(1)).toBe(false);
   });
 });
+
+import { computePackSpend, clampedNudgeSavings } from './tier';
+
+describe('computePackSpend', () => {
+  it('returns 0 with no packs', () => {
+    expect(computePackSpend([])).toBe(0);
+  });
+  it('prices 5-trip pack at 2.99', () => {
+    const pack: TripPack = { id: '1', trips: 5, usedTrips: 0, expiresAt: '2099-01-01' };
+    expect(computePackSpend([pack])).toBeCloseTo(2.99);
+  });
+  it('prices 10-trip pack at 4.99', () => {
+    const pack: TripPack = { id: '1', trips: 10, usedTrips: 0, expiresAt: '2099-01-01' };
+    expect(computePackSpend([pack])).toBeCloseTo(4.99);
+  });
+  it('sums multiple packs', () => {
+    const packs: TripPack[] = [
+      { id: '1', trips: 5, usedTrips: 0, expiresAt: '2099-01-01' },
+      { id: '2', trips: 10, usedTrips: 0, expiresAt: '2099-01-01' },
+    ];
+    expect(computePackSpend(packs)).toBeCloseTo(7.98);
+  });
+});
+
+describe('clampedNudgeSavings', () => {
+  it('returns 0 when pro would cost more', () => {
+    expect(clampedNudgeSavings(1, 9.99)).toBe(0);
+  });
+  it('returns positive savings when packs exceed monthly cost', () => {
+    expect(clampedNudgeSavings(11.96, 9.99)).toBeCloseTo(1.97);
+  });
+});
