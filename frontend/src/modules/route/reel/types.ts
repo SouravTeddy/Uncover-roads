@@ -1,6 +1,33 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
-export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance';
+export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic';
+
+export type ScenicSceneType = 'walk' | 'drive' | 'coastal' | 'ridge' | 'crowd' | 'forest';
+export type ScenicVizType   = 'corridor' | 'route' | 'sunset' | 'elevation' | 'quiet' | 'canopy';
+
+export interface ReelScenicCard {
+  type: 'scenic';
+  sceneType: ScenicSceneType;
+  accent: string;
+  cardType: string;    // e.g. "WALK SPINE", "COASTAL ROAD"
+  pos: number;         // position within all scenic cards in this reel
+  total: number;       // total scenic cards in this reel
+  timing: string;      // e.g. "Evening · 8:00 PM"
+  metaRight: string;   // e.g. "Shibuya Ward", "18 km"
+  place: string;       // e.g. "Omotesando Boulevard"
+  from: string;
+  to: string;
+  modeIcon: 'walk' | 'car';
+  tag: string;         // e.g. "Walk", "Coastal", "Mountain"
+  vizType: ScenicVizType;
+  persona: string;     // e.g. "Walk-lover"
+  personaIcon: string; // icon key: walk|car|twilight|terrain|person_off|forest
+  why: string;
+  sensory: string;
+  sensoryIcon: string; // icon key: store|camera|waves|cloud|eq|thermostat
+  reelPos: string;     // e.g. "Between Stop 2 and Stop 3"
+  photoUrl?: string | null; // for walk/drive scenes — real destination photo
+}
 
 export interface ReelIntroCard {
   type: 'intro';
@@ -117,4 +144,5 @@ export type ReelCard =
   | ReelTransitCard
   | ReelFinaleCard
   | ReelDayDividerCard
-  | ReelBalanceCard;
+  | ReelBalanceCard
+  | ReelScenicCard;

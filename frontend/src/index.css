@@ -426,3 +426,26 @@ html, body {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ── Scenic Road Reel keyframes ─────────────────────────────────── */
+@keyframes par      { from { transform: translateX(0); }    to { transform: translateX(-50%); } }
+@keyframes parRev   { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@keyframes dashFlow { to { stroke-dashoffset: -23; } }
+@keyframes dashSlow { to { stroke-dashoffset: -32; } }
+@keyframes dappleScene { 0%, 100% { opacity: .3; transform: scale(.85); } 50% { opacity: .75; transform: scale(1.12); } }
+@keyframes leafFall {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  10%  { opacity: .75; }
+  90%  { opacity: .65; }
+  100% { transform: translate(34px, 430px) rotate(240deg); opacity: 0; }
+}
+@keyframes eqBar    { 0%, 100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
+@keyframes livePulseGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92,217,122,.5); }
+  50%       { box-shadow: 0 0 0 4px rgba(92,217,122,0); }
+}
+@keyframes scrollHint {
+  0%, 100% { transform: translateY(0); opacity: .5; }
+  50%       { transform: translateY(3px); opacity: 1; }
+}
