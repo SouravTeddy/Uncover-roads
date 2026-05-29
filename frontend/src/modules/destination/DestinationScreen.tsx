@@ -1,20 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
-import type { Place, GeoData } from '../../shared/types';
+import type { GeoData } from '../../shared/types';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { api } from '../../shared/api';
-import { useRecentSessions } from './useRecentSessions';
 import { useSheetDismiss } from '../../shared/useSheetDismiss';
 import { ExploreHero } from './ExploreHero';
 import { ExploreSearchBar } from './ExploreSearchBar';
 import CuratedCityCards from './CuratedCityCards';
-import RecentVisits from './RecentVisits';
 import { DateRangeCalendar } from './DateRangeCalendar';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
   const { city, persona, savedItineraries } = state;
-  const { sessions } = useRecentSessions();
   const [showCalendar, setShowCalendar] = useState(false);
   const [pendingCity, setPendingCity] = useState<string | null>(null);
   const [userName, setUserName] = useState('Traveller');
@@ -70,19 +67,6 @@ export function DestinationScreen() {
 
   useSheetDismiss(handleCalendarDismiss, showCalendar);
 
-  function handleOpenMap(places: Place[], city?: string) {
-    const first = places[0];
-    if (!first) return;
-    const targetCity = city ?? first._city ?? '';
-    if (targetCity) dispatch({ type: 'SET_CITY', city: targetCity });
-    // Use the place coords as city-center approximation so MapScreen can load the area
-    if (first.lat && first.lon) {
-      dispatch({ type: 'SET_CITY_GEO', geo: { lat: first.lat, lon: first.lon, bbox: [first.lat - 0.05, first.lat + 0.05, first.lon - 0.05, first.lon + 0.05] } });
-    }
-    dispatch({ type: 'SET_PENDING_PLACE', place: first });
-    dispatch({ type: 'GO_TO', screen: 'map' });
-  }
-
   return (
     <div className="fixed inset-0 flex flex-col" style={{ zIndex: 20, background: 'var(--color-bg)' }}>
       <ExploreHero
@@ -99,7 +83,6 @@ export function DestinationScreen() {
             persona={persona}
             onCitySelect={handleCitySelect}
           />
-          <RecentVisits sessions={sessions} onOpenMap={handleOpenMap} />
         </div>
       )}
 
