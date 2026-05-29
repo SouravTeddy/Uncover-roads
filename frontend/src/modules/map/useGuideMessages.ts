@@ -58,10 +58,10 @@ export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place |
  */
 export function computeAreaText(
   city: string,
-  persona: Persona,
+  persona: Persona | null,
   mapPlaces: Place[],
 ): string {
-  const filters: string[] = (persona as unknown as { venue_filters?: string[] }).venue_filters ?? []
+  const filters: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
   const matching = mapPlaces.filter(p => filters.includes(p.category))
 
   if (matching.length === 0) {
@@ -151,8 +151,8 @@ function evaluateConditions(
   const stopsPerDay = personaProfile?.stops_per_day ?? 3
   const count = selectedPlaces.length
 
-  // Area: 0 places + city + persona
-  const area = count === 0 && city !== null && persona !== null && mapPlaces.length > 0
+  // Area: 0 places + city + places loaded (persona optional — fires generic message when null)
+  const area = count === 0 && city !== null && mapPlaces.length > 0
 
   // Event nudge: viewing an event pin + matching live event in travel dates
   let event = false

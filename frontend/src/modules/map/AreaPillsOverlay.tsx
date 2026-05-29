@@ -43,12 +43,7 @@ interface Props {
   mapZoom: number
   selectedAreaId: string | null
   onSelectArea: (id: string | null) => void
-  // empty-area state
   activeFilter: string   // 'all' | 'curated' | 'saved' | sub-category
-  activeCategoryLabel: string | null  // e.g. "Dining", "Cafes" — for empty banner text
-  empty: boolean
-  // bottom offset for result strip / empty banner (accounts for bottom nav)
-  bottomOffset?: number
 }
 
 // ── Pin marker (Dot) ───────────────────────────────────────────────────────────
@@ -269,9 +264,6 @@ export function AreaPillsOverlay({
   selectedAreaId,
   onSelectArea,
   activeFilter,
-  activeCategoryLabel,
-  empty,
-  bottomOffset = 92,
 }: Props) {
   if (!neighborhoods.length) return null
 
@@ -297,113 +289,6 @@ export function AreaPillsOverlay({
       {selectedArea && selectedArea.places.map((place, i) => (
         <PinMarker key={place.id} place={place} index={i} />
       ))}
-
-      {/* Result strip — shown when area is selected */}
-      {selectedArea && !empty && (
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            bottom: bottomOffset,
-            transform: 'translateX(-50%)',
-            zIndex: 50,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 9,
-            padding: '9px 16px 9px 13px',
-            borderRadius: 999,
-            whiteSpace: 'nowrap',
-            background: 'rgba(12,13,17,.92)',
-            backdropFilter: 'blur(18px)',
-            border: '1px solid rgba(255,255,255,.09)',
-            boxShadow: '0 10px 32px rgba(0,0,0,.5)',
-            animation: 'stripIn .4s cubic-bezier(.25,0,0,1) both',
-            pointerEvents: 'none',
-          }}
-        >
-          <span
-            className="ms fill"
-            style={{
-              fontSize: 16,
-              color: selectedArea.park ? '#5fa570' : '#d6aa56',
-            }}
-          >
-            place
-          </span>
-          <span
-            style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontWeight: 700,
-              fontSize: 17,
-              color: '#f2ede6',
-            }}
-          >
-            {selectedArea.name}
-          </span>
-          <span
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: '50%',
-              background: '#6b6a72',
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: '#a3a0a8' }}>
-            {selectedArea.spotCount} spots
-          </span>
-        </div>
-      )}
-
-      {/* Empty banner — shown when filter is active but no matches in view */}
-      {empty && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: bottomOffset,
-            zIndex: 55,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '13px 16px',
-            borderRadius: 16,
-            background: 'rgba(12,13,17,.94)',
-            backdropFilter: 'blur(16px)',
-            border: '1.5px solid rgba(232,97,90,.6)',
-            boxShadow: '0 12px 36px rgba(0,0,0,.6), 0 0 22px rgba(232,97,90,.16)',
-            animation: 'bannerIn .4s cubic-bezier(.25,0,0,1) both',
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Icon chip */}
-          <div
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 11,
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(232,97,90,.16)',
-              border: '1px solid rgba(232,97,90,.4)',
-            }}
-          >
-            <span className="ms" style={{ fontSize: 19, color: '#e8615a' }}>search</span>
-          </div>
-          {/* Text */}
-          <div style={{ lineHeight: 1.3 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 800, color: '#e8615a' }}>
-              No {activeCategoryLabel ?? 'spots'} here
-            </div>
-            <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(242,237,230,.6)', marginTop: 1 }}>
-              Pan back toward the city to populate spots
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }
