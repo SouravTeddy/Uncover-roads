@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { shouldShowConversionNudge } from '../../shared/tier';
+import { shouldShowConversionNudge, computePackSpend, clampedNudgeSavings } from '../../shared/tier';
 import { Button } from '../../shared/ui/Button';
 
 function oneYearFromNow(): string {
@@ -13,10 +13,12 @@ function oneYearFromNow(): string {
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
-  const { userTier, packPurchaseCount } = state;
+  const { userTier, tripPacks, packPurchaseCount } = state;
 
   const [coupon, setCoupon] = useState('');
   const [couponFeedback, setCouponFeedback] = useState('');
+
+  const isPaywalled = userTier === 'free';
 
   function back() {
     dispatch({ type: 'GO_BACK' });
@@ -25,24 +27,16 @@ export function SubscriptionScreen() {
   function buyPack(trips: number) {
     dispatch({
       type: 'ADD_TRIP_PACK',
-      pack: {
-        id: crypto.randomUUID(),
-        trips,
-        usedTrips: 0,
-        expiresAt: oneYearFromNow(),
-      },
+      pack: { id: crypto.randomUUID(), trips, usedTrips: 0, expiresAt: oneYearFromNow() },
     });
   }
 
   function applyCoupon() {
-    // Coupon validation is server-side — not implemented yet
     setCouponFeedback('Coupon validation coming soon.');
   }
 
-  // Conversion nudge math (assumes user bought 5-trip packs at $2.99 each)
-  const packSpend = packPurchaseCount * 2.99;
-  const proEquivalent = packPurchaseCount * 6.99;
-  const nudgeSavings = packSpend - proEquivalent;
+  const packSpend = computePackSpend(tripPacks);
+  const nudgeSavings = clampedNudgeSavings(packSpend, 9.99);
 
   const freeCta =
     userTier === 'free'
@@ -61,13 +55,11 @@ export function SubscriptionScreen() {
       price: '$0',
       priceSub: 'forever',
       features: [
-        '3 lifetime itinerary attempts',
-        '1st & 2nd trip: full experience',
-        '3rd: itinerary only, curation locked',
-        'Up to 2 cities per trip',
+        '3 full trips — no restrictions',
         'Full persona experience',
-        'Share itinerary',
+        'Up to 2 cities per trip',
         'Explore + Wishlist',
+        'Share itinerary',
       ],
       cta: freeCta,
       onCta: undefined as (() => void) | undefined,
@@ -112,7 +104,7 @@ export function SubscriptionScreen() {
 
         {/* ── Plan cards ── */}
         <div className="flex flex-col gap-4">
-          {plans.map(plan => (
+          {plans.filter(p => !(isPaywalled && p.id === 'free')).map(plan => (
             <div
               key={plan.id}
               className={`bg-[var(--color-surface)] border rounded-[20px] p-5 ${
@@ -159,53 +151,38 @@ export function SubscriptionScreen() {
             One-time purchase · 1-year validity · Full experience · Hard stop when trips run out
           </div>
 
-          {/* 1 Trip pack */}
-          <div className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[16px] p-4 mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[14px] font-semibold text-[var(--color-text-1)]">1 Trip</span>
-              <div className="text-right">
-                <span className="font-bold text-[var(--color-text-1)] text-sm">$0.99</span>
-                <span className="text-[10px] text-[var(--color-text-3)] ml-1">/ ₹50</span>
-              </div>
-            </div>
-            <div className="text-[12px] text-[var(--color-text-3)] mb-3">
-              Try it once · expires in 1 year
-            </div>
-            <Button variant="primary" className="w-full" onClick={() => buyPack(1)}>Buy</Button>
-          </div>
-
-          {/* 5 Trips pack */}
-          <div className="bg-[var(--color-bg)] border-2 border-[var(--color-amber)] rounded-[16px] p-4 relative mb-3">
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-amber)] text-[var(--color-bg)]">
-                BEST VALUE
-              </span>
-            </div>
-            <div className="flex items-center justify-between mb-1 mt-1">
-              <span className="text-[14px] font-semibold text-[var(--color-text-1)]">5 Trips</span>
-              <div className="text-right">
-                <span className="font-bold text-[var(--color-text-1)] text-sm">$2.99</span>
-                <span className="text-[10px] text-[var(--color-text-3)] ml-1">/ ₹199</span>
-              </div>
-            </div>
-            <div className="text-[12px] text-[var(--color-text-3)] mb-3">
-              ₹39.80/trip · saves ₹51 vs buying solo · expires in 1 year
-            </div>
-            <Button variant="primary" className="w-full" onClick={() => buyPack(5)}>Buy</Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <PackRow
+              name="5 Trips"
+              meta="Full experience · $0.60/trip"
+              price="$2.99"
+              priceLocal="₹249"
+              onBuy={() => buyPack(5)}
+            />
+            <PackRow
+              name="10 Trips"
+              meta="Full experience · $0.50/trip · saves 17%"
+              price="$4.99"
+              priceLocal="₹399"
+              badge="BEST VALUE"
+              onBuy={() => buyPack(10)}
+            />
           </div>
 
           {/* Conversion nudge */}
           {shouldShowConversionNudge(packPurchaseCount) && (
             <div
               className="rounded-[16px] p-4 flex flex-col gap-1 text-xs"
-              style={{ background: '#1c2f1e', border: '1px solid #16a34a' }}
+              style={{ background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)' }}
             >
-              <div className="font-semibold" style={{ color: '#86efac' }}>
+              <div className="font-semibold" style={{ color: 'var(--color-sage)' }}>
                 You've spent ${packSpend.toFixed(2)} on packs
               </div>
               <div style={{ color: 'var(--color-text-3)' }}>
-                Pro plan for the same period would've cost ${proEquivalent.toFixed(2)} — saving
-                you ${nudgeSavings.toFixed(2)}.
+                {nudgeSavings > 0
+                  ? `switching to Pro would save you $${nudgeSavings.toFixed(2)} from here.`
+                  : 'a monthly subscription gives you unlimited trips for $9.99/mo.'
+                }
               </div>
               <button
                 onClick={() => dispatch({ type: 'SET_USER_TIER', tier: 'pro' })}
@@ -240,6 +217,46 @@ export function SubscriptionScreen() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PackRow({
+  name, meta, price, priceLocal, badge, onBuy,
+}: {
+  name: string; meta: string; price: string; priceLocal: string;
+  badge?: string; onBuy: () => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 p-3 rounded-2xl border"
+      style={{
+        background: badge ? 'rgba(212,168,83,.05)' : 'var(--color-surface)',
+        borderColor: badge ? 'rgba(212,168,83,.3)' : 'var(--color-border)',
+      }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-semibold text-[var(--color-text-1)]">{name}</span>
+          {badge && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-primary)] text-[#0f0d0c]">
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-[var(--color-text-3)] mt-0.5">{meta}</div>
+      </div>
+      <div className="text-right mr-2 flex-shrink-0">
+        <div className="text-[13px] font-bold text-[var(--color-text-1)]">{price}</div>
+        <div className="text-[10px] text-[var(--color-text-3)]">{priceLocal}</div>
+      </div>
+      <button
+        onClick={onBuy}
+        className="h-8 px-3 rounded-xl font-bold text-[12px] text-[#0f0d0c] flex-shrink-0"
+        style={{ background: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))' }}
+      >
+        Buy
+      </button>
     </div>
   );
 }
