@@ -209,23 +209,23 @@ export function ReelStopCard({ card, active, weather, onInteract }: Props) {
         {/* Order reason */}
         {card.orderReason && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
-            <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>schedule</span>
-            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55 }}>{card.orderReason}</p>
+            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0, lineHeight: 1.55 }}>✦</span>
+            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55, fontStyle: 'italic' }}>{card.orderReason}</p>
           </div>
         )}
 
         {/* Order consequence */}
         {card.orderConsequence && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
-            <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sage)', flexShrink: 0, marginTop: 1 }}>check_circle</span>
-            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55 }}>{card.orderConsequence}</p>
+            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0, lineHeight: 1.55 }}>✦</span>
+            <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.55, fontStyle: 'italic' }}>{card.orderConsequence}</p>
           </div>
         )}
 
         {/* AI line (whyForYou) */}
         {stop.whyForYou && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 4 }}>
-            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0 }}>✦</span>
+            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0, lineHeight: 1.55 }}>✦</span>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.55, fontStyle: 'italic' }}>{stop.whyForYou}</p>
           </div>
         )}
