@@ -406,7 +406,7 @@ export function MapScreen() {
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
       dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
     } catch (err) {
-      console.error('[MapScreen] handleBuild failed:', err)
+      console.error('[MapScreen] executeBuild failed:', err)
       setBuildError('Could not build itinerary — try again')
       setTimeout(() => setBuildError(null), 4000)
     } finally {
@@ -881,13 +881,7 @@ export function MapScreen() {
 
       {showDisclaimer && (
         <AiDisclaimerSheet
-          onContinue={() => {
-            setShowDisclaimer(false);
-            if (pendingBuild) {
-              setPendingBuild(false);
-              executeBuild();
-            }
-          }}
+          onContinue={async () => { setShowDisclaimer(false); if (pendingBuild) { setPendingBuild(false); await executeBuild(); } }}
         />
       )}
 
