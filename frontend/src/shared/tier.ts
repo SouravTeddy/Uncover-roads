@@ -38,3 +38,18 @@ export function shouldShowPaywall(state: AppState): boolean {
 export function shouldShowConversionNudge(packPurchaseCount: number): boolean {
   return packPurchaseCount >= 2;
 }
+
+const PACK_PRICES: Record<number, number> = { 5: 2.99, 10: 4.99 };
+
+/** Returns total amount spent across all trip packs. */
+export function computePackSpend(packs: TripPack[]): number {
+  return packs.reduce((sum, p) => sum + (PACK_PRICES[p.trips] ?? 0), 0);
+}
+
+/**
+ * Returns how much more the user would spend continuing with packs vs switching
+ * to a monthly subscription. Clamped to 0 — never negative.
+ */
+export function clampedNudgeSavings(packSpend: number, monthlyPrice: number): number {
+  return Math.max(0, packSpend - monthlyPrice);
+}
