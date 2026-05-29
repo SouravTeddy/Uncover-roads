@@ -27,7 +27,8 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
 
   useEffect(() => {
     if (!city) return
-    void supabase.from('city_data').select('data').eq('id', city.toLowerCase()).single()
+    const slug = city.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+    void supabase.from('city_data').select('data').eq('id', slug).single()
       .then(({ data }) => {
         const nbhs = data?.data?.neighborhoods
         if (Array.isArray(nbhs) && nbhs.length > 0) setRaw(nbhs)
