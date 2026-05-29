@@ -36,7 +36,7 @@ export function SubscriptionScreen() {
   }
 
   const packSpend = computePackSpend(tripPacks);
-  const nudgeSavings = clampedNudgeSavings(packSpend, 9.99);
+  const nudgeSavings = clampedNudgeSavings(packSpend, 6.99);
 
   const freeCta =
     userTier === 'free'
@@ -46,7 +46,7 @@ export function SubscriptionScreen() {
   const proCta =
     userTier === 'pro'
       ? { label: 'Current Plan', disabled: true }
-      : { label: 'Go Pro · $9.99/mo', disabled: false };
+      : { label: 'Go Pro · $6.99/mo', disabled: false };
 
   const plans = [
     {
@@ -57,7 +57,6 @@ export function SubscriptionScreen() {
       features: [
         '3 full trips — no restrictions',
         'Full persona experience',
-        'Up to 2 cities per trip',
         'Explore + Wishlist',
         'Share itinerary',
       ],
@@ -70,12 +69,12 @@ export function SubscriptionScreen() {
       price: '$6.99/mo',
       priceSub: 'billed monthly',
       features: [
-        '5 saved trips per month',
-        'Our Picks + Live Events on all trips',
-        'Up to 5 cities per trip',
+        'Unlimited trips',
+        'Our Picks + Live Events',
         'Full persona experience',
-        'Share itinerary',
         'Explore + Wishlist',
+        'Share itinerary',
+        'Cancel anytime',
       ],
       cta: proCta,
       onCta: proCta.disabled ? undefined : () => dispatch({ type: 'SET_USER_TIER', tier: 'pro' }),
@@ -181,7 +180,7 @@ export function SubscriptionScreen() {
               <div style={{ color: 'var(--color-text-3)' }}>
                 {nudgeSavings > 0
                   ? `switching to Pro would save you $${nudgeSavings.toFixed(2)} from here.`
-                  : 'a monthly subscription gives you unlimited trips for $9.99/mo.'
+                  : 'a monthly Pro subscription gives you unlimited trips for $6.99/mo.'
                 }
               </div>
               <button
