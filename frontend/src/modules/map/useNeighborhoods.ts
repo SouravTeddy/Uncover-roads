@@ -27,12 +27,11 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
 
   useEffect(() => {
     if (!city) return
-    supabase.from('city_data').select('data').eq('id', city.toLowerCase()).single()
+    void supabase.from('city_data').select('data').eq('id', city.toLowerCase()).single()
       .then(({ data }) => {
         const nbhs = data?.data?.neighborhoods
         if (Array.isArray(nbhs) && nbhs.length > 0) setRaw(nbhs)
       })
-      .catch(() => {/* silently ignore */})
   }, [city])
 
   return useMemo(() => {
