@@ -28,11 +28,22 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
   useEffect(() => {
     if (!city) return
     const slug = city.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-    void supabase.from('city_data').select('data').eq('id', slug).single()
-      .then(({ data }) => {
-        const nbhs = data?.data?.neighborhoods
-        if (Array.isArray(nbhs) && nbhs.length > 0) setRaw(nbhs)
-      })
+    const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+    void (async () => {
+      const { data } = await supabase.from('city_data').select('data').eq('id', slug).single()
+      const nbhs = data?.data?.neighborhoods
+      if (Array.isArray(nbhs) && nbhs.length > 0) { setRaw(nbhs); return }
+
+      // city_data not yet seeded — ask backend to seed, then retry once
+      try {
+        await fetch(`${BASE}/api/cities/seed?city_id=${encodeURIComponent(slug)}`, { method: 'POST' })
+      } catch { /* network error — skip */ }
+
+      const retry = await supabase.from('city_data').select('data').eq('id', slug).single()
+      const retryNbhs = retry.data?.data?.neighborhoods
+      if (Array.isArray(retryNbhs) && retryNbhs.length > 0) setRaw(retryNbhs)
+    })()
   }, [city])
 
   return useMemo(() => {
