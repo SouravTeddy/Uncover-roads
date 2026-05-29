@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { shouldShowConversionNudge, computePackSpend, clampedNudgeSavings } from '../../shared/tier';
 import { Button } from '../../shared/ui/Button';
 
 function oneYearFromNow(): string {
@@ -13,7 +12,7 @@ function oneYearFromNow(): string {
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
-  const { userTier, tripPacks, packPurchaseCount } = state;
+  const { userTier } = state;
 
   const [coupon, setCoupon] = useState('');
   const [couponFeedback, setCouponFeedback] = useState('');
@@ -35,8 +34,6 @@ export function SubscriptionScreen() {
     setCouponFeedback('Coupon validation coming soon.');
   }
 
-  const packSpend = computePackSpend(tripPacks);
-  const nudgeSavings = clampedNudgeSavings(packSpend, 6.99);
 
   const freeCta =
     userTier === 'free'
@@ -141,6 +138,13 @@ export function SubscriptionScreen() {
           ))}
         </div>
 
+        {/* ── OR divider ── */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-[var(--color-divider)]" />
+          <span className="text-[11px] font-bold text-[var(--color-text-4)] uppercase tracking-widest">or</span>
+          <div className="flex-1 h-px bg-[var(--color-divider)]" />
+        </div>
+
         {/* ── Trip Packs ── */}
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-5">
           <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mb-1">
@@ -160,29 +164,6 @@ export function SubscriptionScreen() {
             />
           </div>
 
-          {/* Conversion nudge */}
-          {shouldShowConversionNudge(packPurchaseCount) && (
-            <div
-              className="rounded-[16px] p-4 flex flex-col gap-1 text-xs"
-              style={{ background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)' }}
-            >
-              <div className="font-semibold" style={{ color: 'var(--color-sage)' }}>
-                You've spent ${packSpend.toFixed(2)} on packs
-              </div>
-              <div style={{ color: 'var(--color-text-3)' }}>
-                {nudgeSavings > 0
-                  ? `switching to Pro would save you $${nudgeSavings.toFixed(2)} from here.`
-                  : 'a monthly Pro subscription gives you unlimited trips for $6.99/mo.'
-                }
-              </div>
-              <button
-                onClick={() => dispatch({ type: 'SET_USER_TIER', tier: 'pro' })}
-                className="text-left font-semibold mt-0.5 text-[var(--color-primary)]"
-              >
-                Switch to Pro →
-              </button>
-            </div>
-          )}
         </div>
 
         {/* ── Coupon ── */}
