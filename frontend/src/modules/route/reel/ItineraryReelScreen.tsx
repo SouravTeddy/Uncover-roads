@@ -13,6 +13,7 @@ import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
+import ReelScenicCard from './ReelScenicCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
@@ -243,7 +244,7 @@ export function ItineraryReelScreen() {
     );
   }
 
-  const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'summary');
+  const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'summary' && c.type !== 'scenic');
   const activeDotIdx = dotCards.findIndex(c => c === cards[activeIdx]);
 
   return (
@@ -283,6 +284,7 @@ export function ItineraryReelScreen() {
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
           else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
+          else if (card.type === 'scenic') child = <ReelScenicCard card={card} active={isActive} />;
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
           if (!child) return null;
@@ -292,6 +294,7 @@ export function ItineraryReelScreen() {
             card.type === 'intel' ? card.id :
             card.type === 'transit' ? `transit-${card.from}-${card.to}` :
             card.type === 'day_divider' ? `day-${card.day}` :
+            card.type === 'scenic' ? `scenic-${card.pos}` :
             card.type;
           return (
             <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0 }}>
