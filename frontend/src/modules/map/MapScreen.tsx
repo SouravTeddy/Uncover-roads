@@ -35,6 +35,7 @@ import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
 import { GuideBulb } from './GuideBulb'
 import { useGuideMessages } from './useGuideMessages'
+import { shouldShowPaywall } from '../../shared/tier'
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -416,13 +417,17 @@ export function MapScreen() {
 
   const handleBuild = useCallback(async () => {
     if (buildLoading || selectedPlaces.length === 0) return;
+    if (shouldShowPaywall(state)) {
+      dispatch({ type: 'GO_TO', screen: 'subscription' });
+      return;
+    }
     if (!localStorage.getItem('ur_ai_disclaimer_shown')) {
       setPendingBuild(true);
       setShowDisclaimer(true);
       return;
     }
     await executeBuild();
-  }, [buildLoading, selectedPlaces, executeBuild])
+  }, [buildLoading, selectedPlaces, state, dispatch, executeBuild])
 
   const isFavourited = activePlace
     ? favouritedIds.has(activePlace.id)
