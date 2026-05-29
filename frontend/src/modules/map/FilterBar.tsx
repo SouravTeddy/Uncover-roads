@@ -26,12 +26,11 @@ interface Props {
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
   empty?: boolean
-  emptyLabel?: string
 }
 
 export function FilterBar({
   active, activeCategories, displayCount, curatedCount,
-  categoryCounts, onSelect, onCategoriesSelect, empty, emptyLabel,
+  categoryCounts, onSelect, onCategoriesSelect, empty,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
 
