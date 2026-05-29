@@ -80,11 +80,11 @@ export function SubscriptionScreen() {
 
   return (
     <div
-      className="fixed inset-0 flex flex-col overflow-y-auto bg-[var(--color-bg)]"
+      className="fixed inset-0 flex flex-col bg-[var(--color-bg)]"
       style={{ zIndex: 20 }}
     >
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+      {/* Header */}
+      <div className="bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button
           className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
           onClick={back}
@@ -96,7 +96,10 @@ export function SubscriptionScreen() {
         </h2>
       </div>
 
-      <div className="flex flex-col gap-6 px-4 py-5 pb-10">
+      <div
+        className="flex-1 overflow-y-auto flex flex-col gap-6 px-4 py-5"
+        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
+      >
 
         {/* ── Plan cards ── */}
         <div className="flex flex-col gap-4">
@@ -129,6 +132,7 @@ export function SubscriptionScreen() {
               <Button
                 variant="primary"
                 className="w-full mt-6 h-[52px] rounded-2xl"
+                style={{ fontFamily: 'var(--font-sans)' }}
                 disabled={plan.cta.disabled}
                 onClick={plan.onCta}
               >
