@@ -158,14 +158,6 @@ export function SubscriptionScreen() {
               priceLocal="₹249"
               onBuy={() => buyPack(5)}
             />
-            <PackRow
-              name="10 Trips"
-              meta="Full experience · $0.50/trip · saves 17%"
-              price="$4.99"
-              priceLocal="₹399"
-              badge="BEST VALUE"
-              onBuy={() => buyPack(10)}
-            />
           </div>
 
           {/* Conversion nudge */}
