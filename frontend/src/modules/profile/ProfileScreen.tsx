@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type ReactNode, type CSSProperties } from 'react';
 import { useAppStore } from '../../shared/store';
 import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
@@ -40,7 +40,8 @@ export function ProfileScreen() {
   const name = user?.name ?? 'Explorer';
   const email = user?.email ?? '';
   const initial = name[0].toUpperCase();
-  const isPro = userTier !== 'free';
+  const badgeLabel = userTier === 'pro' ? 'PRO' : userTier === 'pack' ? 'PACK' : 'FREE';
+  const badgeIsPaid = userTier !== 'free';
 
   // Derive archetype from raw OB answers or persona
   const rawAnswers = state.rawOBAnswers;
@@ -109,11 +110,11 @@ export function ProfileScreen() {
           </div>
           <div
             className="px-2 py-0.5 rounded-full border text-[11px] font-bold flex-shrink-0"
-            style={isPro
+            style={badgeIsPaid
               ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
               : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
           >
-            {isPro ? 'PRO' : 'FREE'}
+            {badgeLabel}
           </div>
         </div>
 
@@ -280,7 +281,7 @@ function PlanRow({
         style={{ background: 'var(--color-surface)', borderColor: 'rgba(212,168,83,.25)' }}
       >
         <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
-          <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>star</span>
+          <span aria-hidden="true" className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>star</span>
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
@@ -300,7 +301,7 @@ function PlanRow({
         style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
       >
         <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
-          <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>confirmation_number</span>
+          <span aria-hidden="true" className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>confirmation_number</span>
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
@@ -322,7 +323,7 @@ function PlanRow({
       }}
     >
       <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-primary-bg)' }}>
-        <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>auto_awesome</span>
+        <span aria-hidden="true" className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>auto_awesome</span>
       </div>
       <div className="flex-1 min-w-0 text-left">
         <p className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)] mb-0.5">Your Plan</p>
@@ -344,7 +345,7 @@ function PlanRow({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <p style={{ color: 'var(--color-text-3)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
   );
@@ -362,8 +363,8 @@ function SettingsRow({
   label: string;
   sublabel?: string;
   labelClass?: string;
-  right?: React.ReactNode;
-  rowStyle?: React.CSSProperties;
+  right?: ReactNode;
+  rowStyle?: CSSProperties;
   divider?: boolean;
   onTap?: () => void;
 }) {
