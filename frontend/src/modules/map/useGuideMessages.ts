@@ -8,6 +8,28 @@ export interface GuideMessage {
   timestamp: number
 }
 
+// ── Persona tag → place category ─────────────────────────────────────────────
+// venue_filters stores human-readable placeTags (e.g. 'Heritage Sites').
+// Place categories are lowercase OSM values (e.g. 'historic').
+const PLACE_TAG_TO_CATEGORY: Record<string, string> = {
+  'local cafés': 'cafe', 'beautiful cafés': 'cafe', 'morning cafés': 'cafe',
+  'parks': 'park', 'neighbourhood parks': 'park',
+  'street food': 'restaurant', 'food halls': 'restaurant', 'bakeries': 'restaurant',
+  "chef's tables": 'restaurant', 'late restaurants': 'restaurant',
+  'wine bars': 'bar', 'cocktail bars': 'bar', 'corner bars': 'bar',
+  'rooftop bars': 'bar', 'old bars': 'bar',
+  'heritage sites': 'historic', 'historic squares': 'historic', 'old quarters': 'historic',
+  'architecture': 'historic',
+  'key landmarks': 'tourism', 'courtyards': 'tourism', 'design districts': 'tourism',
+  'museums': 'museum', 'cultural spots': 'museum',
+  'galleries': 'gallery',
+  'viewpoints': 'viewpoint', 'rooftops': 'viewpoint',
+  'live music': 'nightlife', 'night markets': 'nightlife',
+  'side streets': 'place', 'markets': 'place', 'local markets': 'place',
+  'sunday markets': 'place', 'neighbourhood gems': 'place', 'local finds': 'place',
+  'local institutions': 'place', 'bookshops': 'place', 'residential streets': 'place',
+}
+
 // ── Category label map ────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,8 +83,9 @@ export function computeAreaText(
   persona: Persona | null,
   mapPlaces: Place[],
 ): string {
-  const filters: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
-  const matching = mapPlaces.filter(p => filters.includes(p.category))
+  const tags: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
+  const categorySet = new Set(tags.map(t => PLACE_TAG_TO_CATEGORY[t.toLowerCase()] ?? t.toLowerCase()))
+  const matching = mapPlaces.filter(p => categorySet.has(p.category))
 
   if (matching.length === 0) {
     return `There are ${mapPlaces.length} spots on this map — tap any pin to start exploring ${city}`

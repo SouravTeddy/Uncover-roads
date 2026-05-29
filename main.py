@@ -2944,6 +2944,23 @@ async def cities_map_pins(city_id: str, _user=Depends(get_current_user)):
     ]
 
 
+@app.post("/api/cities/seed")
+def ensure_city_seeded(city_id: str = Query(...)):
+    """Ensures city_data row exists for city_id. Called by frontend on map load.
+    No auth required — seeding is idempotent and read-only from the user's perspective.
+    """
+    if _supabase is None:
+        return {"status": "unavailable"}
+    try:
+        load_city(city_id, _supabase)
+        return {"status": "ok"}
+    except ValueError:
+        return {"status": "not_found"}
+    except Exception as exc:
+        print(f"[ensure_city_seeded] error for {city_id}: {exc}")
+        return {"status": "error"}
+
+
 @app.get("/api/cities/picks", response_model=list[PlacePick])
 async def cities_picks(city_id: str):
     """Pro: curated picks with trend stage badges.
