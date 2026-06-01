@@ -55,8 +55,8 @@ function haversineM(lat1: number, lon1: number, lat2: number, lon2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-const PAIR_COMPLEMENT_CATS = ['cafe', 'park', 'restaurant']
-const PAIR_TRIGGER_CATS = new Set(['historic', 'museum', 'tourism'])
+const PAIR_COMPLEMENT_CATS = ['cafe', 'park', 'restaurant', 'bar']
+const PAIR_TRIGGER_CATS = new Set(['historic', 'museum', 'tourism', 'viewpoint', 'gallery', 'spa', 'spiritual', 'beach'])
 const PAIR_RADIUS_M = 700
 
 export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place | null {
@@ -131,11 +131,13 @@ export function computeBuildReadinessText(
   days: number,
   stopsPerDay: number,
 ): string | null {
-  if (days <= 0 || stopsPerDay <= 0) return null
-  const threshold = Math.floor(days * stopsPerDay * 0.8)
-  if (count < threshold || count < 2) return null
-  const plural = days === 1 ? 'day' : 'days'
-  return `You've nearly filled ${days} ${plural} — ready to build your itinerary?`
+  if (stopsPerDay <= 0) return null
+  const effectiveDays = days > 0 ? days : 1
+  // minimum threshold of 4 so the message isn't trivially spammed on short trips
+  const threshold = Math.max(4, Math.floor(effectiveDays * stopsPerDay * 0.8))
+  if (count < threshold) return null
+  const plural = effectiveDays === 1 ? 'day' : 'days'
+  return `You've nearly filled ${effectiveDays} ${plural} — ready to build your itinerary?`
 }
 
 /**
@@ -190,11 +192,10 @@ function evaluateConditions(
     event = match !== undefined
   }
 
-  // Build readiness: ≥ 80% of full itinerary
-  const buildReady =
-    count >= 2 &&
-    days > 0 &&
-    count >= Math.floor(days * stopsPerDay * 0.8)
+  // Build readiness: ≥ 80% of full itinerary (falls back to 4-place threshold when days not set)
+  const effectiveDays = days > 0 ? days : 1
+  const buildThreshold = Math.max(4, Math.floor(effectiveDays * stopsPerDay * 0.8))
+  const buildReady = count >= buildThreshold
 
   // Cluster: all picks within 800m bounding box
   const cluster = isGeographicCluster(selectedPlaces)
