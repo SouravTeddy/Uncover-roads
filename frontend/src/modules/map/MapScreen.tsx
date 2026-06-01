@@ -34,7 +34,7 @@ import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
 import { GuideBulb } from './GuideBulb'
-import { useGuideMessages } from './useGuideMessages'
+import { PLACE_TAG_TO_CATEGORY, useGuideMessages } from './useGuideMessages'
 import { shouldShowPaywall } from '../../shared/tier'
 import { useNeighborhoods } from './useNeighborhoods'
 import { AreaBlobLayer } from './AreaBlobLayer'
@@ -123,6 +123,12 @@ export function MapScreen() {
       return acc;
     }, {}),
   [places]);
+
+  const forYouCategories = useMemo(() => {
+    const tags = (state.persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
+    const cats = new Set(tags.map(t => PLACE_TAG_TO_CATEGORY[t.toLowerCase()] ?? '').filter(Boolean))
+    return Array.from(cats)
+  }, [state.persona])
 
   const neighborhoods = useNeighborhoods(city, places)
 
@@ -688,6 +694,7 @@ export function MapScreen() {
             displayCount={displayCount}
             curatedCount={curatedCount}
             categoryCounts={categoryCounts}
+            forYouCategories={forYouCategories}
             onSelect={handleFilterSelect}
             onCategoriesSelect={setActiveCategories}
             empty={emptyArea && activeCategories.length > 0}
@@ -786,6 +793,10 @@ export function MapScreen() {
           messages={guideMessages}
           hasUnread={guideHasUnread}
           onRead={markGuideRead}
+          onPlaceAction={(id) => {
+            const place = places.find(p => p.id === id)
+            if (place) setActivePlace(place)
+          }}
         />
       </div>
 

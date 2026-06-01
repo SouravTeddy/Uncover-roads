@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { MapFilter } from '../../shared/types'
 
 const SUB_CHIPS: { categories: string[]; label: string; icon: string }[] = [
@@ -23,6 +22,7 @@ interface Props {
   displayCount: number
   curatedCount: number
   categoryCounts: Record<string, number>
+  forYouCategories?: string[]   // persona-derived category set
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
   empty?: boolean
@@ -30,10 +30,8 @@ interface Props {
 
 export function FilterBar({
   active, activeCategories, displayCount, curatedCount,
-  categoryCounts, onSelect, onCategoriesSelect, empty,
+  categoryCounts, forYouCategories = [], onSelect, onCategoriesSelect, empty,
 }: Props) {
-  const [expanded, setExpanded] = useState(false)
-
   const isAllMode = active === 'all'
 
   function chipCount(cats: string[]): number {
@@ -44,62 +42,57 @@ export function FilterBar({
     c.categories.length === activeCategories.length &&
     c.categories.every(cat => activeCategories.includes(cat))
   )
-  const allLabel = activeChip ? activeChip.label : 'All'
+  const isForYouActive =
+    forYouCategories.length > 0 &&
+    activeCategories.length === forYouCategories.length &&
+    forYouCategories.every(c => activeCategories.includes(c))
 
-  function handleAllTap() {
-    if (!isAllMode) {
-      onSelect('all')
-      onCategoriesSelect([])
-      setExpanded(false)
-      return
-    }
-    setExpanded(e => !e)
-  }
-
-  function handleSubChip(cats: string[]) {
-    onCategoriesSelect(cats)
-    setExpanded(false)
-  }
-
+  const forYouCount = chipCount(forYouCategories)
   const visibleChips = SUB_CHIPS.filter(c => chipCount(c.categories) > 0)
+
+  const chipStyle = (isActive: boolean, isEmptyActive = false): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
+    padding: '4px 10px', height: 26, borderRadius: 999,
+    background: isEmptyActive ? 'rgba(232,97,90,.14)' : isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
+    border: isEmptyActive ? '1.5px solid #e8615a' : isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+    color: isEmptyActive ? '#e8615a' : isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
+    fontSize: '0.72rem', fontWeight: 600,
+    backdropFilter: 'blur(8px)', cursor: 'pointer',
+    whiteSpace: 'nowrap', transition: 'all 0.12s ease',
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+
+      {/* Row 1: All + Curated */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button
-          onClick={handleAllTap}
+          onClick={() => { onSelect('all'); onCategoriesSelect([]) }}
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '5px 12px', height: 28, borderRadius: 999,
-            background: isAllMode ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
-            border: isAllMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border-m)',
-            color: isAllMode ? '#0c0c0e' : 'var(--color-text-2)',
+            background: isAllMode && activeCategories.length === 0 ? 'var(--color-primary)' : 'rgba(15,20,30,.82)',
+            border: isAllMode && activeCategories.length === 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border-m)',
+            color: isAllMode && activeCategories.length === 0 ? '#0c0c0e' : 'var(--color-text-2)',
             fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
           }}
         >
-          {allLabel}
+          All
           {displayCount > 0 && (
             <span style={{ opacity: 0.7, fontSize: '0.72rem' }}>· {displayCount}</span>
           )}
-          <span className="ms" style={{ fontSize: 13, opacity: 0.7, marginLeft: 1 }}>
-            {expanded ? 'expand_less' : 'expand_more'}
-          </span>
         </button>
 
         <button
-          onClick={() => { onSelect('curated'); setExpanded(false) }}
+          onClick={() => onSelect('curated')}
           style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '5px 12px', height: 28, borderRadius: 999,
             background: active === 'curated' ? 'var(--color-primary-bg)' : 'rgba(15,20,30,.82)',
-            border: active === 'curated'
-              ? '1px solid var(--color-primary)'
-              : '1px solid rgba(212,168,83,.3)',
-            color: active === 'curated'
-              ? 'var(--color-primary)'
-              : 'var(--color-primary-text)',
+            border: active === 'curated' ? '1px solid var(--color-primary)' : '1px solid rgba(212,168,83,.3)',
+            color: active === 'curated' ? 'var(--color-primary)' : 'var(--color-primary-text)',
             fontSize: '0.75rem', fontWeight: 700,
             backdropFilter: 'blur(8px)', cursor: 'pointer',
             whiteSpace: 'nowrap', transition: 'all 0.15s ease',
@@ -113,77 +106,51 @@ export function FilterBar({
         </button>
       </div>
 
-      {expanded && isAllMode && (
+      {/* Row 2: Quick filter pills — always visible horizontal scroll */}
+      {isAllMode && (
         <div
           data-testid="subcategory-scroll"
           style={{
             display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
             maxWidth: 'calc(100vw - 32px)',
             scrollbarWidth: 'none',
-            animation: 'springUp .25s cubic-bezier(.16,1,.3,1)',
           }}
         >
-          <button
-            onClick={() => { onCategoriesSelect([]); setExpanded(false) }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-              padding: '4px 10px', height: 26, borderRadius: 999,
-              background: activeCategories.length === 0 ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
-              border: activeCategories.length === 0 ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-              color: activeCategories.length === 0 ? 'var(--color-primary-text)' : 'var(--color-text-2)',
-              fontSize: '0.72rem', fontWeight: 600,
-              backdropFilter: 'blur(8px)', cursor: 'pointer',
-              whiteSpace: 'nowrap', transition: 'all 0.12s ease',
-            }}
-          >
-            <span className="ms" style={{ fontSize: 12 }}>layers</span>
-            All
-          </button>
+          {/* For you — only shown when persona has matching pins */}
+          {forYouCategories.length > 0 && forYouCount > 0 && (
+            <button
+              onClick={() => onCategoriesSelect(isForYouActive ? [] : forYouCategories)}
+              style={chipStyle(isForYouActive)}
+            >
+              <span className="ms fill" style={{ fontSize: 12 }}>person</span>
+              For you
+              <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {forYouCount}</span>
+              {isForYouActive && <span className="ms" style={{ fontSize: 11, marginLeft: 1 }}>close</span>}
+            </button>
+          )}
 
           {visibleChips.map(chip => {
             const isActive = activeChip?.label === chip.label
             const isEmptyActive = isActive && empty
             const count = chipCount(chip.categories)
             return (
-              <div
+              <button
                 key={chip.label}
+                onClick={() => onCategoriesSelect(isActive ? [] : chip.categories)}
                 style={{
+                  ...chipStyle(isActive, isEmptyActive),
                   animation: isEmptyActive ? 'pillPulse 1.3s ease-in-out infinite' : 'none',
-                  borderRadius: 999,
-                  flexShrink: 0,
-                  display: 'inline-flex',
                 }}
               >
-                <button
-                  onClick={() => handleSubChip(chip.categories)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '4px 10px', height: 26, borderRadius: 999,
-                    background: isEmptyActive ? 'rgba(232,97,90,.14)' : isActive ? 'rgba(212,168,83,.15)' : 'rgba(15,20,30,.75)',
-                    border: isEmptyActive ? '1.5px solid #e8615a' : isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    color: isEmptyActive ? '#e8615a' : isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
-                    fontSize: '0.72rem', fontWeight: 600,
-                    backdropFilter: 'blur(8px)', cursor: 'pointer',
-                    whiteSpace: 'nowrap', transition: 'all 0.12s ease',
-                  }}
-                >
-                  <span className="ms" style={{ fontSize: 12 }}>{chip.icon}</span>
-                  {chip.label}
-                  <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {count}</span>
-                  {isActive && (
-                    <span
-                      className="ms"
-                      style={{
-                        fontSize: 12,
-                        marginLeft: 1,
-                        animation: isEmptyActive ? 'xBounce 1s ease-in-out infinite' : 'none',
-                      }}
-                    >
-                      close
-                    </span>
-                  )}
-                </button>
-              </div>
+                <span className="ms" style={{ fontSize: 12 }}>{chip.icon}</span>
+                {chip.label}
+                <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {count}</span>
+                {isActive && (
+                  <span className="ms" style={{ fontSize: 11, marginLeft: 1, animation: isEmptyActive ? 'xBounce 1s ease-in-out infinite' : 'none' }}>
+                    close
+                  </span>
+                )}
+              </button>
             )
           })}
         </div>
