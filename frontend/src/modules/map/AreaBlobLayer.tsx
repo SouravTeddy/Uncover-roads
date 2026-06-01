@@ -73,7 +73,8 @@ function makeHoodLayer(id: string, color: string): LayerProps {
   }
 }
 
-// Pin-density layer — local neighbourhood fill as user zooms in
+// Pin-density layer — visible from city overview down to local street level.
+// Large radius at low zoom creates organic city-wide blobs from real pin clusters.
 function makePinLayer(id: string, color: string): LayerProps {
   return {
     id,
@@ -81,9 +82,10 @@ function makePinLayer(id: string, color: string): LayerProps {
     paint: {
       'heatmap-weight': expr(['get', 'weight']),
       'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
-        10, 15,
-        12, 35,
-        14, 70,
+        8,  40,
+        10, 25,
+        12, 45,
+        14, 80,
       ]),
       'heatmap-intensity': 1.4,
       'heatmap-color': expr([
@@ -93,9 +95,11 @@ function makePinLayer(id: string, color: string): LayerProps {
         0.4, `rgba(${color},0.26)`,
         1.0, `rgba(${color},0.44)`,
       ]),
-      // Fades in as neighbourhood blobs fade out; gone at street level
+      // Starts visible at city overview zoom, fades at street level where pins take over
       'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
-        10, 0.9,
+        8,  0.0,
+        9,  0.85,
+        13, 0.7,
         14, 0.0,
       ]),
     },

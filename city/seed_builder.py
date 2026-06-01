@@ -192,22 +192,8 @@ def _fetch_osm_neighborhoods(city: dict) -> list[Neighborhood]:
         if len(neighborhoods) == 8:
             break
 
-    if len(neighborhoods) < 3:
-        # Synthetic hex-grid fallback: 6 points at ~5km spacing around city center
-        import math
-        R_LAT = 0.045  # ≈ 5km
-        R_LON = R_LAT / math.cos(math.radians(lat))
-        for i, deg in enumerate([0, 60, 120, 180, 240, 300]):
-            rad = math.radians(deg)
-            nlat = lat + R_LAT * math.cos(rad)
-            nlon = lon + R_LON * math.sin(rad)
-            nid = f"area_{i}"
-            if nid not in seen:
-                neighborhoods.append(Neighborhood(
-                    id=nid, name=f"Area {i + 1}", center=(nlat, nlon), polygon=[],
-                    best_times={"morning": 0.7, "afternoon": 0.8, "evening": 0.6},
-                    crowd_index={"weekday": 0.5, "weekend": 0.7},
-                ))
+    if not neighborhoods:
+        neighborhoods.append(_fallback_neighborhood(city))
 
     return neighborhoods
 
