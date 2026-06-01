@@ -16,20 +16,31 @@ const SUB_CHIPS: { categories: string[]; label: string; icon: string }[] = [
   { categories: ['spa'],                 label: 'Spa',         icon: 'spa' },
 ]
 
+export const QUICK_PICKS: { label: string; categories: string[]; icon: string }[] = [
+  { label: 'Best eateries', categories: ['restaurant', 'cafe'],               icon: 'restaurant' },
+  { label: 'Best parks',    categories: ['park'],                              icon: 'park' },
+  { label: 'Top stops',     categories: ['museum', 'tourism', 'historic'],    icon: 'museum' },
+  { label: 'Nightlife',     categories: ['bar', 'nightlife'],                  icon: 'nightlife' },
+  { label: 'Best views',    categories: ['viewpoint'],                         icon: 'landscape' },
+  { label: 'Cafes',         categories: ['cafe'],                              icon: 'local_cafe' },
+]
+
 interface Props {
   active: MapFilter
   activeCategories: string[]
   displayCount: number
   curatedCount: number
   categoryCounts: Record<string, number>
+  activeQuickPickLabel?: string | null
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
+  onQuickPickSelect: (label: string | null, cats: string[]) => void
   empty?: boolean
 }
 
 export function FilterBar({
   active, activeCategories, displayCount, curatedCount,
-  categoryCounts, onSelect, onCategoriesSelect, empty,
+  categoryCounts, activeQuickPickLabel, onSelect, onCategoriesSelect, onQuickPickSelect, empty,
 }: Props) {
   const isAllMode = active === 'all'
 
@@ -43,6 +54,7 @@ export function FilterBar({
   )
 
   const visibleChips = SUB_CHIPS.filter(c => chipCount(c.categories) > 0)
+  const visibleQuickPicks = QUICK_PICKS.filter(p => chipCount(p.categories) > 0)
 
   const chipStyle = (isActive: boolean, isEmptyActive = false): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
@@ -54,6 +66,45 @@ export function FilterBar({
     backdropFilter: 'blur(8px)', cursor: 'pointer',
     whiteSpace: 'nowrap', transition: 'all 0.12s ease',
   })
+
+  // When a quick pick is active: collapse the full FilterBar, show only the active pill
+  if (activeQuickPickLabel) {
+    const pick = QUICK_PICKS.find(p => p.label === activeQuickPickLabel)
+    if (pick) {
+      const count = chipCount(pick.categories)
+      const isEmptyPick = empty && count === 0
+      return (
+        <button
+          onClick={() => onQuickPickSelect(null, [])}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+            padding: '5px 12px', height: 30, borderRadius: 999,
+            background: isEmptyPick ? 'rgba(232,97,90,.12)' : 'rgba(212,168,83,.15)',
+            border: isEmptyPick ? '1.5px solid #e8615a' : '1.5px solid rgba(212,168,83,.5)',
+            color: isEmptyPick ? '#e8615a' : 'var(--color-primary)',
+            boxShadow: isEmptyPick ? 'none' : '0 0 0 4px rgba(212,168,83,.06)',
+            fontSize: '0.73rem', fontWeight: 700,
+            backdropFilter: 'blur(10px)', cursor: 'pointer',
+            whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+            animation: isEmptyPick ? 'pillPulse 1.3s ease-in-out infinite' : 'none',
+          }}
+        >
+          <span className="ms fill" style={{ fontSize: 14 }}>{pick.icon}</span>
+          {pick.label}
+          <span style={{ opacity: 0.7, fontSize: '0.68rem', fontWeight: 700 }}>· {count}</span>
+          <span
+            className="ms"
+            style={{
+              fontSize: 13, marginLeft: 2, opacity: 0.7,
+              animation: isEmptyPick ? 'xBounce 1s ease-in-out infinite' : 'none',
+            }}
+          >
+            close
+          </span>
+        </button>
+      )
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
@@ -100,7 +151,7 @@ export function FilterBar({
         </button>
       </div>
 
-      {/* Row 2: Quick filter pills — always visible horizontal scroll */}
+      {/* Row 2: Sub-category chips — always visible horizontal scroll */}
       {isAllMode && (
         <div
           data-testid="subcategory-scroll"
@@ -131,6 +182,41 @@ export function FilterBar({
                     close
                   </span>
                 )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Row 3: Quick pick pills — curated named shortcuts */}
+      {isAllMode && visibleQuickPicks.length > 0 && (
+        <div
+          style={{
+            display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2,
+            maxWidth: 'calc(100vw - 32px)',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {visibleQuickPicks.map(pick => {
+            const count = chipCount(pick.categories)
+            return (
+              <button
+                key={pick.label}
+                onClick={() => onQuickPickSelect(pick.label, pick.categories)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                  padding: '4px 11px', height: 30, borderRadius: 999,
+                  background: 'rgba(15,20,30,.86)',
+                  border: '1px solid rgba(212,168,83,.22)',
+                  color: 'rgba(212,168,83,.8)',
+                  fontSize: '0.72rem', fontWeight: 600,
+                  backdropFilter: 'blur(10px)', cursor: 'pointer',
+                  whiteSpace: 'nowrap', transition: 'all 0.12s ease',
+                }}
+              >
+                <span className="ms fill" style={{ fontSize: 13 }}>{pick.icon}</span>
+                {pick.label}
+                <span style={{ opacity: 0.55, fontSize: '0.67rem' }}>· {count}</span>
               </button>
             )
           })}

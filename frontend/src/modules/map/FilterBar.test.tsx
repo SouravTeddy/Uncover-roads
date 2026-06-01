@@ -37,6 +37,7 @@ import { vi } from 'vitest'
 import { FilterBar } from './FilterBar'
 
 const noop = () => {}
+const noopQP = (_label: string | null, _cats: string[]) => {}
 
 const baseCounts: Record<string, number> = {
   historic: 8, tourism: 5, cafe: 14, park: 3, restaurant: 11,
@@ -51,7 +52,7 @@ describe('FilterBar component', () => {
         active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop}
+        onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
     expect(screen.getByRole('button', { name: /All/i })).toBeTruthy()
@@ -63,7 +64,7 @@ describe('FilterBar component', () => {
         active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop}
+        onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -78,7 +79,7 @@ describe('FilterBar component', () => {
         active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop}
+        onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -92,7 +93,7 @@ describe('FilterBar component', () => {
         active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={onCategoriesSelect}
+        onSelect={noop} onCategoriesSelect={onCategoriesSelect} onQuickPickSelect={noopQP}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -106,7 +107,7 @@ describe('FilterBar component', () => {
         active="all" activeCategories={[]} displayCount={50}
         curatedCount={0}
         categoryCounts={baseCounts}
-        onSelect={noop} onCategoriesSelect={noop}
+        onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /All/i }))
@@ -125,6 +126,7 @@ describe('FilterBar component', () => {
         categoryCounts={{}}
         onSelect={() => {}}
         onCategoriesSelect={() => {}}
+        onQuickPickSelect={noopQP}
       />
     )
     expect(screen.queryByText('lock')).toBeNull()
