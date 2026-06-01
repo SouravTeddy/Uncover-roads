@@ -37,6 +37,7 @@ import { GuideBulb } from './GuideBulb'
 import { useGuideMessages } from './useGuideMessages'
 import { shouldShowPaywall } from '../../shared/tier'
 import { useNeighborhoods } from './useNeighborhoods'
+import { useHeatmapSeed } from './useHeatmapSeed'
 import { AreaBlobLayer } from './AreaBlobLayer'
 import { AreaPillsOverlay } from './AreaPillsOverlay'
 
@@ -47,6 +48,7 @@ export function MapScreen() {
   const [activeQuickPickLabel, setActiveQuickPickLabel] = useState<string | null>(null)
   const [mapZoom, setMapZoom] = useState(13)
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
+  const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
 
   const {
@@ -126,6 +128,8 @@ export function MapScreen() {
   [places]);
 
   const neighborhoods = useNeighborhoods(city, places)
+  const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null
+  const heatmapSeeds = useHeatmapSeed(cityCenter, mapCenter)
 
   // Empty area detection
   const isFilterActive = activeCategories.length > 0
@@ -249,6 +253,7 @@ export function MapScreen() {
     handleMoveEnd(center, zoom);
     setMapZoom(zoom)
     setMapBbox(bbox)
+    setMapCenter({ lat: center[0], lon: center[1] })
   }, [handleMoveEnd]);
 
   // Swipe-to-close for cluster picker — mirrors PinCard gesture logic
@@ -582,6 +587,7 @@ export function MapScreen() {
         <AreaBlobLayer
           places={places}
           neighborhoods={neighborhoods}
+          heatmapSeeds={heatmapSeeds}
           visible={activeFilter === 'all' && activeCategories.length === 0}
         />
         <AreaPillsOverlay

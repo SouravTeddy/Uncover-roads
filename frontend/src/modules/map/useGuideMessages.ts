@@ -60,6 +60,15 @@ const PAIR_COMPLEMENT_CATS = ['cafe', 'park', 'restaurant', 'bar']
 const PAIR_TRIGGER_CATS = new Set(['historic', 'museum', 'tourism', 'viewpoint', 'gallery', 'spa', 'spiritual', 'beach'])
 const PAIR_RADIUS_M = 700
 
+// Chains to filter out when picking a meaningful anchor to highlight
+const CHAIN_RE = /cafe coffee day|starbucks|mcdonald|kfc|domino|pizza hut|subway|costa coffee|\bccd\b|barista|burger king|dunkin|taco bell/i
+
+// Category tiers for anchor quality — higher tier = better starting point
+const ANCHOR_TIER: Record<string, number> = {
+  historic: 0, museum: 0, gallery: 0, viewpoint: 0, tourism: 1, park: 1,
+  restaurant: 2, cafe: 3, bar: 4,
+}
+
 export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place | null {
   let best: Place | null = null
   let bestDist = Infinity
@@ -76,8 +85,7 @@ export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place |
 
 /**
  * Build the persona-aware area message.
- * Finds the centroid of persona-matching pins and surfaces the closest one as a starting point.
- * Adapts language to the user's pace preference.
+ * Empathetic tone — suggests, never prescribes. Invites exploration.
  */
 export function computeAreaText(
   city: string,
@@ -89,10 +97,9 @@ export function computeAreaText(
   const matching = mapPlaces.filter(p => categorySet.has(p.category))
 
   if (matching.length === 0) {
-    return `There are ${mapPlaces.length} spots on this map — tap any pin to start exploring ${city}`
+    return `${city} has ${mapPlaces.length} spots loaded — take your time and tap anything that catches your eye`
   }
 
-  // Tally by category and build readable label (combine top 2 if within 20%)
   const catCount: Record<string, number> = {}
   for (const p of matching) catCount[p.category] = (catCount[p.category] ?? 0) + 1
   const sorted = Object.entries(catCount).sort((a, b) => b[1] - a[1])
@@ -101,31 +108,21 @@ export function computeAreaText(
       ? `${CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0]} and ${CATEGORY_LABELS[sorted[1][0]] ?? sorted[1][0]}`
       : (CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0])
 
-  // Find centroid of matching pins
-  const avgLat = matching.reduce((s, p) => s + p.lat, 0) / matching.length
-  const avgLon = matching.reduce((s, p) => s + p.lon, 0) / matching.length
-
-  // Closest place to centroid = natural starting anchor
-  let startPlace = matching[0]
-  let bestDist = Infinity
-  for (const p of matching) {
-    const d = haversineM(avgLat, avgLon, p.lat, p.lon)
-    if (d < bestDist) { bestDist = d; startPlace = p }
-  }
-
   const pace = (persona as unknown as { pace?: string }).pace
   const isSlowPace = pace === 'walking' || pace === 'local'
 
   if (isSlowPace) {
-    return `Since you enjoy taking it slow, start at ${startPlace.title} — it's central to the ${matching.length} spots we think you'll love in ${city}`
+    return `There's a nice spread of ${categoryStr} across ${city} — ${matching.length} spots that feel like your pace. No rush, wander wherever draws you`
   }
 
-  return `Based on your interests, ${city} has ${matching.length} ${categoryStr} worth exploring — ${startPlace.title} is a great first stop`
+  return `${city} has ${matching.length} ${categoryStr} that seem like your kind of thing — explore at your own pace, tap anything interesting`
 }
 
 /**
- * Returns the persona-matched place closest to the centroid of matching pins.
- * Same selection logic as computeAreaText — used to wire the actionPlaceId.
+ * Returns the best place to highlight as a gentle discovery anchor.
+ * Prefers culturally meaningful places (historic, museum, viewpoint, park)
+ * over generic chains (Starbucks, Cafe Coffee Day, etc.).
+ * Uses centroid proximity as a tiebreaker within each tier.
  */
 export function findAreaStartPlace(
   persona: Persona | null,
@@ -134,12 +131,28 @@ export function findAreaStartPlace(
   const tags: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
   const categorySet = new Set(tags.map(t => PLACE_TAG_TO_CATEGORY[t.toLowerCase()] ?? t.toLowerCase()))
   const matching = mapPlaces.filter(p => categorySet.has(p.category))
-  if (matching.length === 0) return mapPlaces[0] ?? null
-  const avgLat = matching.reduce((s, p) => s + p.lat, 0) / matching.length
-  const avgLon = matching.reduce((s, p) => s + p.lon, 0) / matching.length
-  let best = matching[0]
-  let bestDist = Infinity
-  for (const p of matching) {
+  const pool = matching.length > 0 ? matching : mapPlaces
+  if (!pool.length) return null
+
+  // Sort by tier (lower = better), then deprioritise chain names
+  const sorted = [...pool].sort((a, b) => {
+    const tA = ANCHOR_TIER[a.category] ?? 5
+    const tB = ANCHOR_TIER[b.category] ?? 5
+    if (tA !== tB) return tA - tB
+    const cA = CHAIN_RE.test(a.title) ? 1 : 0
+    const cB = CHAIN_RE.test(b.title) ? 1 : 0
+    return cA - cB
+  })
+
+  // Among the top tier, find the one closest to the group centroid
+  const bestTier = ANCHOR_TIER[sorted[0].category] ?? 5
+  const topTier = sorted.filter(p => (ANCHOR_TIER[p.category] ?? 5) === bestTier && !CHAIN_RE.test(p.title))
+  const candidates = topTier.length > 0 ? topTier : sorted
+
+  const avgLat = candidates.reduce((s, p) => s + p.lat, 0) / candidates.length
+  const avgLon = candidates.reduce((s, p) => s + p.lon, 0) / candidates.length
+  let best = candidates[0], bestDist = Infinity
+  for (const p of candidates) {
     const d = haversineM(avgLat, avgLon, p.lat, p.lon)
     if (d < bestDist) { bestDist = d; best = p }
   }
@@ -263,35 +276,32 @@ function buildMessage(
 
   if (key === 'event') {
     const genre = (activePlace?.tags?.genre ?? '').toLowerCase()
-    const match = liveEvents.find(e => {
-      if (e.id === activePlace?.id) return false
-      if (e.genre.toLowerCase() !== genre) return false
-      if (!travelStartDate || !travelEndDate) return false
-      return e.date >= travelStartDate && e.date <= travelEndDate
-    })!
     const text = genre
-      ? `Another ${genre} event nearby — ${match.title}`
-      : `Another event like this nearby — ${match.title}`
+      ? `There's another ${genre} event nearby that falls in your travel window — might be worth a look`
+      : `Another event nearby overlaps with your dates — could be interesting`
     return { id: `event-${now}`, kind: 'event', timestamp: now, text }
   }
 
   if (key === 'build-ready') {
     const stopsPerDay = personaProfile?.stops_per_day ?? 3
+    const effectiveDays = days > 0 ? days : 1
+    const plural = effectiveDays === 1 ? 'day' : 'days'
+    const text = `You've got a solid spread for ${effectiveDays} ${plural} — whenever it feels right, you could start building your route`
     return {
       id: `build-ready-${now}`,
       kind: 'exploring',
       timestamp: now,
-      text: computeBuildReadinessText(selectedPlaces.length, days, stopsPerDay)!,
+      text: computeBuildReadinessText(selectedPlaces.length, days, stopsPerDay) ? text : text,
     }
   }
 
   if (key === 'pair') {
     const lastSel = selectedPlaces[selectedPlaces.length - 1]
     const complement = findNearbyComplement(lastSel, mapPlaces)
-    const complementLabel = CATEGORY_LABELS[complement?.category ?? ''] ?? 'a nearby spot'
+    const complementLabel = CATEGORY_LABELS[complement?.category ?? ''] ?? 'spot'
     const text = complement
-      ? `${lastSel.title} pairs nicely with ${complement.title} (${complementLabel}) just a short walk away`
-      : `${lastSel.title} is a great pick — look for a café or park nearby to round out the stop`
+      ? `There's a ${complementLabel} just a short walk from here — might round the stop out nicely`
+      : `There might be a café or park nearby worth a wander after this`
     return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text, actionPlaceId: complement?.id }
   }
 
@@ -300,7 +310,7 @@ function buildMessage(
     id: `cluster-${now}`,
     kind: 'exploring',
     timestamp: now,
-    text: `Your picks are all close together — great for a focused day, or spread out to cover more of ${city ?? 'the city'}`,
+    text: `Your picks are shaping up into a really walkable stretch — sounds like a good day ahead`,
   }
 }
 
