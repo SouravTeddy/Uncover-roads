@@ -2961,7 +2961,12 @@ def ensure_city_seeded(city_id: str = Query(...)):
         if seed_path.exists():
             try:
                 seed = _json.loads(seed_path.read_text())
-                _supabase.table("city_data").upsert({"id": city_id, "data": seed}).execute()
+                _supabase.table("city_data").upsert({
+                    "id": city_id,
+                    "name": seed.get("name", city_id),
+                    "tier": seed.get("tier", 1),
+                    "data": seed,
+                }).execute()
                 return {"status": "ok"}
             except Exception as exc2:
                 print(f"[ensure_city_seeded] upsert fallback failed for {city_id}: {exc2}")

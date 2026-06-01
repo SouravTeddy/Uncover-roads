@@ -107,7 +107,12 @@ def load_city(city_id: str, supabase=None) -> CityData:
         seed = json.loads(seed_path.read_text())
         if supabase is not None:
             try:
-                supabase.table("city_data").upsert({"id": city_id, "data": seed}).execute()
+                supabase.table("city_data").upsert({
+                    "id": city_id,
+                    "name": seed.get("name", city_id),
+                    "tier": seed.get("tier", 1),
+                    "data": seed,
+                }).execute()
             except Exception:
                 pass  # non-fatal — frontend will still get data next call
         return load_city_from_dict(seed)
