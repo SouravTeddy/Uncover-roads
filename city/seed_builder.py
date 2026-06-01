@@ -88,18 +88,82 @@ LIMIT 8
         return []
 
 
+def _assemble_polygon(relation: dict) -> list[tuple[float, float]]:
+    """Stitch outer member ways of a relation into a single closed polygon ring.
+
+    With `out geom`, each member way has an inline `geometry` list of {lat, lon}
+    dicts. We collect the outer ring ways and chain them end-to-end.
+    Returns up to 200 (lat, lon) points, or [] if no geometry is available.
+    """
+    outer_ways: list[list[tuple[float, float]]] = []
+    for member in relation.get("members", []):
+        if member.get("type") != "way" or member.get("role") not in ("outer", ""):
+            continue
+        pts = [(pt["lat"], pt["lon"]) for pt in member.get("geometry", [])
+               if "lat" in pt and "lon" in pt]
+        if pts:
+            outer_ways.append(pts)
+
+    if not outer_ways:
+        return []
+    if len(outer_ways) == 1:
+        ring = outer_ways[0]
+    else:
+        # Stitch ways into a continuous ring by matching endpoints
+        ring: list[tuple[float, float]] = list(outer_ways[0])
+        remaining = outer_ways[1:]
+        tol = 1e-5
+        for _ in range(len(remaining) * 2):
+            if not remaining:
+                break
+            tail = ring[-1]
+            matched = False
+            for j, way in enumerate(remaining):
+                if abs(tail[0] - way[0][0]) < tol and abs(tail[1] - way[0][1]) < tol:
+                    ring.extend(way[1:])
+                    remaining.pop(j)
+                    matched = True
+                    break
+                if abs(tail[0] - way[-1][0]) < tol and abs(tail[1] - way[-1][1]) < tol:
+                    ring.extend(reversed(way[:-1]))
+                    remaining.pop(j)
+                    matched = True
+                    break
+            if not matched and remaining:
+                ring.extend(remaining.pop(0))
+
+    # Thin to ≤200 points to keep JSONB size reasonable
+    if len(ring) > 200:
+        step = max(1, len(ring) // 200)
+        ring = ring[::step]
+
+    return ring
+
+
+def _polygon_centroid(polygon: list[tuple[float, float]]) -> tuple[float, float]:
+    """Return the arithmetic centroid of a polygon ring."""
+    lat = sum(p[0] for p in polygon) / len(polygon)
+    lon = sum(p[1] for p in polygon) / len(polygon)
+    return lat, lon
+
+
 def _fetch_osm_neighborhoods(city: dict) -> list[Neighborhood]:
-    """Return 3–5 administrative neighborhoods near city center via OSM Overpass."""
+    """Return 3–5 administrative neighborhoods near city center via OSM Overpass.
+
+    Uses `out geom` to retrieve full boundary geometry for each relation so
+    that polygon rings can be assembled and stored. Falls back to centroid-only
+    if geometry is unavailable.
+    """
     query = f"""
-[out:json][timeout:25];
+[out:json][timeout:30];
 (
   relation["admin_level"~"8|9|10"]["name"]["boundary"="administrative"]
   (around:12000,{city['lat']},{city['lon']});
 );
-out center;
+out geom;
 """
     try:
-        r = requests.post(_OVERPASS_URL, data={"data": query}, timeout=30)
+        r = requests.post(_OVERPASS_URL, data={"data": query}, timeout=35)
         r.raise_for_status()
         elements = r.json().get("elements", [])
         neighborhoods = []
@@ -108,12 +172,23 @@ out center;
             name = el.get("tags", {}).get("name", "").strip()
             if not name or name in seen:
                 continue
-            center = el.get("center", {})
-            lat = center.get("lat", city["lat"])
-            lon = center.get("lon", city["lon"])
+
+            polygon = _assemble_polygon(el)
+
+            # Compute centroid: prefer polygon centroid, then OSM bounds center, then city center
+            if polygon:
+                lat, lon = _polygon_centroid(polygon)
+            else:
+                bounds = el.get("bounds", {})
+                if bounds:
+                    lat = (bounds["minlat"] + bounds["maxlat"]) / 2
+                    lon = (bounds["minlon"] + bounds["maxlon"]) / 2
+                else:
+                    lat, lon = city["lat"], city["lon"]
+
             nid = _slugify(name)
             neighborhoods.append(Neighborhood(
-                id=nid, name=name, center=(lat, lon), polygon=[],
+                id=nid, name=name, center=(lat, lon), polygon=polygon,
                 best_times={"morning": 0.7, "afternoon": 0.8, "evening": 0.6},
                 crowd_index={"weekday": 0.5, "weekend": 0.7},
             ))
@@ -313,7 +388,7 @@ def build_city_seed(city_entry: dict) -> CityData:
         "name": city_entry["name"],
         "tier": city_entry["tier"],
         "center": [city_entry["lat"], city_entry["lon"]],
-        "timezone": city_entry["timezone"],
+        "timezone": city_entry.get("timezone", "UTC"),
         "climate": climate,
         "movement": {"walkability": walkability, "transit": 2},
         "culture": {
@@ -323,7 +398,8 @@ def build_city_seed(city_entry: dict) -> CityData:
         "neighborhoods": [
             {
                 "id": n.id, "name": n.name,
-                "center": list(n.center), "polygon": [],
+                "center": list(n.center),
+                "polygon": [list(p) for p in n.polygon],
                 "best_times": n.best_times, "crowd_index": n.crowd_index,
             }
             for n in neighborhoods
