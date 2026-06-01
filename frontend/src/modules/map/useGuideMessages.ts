@@ -256,9 +256,6 @@ function buildMessage(
   personaProfile: PersonaProfile | null,
   mapPlaces: Place[],
   activePlace: Place | null,
-  liveEvents: LiveEvent[],
-  travelStartDate: string | null,
-  travelEndDate: string | null,
   days: number,
 ): GuideMessage {
   const now = Date.now()
@@ -379,7 +376,7 @@ export function useGuideMessages(
 
         toAppend.push(buildMessage(
           key, selectedPlaces, city, persona, personaProfile,
-          mapPlaces, activePlace, liveEvents, travelStartDate, travelEndDate, days,
+          mapPlaces, activePlace, days,
         ))
       }
     }
