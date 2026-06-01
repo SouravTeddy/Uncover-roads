@@ -143,8 +143,8 @@ function getInitialScreen(): Screen {
     if (params.has('code') || window.location.hash.includes('access_token=')) {
       return 'login';
     }
-    const stored = localStorage.getItem('ur_persona');
-    if (stored) {
+    const hasCompletedOB = localStorage.getItem('ur_persona') || localStorage.getItem('ur_ob_done');
+    if (hasCompletedOB) {
       try {
         const lastScreen = localStorage.getItem('ur_ss_screen');
         if (lastScreen) {
@@ -168,7 +168,11 @@ function getInitialScreen(): Screen {
 function getStoredPersona(): Persona | null {
   try {
     const stored = localStorage.getItem('ur_persona');
-    return stored ? (JSON.parse(stored) as Persona) : null;
+    if (!stored) return null;
+    const parsed = JSON.parse(stored) as Partial<Persona>;
+    // Reject stubs written by SET_PERSONA_PROFILE (they lack venue_filters)
+    if (!parsed.venue_filters || parsed.venue_filters.length === 0 && !parsed.archetypeData) return null;
+    return parsed as Persona;
   } catch {
     return null;
   }
@@ -626,8 +630,9 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_PERSONA_PROFILE':
       // Persist immediately so the app knows OB is done even if the user
       // closes before hitting "Start Planning" on the PersonaScreen.
+      // Use a dedicated sentinel key so we never clobber a full Persona in ur_persona.
       try {
-        localStorage.setItem('ur_persona', JSON.stringify({ archetype: action.profile.archetype }));
+        localStorage.setItem('ur_ob_done', '1');
         localStorage.setItem('ur_persona_profile', JSON.stringify(action.profile));
       } catch { /* ignore */ }
       return { ...state, personaProfile: action.profile };
