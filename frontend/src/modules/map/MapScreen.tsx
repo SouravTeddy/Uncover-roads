@@ -44,6 +44,7 @@ import { AreaPillsOverlay } from './AreaPillsOverlay'
 
 export function MapScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [activeQuickPickLabel, setActiveQuickPickLabel] = useState<string | null>(null)
   const [mapZoom, setMapZoom] = useState(13)
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
@@ -129,6 +130,9 @@ export function MapScreen() {
   // Empty area detection
   const isFilterActive = activeCategories.length > 0
   const activeCategoryLabel = (() => {
+    if (activeQuickPickLabel) {
+      return activeQuickPickLabel.replace(/^(Best |Top )/, '').toLowerCase()
+    }
     const SUB_CHIP_LABELS: Record<string, string> = {
       restaurant: 'eateries', cafe: 'cafés', park: 'parks', museum: 'museums',
       historic: 'landmarks', tourism: 'attractions', viewpoint: 'viewpoints',
@@ -344,7 +348,12 @@ export function MapScreen() {
 
   function handleFilterSelect(f: MapFilter) {
     setFilter(f);
-    if (f !== 'all') setActiveCategories([]);
+    if (f !== 'all') { setActiveCategories([]); setActiveQuickPickLabel(null); }
+  }
+
+  function handleQuickPickSelect(label: string | null, cats: string[]) {
+    setActiveQuickPickLabel(label)
+    setActiveCategories(cats)
   }
 
   // ── Phase 4: new pin click handler — updates both local and store state ──
@@ -688,8 +697,10 @@ export function MapScreen() {
             displayCount={displayCount}
             curatedCount={curatedCount}
             categoryCounts={categoryCounts}
+            activeQuickPickLabel={activeQuickPickLabel}
             onSelect={handleFilterSelect}
-            onCategoriesSelect={setActiveCategories}
+            onCategoriesSelect={(cats) => { setActiveCategories(cats); setActiveQuickPickLabel(null) }}
+            onQuickPickSelect={handleQuickPickSelect}
             empty={emptyArea && activeCategories.length > 0}
           />
         </div>
