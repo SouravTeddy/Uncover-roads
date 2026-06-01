@@ -596,6 +596,28 @@ def map_data(
         except Exception:
             pass
 
+    # Auto-seed city_data for cities we haven't seen before
+    if _supabase and city and clat is not None and clon is not None:
+        try:
+            city_id = re.sub(r'[^a-z0-9]+', '_', city.lower().strip()).strip('_')
+            existing = _supabase.table("city_data").select("id").eq("id", city_id).maybe_single().execute()
+            if existing.data is None:
+                minimal = {
+                    "id": city_id, "name": city, "tier": 2,
+                    "center": [clat, clon], "timezone": "UTC",
+                    "climate": {}, "movement": {}, "culture": {},
+                    "neighborhoods": [], "insert_candidates": [],
+                    "scenic_routes": [], "transit_edges": [],
+                    "engine_modifiers": {}, "landmark_anchors": [], "hidden_gems": [],
+                }
+                _supabase.table("city_data").insert({
+                    "id": city_id, "name": city, "tier": 2,
+                    "country_code": "", "data": minimal,
+                }).execute()
+                print(f"MAP DATA: auto-seeded city_data for {city_id}")
+        except Exception as e:
+            print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
+
     print(f"MAP DATA: returning {len(places)} places for tile {tile_key} ({city})")
     return places
 
