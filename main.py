@@ -601,7 +601,9 @@ def map_data(
         try:
             city_id = re.sub(r'[^a-z0-9]+', '_', city.lower().strip()).strip('_')
             existing = _supabase.table("city_data").select("id").eq("id", city_id).maybe_single().execute()
-            if existing.data is None:
+            # Handle supabase-py 1.x (returns dict/None) and 2.x (returns SyncSingleAPIResponse)
+            existing_data = existing.data if hasattr(existing, "data") else existing
+            if existing_data is None:
                 minimal = {
                     "id": city_id, "name": city, "tier": 2,
                     "center": [clat, clon], "timezone": "UTC",
