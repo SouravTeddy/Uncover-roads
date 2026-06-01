@@ -22,7 +22,6 @@ interface Props {
   displayCount: number
   curatedCount: number
   categoryCounts: Record<string, number>
-  forYouCategories?: string[]   // persona-derived category set
   onSelect: (filter: MapFilter) => void
   onCategoriesSelect: (categories: string[]) => void
   empty?: boolean
@@ -30,7 +29,7 @@ interface Props {
 
 export function FilterBar({
   active, activeCategories, displayCount, curatedCount,
-  categoryCounts, forYouCategories = [], onSelect, onCategoriesSelect, empty,
+  categoryCounts, onSelect, onCategoriesSelect, empty,
 }: Props) {
   const isAllMode = active === 'all'
 
@@ -42,12 +41,7 @@ export function FilterBar({
     c.categories.length === activeCategories.length &&
     c.categories.every(cat => activeCategories.includes(cat))
   )
-  const isForYouActive =
-    forYouCategories.length > 0 &&
-    activeCategories.length === forYouCategories.length &&
-    forYouCategories.every(c => activeCategories.includes(c))
 
-  const forYouCount = chipCount(forYouCategories)
   const visibleChips = SUB_CHIPS.filter(c => chipCount(c.categories) > 0)
 
   const chipStyle = (isActive: boolean, isEmptyActive = false): React.CSSProperties => ({
@@ -116,19 +110,6 @@ export function FilterBar({
             scrollbarWidth: 'none',
           }}
         >
-          {/* For you — only shown when persona has matching pins */}
-          {forYouCategories.length > 0 && forYouCount > 0 && (
-            <button
-              onClick={() => onCategoriesSelect(isForYouActive ? [] : forYouCategories)}
-              style={chipStyle(isForYouActive)}
-            >
-              <span className="ms fill" style={{ fontSize: 12 }}>person</span>
-              For you
-              <span style={{ opacity: 0.6, fontSize: '0.68rem' }}>· {forYouCount}</span>
-              {isForYouActive && <span className="ms" style={{ fontSize: 11, marginLeft: 1 }}>close</span>}
-            </button>
-          )}
-
           {visibleChips.map(chip => {
             const isActive = activeChip?.label === chip.label
             const isEmptyActive = isActive && empty
