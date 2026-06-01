@@ -99,7 +99,13 @@ def load_city(city_id: str, supabase=None) -> CityData:
             return load_city_from_dict(row.data["data"])
     seed_path = Path(__file__).parent / f"seed/{city_id}.json"
     if seed_path.exists():
-        return load_city_from_dict(json.loads(seed_path.read_text()))
+        seed = json.loads(seed_path.read_text())
+        if supabase is not None:
+            try:
+                supabase.table("city_data").upsert({"id": city_id, "data": seed}).execute()
+            except Exception:
+                pass  # non-fatal — frontend will still get data next call
+        return load_city_from_dict(seed)
     if supabase is not None:
         wl = supabase.table("city_whitelist").select("*").eq("city_id", city_id).maybe_single().execute()
         if wl.data:

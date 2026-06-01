@@ -2952,9 +2952,19 @@ def ensure_city_seeded(city_id: str = Query(...)):
     if _supabase is None:
         return {"status": "unavailable"}
     try:
+        # load_city writes to Supabase when loading from a local seed file
         load_city(city_id, _supabase)
         return {"status": "ok"}
     except ValueError:
+        # City not found in seed files or whitelist — try direct seed file upsert as last resort
+        seed_path = _Path(f"city/seed/{city_id}.json")
+        if seed_path.exists():
+            try:
+                seed = _json.loads(seed_path.read_text())
+                _supabase.table("city_data").upsert({"id": city_id, "data": seed}).execute()
+                return {"status": "ok"}
+            except Exception as exc2:
+                print(f"[ensure_city_seeded] upsert fallback failed for {city_id}: {exc2}")
         return {"status": "not_found"}
     except Exception as exc:
         print(f"[ensure_city_seeded] error for {city_id}: {exc}")
