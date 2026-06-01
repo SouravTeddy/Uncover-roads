@@ -2965,6 +2965,7 @@ def ensure_city_seeded(city_id: str = Query(...)):
                     "id": city_id,
                     "name": seed.get("name", city_id),
                     "tier": seed.get("tier", 1),
+                    "country_code": seed.get("country_code", ""),
                     "data": seed,
                 }).execute()
                 return {"status": "ok"}
