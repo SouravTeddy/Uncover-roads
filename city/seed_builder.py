@@ -148,58 +148,68 @@ def _polygon_centroid(polygon: list[tuple[float, float]]) -> tuple[float, float]
 
 
 def _fetch_osm_neighborhoods(city: dict) -> list[Neighborhood]:
-    """Return 3–5 administrative neighborhoods near city center via OSM Overpass.
+    """Return 5–8 administrative neighborhoods near city center via OSM Overpass.
 
-    Uses `out geom` to retrieve full boundary geometry for each relation so
-    that polygon rings can be assembled and stored. Falls back to centroid-only
-    if geometry is unavailable.
+    Tries admin_level 7|8 first (works for most Asian/South Asian cities),
+    then falls back to 8|9|10 (European cities), then 5|6 (district-level).
+    Uses `out center` (much faster than `out geom`).
+    Falls back to synthetic hex-grid if all queries fail or return nothing.
     """
-    query = f"""
-[out:json][timeout:30];
-(
-  relation["admin_level"~"8|9|10"]["name"]["boundary"="administrative"]
-  (around:12000,{city['lat']},{city['lon']});
-);
-out geom;
-"""
-    try:
-        r = requests.post(_OVERPASS_URL, data={"data": query}, timeout=35)
-        r.raise_for_status()
-        elements = r.json().get("elements", [])
-        neighborhoods = []
-        seen: set[str] = set()
-        for el in elements:
-            name = el.get("tags", {}).get("name", "").strip()
-            if not name or name in seen:
-                continue
-
-            polygon = _assemble_polygon(el)
-
-            # Compute centroid: prefer polygon centroid, then OSM bounds center, then city center
-            if polygon:
-                lat, lon = _polygon_centroid(polygon)
-            else:
-                bounds = el.get("bounds", {})
-                if bounds:
-                    lat = (bounds["minlat"] + bounds["maxlat"]) / 2
-                    lon = (bounds["minlon"] + bounds["maxlon"]) / 2
-                else:
-                    lat, lon = city["lat"], city["lon"]
-
-            nid = _slugify(name)
-            neighborhoods.append(Neighborhood(
-                id=nid, name=name, center=(lat, lon), polygon=polygon,
-                best_times={"morning": 0.7, "afternoon": 0.8, "evening": 0.6},
-                crowd_index={"weekday": 0.5, "weekend": 0.7},
-            ))
-            seen.add(name)
-            if len(neighborhoods) == 5:
+    lat, lon = city['lat'], city['lon']
+    level_bands = ["7|8", "8|9|10", "5|6"]
+    elements: list = []
+    for band in level_bands:
+        query = (
+            f'[out:json][timeout:25];'
+            f'(relation["admin_level"~"{band}"]["name"]["boundary"="administrative"]'
+            f'(around:15000,{lat},{lon}););out center;'
+        )
+        try:
+            r = requests.post(_OVERPASS_URL, data={"data": query}, timeout=30)
+            r.raise_for_status()
+            elements = r.json().get("elements", [])
+            if elements:
                 break
-        if not neighborhoods:
-            neighborhoods.append(_fallback_neighborhood(city))
-        return neighborhoods
-    except Exception:
-        return [_fallback_neighborhood(city)]
+        except Exception:
+            continue
+
+    neighborhoods: list[Neighborhood] = []
+    seen: set[str] = set()
+    for el in elements:
+        name = el.get("tags", {}).get("name", "").strip()
+        if not name or name in seen:
+            continue
+        center = el.get("center", {})
+        nlat = center.get("lat", lat)
+        nlon = center.get("lon", lon)
+        nid = _slugify(name)
+        neighborhoods.append(Neighborhood(
+            id=nid, name=name, center=(nlat, nlon), polygon=[],
+            best_times={"morning": 0.7, "afternoon": 0.8, "evening": 0.6},
+            crowd_index={"weekday": 0.5, "weekend": 0.7},
+        ))
+        seen.add(name)
+        if len(neighborhoods) == 8:
+            break
+
+    if len(neighborhoods) < 3:
+        # Synthetic hex-grid fallback: 6 points at ~5km spacing around city center
+        import math
+        R_LAT = 0.045  # ≈ 5km
+        R_LON = R_LAT / math.cos(math.radians(lat))
+        for i, deg in enumerate([0, 60, 120, 180, 240, 300]):
+            rad = math.radians(deg)
+            nlat = lat + R_LAT * math.cos(rad)
+            nlon = lon + R_LON * math.sin(rad)
+            nid = f"area_{i}"
+            if nid not in seen:
+                neighborhoods.append(Neighborhood(
+                    id=nid, name=f"Area {i + 1}", center=(nlat, nlon), polygon=[],
+                    best_times={"morning": 0.7, "afternoon": 0.8, "evening": 0.6},
+                    crowd_index={"weekday": 0.5, "weekend": 0.7},
+                ))
+
+    return neighborhoods
 
 
 def _fallback_neighborhood(city: dict) -> Neighborhood:

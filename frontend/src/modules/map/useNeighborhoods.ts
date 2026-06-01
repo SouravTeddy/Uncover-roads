@@ -46,20 +46,41 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
     })()
   }, [city])
 
+  // When city_data has too few neighborhoods (common for Indian/Asian cities where
+  // OSM admin boundaries don't follow admin_level 8-10), generate a synthetic
+  // hexagonal grid so the hood heatmap layer shows meaningful city-wide coverage.
+  const effectiveRaw = useMemo(() => {
+    if (raw.length >= 3) return raw
+    const centerLat = raw[0]?.center[0] ?? (places[0]?.lat ?? 0)
+    const centerLon = raw[0]?.center[1] ?? (places[0]?.lon ?? 0)
+    if (!centerLat && !centerLon) return raw
+    // 6 hex points at ~5km + the center itself
+    const R_LAT = 0.045  // ≈ 5km
+    const R_LON = R_LAT / Math.cos(centerLat * Math.PI / 180)
+    const hexPoints = [0, 60, 120, 180, 240, 300].map((deg, i) => {
+      const rad = deg * Math.PI / 180
+      return {
+        id: `synthetic_${i}`,
+        name: `Area ${i + 1}`,
+        center: [centerLat + R_LAT * Math.cos(rad), centerLon + R_LON * Math.sin(rad)] as [number, number],
+        polygon: [] as [number, number][],
+      }
+    })
+    return [...(raw.length ? raw : [{ id: 'synthetic_center', name: 'Center', center: [centerLat, centerLon] as [number, number], polygon: [] as [number, number][] }]), ...hexPoints]
+  }, [raw, places])
+
   return useMemo(() => {
-    if (!raw.length) return []
-    return raw.map(n => {
+    if (!effectiveRaw.length) return []
+    return effectiveRaw.map(n => {
       const [lat, lon] = n.center
-      // radius = max distance from centroid to any polygon vertex
       const radiusM = n.polygon.length
         ? Math.max(...n.polygon.map(([plat, plon]) => distM(lat, lon, plat, plon))) * 1.6
         : 800
       const park = /park|garden|forest|green|reserve|nature/i.test(n.name)
-      // assign each place to nearest centroid
       const areaPlaces = places.filter(p => {
-        if (!raw.length) return false
-        let best = raw[0], bestD = Infinity
-        for (const nb of raw) {
+        if (!effectiveRaw.length) return false
+        let best = effectiveRaw[0], bestD = Infinity
+        for (const nb of effectiveRaw) {
           const d = distM(p.lat, p.lon, nb.center[0], nb.center[1])
           if (d < bestD) { bestD = d; best = nb }
         }
@@ -67,5 +88,5 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
       })
       return { id: n.id, name: n.name, lat, lon, radiusM, park, spotCount: areaPlaces.length, places: areaPlaces }
     })
-  }, [raw, places])
+  }, [effectiveRaw, places])
 }
