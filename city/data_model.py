@@ -77,7 +77,7 @@ def load_city_from_dict(d: dict) -> CityData:
         name=d["name"],
         tier=d.get("tier", 1),
         center=tuple(d["center"]),
-        timezone=d["timezone"],
+        timezone=d.get("timezone", "UTC"),
         climate=d.get("climate", {}),
         movement=d.get("movement", {}),
         culture=d.get("culture", {}),
