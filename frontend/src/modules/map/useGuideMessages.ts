@@ -292,7 +292,7 @@ function buildMessage(
     const text = complement
       ? `${lastSel.title} pairs nicely with ${complement.title} (${complementLabel}) just a short walk away`
       : `${lastSel.title} is a great pick — look for a café or park nearby to round out the stop`
-    return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text }
+    return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text, actionPlaceId: complement?.id }
   }
 
   // cluster

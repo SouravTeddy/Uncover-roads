@@ -199,34 +199,46 @@ export function GuideBulb({ messages, hasUnread, onRead, onPlaceAction }: GuideB
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px 10px' }}>
-              {sorted.map((msg, i) => (
-                <div
-                  key={msg.id}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 12,
-                    background: 'rgba(255,255,255,.04)',
-                    border: `1px solid ${KIND_COLOR[msg.kind]}22`,
-                    animation: `guideMsgIn 0.25s cubic-bezier(.22,1,.36,1) ${i * 60}ms both`,
-                  }}
-                >
-                  <style>{`
-                    @keyframes guideMsgIn {
-                      from { opacity: 0; transform: translateY(10px); }
-                      to   { opacity: 1; transform: translateY(0); }
-                    }
-                  `}</style>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <span
-                      className="ms fill"
-                      style={{ fontSize: 15, color: KIND_COLOR[msg.kind], marginTop: 1, flexShrink: 0 }}
-                    >
-                      {KIND_ICON[msg.kind]}
-                    </span>
-                    <div style={{ flex: 1 }}>
+              <style>{`
+                @keyframes guideMsgIn {
+                  from { opacity: 0; transform: translateY(10px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+                .guide-msg-tappable:active { background: rgba(212,168,83,.08) !important; }
+              `}</style>
+              {sorted.map((msg, i) => {
+                const tappable = !!(msg.actionPlaceId && onPlaceAction)
+                const Tag = tappable ? 'button' : 'div'
+                return (
+                  <Tag
+                    key={msg.id}
+                    {...(tappable ? {
+                      onClick: () => { onPlaceAction!(msg.actionPlaceId!); setOpen(false) },
+                      className: 'guide-msg-tappable',
+                    } : {})}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,.04)',
+                      border: `1px solid ${KIND_COLOR[msg.kind]}22`,
+                      animation: `guideMsgIn 0.25s cubic-bezier(.22,1,.36,1) ${i * 60}ms both`,
+                      cursor: tappable ? 'pointer' : 'default',
+                      textAlign: 'left',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span
+                        className="ms fill"
+                        style={{ fontSize: 15, color: KIND_COLOR[msg.kind], marginTop: 1, flexShrink: 0 }}
+                      >
+                        {KIND_ICON[msg.kind]}
+                      </span>
                       <p
                         style={{
                           margin: 0,
+                          flex: 1,
                           fontSize: '0.82rem',
                           fontWeight: 600,
                           color: 'var(--color-text-1)',
@@ -235,32 +247,18 @@ export function GuideBulb({ messages, hasUnread, onRead, onPlaceAction }: GuideB
                       >
                         {msg.text}
                       </p>
-                      {msg.actionPlaceId && onPlaceAction && (
-                        <button
-                          onClick={() => { onPlaceAction(msg.actionPlaceId!); setOpen(false) }}
-                          style={{
-                            marginTop: 8,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '4px 10px',
-                            borderRadius: 999,
-                            background: 'rgba(212,168,83,.12)',
-                            border: '1px solid rgba(212,168,83,.3)',
-                            color: '#d4a853',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
+                      {tappable && (
+                        <span
+                          className="ms"
+                          style={{ fontSize: 14, color: 'rgba(212,168,83,.5)', marginTop: 1, flexShrink: 0 }}
                         >
-                          <span className="ms fill" style={{ fontSize: 12 }}>location_on</span>
-                          Show on map
-                        </button>
+                          chevron_right
+                        </span>
                       )}
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </Tag>
+                )
+              })}
             </div>
           )}
         </div>
