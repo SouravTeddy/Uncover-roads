@@ -94,14 +94,13 @@ def load_city_from_dict(d: dict) -> CityData:
 def load_city(city_id: str, supabase=None) -> CityData:
     """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline.
 
-    supabase-py 2.x: maybe_single().execute() returns the row dict directly (not APIResponse),
-    or None when no rows match. Regular .execute() returns APIResponse with .data list.
+    supabase-py 2.x: maybe_single().execute() returns a SingleAPIResponse object.
+    Row data is at response.data (dict or None when no rows match).
     """
     if supabase is not None:
-        # maybe_single returns the row dict directly, or None
         row = supabase.table("city_data").select("data").eq("id", city_id).maybe_single().execute()
-        if row is not None:
-            return load_city_from_dict(row["data"])
+        if row.data is not None:
+            return load_city_from_dict(row.data["data"])
     seed_path = Path(__file__).parent / f"seed/{city_id}.json"
     if seed_path.exists():
         seed = json.loads(seed_path.read_text())
@@ -119,7 +118,7 @@ def load_city(city_id: str, supabase=None) -> CityData:
         return load_city_from_dict(seed)
     if supabase is not None:
         wl = supabase.table("city_whitelist").select("*").eq("city_id", city_id).maybe_single().execute()
-        if wl is not None:
+        if wl.data is not None:
             from city.on_demand_seeder import seed_city_on_demand
-            return seed_city_on_demand(wl, supabase)
+            return seed_city_on_demand(wl.data, supabase)
     raise ValueError(f"city_not_found: {city_id}")
