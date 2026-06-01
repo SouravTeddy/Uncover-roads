@@ -2,10 +2,12 @@ import { Source, Layer } from 'react-map-gl/maplibre'
 import type { LayerProps } from 'react-map-gl/maplibre'
 import type { Place } from '../../shared/types'
 import type { AreaNeighborhood } from './useNeighborhoods'
+import type { HeatmapPoint } from './useHeatmapSeed'
 
 interface Props {
   places: Place[]
   neighborhoods: AreaNeighborhood[]
+  heatmapSeeds: HeatmapPoint[]
   visible: boolean
 }
 
@@ -33,9 +35,19 @@ function hoodGeoJSON(hoods: AreaNeighborhood[], parkOnly: boolean) {
       .map(n => ({
         type: 'Feature' as const,
         geometry: { type: 'Point' as const, coordinates: [n.lon, n.lat] },
-        // weight based on how many spots this neighbourhood has — richer areas glow brighter
         properties: { weight: Math.min(1.0, 0.4 + n.spotCount * 0.06) },
       })),
+  }
+}
+
+function seedGeoJSON(seeds: HeatmapPoint[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: seeds.map(s => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] },
+      properties: { weight: 0.7 },
+    })),
   }
 }
 
@@ -111,14 +123,23 @@ const hoodParkLayer = makeHoodLayer('area-blobs-hood-park-layer', '95,165,112')
 const pinCityLayer  = makePinLayer('area-blobs-city-layer',  '214,170,86')
 const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
-export function AreaBlobLayer({ places, neighborhoods, visible }: Props) {
+export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible }: Props) {
   if (!visible) return null
 
-  const hasHoods = neighborhoods.length > 0
+  // Heatmap seeds power the city-wide overview layer — prefer over neighborhood centroids
+  const hasSeeds = heatmapSeeds.length > 0
+  const hasHoods = !hasSeeds && neighborhoods.length > 0
 
   return (
     <>
-      {/* Neighbourhood-centroid blobs — city-wide, visible when zoomed out */}
+      {/* City-wide overview — driven by lightweight heatmap seed points from /heatmap-seed */}
+      {hasSeeds && (
+        <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(heatmapSeeds)}>
+          <Layer {...hoodCityLayer} />
+        </Source>
+      )}
+
+      {/* Fallback: neighbourhood-centroid blobs when seeds not yet loaded */}
       {hasHoods && (
         <>
           <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>

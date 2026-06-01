@@ -625,6 +625,77 @@ def map_data(
 
 
 # =========================================
+# HEATMAP SEED
+# =========================================
+@app.get("/heatmap-seed")
+def heatmap_seed(lat: float, lon: float, radius_km: int = 80):
+    """Lightweight city-wide heatmap anchor points.
+
+    Returns up to 120 tourism/leisure lat-lon coordinates within radius_km.
+    Used only for heatmap rendering — no place details, no pin display.
+    Cached in map_data_cache with 7-day TTL (data barely changes).
+    Cache key snaps to 1-degree grid (~111km) to maximise hits.
+    """
+    radius_m = min(max(radius_km, 20), 120) * 1000
+    # Snap to 1-degree grid so nearby searches reuse the same cache entry
+    grid_lat = round(round(lat), 0)
+    grid_lon = round(round(lon), 0)
+    tile_key = f"heatmap_{grid_lat}_{grid_lon}_{radius_km}km"
+
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("map_data_cache")
+                .select("places,fetched_at")
+                .eq("tile_key", tile_key)
+                .maybe_single()
+                .execute()
+            )
+            row = _maybe_single_data(cached)
+            if row:
+                fetched_at = datetime.fromisoformat(row["fetched_at"])
+                if datetime.now(timezone.utc) - fetched_at < timedelta(days=7):
+                    return {"points": row["places"]}
+        except Exception:
+            pass
+
+    query = f"""
+[out:json][timeout:25];
+(
+  node["tourism"](around:{radius_m},{lat},{lon});
+  node["leisure"~"park|garden|nature_reserve|national_park"](around:{radius_m},{lat},{lon});
+  way["leisure"~"park|garden|nature_reserve|national_park"](around:{radius_m},{lat},{lon});
+  node["amenity"~"theatre|cinema|place_of_worship"](around:{radius_m},{lat},{lon});
+);
+out center 120;
+"""
+    points: list = []
+    try:
+        r = requests.post(_OVERPASS_URL, data={"data": query},
+                          headers={"User-Agent": "UncoverRoads/1.0"}, timeout=30)
+        r.raise_for_status()
+        for el in r.json().get("elements", []):
+            if el.get("type") == "node":
+                points.append({"lat": el["lat"], "lon": el["lon"]})
+            elif el.get("center"):
+                points.append({"lat": el["center"]["lat"], "lon": el["center"]["lon"]})
+    except Exception as e:
+        print(f"HEATMAP SEED: Overpass failed: {e}")
+
+    if _supabase and points:
+        try:
+            _supabase.table("map_data_cache").upsert({
+                "tile_key":   tile_key,
+                "places":     points,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception:
+            pass
+
+    return {"points": points}
+
+
+# =========================================
 # CITY SEARCH (autocomplete dropdown)
 # =========================================
 @app.get("/city-search")
