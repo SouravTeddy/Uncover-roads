@@ -91,16 +91,26 @@ def load_city_from_dict(d: dict) -> CityData:
     )
 
 
-def load_city(city_id: str, supabase=None) -> CityData:
-    """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline.
+def _maybe_single_data(response) -> dict | None:
+    """Normalize maybe_single().execute() across supabase-py versions.
 
-    supabase-py 2.x: maybe_single().execute() returns a SingleAPIResponse object.
-    Row data is at response.data (dict or None when no rows match).
+    - supabase-py 1.x: returns the row dict directly, or None when no match.
+    - supabase-py 2.x: returns SyncSingleAPIResponse; row dict is at .data, None when no match.
     """
+    if response is None:
+        return None
+    if hasattr(response, "data"):
+        return response.data  # 2.x SyncSingleAPIResponse
+    return response  # 1.x — response IS the dict
+
+
+def load_city(city_id: str, supabase=None) -> CityData:
+    """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline."""
     if supabase is not None:
         row = supabase.table("city_data").select("data").eq("id", city_id).maybe_single().execute()
-        if row.data is not None:
-            return load_city_from_dict(row.data["data"])
+        row_data = _maybe_single_data(row)
+        if row_data is not None:
+            return load_city_from_dict(row_data["data"])
     seed_path = Path(__file__).parent / f"seed/{city_id}.json"
     if seed_path.exists():
         seed = json.loads(seed_path.read_text())
@@ -118,7 +128,8 @@ def load_city(city_id: str, supabase=None) -> CityData:
         return load_city_from_dict(seed)
     if supabase is not None:
         wl = supabase.table("city_whitelist").select("*").eq("city_id", city_id).maybe_single().execute()
-        if wl.data is not None:
+        wl_data = _maybe_single_data(wl)
+        if wl_data is not None:
             from city.on_demand_seeder import seed_city_on_demand
-            return seed_city_on_demand(wl.data, supabase)
+            return seed_city_on_demand(wl_data, supabase)
     raise ValueError(f"city_not_found: {city_id}")
