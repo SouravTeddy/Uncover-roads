@@ -29,23 +29,25 @@ function makeLayer(id: string, color: string): LayerProps {
     type: 'heatmap',
     paint: {
       'heatmap-weight': expr(['get', 'weight']),
-      // Wide radius at low zoom so nearby pins merge into area blobs;
-      // grows larger as zoom increases to fill district-level coverage
+      // Small radius at city-overview zoom so clusters in different
+      // neighbourhoods (~5km apart) stay as distinct blobs rather than merging.
+      // Grows as user zooms in for a neighbourhood-level fill.
       'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
-        7, 60,
-        10, 100,
-        13, 160,
+        8,  10,
+        10, 15,
+        12, 35,
+        14, 70,
       ]),
-      'heatmap-intensity': 0.9,
-      // Lower density thresholds so blobs appear even in sparse cities
+      'heatmap-intensity': 1.4,
+      // Lower density thresholds so sparse-city blobs still show
       'heatmap-color': expr([
         'interpolate', ['linear'], ['heatmap-density'],
         0,   `rgba(${color},0)`,
-        0.1, `rgba(${color},0.08)`,
-        0.4, `rgba(${color},0.22)`,
-        1.0, `rgba(${color},0.40)`,
+        0.1, `rgba(${color},0.10)`,
+        0.4, `rgba(${color},0.26)`,
+        1.0, `rgba(${color},0.44)`,
       ]),
-      // Full opacity when zoomed out; fade away as pins become the focus
+      // Full opacity when zoomed out; fade as pins take over at street level
       'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
         10, 0.9,
         14, 0,

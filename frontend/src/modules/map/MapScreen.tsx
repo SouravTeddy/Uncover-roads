@@ -789,8 +789,8 @@ export function MapScreen() {
           onPlaceAction={(id) => {
             const place = places.find(p => p.id === id)
             if (place) {
-              setActivePlace(place)
               mapHandleRef.current?.flyTo(place.lat, place.lon, 15)
+              dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id })
             }
           }}
         />

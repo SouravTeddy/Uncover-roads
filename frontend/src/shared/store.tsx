@@ -283,7 +283,7 @@ export const initialState: AppState = {
   cityGeo:        ssGet<GeoData>('ur_ss_geo')    ?? null,
   places:         ssGet<Place[]>('ur_ss_places') ?? [],
   selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
-  activeFilter:   ssGet<MapFilter | 'all'>('ur_ss_filter') ?? 'all',
+  activeFilter:   'all',
   tripContext: defaultTripCtx,
   itinerary:       ssGet<Itinerary>('ur_ss_itinerary')         ?? null,
   itineraryDays:   ssGet<(Itinerary | null)[]>('ur_ss_itin_days') ?? [],
