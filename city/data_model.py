@@ -111,6 +111,7 @@ def load_city(city_id: str, supabase=None) -> CityData:
                     "id": city_id,
                     "name": seed.get("name", city_id),
                     "tier": seed.get("tier", 1),
+                    "country_code": seed.get("country_code", ""),
                     "data": seed,
                 }).execute()
             except Exception:
