@@ -476,8 +476,10 @@ export function reducer(state: AppState, action: Action): AppState {
       const existingIds = new Set(state.places.map(p => p.id));
       const newPlaces = action.places.filter(p => !existingIds.has(p.id));
       const merged = [...state.places, ...newPlaces];
-      ssSave('ur_ss_places', merged);
-      return { ...state, places: merged };
+      // Cap at 2000 to keep rendering performant; trim oldest explored areas first
+      const capped = merged.length > 2000 ? merged.slice(merged.length - 2000) : merged;
+      ssSave('ur_ss_places', capped);
+      return { ...state, places: capped };
     }
 
     case 'TOGGLE_PLACE': {

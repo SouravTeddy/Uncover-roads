@@ -238,7 +238,7 @@ export function MapScreen() {
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
     onFetch: useCallback((center: [number, number]) => {
-      handleAreaLoad(center[0], center[1], 3000, true);
+      handleAreaLoad(center[0], center[1], 3000, false);
     }, [handleAreaLoad]),
     onZoomedOut: useCallback(() => {
       setMapStatus('zoomed-out');
