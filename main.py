@@ -2968,7 +2968,7 @@ def ensure_city_seeded(city_id: str = Query(...)):
         return {"status": "not_found"}
     except Exception as exc:
         print(f"[ensure_city_seeded] error for {city_id}: {exc}")
-        return {"status": "error"}
+        return {"status": "error", "detail": str(exc)}
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
