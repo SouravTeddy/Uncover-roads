@@ -581,6 +581,7 @@ export function MapScreen() {
 
         <AreaBlobLayer
           places={places}
+          neighborhoods={neighborhoods}
           visible={activeFilter === 'all' && activeCategories.length === 0}
         />
         <AreaPillsOverlay

@@ -1,13 +1,18 @@
 import { Source, Layer } from 'react-map-gl/maplibre'
 import type { LayerProps } from 'react-map-gl/maplibre'
 import type { Place } from '../../shared/types'
+import type { AreaNeighborhood } from './useNeighborhoods'
 
 interface Props {
   places: Place[]
+  neighborhoods: AreaNeighborhood[]
   visible: boolean
 }
 
-function toGeoJSON(places: Place[], parkOnly: boolean) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const expr = (v: unknown): any => v
+
+function pinGeoJSON(places: Place[], parkOnly: boolean) {
   return {
     type: 'FeatureCollection' as const,
     features: places
@@ -20,26 +25,67 @@ function toGeoJSON(places: Place[], parkOnly: boolean) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const expr = (v: unknown): any => v
+function hoodGeoJSON(hoods: AreaNeighborhood[], parkOnly: boolean) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: hoods
+      .filter(n => parkOnly ? n.park : !n.park)
+      .map(n => ({
+        type: 'Feature' as const,
+        geometry: { type: 'Point' as const, coordinates: [n.lon, n.lat] },
+        // weight based on how many spots this neighbourhood has — richer areas glow brighter
+        properties: { weight: Math.min(1.0, 0.4 + n.spotCount * 0.06) },
+      })),
+  }
+}
 
-function makeLayer(id: string, color: string): LayerProps {
+// Neighbourhood-centroid layer — city-wide distinct blobs at low zoom
+function makeHoodLayer(id: string, color: string): LayerProps {
   return {
     id,
     type: 'heatmap',
     paint: {
       'heatmap-weight': expr(['get', 'weight']),
-      // Small radius at city-overview zoom so clusters in different
-      // neighbourhoods (~5km apart) stay as distinct blobs rather than merging.
-      // Grows as user zooms in for a neighbourhood-level fill.
+      // Large radius at city-overview so each neighbourhood fills a visible blob.
+      // Shrinks as user zooms in (pin-density layer takes over).
       'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
-        8,  10,
+        7,  60,
+        9,  80,
+        11, 60,
+        13,  0,
+      ]),
+      'heatmap-intensity': 1.8,
+      'heatmap-color': expr([
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,   `rgba(${color},0)`,
+        0.08, `rgba(${color},0.12)`,
+        0.35, `rgba(${color},0.30)`,
+        1.0,  `rgba(${color},0.50)`,
+      ]),
+      // Visible when zoomed out; fades as pin layer takes over
+      'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
+        8,  0.0,
+        9,  0.92,
+        12, 0.85,
+        13, 0.0,
+      ]),
+    },
+  }
+}
+
+// Pin-density layer — local neighbourhood fill as user zooms in
+function makePinLayer(id: string, color: string): LayerProps {
+  return {
+    id,
+    type: 'heatmap',
+    paint: {
+      'heatmap-weight': expr(['get', 'weight']),
+      'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
         10, 15,
         12, 35,
         14, 70,
       ]),
       'heatmap-intensity': 1.4,
-      // Lower density thresholds so sparse-city blobs still show
       'heatmap-color': expr([
         'interpolate', ['linear'], ['heatmap-density'],
         0,   `rgba(${color},0)`,
@@ -47,29 +93,50 @@ function makeLayer(id: string, color: string): LayerProps {
         0.4, `rgba(${color},0.26)`,
         1.0, `rgba(${color},0.44)`,
       ]),
-      // Full opacity when zoomed out; fade as pins take over at street level
+      // Fades in as neighbourhood blobs fade out; gone at street level
       'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
         10, 0.9,
-        14, 0,
+        14, 0.0,
       ]),
     },
   }
 }
 
-const cityLayer = makeLayer('area-blobs-city-layer', '214,170,86')
-const parkLayer = makeLayer('area-blobs-park-layer', '95,165,112')
+const hoodCityLayer = makeHoodLayer('area-blobs-hood-city-layer', '214,170,86')
+const hoodParkLayer = makeHoodLayer('area-blobs-hood-park-layer', '95,165,112')
+const pinCityLayer  = makePinLayer('area-blobs-city-layer',  '214,170,86')
+const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
-export function AreaBlobLayer({ places, visible }: Props) {
-  if (!visible || !places.length) return null
+export function AreaBlobLayer({ places, neighborhoods, visible }: Props) {
+  if (!visible) return null
+
+  const hasHoods = neighborhoods.length > 0
 
   return (
     <>
-      <Source id="area-blobs-city" type="geojson" data={toGeoJSON(places, false)}>
-        <Layer {...cityLayer} />
-      </Source>
-      <Source id="area-blobs-park" type="geojson" data={toGeoJSON(places, true)}>
-        <Layer {...parkLayer} />
-      </Source>
+      {/* Neighbourhood-centroid blobs — city-wide, visible when zoomed out */}
+      {hasHoods && (
+        <>
+          <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>
+            <Layer {...hoodCityLayer} />
+          </Source>
+          <Source id="area-blobs-hood-park" type="geojson" data={hoodGeoJSON(neighborhoods, true)}>
+            <Layer {...hoodParkLayer} />
+          </Source>
+        </>
+      )}
+
+      {/* Pin-density blobs — local fill as user zooms in */}
+      {places.length > 0 && (
+        <>
+          <Source id="area-blobs-city" type="geojson" data={pinGeoJSON(places, false)}>
+            <Layer {...pinCityLayer} />
+          </Source>
+          <Source id="area-blobs-park" type="geojson" data={pinGeoJSON(places, true)}>
+            <Layer {...pinParkLayer} />
+          </Source>
+        </>
+      )}
     </>
   )
 }
