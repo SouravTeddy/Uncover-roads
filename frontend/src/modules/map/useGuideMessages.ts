@@ -6,12 +6,13 @@ export interface GuideMessage {
   text: string
   kind: 'area' | 'event' | 'exploring'
   timestamp: number
+  actionPlaceId?: string  // place to reveal on map when tapped
 }
 
 // ── Persona tag → place category ─────────────────────────────────────────────
 // venue_filters stores human-readable placeTags (e.g. 'Heritage Sites').
 // Place categories are lowercase OSM values (e.g. 'historic').
-const PLACE_TAG_TO_CATEGORY: Record<string, string> = {
+export const PLACE_TAG_TO_CATEGORY: Record<string, string> = {
   'local cafés': 'cafe', 'beautiful cafés': 'cafe', 'morning cafés': 'cafe',
   'parks': 'park', 'neighbourhood parks': 'park',
   'street food': 'restaurant', 'food halls': 'restaurant', 'bakeries': 'restaurant',
@@ -123,6 +124,29 @@ export function computeAreaText(
 }
 
 /**
+ * Returns the persona-matched place closest to the centroid of matching pins.
+ * Same selection logic as computeAreaText — used to wire the actionPlaceId.
+ */
+export function findAreaStartPlace(
+  persona: Persona | null,
+  mapPlaces: Place[],
+): Place | null {
+  const tags: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
+  const categorySet = new Set(tags.map(t => PLACE_TAG_TO_CATEGORY[t.toLowerCase()] ?? t.toLowerCase()))
+  const matching = mapPlaces.filter(p => categorySet.has(p.category))
+  if (matching.length === 0) return mapPlaces[0] ?? null
+  const avgLat = matching.reduce((s, p) => s + p.lat, 0) / matching.length
+  const avgLon = matching.reduce((s, p) => s + p.lon, 0) / matching.length
+  let best = matching[0]
+  let bestDist = Infinity
+  for (const p of matching) {
+    const d = haversineM(avgLat, avgLon, p.lat, p.lon)
+    if (d < bestDist) { bestDist = d; best = p }
+  }
+  return best
+}
+
+/**
  * Build readiness message. Returns null if conditions not met.
  * Fires when selection is ≥ 80% of a full itinerary (days × stopsPerDay).
  */
@@ -227,11 +251,13 @@ function buildMessage(
   const now = Date.now()
 
   if (key === 'area') {
+    const startPlace = findAreaStartPlace(persona, mapPlaces)
     return {
       id: `area-${now}`,
       kind: 'area',
       timestamp: now,
       text: computeAreaText(city!, persona!, mapPlaces),
+      actionPlaceId: startPlace?.id,
     }
   }
 

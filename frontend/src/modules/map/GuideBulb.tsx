@@ -5,6 +5,7 @@ export interface GuideBulbProps {
   messages: GuideMessage[]
   hasUnread: boolean
   onRead: () => void
+  onPlaceAction?: (placeId: string) => void
 }
 
 const KIND_ICON: Record<GuideMessage['kind'], string> = {
@@ -42,7 +43,7 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   document.head.appendChild(style)
 }
 
-export function GuideBulb({ messages, hasUnread, onRead }: GuideBulbProps) {
+export function GuideBulb({ messages, hasUnread, onRead, onPlaceAction }: GuideBulbProps) {
   const [open, setOpen] = useState(false)
   const [isBlinking, setIsBlinking] = useState(false)
   const prevCountRef = useRef(0)
@@ -222,17 +223,41 @@ export function GuideBulb({ messages, hasUnread, onRead }: GuideBulbProps) {
                     >
                       {KIND_ICON[msg.kind]}
                     </span>
-                    <p
-                      style={{
-                        margin: 0,
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                        color: 'var(--color-text-1)',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {msg.text}
-                    </p>
+                    <div style={{ flex: 1 }}>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text-1)',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {msg.text}
+                      </p>
+                      {msg.actionPlaceId && onPlaceAction && (
+                        <button
+                          onClick={() => { onPlaceAction(msg.actionPlaceId!); setOpen(false) }}
+                          style={{
+                            marginTop: 8,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            background: 'rgba(212,168,83,.12)',
+                            border: '1px solid rgba(212,168,83,.3)',
+                            color: '#d4a853',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span className="ms fill" style={{ fontSize: 12 }}>location_on</span>
+                          Show on map
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
