@@ -94,7 +94,7 @@ def load_city_from_dict(d: dict) -> CityData:
 def load_city(city_id: str, supabase=None) -> CityData:
     """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline."""
     if supabase is not None:
-        row = supabase.table("city_data").select("data").eq("id", city_id).single().execute()
+        row = supabase.table("city_data").select("data").eq("id", city_id).maybe_single().execute()
         if row.data:
             return load_city_from_dict(row.data["data"])
     seed_path = Path(__file__).parent / f"seed/{city_id}.json"
