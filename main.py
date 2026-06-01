@@ -1976,8 +1976,9 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
                 .maybe_single()
                 .execute()
             )
-            if cached.data and cached.data.get("place_id"):
-                return {"place_id": cached.data["place_id"]}
+            cached_row = _maybe_single_data(cached)
+            if cached_row and cached_row.get("place_id"):
+                return {"place_id": cached_row["place_id"]}
         except Exception:
             pass
 
@@ -2208,8 +2209,9 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
                     .maybe_single()
                     .execute()
                 )
-                if cached.data and cached.data.get("place_id"):
-                    resolved_id = cached.data["place_id"]
+                cached_row = _maybe_single_data(cached)
+                if cached_row and cached_row.get("place_id"):
+                    resolved_id = cached_row["place_id"]
             except Exception:
                 pass
 
