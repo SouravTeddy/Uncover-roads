@@ -41,6 +41,7 @@ def _emit_transit_msg(a: EngineStop, b: EngineStop, mode: str) -> EngineMessage:
         consequence=f"Added ~{int(_haversine_km(a, b) / 0.08)}min travel time.",
         dismissable=True,
         undo_key=None,
+        stop_id=a.place_id,
     )
 
 

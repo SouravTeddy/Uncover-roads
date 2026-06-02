@@ -71,6 +71,7 @@ def _make_insert_message(candidate: InsertCandidate, reason: str) -> EngineMessa
         consequence=f"This adds ~{candidate.time_cost_min} minutes to your day.",
         dismissable=True,
         undo_key=f"insert_{candidate.place_id}",
+        stop_id=candidate.place_id,
     )
 
 
