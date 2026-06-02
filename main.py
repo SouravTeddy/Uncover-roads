@@ -275,6 +275,14 @@ def _check_rate_limit(ip: str) -> bool:
         del _rate_limit[ip]
     return True
 
+def _sanitise(text: str | None) -> str | None:
+    """Strip control characters that Google Places sometimes embeds in review/summary text.
+    Unescaped control chars (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F) produce invalid JSON."""
+    if not text:
+        return text
+    import re as _re
+    return _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+
 # ── Overpass endpoints (ordered by current reliability) ──
 OVERPASS_ENDPOINTS = [
     "https://overpass.openstreetmap.fr/api/interpreter",  # most reliable mirror
@@ -2414,8 +2422,8 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             "photo_ref": photo_ref,
             "photo_refs": photo_refs,
             "types": result.get("types", []),
-            "editorial_summary": result.get("editorial_summary", {}).get("overview"),
-            "top_review": result["reviews"][0]["text"] if result.get("reviews") else None,
+            "editorial_summary": _sanitise(result.get("editorial_summary", {}).get("overview")),
+            "top_review": _sanitise(result["reviews"][0]["text"]) if result.get("reviews") else None,
         }
 
         if _supabase:
