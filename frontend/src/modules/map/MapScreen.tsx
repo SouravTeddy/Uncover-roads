@@ -590,6 +590,7 @@ export function MapScreen() {
           heatmapSeeds={heatmapSeeds}
           visible={activeFilter === 'all' && activeCategories.length === 0}
           bbox={mapBbox}
+          mapCenter={mapCenter}
         />
         <AreaPillsOverlay
           neighborhoods={neighborhoods}
