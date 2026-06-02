@@ -2459,19 +2459,27 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
 # ── Reel Recommendations ─────────────────────────────────────────────────────
 
 _TRIGGER_TYPES: dict[str, list[str]] = {
-    "lunch":   ["restaurant", "food"],
-    "dinner":  ["restaurant", "bar"],
-    "evening": ["bar", "night_club"],
-    "culture": ["museum", "art_gallery"],
-    "rest":    ["cafe", "coffee_shop"],
+    "lunch":             ["restaurant", "food"],
+    "dinner":            ["restaurant", "bar"],
+    "evening":           ["bar", "night_club"],
+    "culture":           ["museum", "art_gallery"],
+    "rest":              ["cafe", "coffee_shop"],
+    "weather":           ["museum", "art_gallery", "shopping_mall", "cafe"],
+    "closing_conflict":  ["tourist_attraction", "museum", "art_gallery", "park"],
+    "walking_gap":       ["cafe", "restaurant"],
+    "crowd_peak":        ["museum", "art_gallery", "cafe"],
 }
 
 _TRIGGER_RADIUS: dict[str, int] = {
-    "lunch":   600,
-    "dinner":  800,
-    "evening": 1000,
-    "culture": 1000,
-    "rest":    400,
+    "lunch":             600,
+    "dinner":            800,
+    "evening":           1000,
+    "culture":           1000,
+    "rest":              400,
+    "weather":           1200,
+    "closing_conflict":  1000,
+    "walking_gap":       400,
+    "crowd_peak":        800,
 }
 
 def _reel_match_reasons(affinity: float, rating: float | None, distance_m: int, price_level: int | None) -> list[str]:
