@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { TripDetails, JourneyLeg } from '../../../shared/types';
+import type { TripDetails, JourneyLeg, AutocompleteResult } from '../../../shared/types';
 import { useSheetDismiss } from '../../../shared/useSheetDismiss';
 import { DateRangeCalendar } from '../../destination/DateRangeCalendar';
+import { placesAutocomplete } from '../../../shared/api';
 
 interface Props {
   cities: string[];
@@ -112,16 +113,16 @@ function DateTimeCard({
     return (
       <div style={{
         borderRadius: 13, overflow: 'hidden',
-        border: '1.5px solid var(--color-sky-bdr)',
+        border: '1.5px solid var(--color-amber-bdr)',
         marginBottom: 8,
       }}>
         <div style={{
           padding: '10px 13px',
-          background: 'var(--color-sky-bg)',
+          background: 'var(--color-primary-bg)',
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>{label} · {city}</span>
+          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>{label} · {city}</span>
         </div>
         <div style={{ background: 'var(--color-surface)' }}>
           <DateRangeCalendar
@@ -141,11 +142,11 @@ function DateTimeCard({
     return (
       <div style={{
         padding: '12px 13px', borderRadius: 13, marginBottom: 8,
-        background: 'var(--color-sky-bg)', border: '1.5px solid var(--color-sky-bdr)',
+        background: 'var(--color-primary-bg)', border: '1.5px solid var(--color-amber-bdr)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>{label} · {city}</span>
+          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>{label} · {city}</span>
         </div>
         <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 2 }}>
           {displayDate(date!)}
@@ -193,7 +194,7 @@ function DateTimeCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-        <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
+        <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)' }}>{label}</span>
         <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
           textTransform: 'uppercase', color: 'var(--color-text-4)',
@@ -209,61 +210,127 @@ function DateTimeCard({
 function HotelRow({ city, name, onChange }: { city: string; name: string | null; onChange: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(name ?? '');
+  const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sessionRef = useRef(Math.random().toString(36).slice(2));
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setVal(name ?? ''); }, [name]);
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
-  function handleBlur() { setEditing(false); onChange(val); }
+  function handleInput(q: string) {
+    setVal(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSuggestions([]);
+    if (q.trim().length < 2) return;
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const results = await placesAutocomplete(q + ' ' + city, sessionRef.current, '');
+        setSuggestions(results.slice(0, 5));
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+  }
+
+  function handleSelect(result: AutocompleteResult) {
+    const selected = result.main_text;
+    setVal(selected);
+    setSuggestions([]);
+    setEditing(false);
+    onChange(selected);
+    sessionRef.current = Math.random().toString(36).slice(2);
+  }
+
+  function handleBlur() {
+    // Delay so a tap on a suggestion row fires before blur clears it
+    setTimeout(() => {
+      setSuggestions([]);
+      setEditing(false);
+      onChange(val);
+    }, 150);
+  }
 
   return (
-    <div
-      onClick={() => setEditing(true)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 13px', borderRadius: 13, marginBottom: 8, cursor: 'text',
-        background: name ? 'var(--color-sage-bg)' : 'var(--color-surface)',
-        border: `1px solid ${name ? 'var(--color-sage-bdr)' : 'var(--color-border)'}`,
-      }}
-    >
-      <span className="ms fill" style={{ fontSize: 15, color: name ? 'var(--color-sage)' : 'var(--color-sky)', flexShrink: 0 }}>
-        hotel
-      </span>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: name ? 'var(--color-sage)' : 'var(--color-text-4)' }}>
-            Your base · {city}
-          </span>
-          {!name && (
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
-              color: 'var(--color-text-4)', border: '1px solid var(--color-border)',
-              borderRadius: 4, padding: '1px 5px' }}>
-              optional
+    <div style={{ marginBottom: 8 }}>
+      <div
+        onClick={() => setEditing(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 13px', borderRadius: suggestions.length > 0 ? '13px 13px 0 0' : 13,
+          cursor: 'text',
+          background: name && !editing ? 'var(--color-sage-bg)' : 'var(--color-surface)',
+          border: `1px solid ${name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
+          borderBottom: suggestions.length > 0 ? 'none' : undefined,
+        }}
+      >
+        <span className="ms fill" style={{ fontSize: 15, color: name && !editing ? 'var(--color-sage)' : 'var(--color-primary)', flexShrink: 0 }}>
+          hotel
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: name && !editing ? 'var(--color-sage)' : 'var(--color-text-4)' }}>
+              Your base · {city}
             </span>
+            {!name && !editing && (
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
+                color: 'var(--color-text-4)', border: '1px solid var(--color-border)',
+                borderRadius: 4, padding: '1px 5px' }}>
+                optional
+              </span>
+            )}
+          </div>
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={val}
+              onChange={e => handleInput(e.target.value)}
+              onFocus={() => setEditing(true)}
+              onBlur={handleBlur}
+              placeholder="Where are you staying?"
+              style={{
+                width: '100%', background: 'none', border: 'none', outline: 'none',
+                fontSize: 13, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)',
+              }}
+            />
+          ) : (
+            <div style={{ fontSize: 13, color: name ? 'var(--color-text-1)' : 'var(--color-text-4)', fontWeight: name ? 600 : 400 }}>
+              {name || 'Where are you staying?'}
+            </div>
           )}
         </div>
-        {editing ? (
-          <input
-            ref={inputRef}
-            value={val}
-            onChange={e => setVal(e.target.value)}
-            onFocus={() => setEditing(true)}
-            onBlur={handleBlur}
-            placeholder="Where are you staying?"
-            style={{
-              width: '100%', background: 'none', border: 'none', outline: 'none',
-              fontSize: 13, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)',
-            }}
-          />
-        ) : (
-          <div style={{ fontSize: 13, color: name ? 'var(--color-text-1)' : 'var(--color-text-4)', fontWeight: name ? 600 : 400 }}>
-            {name || 'Where are you staying?'}
-          </div>
-        )}
+        {loading && <span className="ms" style={{ fontSize: 15, color: 'var(--color-text-4)', animation: 'spin 1s linear infinite' }}>progress_activity</span>}
+        {name && !editing && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
       </div>
-      {name && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
+
+      {/* Autocomplete suggestions */}
+      {suggestions.length > 0 && (
+        <div style={{
+          borderRadius: '0 0 13px 13px',
+          border: '1px solid var(--color-amber-bdr)', borderTop: 'none',
+          background: 'var(--color-surface2)', overflow: 'hidden',
+        }}>
+          {suggestions.map((s, i) => (
+            <div
+              key={s.place_id}
+              onMouseDown={() => handleSelect(s)}
+              onTouchStart={() => handleSelect(s)}
+              style={{
+                padding: '10px 13px',
+                borderTop: i > 0 ? '1px solid var(--color-divider)' : 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>{s.main_text}</div>
+              {s.secondary_text && (
+                <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 1 }}>{s.secondary_text}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -372,7 +439,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
           {/* Title */}
           <p style={{
             fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-            color: datesSet ? 'var(--color-sage)' : 'var(--color-sky)',
+            color: datesSet ? 'var(--color-sage)' : 'var(--color-primary)',
             marginBottom: 10,
           }}>
             TRIP DETAILS · {titleCities}
@@ -412,11 +479,11 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 7, margin: '6px 0',
                     padding: '7px 10px', borderRadius: 9,
-                    background: 'var(--color-sky-bg)', border: '1px solid var(--color-sky-bdr)',
+                    background: 'var(--color-primary-bg)', border: '1px solid var(--color-amber-bdr)',
                   }}>
-                    <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>train</span>
+                    <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>train</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>
                         {transitLabel(journeyLegs, hotels[i - 1].city, hotel.city) ?? `${hotels[i - 1].city} → ${hotel.city}`}
                       </div>
                     </div>
