@@ -9,6 +9,7 @@ interface Props {
   neighborhoods: AreaNeighborhood[]
   heatmapSeeds: HeatmapPoint[]
   visible: boolean
+  bbox: [number, number, number, number] | null  // [minLat, maxLat, minLon, maxLon]
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -123,42 +124,55 @@ const hoodParkLayer = makeHoodLayer('area-blobs-hood-park-layer', '95,165,112')
 const pinCityLayer  = makePinLayer('area-blobs-city-layer',  '214,170,86')
 const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
-export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible }: Props) {
+// Hold opacity: stays visible deep into street-level zoom when no pins in viewport yet
+const hoodOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
+  8, 0.0, 9, 0.92, 14, 0.85, 16, 0.0,
+])
+const pinOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
+  8, 0.0, 9, 0.85, 15, 0.7, 16, 0.0,
+])
+
+function pinsInViewport(places: Place[], bbox: [number, number, number, number]): boolean {
+  const [minLat, maxLat, minLon, maxLon] = bbox
+  return places.some(p => p.lat >= minLat && p.lat <= maxLat && p.lon >= minLon && p.lon <= maxLon)
+}
+
+export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bbox }: Props) {
   if (!visible) return null
 
-  // Heatmap seeds power the city-wide overview layer — prefer over neighborhood centroids
   const hasSeeds = heatmapSeeds.length > 0
   const hasHoods = !hasSeeds && neighborhoods.length > 0
+  // Hold heatmap when viewport has no pins — prevents blank-map gap while pins load
+  const hasPins = bbox ? pinsInViewport(places, bbox) : places.length > 0
+  const hoodOpacity = hasPins ? hoodCityLayer.paint!['heatmap-opacity'] : hoodOpacityHold
+  const pinOpacity  = hasPins ? pinCityLayer.paint!['heatmap-opacity']  : pinOpacityHold
 
   return (
     <>
-      {/* City-wide overview — driven by lightweight heatmap seed points from /heatmap-seed */}
       {hasSeeds && (
         <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(heatmapSeeds)}>
-          <Layer {...hoodCityLayer} />
+          <Layer {...hoodCityLayer} paint={{ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity }} />
         </Source>
       )}
 
-      {/* Fallback: neighbourhood-centroid blobs when seeds not yet loaded */}
       {hasHoods && (
         <>
           <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>
-            <Layer {...hoodCityLayer} />
+            <Layer {...hoodCityLayer} paint={{ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity }} />
           </Source>
           <Source id="area-blobs-hood-park" type="geojson" data={hoodGeoJSON(neighborhoods, true)}>
-            <Layer {...hoodParkLayer} />
+            <Layer {...hoodParkLayer} paint={{ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity }} />
           </Source>
         </>
       )}
 
-      {/* Pin-density blobs — local fill as user zooms in */}
       {places.length > 0 && (
         <>
           <Source id="area-blobs-city" type="geojson" data={pinGeoJSON(places, false)}>
-            <Layer {...pinCityLayer} />
+            <Layer {...pinCityLayer} paint={{ ...pinCityLayer.paint, 'heatmap-opacity': pinOpacity }} />
           </Source>
           <Source id="area-blobs-park" type="geojson" data={pinGeoJSON(places, true)}>
-            <Layer {...pinParkLayer} />
+            <Layer {...pinParkLayer} paint={{ ...pinParkLayer.paint, 'heatmap-opacity': pinOpacity }} />
           </Source>
         </>
       )}
