@@ -2782,6 +2782,24 @@ _WHY_FOR_YOU: dict[str, tuple[str, str]] = {
 }
 
 
+def _nearest_neighborhood_name(city_data, lat: float, lon: float) -> str:
+    """Return the name of the nearest neighborhood in city_data, or '' if none."""
+    best_name = ""
+    best_dist = float("inf")
+    for nh in city_data.neighborhoods:
+        nh_lat, nh_lon = nh.center[0], nh.center[1]
+        dlat = math.radians(nh_lat - lat)
+        dlon = math.radians(nh_lon - lon)
+        a = (math.sin(dlat / 2) ** 2
+             + math.cos(math.radians(lat)) * math.cos(math.radians(nh_lat))
+             * math.sin(dlon / 2) ** 2)
+        dist_km = 6371 * 2 * math.asin(math.sqrt(a))
+        if dist_km < best_dist:
+            best_dist = dist_km
+            best_name = nh.name
+    return best_name
+
+
 def _why_for_you(category: str, weights: dict) -> str:
     cfg = _WHY_FOR_YOU.get(category)
     if not cfg:
@@ -2883,7 +2901,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
                     "id": str(uuid.uuid4()),
                     "placeId": s.place_id,
                     "title": s.name,
-                    "area": "",
+                    "area": _nearest_neighborhood_name(city_data, s.lat, s.lon),
                     "day": i + 1,
                     "time": s.scheduled_time or "09:00",
                     "durationMin": s.duration_min,
