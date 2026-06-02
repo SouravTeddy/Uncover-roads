@@ -196,6 +196,8 @@ export function ItineraryReelScreen() {
 
 
 
+  const handleCloseTripDetails = useCallback(() => setShowTripDetails(false), []);
+
   const handleUndo = useCallback(() => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
     if (undoPending) setRemovedStopIds(prev => { const s = new Set(prev); s.delete(undoPending.id); return s; });
@@ -371,7 +373,7 @@ export function ItineraryReelScreen() {
             dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
             setShowTripDetails(false);
           }}
-          onClose={() => setShowTripDetails(false)}
+          onClose={handleCloseTripDetails}
         />
       )}
 
