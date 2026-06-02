@@ -2800,6 +2800,33 @@ def _nearest_neighborhood_name(city_data, lat: float, lon: float) -> str:
     return best_name
 
 
+def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dict]:
+    """Fetch price_level and weekday_text for a batch of place_ids from cache.
+    Never calls Google — read-only from place_details_cache.
+    Returns dict[place_id → {price_level, weekday_text}].
+    """
+    if not supabase_client or not place_ids:
+        return {}
+    try:
+        resp = (
+            supabase_client.table("place_details_cache")
+            .select("place_id, data")
+            .in_("place_id", place_ids)
+            .execute()
+        )
+        rows = resp.data if hasattr(resp, "data") else (resp or [])
+        return {
+            row["place_id"]: {
+                "price_level": (row.get("data") or {}).get("price_level"),
+                "weekday_text": (row.get("data") or {}).get("weekday_text") or [],
+            }
+            for row in (rows or [])
+            if row.get("place_id")
+        }
+    except Exception:
+        return {}
+
+
 def _why_for_you(category: str, weights: dict) -> str:
     cfg = _WHY_FOR_YOU.get(category)
     if not cfg:
@@ -2860,6 +2887,10 @@ async def engine_itinerary(body: EngineItineraryPayload):
 
     result = await build_itinerary(engine_stops, ctx)
 
+    # Batch-fetch price level and opening hours from cache — no Google API calls
+    all_place_ids = [s.place_id for s in engine_stops if s.place_id]
+    place_details_map = _batch_place_details(_supabase, all_place_ids)
+
     now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
     # Build lookup: place_id → photo_ref (from submitted places)
@@ -2908,9 +2939,9 @@ async def engine_itinerary(body: EngineItineraryPayload):
                     "category": s.category,
                     "lat": s.lat,
                     "lon": s.lon,
-                    "priceLevel": None,
+                    "priceLevel": place_details_map.get(s.place_id, {}).get("price_level"),
                     "rating": s.rating if s.rating != 4.0 else None,
-                    "weekdayText": None,
+                    "weekdayText": place_details_map.get(s.place_id, {}).get("weekday_text") or None,
                     "whyForYou": _why_for_you(s.category, weights_for_why),
                     "localTip": None,
                     "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
