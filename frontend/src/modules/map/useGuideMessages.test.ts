@@ -22,52 +22,33 @@ function makePersona(venueFilters: string[]): Persona {
 // ── computeAreaText ───────────────────────────────────────────────────────────
 
 describe('computeAreaText', () => {
-  it('mentions the city name', () => {
-    const persona = makePersona(['museum', 'historic'])
-    const places = [makePlace({ id: '1', category: 'museum' })]
-    const text = computeAreaText('Tokyo', persona, places)
-    expect(text).toContain('Tokyo')
-  })
-
-  it('counts matching pins and uses readable category label', () => {
-    const persona = makePersona(['museum', 'historic'])
-    const places = [
-      makePlace({ id: '1', category: 'museum' }),
-      makePlace({ id: '2', category: 'museum' }),
-      makePlace({ id: '3', category: 'historic' }),
-    ]
-    const text = computeAreaText('Paris', persona, places)
-    expect(text).toContain('3')
-    expect(text).toContain('museums')
-  })
-
-  it('combines top 2 categories when within 20% of each other', () => {
-    const persona = makePersona(['museum', 'historic'])
-    const places = [
-      makePlace({ id: '1', category: 'museum' }),
-      makePlace({ id: '2', category: 'museum' }),
-      makePlace({ id: '3', category: 'historic' }),
-      makePlace({ id: '4', category: 'historic' }),
-    ]
-    const text = computeAreaText('Paris', persona, places)
-    expect(text).toContain('museums')
-    expect(text).toContain('historic sites')
-  })
-
-  it('uses neutral fallback when no pins match persona', () => {
+  it('names the specific place when a start place is provided', () => {
     const persona = makePersona(['museum'])
-    const places = [makePlace({ id: '1', category: 'park' })]
-    const text = computeAreaText('Berlin', persona, places)
-    expect(text).toContain('Berlin')
-    expect(text).toContain('1')
-    expect(text).not.toContain('museums')
+    const startPlace = makePlace({ id: '1', title: 'Edo-Tokyo Museum', category: 'museum' })
+    const text = computeAreaText('Tokyo', persona, [startPlace], startPlace)
+    expect(text).toContain('Edo-Tokyo Museum')
+    expect(text).toContain('museum')
   })
 
-  it('mentions "based on your interests"', () => {
+  it('uses persona-match phrasing when place matches persona', () => {
+    const persona = makePersona(['museum'])
+    const startPlace = makePlace({ id: '1', title: 'Louvre', category: 'museum' })
+    const text = computeAreaText('Paris', persona, [startPlace], startPlace)
+    expect(text).toContain('recommended')
+  })
+
+  it('uses city phrasing when place does not match persona', () => {
     const persona = makePersona(['cafe'])
-    const places = [makePlace({ id: '1', category: 'cafe' })]
-    const text = computeAreaText('Lisbon', persona, places)
-    expect(text).toContain('Based on your interests')
+    const startPlace = makePlace({ id: '1', title: 'Brandenburg Gate', category: 'historic' })
+    const text = computeAreaText('Berlin', persona, [startPlace], startPlace)
+    expect(text).toContain('Berlin')
+    expect(text).toContain('Brandenburg Gate')
+  })
+
+  it('falls back to generic message when no start place', () => {
+    const persona = makePersona(['museum'])
+    const text = computeAreaText('Madrid', persona, [], null)
+    expect(text).toContain('Madrid')
   })
 })
 
