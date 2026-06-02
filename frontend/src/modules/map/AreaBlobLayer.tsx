@@ -10,6 +10,7 @@ interface Props {
   heatmapSeeds: HeatmapPoint[]
   visible: boolean
   bbox: [number, number, number, number] | null  // [minLat, maxLat, minLon, maxLon]
+  mapCenter: { lat: number; lon: number } | null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,7 +152,7 @@ function pinsInViewport(places: Place[], bbox: [number, number, number, number])
   return places.some(p => p.lat >= minLat && p.lat <= maxLat && p.lon >= minLon && p.lon <= maxLon)
 }
 
-export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bbox }: Props) {
+export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bbox, mapCenter }: Props) {
   if (!visible) return null
 
   const hasSeeds = heatmapSeeds.length > 0
@@ -162,10 +163,17 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
   const hoodRadius  = hasPins ? hoodRadiusNormal  : hoodRadiusHold
   const pinOpacity  = hasPins ? pinOpacityNormal  : pinOpacityHold
 
+  // When no pins in view, inject map center as phantom seed so the hold-mode
+  // heatmap always has a data point to render — otherwise layer is invisible
+  // even with opacity/radius held if no seed happens to fall in the viewport
+  const effectiveSeeds = (!hasPins && mapCenter)
+    ? [...heatmapSeeds, { lat: mapCenter.lat, lon: mapCenter.lon }]
+    : heatmapSeeds
+
   return (
     <>
       {hasSeeds && (
-        <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(heatmapSeeds)}>
+        <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(effectiveSeeds)}>
           <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
         </Source>
       )}

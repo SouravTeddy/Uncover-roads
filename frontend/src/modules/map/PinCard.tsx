@@ -152,7 +152,11 @@ export function PinCard({
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
   const weekdayText = details?.weekday_text ?? []
+  const priceLevel = details?.price_level ?? null
+  const phone = details?.phone ?? null
+  const website = details?.website ?? null
   const description = details?.editorial_summary ?? null
+  const PRICE_SYMBOLS = ['', '₹', '₹₹', '₹₹₹', '₹₹₹₹']
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
@@ -327,26 +331,39 @@ export function PinCard({
             </p>
           ) : null}
 
-          {/* Meta chips — rating only, shimmer while loading */}
+          {/* Meta chips — rating + price, shimmer while loading */}
           {details == null ? (
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
               <div style={{ ...shimmerBase, height: 22, width: 38, borderRadius: 99 }} />
             </div>
-          ) : rating !== null ? (
+          ) : (rating !== null || priceLevel !== null) ? (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, animation: 'sectionReveal 360ms 50ms cubic-bezier(.22,1,.36,1) both' }}>
-              <span style={{
-                fontSize: '0.72rem', fontWeight: 700,
-                padding: '3px 8px', borderRadius: 99,
-                background: 'var(--color-amber-bg)',
-                border: '1px solid var(--color-amber-bdr)',
-                color: 'var(--color-amber)',
-              }}>
-                ★ {typeof rating === 'number' ? rating.toFixed(1) : rating}
-                {ratingCount !== null && (
-                  <span style={{ fontWeight: 400, opacity: 0.7 }}> ({(ratingCount as number).toLocaleString()})</span>
-                )}
-              </span>
+              {rating !== null && (
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 700,
+                  padding: '3px 8px', borderRadius: 99,
+                  background: 'var(--color-amber-bg)',
+                  border: '1px solid var(--color-amber-bdr)',
+                  color: 'var(--color-amber)',
+                }}>
+                  ★ {typeof rating === 'number' ? rating.toFixed(1) : rating}
+                  {ratingCount !== null && (
+                    <span style={{ fontWeight: 400, opacity: 0.7 }}> ({(ratingCount as number).toLocaleString()})</span>
+                  )}
+                </span>
+              )}
+              {priceLevel !== null && priceLevel > 0 && (
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 600,
+                  padding: '3px 8px', borderRadius: 99,
+                  background: 'var(--color-surface2)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-3)',
+                }}>
+                  {PRICE_SYMBOLS[priceLevel as number] ?? ''}
+                </span>
+              )}
             </div>
           ) : null}
 
@@ -460,21 +477,61 @@ export function PinCard({
               <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
               <div style={{ ...shimmerBase, height: 10, width: '55%' }} />
             </div>
-          ) : description ? (
+          ) : (
             <div style={{ marginBottom: 12, animation: 'sectionReveal 360ms 200ms cubic-bezier(.22,1,.36,1) both' }}>
-              <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
-                {descExpanded || description.length <= 120 ? description : description.slice(0, 120) + '…'}
-              </p>
-              {description.length > 120 && (
-                <button
-                  onClick={() => setDescExpanded(e => !e)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', marginTop: 2 }}
+              {description ? (
+                <>
+                  <p style={{ margin: '0 0 4px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
+                    {descExpanded || description.length <= 120 ? description : description.slice(0, 120) + '…'}
+                  </p>
+                  {description.length > 120 && (
+                    <button
+                      onClick={() => setDescExpanded(e => !e)}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', marginTop: 2 }}
+                    >
+                      {descExpanded ? 'See less' : 'See more →'}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
                 >
-                  {descExpanded ? 'See less' : 'See more →'}
-                </button>
+                  Find out more about this place ↗
+                </a>
+              )}
+
+              {/* Website and phone — always shown when available */}
+              {(website || phone) && (
+                <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                  {website && (
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
+                    >
+                      Official website ↗
+                    </a>
+                  )}
+                  {phone && (
+                    <a
+                      href={`tel:${phone}`}
+                      onClick={e => e.stopPropagation()}
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
+                    >
+                      {phone}
+                    </a>
+                  )}
+                </div>
               )}
             </div>
-          ) : null}
+          )}
 
           {/* CTA — shimmer while loading */}
           {details == null ? (
