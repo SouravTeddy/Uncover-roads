@@ -124,16 +124,23 @@ const hoodParkLayer = makeHoodLayer('area-blobs-hood-park-layer', '95,165,112')
 const pinCityLayer  = makePinLayer('area-blobs-city-layer',  '214,170,86')
 const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
-// Normal opacity — mirrors the values inside makeHoodLayer / makePinLayer
+// Normal paint values — mirror what's inside makeHoodLayer / makePinLayer
 const hoodOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
   8, 0.0, 9, 0.92, 12, 0.85, 13, 0.0,
+])
+const hoodRadiusNormal = expr(['interpolate', ['linear'], ['zoom'],
+  7, 60, 9, 80, 11, 60, 13, 0,
 ])
 const pinOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
   8, 0.0, 9, 0.85, 13, 0.7, 14, 0.0,
 ])
-// Hold opacity — stays visible deep into street-level zoom when no pins in viewport yet
+// Hold paint — stays visible at street-level zoom while pins are still loading
+// Radius must be held too; opacity alone does nothing when radius is 0
 const hoodOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
   8, 0.0, 9, 0.92, 14, 0.85, 16, 0.0,
+])
+const hoodRadiusHold = expr(['interpolate', ['linear'], ['zoom'],
+  7, 60, 9, 80, 11, 60, 13, 30, 15, 18, 16, 0,
 ])
 const pinOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
   8, 0.0, 9, 0.85, 15, 0.7, 16, 0.0,
@@ -152,23 +159,24 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
   // Hold heatmap when viewport has no pins — prevents blank-map gap while pins load
   const hasPins = bbox ? pinsInViewport(places, bbox) : places.length > 0
   const hoodOpacity = hasPins ? hoodOpacityNormal : hoodOpacityHold
+  const hoodRadius  = hasPins ? hoodRadiusNormal  : hoodRadiusHold
   const pinOpacity  = hasPins ? pinOpacityNormal  : pinOpacityHold
 
   return (
     <>
       {hasSeeds && (
         <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(heatmapSeeds)}>
-          <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity })} />
+          <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
         </Source>
       )}
 
       {hasHoods && (
         <>
           <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>
-            <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity })} />
+            <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
           </Source>
           <Source id="area-blobs-hood-park" type="geojson" data={hoodGeoJSON(neighborhoods, true)}>
-            <Layer {...hoodParkLayer} paint={expr({ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity })} />
+            <Layer {...hoodParkLayer} paint={expr({ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
           </Source>
         </>
       )}
