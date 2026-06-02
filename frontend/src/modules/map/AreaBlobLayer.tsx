@@ -151,17 +151,17 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
     <>
       {hasSeeds && (
         <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(heatmapSeeds)}>
-          <Layer {...hoodCityLayer} paint={{ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity }} />
+          <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity })} />
         </Source>
       )}
 
       {hasHoods && (
         <>
           <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>
-            <Layer {...hoodCityLayer} paint={{ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity }} />
+            <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity })} />
           </Source>
           <Source id="area-blobs-hood-park" type="geojson" data={hoodGeoJSON(neighborhoods, true)}>
-            <Layer {...hoodParkLayer} paint={{ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity }} />
+            <Layer {...hoodParkLayer} paint={expr({ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity })} />
           </Source>
         </>
       )}
@@ -169,10 +169,10 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
       {places.length > 0 && (
         <>
           <Source id="area-blobs-city" type="geojson" data={pinGeoJSON(places, false)}>
-            <Layer {...pinCityLayer} paint={{ ...pinCityLayer.paint, 'heatmap-opacity': pinOpacity }} />
+            <Layer {...pinCityLayer} paint={expr({ ...pinCityLayer.paint, 'heatmap-opacity': pinOpacity })} />
           </Source>
           <Source id="area-blobs-park" type="geojson" data={pinGeoJSON(places, true)}>
-            <Layer {...pinParkLayer} paint={{ ...pinParkLayer.paint, 'heatmap-opacity': pinOpacity }} />
+            <Layer {...pinParkLayer} paint={expr({ ...pinParkLayer.paint, 'heatmap-opacity': pinOpacity })} />
           </Source>
         </>
       )}
