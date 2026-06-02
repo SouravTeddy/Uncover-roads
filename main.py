@@ -518,11 +518,12 @@ def map_data(
                 .maybe_single()
                 .execute()
             )
-            if cached.data:
-                fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
+            cached_row = _maybe_single_data(cached)
+            if cached_row:
+                fetched_at = datetime.fromisoformat(cached_row["fetched_at"])
                 if datetime.now(timezone.utc) - fetched_at < timedelta(hours=MAP_DATA_CACHE_TTL_HOURS):
                     print(f"MAP DATA: cache hit for tile {tile_key}")
-                    return cached.data["places"]
+                    return cached_row["places"]
         except Exception:
             pass
 
@@ -631,16 +632,15 @@ def map_data(
 def heatmap_seed(lat: float, lon: float, radius_km: int = 80):
     """Lightweight city-wide heatmap anchor points.
 
-    Returns up to 120 tourism/leisure lat-lon coordinates within radius_km.
-    Used only for heatmap rendering — no place details, no pin display.
-    Cached in map_data_cache with 7-day TTL (data barely changes).
-    Cache key snaps to 1-degree grid (~111km) to maximise hits.
+    Returns tourism/leisure node coordinates for heatmap rendering only.
+    Uses a 20km radius per tile — fast and reliable on Overpass.
+    The frontend re-fetches as the user pans, so the city fills in incrementally.
+    Cache key snaps to 0.15-degree grid (~17km) to maximise tile reuse.
     """
-    radius_m = min(max(radius_km, 20), 120) * 1000
-    # Snap to 1-degree grid so nearby searches reuse the same cache entry
-    grid_lat = round(round(lat), 0)
-    grid_lon = round(round(lon), 0)
-    tile_key = f"heatmap_{grid_lat}_{grid_lon}_{radius_km}km"
+    # Snap to 0.15-degree grid (~17km) — matches the 20km fetch radius well
+    grid_lat = round(round(lat / 0.15) * 0.15, 2)
+    grid_lon = round(round(lon / 0.15) * 0.15, 2)
+    tile_key = f"hseed_{grid_lat}_{grid_lon}"
 
     if _supabase:
         try:
@@ -654,33 +654,33 @@ def heatmap_seed(lat: float, lon: float, radius_km: int = 80):
             row = _maybe_single_data(cached)
             if row:
                 fetched_at = datetime.fromisoformat(row["fetched_at"])
-                if datetime.now(timezone.utc) - fetched_at < timedelta(days=7):
+                if datetime.now(timezone.utc) - fetched_at < timedelta(days=14):
+                    print(f"HEATMAP SEED: cache hit {tile_key} ({len(row['places'])} pts)")
                     return {"points": row["places"]}
         except Exception:
             pass
 
+    # Node-only, 20km radius, lean tag set — completes in <5s on Overpass
+    radius_m = 20_000
     query = f"""
-[out:json][timeout:25];
+[out:json][timeout:20][maxsize:512000];
 (
-  node["tourism"](around:{radius_m},{lat},{lon});
-  node["leisure"~"park|garden|nature_reserve|national_park"](around:{radius_m},{lat},{lon});
-  way["leisure"~"park|garden|nature_reserve|national_park"](around:{radius_m},{lat},{lon});
+  node["tourism"~"attraction|museum|viewpoint|artwork|gallery|monument"](around:{radius_m},{lat},{lon});
+  node["leisure"~"park|garden|nature_reserve|playground"](around:{radius_m},{lat},{lon});
   node["amenity"~"theatre|cinema|place_of_worship"](around:{radius_m},{lat},{lon});
+  node["historic"~"monument|memorial|castle|ruins|archaeological_site"](around:{radius_m},{lat},{lon});
 );
-out center 120;
+out 100;
 """
     points: list = []
     try:
-        r = requests.post(_OVERPASS_URL, data={"data": query},
-                          headers={"User-Agent": "UncoverRoads/1.0"}, timeout=30)
-        r.raise_for_status()
-        for el in r.json().get("elements", []):
-            if el.get("type") == "node":
+        data = fetch_overpass(query)
+        for el in data.get("elements", []):
+            if el.get("lat") and el.get("lon"):
                 points.append({"lat": el["lat"], "lon": el["lon"]})
-            elif el.get("center"):
-                points.append({"lat": el["center"]["lat"], "lon": el["center"]["lon"]})
+        print(f"HEATMAP SEED: {len(points)} pts for {tile_key}")
     except Exception as e:
-        print(f"HEATMAP SEED: Overpass failed: {e}")
+        print(f"HEATMAP SEED: failed for {tile_key}: {e}")
 
     if _supabase and points:
         try:
@@ -2137,10 +2137,11 @@ def place_details(request: Request, place_id: str):
                 .maybe_single()
                 .execute()
             )
-            if cached.data:
-                fetched_at = datetime.fromisoformat(cached.data["fetched_at"])
+            cached_row = _maybe_single_data(cached)
+            if cached_row:
+                fetched_at = datetime.fromisoformat(cached_row["fetched_at"])
                 if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
-                    return cached.data["data"]  # cache hit — no Google call
+                    return cached_row["data"]  # cache hit — no Google call
         except Exception:
             pass  # cache failure is non-fatal
 
@@ -2369,10 +2370,11 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
                 .maybe_single()
                 .execute()
             )
-            if cached_details.data:
-                fetched_at = datetime.fromisoformat(cached_details.data["fetched_at"])
+            cached_details_row = _maybe_single_data(cached_details)
+            if cached_details_row:
+                fetched_at = datetime.fromisoformat(cached_details_row["fetched_at"])
                 if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
-                    return cached_details.data["data"]
+                    return cached_details_row["data"]
         except Exception:
             pass
 
@@ -2982,9 +2984,9 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
         .maybe_single()
         .execute()
     )
-    if not row.data:
+    r = _maybe_single_data(row)
+    if not r:
         raise HTTPException(status_code=404, detail="city_not_in_whitelist")
-    r = row.data
     return CitySearchResult(
         city_id=r["city_id"], name=r["name"],
         country_code=r["country_code"], tier=r["tier"],
