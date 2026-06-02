@@ -65,6 +65,7 @@ def _parse_narrated_messages(
                     consequence=item.get("consequence", narrated[idx].consequence),
                     dismissable=narrated[idx].dismissable,
                     undo_key=narrated[idx].undo_key,
+                    stop_id=narrated[idx].stop_id,
                 )
         return narrated
     except Exception:

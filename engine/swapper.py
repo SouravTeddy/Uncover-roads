@@ -45,6 +45,7 @@ def _emit_swap(original: EngineStop, replacement: EngineStop | None, reason: str
         consequence=consequence,
         dismissable=True,
         undo_key=f"swap_{original.place_id}",
+        stop_id=original.place_id,
     )
 
 

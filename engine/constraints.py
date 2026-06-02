@@ -47,6 +47,7 @@ def _make_swap_message(stop: EngineStop, ctx: EngineContext) -> EngineMessage:
         consequence=f"{stop.name} has been swapped for a nearby alternative.",
         dismissable=False,
         undo_key=f"swap_{stop.place_id}",
+        stop_id=stop.place_id,
     )
 
 
@@ -58,6 +59,7 @@ def _make_weather_message(stop: EngineStop, rain_intensity: str) -> EngineMessag
         consequence="Consider an indoor alternative for this slot.",
         dismissable=True,
         undo_key=None,
+        stop_id=stop.place_id,
     )
 
 
