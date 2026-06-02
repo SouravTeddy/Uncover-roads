@@ -2,6 +2,9 @@ import { useState } from 'react';
 
 interface Props {
   city?: string | null;
+  singleDate?: boolean;
+  minDate?: string;
+  maxDate?: string;
   onSelect: (startDate: string, endDate: string) => void;
 }
 
@@ -20,7 +23,7 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ city, onSelect }: Props) {
+export function DateRangeCalendar({ city, singleDate, minDate, maxDate, onSelect }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -35,6 +38,16 @@ export function DateRangeCalendar({ city, onSelect }: Props) {
   function handleDayClick(day: number) {
     const iso = toIso(viewYear, viewMonth, day);
     if (iso < todayIso) return;
+    if (minDate && iso < minDate) return;
+    if (maxDate && iso > maxDate) return;
+
+    if (singleDate) {
+      setStartDate(iso);
+      setEndDate(iso);
+      onSelect(iso, iso);
+      return;
+    }
+
     if (!startDate || (startDate && endDate)) {
       setStartDate(iso);
       setEndDate(null);
@@ -128,6 +141,9 @@ export function DateRangeCalendar({ city, onSelect }: Props) {
           if (day === null) return <div key={`empty-${i}`} />;
           const iso = toIso(viewYear, viewMonth, day);
           const isPast = iso < todayIso;
+          const isBelowMin = !!minDate && iso < minDate;
+          const isAboveMax = !!maxDate && iso > maxDate;
+          const isDisabled = isPast || isBelowMin || isAboveMax;
           const isStart = iso === startDate;
           const isEnd = iso === endDate;
           const inRange = isInRange(iso);
@@ -137,7 +153,7 @@ export function DateRangeCalendar({ city, onSelect }: Props) {
               onClick={() => handleDayClick(day)}
               onMouseEnter={() => setHoverDate(iso)}
               onMouseLeave={() => setHoverDate(null)}
-              disabled={isPast}
+              disabled={isDisabled}
               className="h-9 flex items-center justify-center text-sm font-medium rounded-full transition-colors"
               style={{
                 background: (isStart || isEnd)
@@ -147,10 +163,10 @@ export function DateRangeCalendar({ city, onSelect }: Props) {
                   : 'transparent',
                 color: (isStart || isEnd)
                   ? '#fff'
-                  : isPast
+                  : isDisabled
                   ? 'var(--color-text-4)'
                   : 'var(--color-text-1)',
-                opacity: isPast ? 0.4 : 1,
+                opacity: isDisabled ? 0.4 : 1,
               }}
             >
               {day}
