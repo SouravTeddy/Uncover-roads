@@ -367,7 +367,6 @@ export function ItineraryReelScreen() {
           cities={activeItinerary.cities ?? [activeItinerary.city ?? '']}
           journeyLegs={savedItem?.journeyLegs ?? journey ?? null}
           existingDetails={savedItem?.tripDetails ?? state.pendingTripDetails ?? null}
-          travelDate={state.travelStartDate}
           onSave={(details) => {
             dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
             setShowTripDetails(false);
