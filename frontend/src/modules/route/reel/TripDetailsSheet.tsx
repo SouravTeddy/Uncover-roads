@@ -8,25 +8,8 @@ interface Props {
   cities: string[];
   journeyLegs?: JourneyLeg[] | null;
   existingDetails: TripDetails | null;
-  travelDate: string | null;
   onSave: (details: TripDetails) => void;
   onClose: () => void;
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function generateDates(anchorIso: string): string[] {
-  const dates: string[] = [];
-  const anchor = new Date(anchorIso + 'T12:00:00');
-  anchor.setDate(anchor.getDate() - 3);
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(anchor);
-    d.setDate(d.getDate() + i);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-  return dates;
 }
 
 function displayDate(iso: string | null): string {
@@ -35,32 +18,11 @@ function displayDate(iso: string | null): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-function displayDateTime(date: string | null, time: string | null): string {
-  if (!date) return '--';
-  const d = displayDate(date);
-  if (!time) return d;
-  const t = displayTime12(time);
-  return `${d} · ${t}`;
-}
-
 function displayTime12(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
-
-function to24h(h12: number, m: number, ampm: 'AM' | 'PM'): string {
-  let h = h12;
-  if (ampm === 'AM' && h === 12) h = 0;
-  if (ampm === 'PM' && h !== 12) h += 12;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-function from24h(hhmm: string | null): { h12: number; m: number; ampm: 'AM' | 'PM' } {
-  if (!hhmm) return { h12: 10, m: 0, ampm: 'AM' };
-  const [h, m] = hhmm.split(':').map(Number);
-  return { h12: h % 12 || 12, m, ampm: h >= 12 ? 'PM' : 'AM' };
 }
 
 function transitLabel(legs: JourneyLeg[] | null | undefined, from: string, to: string): string | null {
@@ -77,13 +39,6 @@ function transitLabel(legs: JourneyLeg[] | null | undefined, from: string, to: s
   return `${from} → ${to} · ${mode}`;
 }
 
-// Suppress unused-variable lint — kept for external consumers
-void todayIso;
-void generateDates;
-void displayDateTime;
-void to24h;
-void from24h;
-
 function ProgressStrip({
   datesSet, timesSet, hotelSet,
 }: { datesSet: boolean; timesSet: boolean; hotelSet: boolean }) {
@@ -98,6 +53,7 @@ function ProgressStrip({
         {dots.map(({ filled, label }) => (
           <div
             key={label}
+            title={`${label}: ${filled ? 'complete' : 'incomplete'}`}
             style={{
               width: 6, height: 6, borderRadius: '50%',
               background: filled ? 'var(--color-primary)' : 'var(--color-border-m)',
@@ -172,6 +128,7 @@ function DateTimeCard({
             singleDate
             minDate={minDate}
             maxDate={maxDate}
+            // singleDate: start === end, only need start
             onSelect={(iso) => onDateSelect(iso)}
           />
         </div>
@@ -255,12 +212,15 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setVal(name ?? ''); }, [name]);
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   function handleBlur() { setEditing(false); onChange(val); }
 
   return (
     <div
-      onClick={() => { setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+      onClick={() => setEditing(true)}
       style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '12px 13px', borderRadius: 13, marginBottom: 8, cursor: 'text',
@@ -308,7 +268,7 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
   );
 }
 
-export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelDate, onSave, onClose }: Props) {
+export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose }: Props) {
   const isMultiCity = cities.length > 1;
 
   const [arrivalDate, setArrivalDate] = useState<string | null>(existingDetails?.arrivalDate ?? null);
@@ -351,9 +311,6 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
   // Hardware back button
   useSheetDismiss(onClose, true);
 
-  // Keep travelDate in scope (may be used by parent)
-  void travelDate;
-
   const firstCity = cities[0] ?? '';
   const lastCity = cities[cities.length - 1] ?? '';
   const titleCities = isMultiCity
@@ -391,6 +348,8 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 66 }}>
       <div
+        role="button"
+        aria-label="Close"
         onClick={onClose}
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)' }}
       />
@@ -477,7 +436,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
               width: '100%', padding: '14px', borderRadius: 14, marginTop: 8,
               background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
               border: 'none', cursor: 'pointer',
-              fontSize: 14, fontWeight: 700, color: '#0f0d0c',
+              fontSize: 14, fontWeight: 700, color: 'var(--color-bg)',
             }}
           >
             Save trip details
