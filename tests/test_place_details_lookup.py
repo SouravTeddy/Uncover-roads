@@ -51,3 +51,4 @@ def test_batch_handles_null_data_field(mocker):
     assert result["abc"]["price_level"] is None
     assert result["abc"]["weekday_text"] == []
     assert result["xyz"]["price_level"] is None
+    assert result["xyz"]["weekday_text"] == []
