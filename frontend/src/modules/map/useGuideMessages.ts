@@ -31,18 +31,6 @@ export const PLACE_TAG_TO_CATEGORY: Record<string, string> = {
   'local institutions': 'place', 'bookshops': 'place', 'residential streets': 'place',
 }
 
-// ── Category label map ────────────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<string, string> = {
-  museum:   'museums',
-  historic: 'historic sites',
-  restaurant: 'restaurants',
-  cafe:     'cafés',
-  park:     'parks and open spaces',
-  tourism:  'landmarks',
-  place:    'local spots',
-  event:    'events',
-}
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
