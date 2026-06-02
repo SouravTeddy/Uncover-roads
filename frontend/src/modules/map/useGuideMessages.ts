@@ -83,39 +83,42 @@ export function findNearbyComplement(anchor: Place, mapPlaces: Place[]): Place |
   return best
 }
 
+const CATEGORY_SINGULAR: Record<string, string> = {
+  museum:     'museum',
+  historic:   'historic site',
+  restaurant: 'restaurant',
+  cafe:       'café',
+  park:       'park',
+  tourism:    'landmark',
+  gallery:    'gallery',
+  viewpoint:  'viewpoint',
+  bar:        'bar',
+  place:      'local spot',
+}
+
 /**
- * Build the persona-aware area message.
- * Empathetic tone — suggests, never prescribes. Invites exploration.
+ * Build the area message anchored to a specific recommended place.
+ * Names the place and category so the user knows exactly what they're tapping.
  */
 export function computeAreaText(
   city: string,
   persona: Persona | null,
   mapPlaces: Place[],
+  startPlace: Place | null,
 ): string {
+  if (!startPlace) {
+    return `${city} has ${mapPlaces.length} spots loaded — tap anything that catches your eye`
+  }
+
+  const label = CATEGORY_SINGULAR[startPlace.category] ?? 'spot'
   const tags: string[] = (persona as unknown as { venue_filters?: string[] } | null)?.venue_filters ?? []
   const categorySet = new Set(tags.map(t => PLACE_TAG_TO_CATEGORY[t.toLowerCase()] ?? t.toLowerCase()))
-  const matching = mapPlaces.filter(p => categorySet.has(p.category))
+  const hasPersonaMatch = categorySet.has(startPlace.category)
 
-  if (matching.length === 0) {
-    return `${city} has ${mapPlaces.length} spots loaded — take your time and tap anything that catches your eye`
+  if (hasPersonaMatch) {
+    return `Here's a recommended ${label} to start with — ${startPlace.title}`
   }
-
-  const catCount: Record<string, number> = {}
-  for (const p of matching) catCount[p.category] = (catCount[p.category] ?? 0) + 1
-  const sorted = Object.entries(catCount).sort((a, b) => b[1] - a[1])
-  const categoryStr =
-    sorted.length >= 2 && sorted[1][1] >= sorted[0][1] * 0.8
-      ? `${CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0]} and ${CATEGORY_LABELS[sorted[1][0]] ?? sorted[1][0]}`
-      : (CATEGORY_LABELS[sorted[0][0]] ?? sorted[0][0])
-
-  const pace = (persona as unknown as { pace?: string }).pace
-  const isSlowPace = pace === 'walking' || pace === 'local'
-
-  if (isSlowPace) {
-    return `There's a nice spread of ${categoryStr} across ${city} — ${matching.length} spots that feel like your pace. No rush, wander wherever draws you`
-  }
-
-  return `${city} has ${matching.length} ${categoryStr} that seem like your kind of thing — explore at your own pace, tap anything interesting`
+  return `${startPlace.title} is a good ${label} to start exploring ${city}`
 }
 
 /**
@@ -266,7 +269,7 @@ function buildMessage(
       id: `area-${now}`,
       kind: 'area',
       timestamp: now,
-      text: computeAreaText(city!, persona!, mapPlaces),
+      text: computeAreaText(city!, persona, mapPlaces, startPlace),
       actionPlaceId: startPlace?.id,
     }
   }
@@ -295,9 +298,9 @@ function buildMessage(
   if (key === 'pair') {
     const lastSel = selectedPlaces[selectedPlaces.length - 1]
     const complement = findNearbyComplement(lastSel, mapPlaces)
-    const complementLabel = CATEGORY_LABELS[complement?.category ?? ''] ?? 'spot'
+    const complementLabel = CATEGORY_SINGULAR[complement?.category ?? ''] ?? 'spot'
     const text = complement
-      ? `There's a ${complementLabel} just a short walk from here — might round the stop out nicely`
+      ? `${complement.title} is a ${complementLabel} a short walk away — tap to see it`
       : `There might be a café or park nearby worth a wander after this`
     return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text, actionPlaceId: complement?.id }
   }
