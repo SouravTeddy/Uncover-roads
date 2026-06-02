@@ -124,7 +124,14 @@ const hoodParkLayer = makeHoodLayer('area-blobs-hood-park-layer', '95,165,112')
 const pinCityLayer  = makePinLayer('area-blobs-city-layer',  '214,170,86')
 const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
-// Hold opacity: stays visible deep into street-level zoom when no pins in viewport yet
+// Normal opacity — mirrors the values inside makeHoodLayer / makePinLayer
+const hoodOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
+  8, 0.0, 9, 0.92, 12, 0.85, 13, 0.0,
+])
+const pinOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
+  8, 0.0, 9, 0.85, 13, 0.7, 14, 0.0,
+])
+// Hold opacity — stays visible deep into street-level zoom when no pins in viewport yet
 const hoodOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
   8, 0.0, 9, 0.92, 14, 0.85, 16, 0.0,
 ])
@@ -144,8 +151,8 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
   const hasHoods = !hasSeeds && neighborhoods.length > 0
   // Hold heatmap when viewport has no pins — prevents blank-map gap while pins load
   const hasPins = bbox ? pinsInViewport(places, bbox) : places.length > 0
-  const hoodOpacity = hasPins ? hoodCityLayer.paint!['heatmap-opacity'] : hoodOpacityHold
-  const pinOpacity  = hasPins ? pinCityLayer.paint!['heatmap-opacity']  : pinOpacityHold
+  const hoodOpacity = hasPins ? hoodOpacityNormal : hoodOpacityHold
+  const pinOpacity  = hasPins ? pinOpacityNormal  : pinOpacityHold
 
   return (
     <>
