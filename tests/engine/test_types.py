@@ -34,3 +34,20 @@ def test_engine_result_fields():
     result = EngineResult(days=[], messages=[], generation_id="abc123", recommendations=None)
     assert result.generation_id == "abc123"
     assert result.recommendations is None
+
+
+def test_engine_message_accepts_stop_id():
+    msg = EngineMessage(
+        type="insert", what="Added Cafe Azul",
+        why="Rest break needed", consequence="Adds 30 min",
+        dismissable=True, undo_key=None, stop_id="place_abc",
+    )
+    assert msg.stop_id == "place_abc"
+
+def test_engine_message_stop_id_defaults_none():
+    msg = EngineMessage(
+        type="resequence", what="Reordered",
+        why="Efficiency", consequence="Less walking",
+        dismissable=True, undo_key=None,
+    )
+    assert msg.stop_id is None

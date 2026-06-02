@@ -2910,6 +2910,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
             "consequence": m.consequence,
             "dismissable": m.dismissable,
             "undo_action": m.undo_key,
+            "stopId": m.stop_id,
         }
         for m in result.messages
     ]

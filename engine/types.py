@@ -48,6 +48,7 @@ class EngineMessage:
     consequence: str
     dismissable: bool
     undo_key: str | None = None
+    stop_id: str | None = None   # place_id of anchor stop; None for day-level messages
 
 
 @dataclass
