@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { TripDetails, JourneyLeg } from '../../../shared/types';
+import { useSheetDismiss } from '../../../shared/useSheetDismiss';
+import { DateRangeCalendar } from '../../destination/DateRangeCalendar';
 
 interface Props {
   cities: string[];
@@ -27,7 +29,8 @@ function generateDates(anchorIso: string): string[] {
   return dates;
 }
 
-function displayDate(iso: string): string {
+function displayDate(iso: string | null): string {
+  if (!iso) return '--';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
@@ -74,228 +77,238 @@ function transitLabel(legs: JourneyLeg[] | null | undefined, from: string, to: s
   return `${from} → ${to} · ${mode}`;
 }
 
-function DayChip({ iso, selected, onSelect }: { iso: string; selected: boolean; onSelect: () => void }) {
-  const d = new Date(iso + 'T12:00:00');
-  const day = String(d.getDate());
-  const dow = d.toLocaleDateString('en-GB', { weekday: 'short' }).slice(0, 3);
+// Suppress unused-variable lint — kept for external consumers
+void todayIso;
+void generateDates;
+void displayDateTime;
+void to24h;
+void from24h;
+
+function ProgressStrip({
+  datesSet, timesSet, hotelSet,
+}: { datesSet: boolean; timesSet: boolean; hotelSet: boolean }) {
+  const dots = [
+    { filled: datesSet, label: 'dates' },
+    { filled: timesSet, label: 'times' },
+    { filled: hotelSet, label: 'base' },
+  ];
   return (
-    <button
-      onClick={onSelect}
-      style={{
-        flexShrink: 0, padding: '5px 8px', borderRadius: 8, cursor: 'pointer',
-        border: selected ? '1.5px solid var(--color-sky)' : '1px solid var(--color-border)',
-        background: selected ? 'rgba(79,143,171,.28)' : 'rgba(255,255,255,.04)',
-        textAlign: 'center', minWidth: 36,
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 700, color: selected ? '#fff' : 'var(--color-text-4)' }}>{day}</div>
-      <div style={{ fontSize: 9, color: selected ? 'var(--color-sky)' : 'var(--color-text-4)', opacity: selected ? 0.85 : 0.7 }}>{dow}</div>
-    </button>
-  );
-}
-
-function TimeEditor({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
-  const { h12, m, ampm } = from24h(value);
-  const [hours, setHours] = useState(h12);
-  const [mins, setMins] = useState(m);
-  const [period, setPeriod] = useState<'AM' | 'PM'>(ampm);
-
-  useEffect(() => {
-    const { h12: h, m: mn, ampm: ap } = from24h(value);
-    setHours(h); setMins(mn); setPeriod(ap);
-  }, [value]);
-
-  function emit(h: number, mn: number, ap: 'AM' | 'PM') {
-    onChange(to24h(h, mn, ap));
-  }
-
-  function handleHourBlur(e: React.FocusEvent<HTMLInputElement>) {
-    const v = Math.max(1, Math.min(12, parseInt(e.target.value) || 1));
-    setHours(v); emit(v, mins, period);
-  }
-
-  function handleMinBlur(e: React.FocusEvent<HTMLInputElement>) {
-    const v = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
-    setMins(v); emit(hours, v, period);
-  }
-
-  function togglePeriod(p: 'AM' | 'PM') {
-    setPeriod(p); emit(hours, mins, p);
-  }
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,255,255,.05)', border: '1px solid var(--color-border)' }}>
-        <input
-          type="number" min={1} max={12} value={hours}
-          onChange={e => setHours(parseInt(e.target.value) || 1)}
-          onBlur={handleHourBlur}
-          style={{ width: 30, background: 'none', border: 'none', outline: 'none', fontSize: 22, fontWeight: 700, color: '#fff', textAlign: 'center' }}
-        />
-        <span style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,.35)', userSelect: 'none' }}>:</span>
-        <input
-          type="number" min={0} max={59} value={String(mins).padStart(2, '0')}
-          onChange={e => setMins(parseInt(e.target.value) || 0)}
-          onBlur={handleMinBlur}
-          style={{ width: 30, background: 'none', border: 'none', outline: 'none', fontSize: 22, fontWeight: 700, color: '#fff', textAlign: 'center' }}
-        />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {(['AM', 'PM'] as const).map(p => (
-          <button key={p} onClick={() => togglePeriod(p)} style={{
-            padding: '4px 9px', borderRadius: 6, cursor: 'pointer',
-            background: period === p ? 'rgba(79,143,171,.18)' : 'transparent',
-            border: period === p ? '1px solid var(--color-sky-bdr)' : '1px solid transparent',
-            fontSize: 11, fontWeight: 700,
-            color: period === p ? 'var(--color-sky)' : 'var(--color-text-4)',
-          }}>{p}</button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+        {dots.map(({ filled, label }) => (
+          <div
+            key={label}
+            style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: filled ? 'var(--color-primary)' : 'var(--color-border-m)',
+              transition: 'background .25s',
+            }}
+          />
         ))}
       </div>
-    </div>
-  );
-}
-
-function DateTimeExpanded({
-  label, icon, city, date, time, dates,
-  onDateSelect, onTimeChange,
-}: {
-  label: string; icon: string; city: string;
-  date: string | null; time: string | null;
-  dates: string[];
-  onDateSelect: (iso: string) => void;
-  onTimeChange: (hhmm: string) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!scrollRef.current || !date) return;
-    const idx = dates.indexOf(date);
-    if (idx >= 0) {
-      const el = scrollRef.current.children[idx] as HTMLElement;
-      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [date, dates]);
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{
-        padding: '11px 13px', borderRadius: '13px 13px 0 0',
-        background: 'rgba(79,143,171,.10)', border: '1.5px solid var(--color-sky-bdr)', borderBottom: 'none',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>{label} · {city}</span>
-        </div>
-        <div style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>
-          {displayDateTime(date, time)}
-        </div>
-      </div>
-      <div style={{
-        padding: '10px 13px', borderRadius: '0 0 13px 13px',
-        background: 'rgba(79,143,171,.06)', border: '1.5px solid var(--color-sky-bdr)', borderTop: '1px solid rgba(79,143,171,.18)',
-      }}>
-        <div ref={scrollRef} style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, marginBottom: 0 }} className="no-scrollbar">
-          {dates.map(iso => (
-            <DayChip key={iso} iso={iso} selected={iso === date} onSelect={() => onDateSelect(iso)} />
-          ))}
-        </div>
-        <TimeEditor value={time} onChange={onTimeChange} />
-      </div>
-    </div>
-  );
-}
-
-function DateTimeCollapsed({
-  label, icon, date, time, onExpand,
-}: {
-  label: string; icon: string; date: string | null; time: string | null; onExpand: () => void;
-}) {
-  const filled = !!date;
-  return (
-    <button
-      onClick={onExpand}
-      style={{
-        width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8,
-        padding: '10px 13px', borderRadius: 13,
-        background: 'rgba(255,255,255,.04)', border: '1px solid var(--color-border)',
-        display: 'flex', alignItems: 'center', gap: 8, opacity: 0.65,
-      }}
-    >
-      <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
-      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)' }}>{label}</span>
-      <span style={{ flex: 1 }} />
-      <span style={{ fontSize: 12, color: filled ? 'var(--color-text-2)' : 'var(--color-text-4)' }}>
-        {filled ? displayDateTime(date, time) : '--'}
+      <span style={{ fontSize: 11, color: 'var(--color-text-3)', lineHeight: 1.4 }}>
+        Fill in what you have — we'll build with whatever you add
       </span>
-    </button>
+    </div>
+  );
+}
+
+function TimeInput({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: 6 }}>
+        Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+      </div>
+      <input
+        type="time"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', padding: '10px 12px', borderRadius: 10,
+          background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+          color: value ? 'var(--color-text-1)' : 'var(--color-text-4)',
+          fontSize: 14, fontFamily: 'var(--font-sans)', outline: 'none',
+          appearance: 'none', WebkitAppearance: 'none',
+        }}
+      />
+    </div>
   );
 }
 
 function DateTimeCard({
-  label, icon, city, date, time, dates, expanded,
+  label, icon, city, date, time,
+  expanded, phase,
   onExpand, onDateSelect, onTimeChange,
+  minDate, maxDate,
 }: {
   label: string; icon: string; city: string;
   date: string | null; time: string | null;
-  dates: string[]; expanded: boolean;
+  expanded: boolean; phase: 'cal' | 'time';
   onExpand: () => void;
   onDateSelect: (iso: string) => void;
   onTimeChange: (hhmm: string) => void;
+  minDate?: string; maxDate?: string;
 }) {
   const filled = !!date;
 
-  if (expanded) {
+  // Expanded — calendar phase
+  if (expanded && phase === 'cal') {
     return (
-      <DateTimeExpanded
-        label={label} icon={icon} city={city}
-        date={date} time={time} dates={dates}
-        onDateSelect={onDateSelect} onTimeChange={onTimeChange}
-      />
+      <div style={{
+        borderRadius: 13, overflow: 'hidden',
+        border: '1.5px solid var(--color-sky-bdr)',
+        marginBottom: 8,
+      }}>
+        <div style={{
+          padding: '10px 13px',
+          background: 'var(--color-sky-bg)',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>{label} · {city}</span>
+        </div>
+        <div style={{ background: 'var(--color-surface)' }}>
+          <DateRangeCalendar
+            singleDate
+            minDate={minDate}
+            maxDate={maxDate}
+            onSelect={(iso) => onDateSelect(iso)}
+          />
+        </div>
+      </div>
     );
   }
 
+  // Expanded — time phase
+  if (expanded && phase === 'time') {
+    return (
+      <div style={{
+        padding: '12px 13px', borderRadius: 13, marginBottom: 8,
+        background: 'var(--color-sky-bg)', border: '1.5px solid var(--color-sky-bdr)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sky)' }}>{label} · {city}</span>
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 2 }}>
+          {displayDate(date!)}
+        </div>
+        <TimeInput value={time} onChange={onTimeChange} />
+      </div>
+    );
+  }
+
+  // Collapsed — filled
   if (filled) {
     return (
       <button
         onClick={onExpand}
         style={{
-          width: '100%', textAlign: 'left', cursor: 'pointer',
+          width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8,
           padding: '12px 13px', borderRadius: 13,
           background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
           <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sage)' }}>{icon}</span>
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sage)' }}>{label}</span>
         </div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: '#fff' }}>{displayDate(date!)}</div>
-        {time && <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-2)', marginTop: 2 }}>{displayTime12(time)}</div>}
+        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)' }}>
+          {displayDate(date)}
+        </div>
+        {time && (
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-2)', marginTop: 2 }}>
+            {displayTime12(time)}
+          </div>
+        )}
       </button>
     );
   }
 
+  // Collapsed — unfilled
   return (
     <button
       onClick={onExpand}
       style={{
-        width: '100%', textAlign: 'left', cursor: 'pointer',
+        width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8,
         padding: '12px 13px', borderRadius: 13,
-        background: 'rgba(255,255,255,.05)', border: '1px solid var(--color-border)',
+        background: 'var(--color-surface)', border: '1px solid var(--color-border)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 7 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
         <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>{icon}</span>
         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)' }}>{label}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
+          textTransform: 'uppercase', color: 'var(--color-text-4)',
+          border: '1px solid var(--color-border)', borderRadius: 4, padding: '1px 5px' }}>
+          optional
+        </span>
       </div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: 'rgba(255,255,255,.22)' }}>--</div>
-      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.18)', marginTop: 3 }}>Date · Time</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-border-m)' }}>—</div>
     </button>
   );
 }
 
+function HotelRow({ city, name, onChange }: { city: string; name: string | null; onChange: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(name ?? '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setVal(name ?? ''); }, [name]);
+
+  function handleBlur() { setEditing(false); onChange(val); }
+
+  return (
+    <div
+      onClick={() => { setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 13px', borderRadius: 13, marginBottom: 8, cursor: 'text',
+        background: name ? 'var(--color-sage-bg)' : 'var(--color-surface)',
+        border: `1px solid ${name ? 'var(--color-sage-bdr)' : 'var(--color-border)'}`,
+      }}
+    >
+      <span className="ms fill" style={{ fontSize: 15, color: name ? 'var(--color-sage)' : 'var(--color-sky)', flexShrink: 0 }}>
+        hotel
+      </span>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: name ? 'var(--color-sage)' : 'var(--color-text-4)' }}>
+            Your base · {city}
+          </span>
+          {!name && (
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
+              color: 'var(--color-text-4)', border: '1px solid var(--color-border)',
+              borderRadius: 4, padding: '1px 5px' }}>
+              optional
+            </span>
+          )}
+        </div>
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            onFocus={() => setEditing(true)}
+            onBlur={handleBlur}
+            placeholder="Where are you staying?"
+            style={{
+              width: '100%', background: 'none', border: 'none', outline: 'none',
+              fontSize: 13, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)',
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: 13, color: name ? 'var(--color-text-1)' : 'var(--color-text-4)', fontWeight: name ? 600 : 400 }}>
+            {name || 'Where are you staying?'}
+          </div>
+        )}
+      </div>
+      {name && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
+    </div>
+  );
+}
+
 export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelDate, onSave, onClose }: Props) {
-  const anchor = travelDate ?? todayIso();
-  const dates = generateDates(anchor);
   const isMultiCity = cities.length > 1;
 
   const [arrivalDate, setArrivalDate] = useState<string | null>(existingDetails?.arrivalDate ?? null);
@@ -307,18 +320,67 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
     return cities.map(c => ({ city: c, name: null }));
   });
   const [expanded, setExpanded] = useState<'arrival' | 'departure' | null>(null);
+  const [expandedPhase, setExpandedPhase] = useState<'cal' | 'time'>('cal');
+
+  // Swipe-to-close
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    function onTouchStart(e: TouchEvent) { touchStartY.current = e.touches[0].clientY; }
+    function onTouchMove(e: TouchEvent) {
+      if (touchStartY.current === null) return;
+      if (e.touches[0].clientY - touchStartY.current > 0) e.preventDefault();
+    }
+    function onTouchEnd(e: TouchEvent) {
+      if (touchStartY.current === null) return;
+      if (e.changedTouches[0].clientY - touchStartY.current > 80) onClose();
+      touchStartY.current = null;
+    }
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [onClose]);
+
+  // Hardware back button
+  useSheetDismiss(onClose, true);
+
+  // Keep travelDate in scope (may be used by parent)
+  void travelDate;
 
   const firstCity = cities[0] ?? '';
   const lastCity = cities[cities.length - 1] ?? '';
-
   const titleCities = isMultiCity
     ? cities.slice(0, 3).join(' · ').toUpperCase()
     : firstCity.toUpperCase();
 
-  const allFilled = !!arrivalDate && !!departureDate;
+  const datesSet = !!arrivalDate && !!departureDate;
+  const timesSet = !!arrivalTime || !!departureTime;
+  const hotelSet = hotels.some(h => !!h.name);
 
   function handleHotelChange(city: string, name: string) {
     setHotels(prev => prev.map(h => h.city === city ? { ...h, name: name || null } : h));
+  }
+
+  function handleArrivalDateSelect(iso: string) {
+    setArrivalDate(iso);
+    setExpandedPhase('time');
+  }
+
+  function handleDepartureDateSelect(iso: string) {
+    setDepartureDate(iso);
+    setExpandedPhase('time');
+  }
+
+  function handleExpand(field: 'arrival' | 'departure') {
+    setExpanded(field);
+    setExpandedPhase('cal');
   }
 
   function handleSave() {
@@ -328,98 +390,70 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
 
   const content = (
     <div style={{ position: 'fixed', inset: 0, zIndex: 66 }}>
-      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(4px)' }}
       />
-
-      {/* Sheet */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'rgba(14,12,10,.97)', borderRadius: '24px 24px 0 0',
-        borderTop: '1px solid var(--color-border)', backdropFilter: 'blur(20px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
-        animation: 'sheet-in .35s cubic-bezier(.25,0,0,1) both',
-        maxHeight: '92dvh', overflowY: 'auto',
-      }} className="no-scrollbar">
+      <div
+        ref={sheetRef}
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          background: 'var(--color-bg)', borderRadius: '24px 24px 0 0',
+          borderTop: '1px solid var(--color-border-m)', backdropFilter: 'blur(20px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+          animation: 'sheet-in .35s cubic-bezier(.25,0,0,1) both',
+          maxHeight: '92dvh', overflowY: 'auto',
+        }}
+        className="no-scrollbar"
+      >
         {/* Drag handle */}
-        <div style={{ width: 32, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.16)', margin: '11px auto 18px' }} />
+        <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--color-border-m)', margin: '11px auto 18px' }} />
 
         <div style={{ padding: '0 16px' }}>
           {/* Title */}
           <p style={{
             fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-            color: allFilled ? 'var(--color-sage)' : 'var(--color-sky)',
-            opacity: allFilled ? 0.85 : 0.75,
-            marginBottom: 14,
+            color: datesSet ? 'var(--color-sage)' : 'var(--color-sky)',
+            marginBottom: 10,
           }}>
             TRIP DETAILS · {titleCities}
           </p>
 
-          {/* Arrival + Departure */}
-          {expanded ? (
-            <>
-              {expanded === 'arrival' ? (
-                <DateTimeExpanded
-                  label="Arrival" icon="flight_land" city={firstCity}
-                  date={arrivalDate} time={arrivalTime} dates={dates}
-                  onDateSelect={setArrivalDate}
-                  onTimeChange={setArrivalTime}
-                />
-              ) : (
-                <DateTimeCollapsed
-                  label="Arrival" icon="flight_land"
-                  date={arrivalDate} time={arrivalTime}
-                  onExpand={() => setExpanded('arrival')}
-                />
-              )}
-              {expanded === 'departure' ? (
-                <DateTimeExpanded
-                  label="Departure" icon="flight_takeoff" city={lastCity}
-                  date={departureDate} time={departureTime} dates={dates}
-                  onDateSelect={setDepartureDate}
-                  onTimeChange={setDepartureTime}
-                />
-              ) : (
-                <DateTimeCollapsed
-                  label="Departure" icon="flight_takeoff"
-                  date={departureDate} time={departureTime}
-                  onExpand={() => setExpanded('departure')}
-                />
-              )}
-            </>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-              <DateTimeCard
-                label="Arrival" icon="flight_land" city={firstCity}
-                date={arrivalDate} time={arrivalTime} dates={dates}
-                expanded={false}
-                onExpand={() => setExpanded('arrival')}
-                onDateSelect={setArrivalDate}
-                onTimeChange={setArrivalTime}
-              />
-              <DateTimeCard
-                label="Departure" icon="flight_takeoff" city={lastCity}
-                date={departureDate} time={departureTime} dates={dates}
-                expanded={false}
-                onExpand={() => setExpanded('departure')}
-                onDateSelect={setDepartureDate}
-                onTimeChange={setDepartureTime}
-              />
-            </div>
-          )}
+          <ProgressStrip datesSet={datesSet} timesSet={timesSet} hotelSet={hotelSet} />
 
-          {/* Hotel rows — single or per-city for multi */}
+          {/* Arrival */}
+          <DateTimeCard
+            label="Arrival" icon="flight_land" city={firstCity}
+            date={arrivalDate} time={arrivalTime}
+            expanded={expanded === 'arrival'}
+            phase={expandedPhase}
+            onExpand={() => handleExpand('arrival')}
+            onDateSelect={handleArrivalDateSelect}
+            onTimeChange={setArrivalTime}
+            maxDate={departureDate ?? undefined}
+          />
+
+          {/* Departure */}
+          <DateTimeCard
+            label="Departure" icon="flight_takeoff" city={lastCity}
+            date={departureDate} time={departureTime}
+            expanded={expanded === 'departure'}
+            phase={expandedPhase}
+            onExpand={() => handleExpand('departure')}
+            onDateSelect={handleDepartureDateSelect}
+            onTimeChange={setDepartureTime}
+            minDate={arrivalDate ?? undefined}
+          />
+
+          {/* Hotel rows */}
           {isMultiCity ? (
             hotels.map((hotel, i) => (
               <div key={hotel.city}>
-                {/* Transit divider between cities */}
                 {i > 0 && (
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 7, margin: '6px 0',
                     padding: '7px 10px', borderRadius: 9,
-                    background: 'rgba(79,143,171,.07)', border: '1px solid rgba(79,143,171,.16)',
+                    background: 'var(--color-sky-bg)', border: '1px solid var(--color-sky-bdr)',
                   }}>
                     <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sky)' }}>train</span>
                     <div style={{ flex: 1 }}>
@@ -429,31 +463,18 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
                     </div>
                   </div>
                 )}
-                <HotelRow
-                  city={hotel.city} name={hotel.name}
-                  onChange={n => handleHotelChange(hotel.city, n)}
-                />
+                <HotelRow city={hotel.city} name={hotel.name} onChange={n => handleHotelChange(hotel.city, n)} />
               </div>
             ))
           ) : (
-            <HotelRow
-              city={firstCity} name={hotels[0]?.name ?? null}
-              onChange={n => handleHotelChange(firstCity, n)}
-            />
+            <HotelRow city={firstCity} name={hotels[0]?.name ?? null} onChange={n => handleHotelChange(firstCity, n)} />
           )}
 
-          {/* Hint */}
-          <p style={{ fontSize: 10, color: 'var(--color-text-4)', lineHeight: 1.6, textAlign: 'center', marginTop: isMultiCity ? 10 : 12, marginBottom: 16 }}>
-            {isMultiCity
-              ? 'Days per city are calculated after you set arrival date'
-              : 'Add what you know — come back anytime to update'}
-          </p>
-
-          {/* Save button */}
+          {/* Save */}
           <button
             onClick={handleSave}
             style={{
-              width: '100%', padding: '14px', borderRadius: 14,
+              width: '100%', padding: '14px', borderRadius: 14, marginTop: 8,
               background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
               border: 'none', cursor: 'pointer',
               fontSize: 14, fontWeight: 700, color: '#0f0d0c',
@@ -467,53 +488,4 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, travelD
   );
 
   return createPortal(content, document.body);
-}
-
-function HotelRow({ city, name, onChange }: { city: string; name: string | null; onChange: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(name ?? '');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { setVal(name ?? ''); }, [name]);
-
-  function handleFocus() { setEditing(true); }
-  function handleBlur() { setEditing(false); onChange(val); }
-
-  return (
-    <div
-      onClick={() => { setEditing(true); setTimeout(() => inputRef.current?.focus(), 0); }}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 13px', borderRadius: 13, marginBottom: 8, cursor: 'text',
-        background: name ? 'var(--color-sage-bg)' : 'rgba(255,255,255,.05)',
-        border: `1px solid ${name ? 'var(--color-sage-bdr)' : 'var(--color-border)'}`,
-      }}
-    >
-      <span className="ms fill" style={{ fontSize: 15, color: name ? 'var(--color-sage)' : 'var(--color-sky)', flexShrink: 0 }}>hotel</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: name ? 'var(--color-sage)' : 'var(--color-text-4)', marginBottom: 3 }}>
-          Hotel · {city}
-        </div>
-        {editing ? (
-          <input
-            ref={inputRef}
-            value={val}
-            onChange={e => setVal(e.target.value)}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            placeholder="Search hotel or starting point"
-            style={{
-              width: '100%', background: 'none', border: 'none', outline: 'none',
-              fontSize: 13, color: '#fff', fontFamily: 'var(--font-sans)',
-            }}
-          />
-        ) : (
-          <div style={{ fontSize: 13, color: name ? '#fff' : 'rgba(255,255,255,.22)', fontWeight: name ? 600 : 400 }}>
-            {name || 'Search hotel or starting point'}
-          </div>
-        )}
-      </div>
-      {name && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
-    </div>
-  );
 }
