@@ -119,12 +119,17 @@ export function ItineraryReelScreen() {
     const srcs: string[] = [];
     for (const c of filtered) {
       if (c.type === 'stop') {
-        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 400) : null);
+        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 800, 1200) : null);
         if (url) srcs.push(url);
       } else if (c.type === 'intro' && c.imageUrl) {
         srcs.push(c.imageUrl);
       } else if (c.type === 'intel' && c.imageUrl) {
         srcs.push(c.imageUrl);
+      } else if (c.type === 'reco' && c.anchorPhotoUrl) {
+        srcs.push(c.anchorPhotoUrl);
+      } else if (c.type === 'scenic') {
+        if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
+        if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
       }
     }
     preloadImages(srcs).then(() => setImagesReady(true));

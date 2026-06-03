@@ -150,7 +150,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
-  const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800) : null);
+  const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null);
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -167,7 +167,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
 
       {/* Photo z-index:0 */}
       {photoUrl && (
-        <img src={photoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
+        <img src={photoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }} alt="" />
       )}
 
       {/* TOD badge z-index:11 — top:48px left:13px per mock */}
