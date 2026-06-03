@@ -392,55 +392,6 @@ export function buildReelCards(
     engineChanges,
   });
 
-  // ── DEV: inject all 6 scenic test cards after intro ──────────────────────────
-  if (import.meta.env.DEV) {
-    const SCENIC_TEST: ReelScenicCard[] = [
-      { type: 'scenic', sceneType: 'walk', accent: '#c4b5fd', cardType: 'WALK SPINE', pos: 1, total: 6,
-        timing: 'Evening · 8:00 PM', metaRight: 'Shibuya Ward', place: 'Omotesando Boulevard',
-        from: 'Harajuku', to: 'Omotesando Hills', modeIcon: 'walk', tag: 'Walk',
-        vizType: 'corridor', persona: 'Walk-lover', personaIcon: 'walk',
-        why: 'Slotted in because you walk between consecutive stops — no transit gap to bridge.',
-        sensory: 'Boutique-lined and at its quietest after 8 PM — none of the daytime crowds.',
-        sensoryIcon: 'store', reelPos: 'Between Stop 2 and Stop 3', photoUrl: null },
-      { type: 'scenic', sceneType: 'drive', accent: '#f4c478', cardType: 'SELF-DRIVE DAY', pos: 2, total: 6,
-        timing: 'Afternoon · 3:30 PM', metaRight: '2h 30m', place: 'Coastal Highway 17',
-        from: 'Panaji', to: 'Baga', modeIcon: 'car', tag: 'Self-drive',
-        vizType: 'route', persona: 'Self-drive', personaIcon: 'car',
-        why: 'Framed as your Day 2 intro — built for self-drive, with zero transit dependencies.',
-        sensory: 'Hits all 3 coastal viewpoints without the NH-66 toll detour. Fort Aguada is a 20-min stop.',
-        sensoryIcon: 'camera', reelPos: 'Day 2 intro card variant', photoUrl: null },
-      { type: 'scenic', sceneType: 'coastal', accent: '#f0a06a', cardType: 'COASTAL ROAD', pos: 3, total: 6,
-        timing: 'Sunset window · 6:10 PM', metaRight: '18 km', place: 'Marine Drive, Calangute',
-        from: 'Calangute', to: 'Sinquerim', modeIcon: 'car', tag: 'Coastal',
-        vizType: 'sunset', persona: 'Light-chaser', personaIcon: 'twilight',
-        why: 'Timed to your eye for light — golden hour lands on the water at the exact midpoint.',
-        sensory: 'Road sits within 80 m of the sea the entire 18 km — no inland detours.',
-        sensoryIcon: 'waves', reelPos: 'Between Stop 4 and Stop 5 · evening', photoUrl: null },
-      { type: 'scenic', sceneType: 'ridge', accent: '#9ec5ff', cardType: 'RIDGE ROAD', pos: 4, total: 6,
-        timing: 'Morning · 7:30 AM', metaRight: 'Murree Hills', place: 'Nathia Gali Pass',
-        from: 'Murree', to: 'Nathia Gali', modeIcon: 'car', tag: 'Mountain',
-        vizType: 'elevation', persona: 'Peak-seeker', personaIcon: 'terrain',
-        why: 'Picked for the elevation change you favour — a 270° panorama opens at the saddle.',
-        sensory: 'Start before 8 AM — cloud closes in from the west by noon and blocks the views.',
-        sensoryIcon: 'cloud', reelPos: 'Day 1 morning connector', photoUrl: null },
-      { type: 'scenic', sceneType: 'crowd', accent: '#5cd97a', cardType: 'CROWD-FREE', pos: 5, total: 6,
-        timing: 'Pre-dawn · 6:00 AM', metaRight: '9 km', place: 'Sal Forest Bypass',
-        from: 'Palolem', to: 'Agonda Beach', modeIcon: 'car', tag: 'Quiet',
-        vizType: 'quiet', persona: 'Crowd-averse', personaIcon: 'person_off',
-        why: 'Your crowd score is high — this road was effectively built for you. No coaches, no tags.',
-        sensory: 'Untagged on Google Maps. 9 km of Sal canopy in full silence, except birdsong.',
-        sensoryIcon: 'eq', reelPos: 'Day 3 dawn connector', photoUrl: null },
-      { type: 'scenic', sceneType: 'forest', accent: '#86efac', cardType: 'FOREST CANOPY', pos: 6, total: 6,
-        timing: 'Morning · 9:00 AM', metaRight: 'Central Goa', place: 'Spice Plantation Trail',
-        from: 'Ponda', to: 'Savoi Plantation', modeIcon: 'car', tag: 'Canopy',
-        vizType: 'canopy', persona: 'Nature-lover', personaIcon: 'forest',
-        why: 'A nature-archetype match — runs straight into the Savoi spice estate you saved.',
-        sensory: 'Full overhead canopy the entire 8 km drops the temperature 4–5 °C inside.',
-        sensoryIcon: 'thermostat', reelPos: 'Day 2 morning slow road', photoUrl: null },
-    ];
-    cards.push(...SCENIC_TEST);
-  }
-  // ── end DEV scenic test ───────────────────────────────────────────────────────
 
   // "Before you go" summary card — always shown, gives full trip overview + engine changes
   const summaryCard: ReelSummaryCard = {
