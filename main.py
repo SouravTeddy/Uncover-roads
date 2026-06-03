@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header
+from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks
 from typing import Optional
 from fastapi.responses import RedirectResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +22,7 @@ import json as _json
 from pathlib import Path as _Path
 from engine.builder import build_itinerary
 from engine.types import EngineStop, EngineContext
-from city.data_model import load_city, CityData
+from city.data_model import load_city, CityData, _maybe_single_data
 from city.sync_job import start_scheduler as _start_sync_scheduler
 from city.persona_affinity import get_persona_affinity
 from pydantic import BaseModel
@@ -478,8 +478,76 @@ out center 200;
     return places
 
 
+def _refresh_map_data_tile(tile_key: str, clat: float, clon: float, radius_m: int, city: str) -> None:
+    """Fetch fresh map data from Google/Overpass and write to cache. Safe to call from background."""
+    places: list = []
+    if GOOGLE_PLACES_API_KEY:
+        seen_place_ids: set = set()
+        for gtype, category in _NEARBY_TYPE_TO_CATEGORY.items():
+            try:
+                resp = requests.get(
+                    f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                    params={
+                        "location": f"{clat},{clon}",
+                        "radius":   radius_m,
+                        "type":     gtype,
+                        "key":      GOOGLE_PLACES_API_KEY,
+                    },
+                    timeout=8,
+                )
+                data = resp.json()
+                status = data.get("status", "OK")
+                if status not in ("OK", "ZERO_RESULTS"):
+                    print(f"MAP DATA BG: nearbysearch {gtype} status={status}")
+                    continue
+                for r in data.get("results", []):
+                    pid = r.get("place_id")
+                    if not pid or pid in seen_place_ids:
+                        continue
+                    seen_place_ids.add(pid)
+                    photo_ref = None
+                    if r.get("photos"):
+                        photo_ref = r["photos"][0]["photo_reference"]
+                    loc = r.get("geometry", {}).get("location", {})
+                    places.append({
+                        "id":          pid,
+                        "title":       r.get("name", ""),
+                        "lat":         loc.get("lat"),
+                        "lon":         loc.get("lng"),
+                        "category":    category,
+                        "place_id":    pid,
+                        "rating":      r.get("rating"),
+                        "open_now":    r.get("opening_hours", {}).get("open_now"),
+                        "photo_ref":   photo_ref,
+                        "price_level": r.get("price_level"),
+                        "tags":        {"types": ",".join(r.get("types", []))},
+                    })
+            except Exception as e:
+                print(f"MAP DATA BG: nearbysearch failed for type {gtype}: {e}")
+                continue
+
+    if not places:
+        try:
+            places = _overpass_map_data(clat, clon, radius_m)
+            print(f"MAP DATA BG: Overpass returned {len(places)} places")
+        except Exception as e:
+            print(f"MAP DATA BG: Overpass fallback failed: {e}")
+
+    if _supabase and places:
+        try:
+            _supabase.table("map_data_cache").upsert({
+                "tile_key":   tile_key,
+                "places":     places,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+            print(f"MAP DATA BG: refreshed tile {tile_key} with {len(places)} places")
+        except Exception as e:
+            print(f"MAP DATA BG: cache write failed: {e}")
+
+
 @app.get("/map-data")
 def map_data(
+    background_tasks: BackgroundTasks,
     city:       str   = Query(""),
     lat:        float = Query(None),
     lon:        float = Query(None),
@@ -517,6 +585,7 @@ def map_data(
     tile_key = f"{tile_lat},{tile_lon}"
 
     # Check Supabase tile cache
+    stale_places: list | None = None
     if _supabase:
         try:
             cached = (
@@ -529,79 +598,18 @@ def map_data(
             cached_row = _maybe_single_data(cached)
             if cached_row:
                 fetched_at = datetime.fromisoformat(cached_row["fetched_at"])
-                if datetime.now(timezone.utc) - fetched_at < timedelta(hours=MAP_DATA_CACHE_TTL_HOURS):
+                age = datetime.now(timezone.utc) - fetched_at
+                if age < timedelta(hours=MAP_DATA_CACHE_TTL_HOURS):
                     print(f"MAP DATA: cache hit for tile {tile_key}")
                     return cached_row["places"]
-        except Exception:
-            pass
-
-    places: list = []
-
-    # ── Primary: Google Nearby Search ──
-    if GOOGLE_PLACES_API_KEY:
-        seen_place_ids: set = set()
-        for gtype, category in _NEARBY_TYPE_TO_CATEGORY.items():
-            try:
-                resp = requests.get(
-                    f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                    params={
-                        "location": f"{clat},{clon}",
-                        "radius":   radius_m,
-                        "type":     gtype,
-                        "key":      GOOGLE_PLACES_API_KEY,
-                    },
-                    timeout=8,
-                )
-                data = resp.json()
-                status = data.get("status", "OK")
-                if status not in ("OK", "ZERO_RESULTS"):
-                    print(f"MAP DATA: nearbysearch {gtype} status={status}")
-                    continue
-                for r in data.get("results", []):
-                    pid = r.get("place_id")
-                    if not pid or pid in seen_place_ids:
-                        continue
-                    seen_place_ids.add(pid)
-                    photo_ref = None
-                    if r.get("photos"):
-                        photo_ref = r["photos"][0]["photo_reference"]
-                    loc = r.get("geometry", {}).get("location", {})
-                    places.append({
-                        "id":          pid,
-                        "title":       r.get("name", ""),
-                        "lat":         loc.get("lat"),
-                        "lon":         loc.get("lng"),
-                        "category":    category,
-                        "place_id":    pid,
-                        "rating":      r.get("rating"),
-                        "open_now":    r.get("opening_hours", {}).get("open_now"),
-                        "photo_ref":   photo_ref,
-                        "price_level": r.get("price_level"),
-                        "tags":        {"types": ",".join(r.get("types", []))},
-                    })
-            except Exception as e:
-                print(f"MAP DATA: nearbysearch failed for type {gtype}: {e}")
-                continue
-    else:
-        print("MAP DATA: GOOGLE_PLACES_API_KEY not set — using Overpass fallback")
-
-    # ── Fallback: Overpass OSM ──
-    if not places:
-        print(f"MAP DATA: Google returned 0 places, trying Overpass fallback for {tile_key}")
-        try:
-            places = _overpass_map_data(clat, clon, radius_m)
-            print(f"MAP DATA: Overpass returned {len(places)} places")
-        except Exception as e:
-            print(f"MAP DATA: Overpass fallback failed: {e}")
-
-    # Store in Supabase tile cache
-    if _supabase and places:
-        try:
-            _supabase.table("map_data_cache").upsert({
-                "tile_key":   tile_key,
-                "places":     places,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
-            }).execute()
+                else:
+                    # Stale but exists — return it immediately, refresh in background
+                    stale_places = cached_row["places"]
+                    print(f"MAP DATA: stale cache for tile {tile_key}, scheduling background refresh")
+                    background_tasks.add_task(
+                        _refresh_map_data_tile, tile_key, clat, clon, radius_m, city
+                    )
+                    return stale_places
         except Exception:
             pass
 
@@ -629,8 +637,27 @@ def map_data(
         except Exception as e:
             print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
 
-    print(f"MAP DATA: returning {len(places)} places for tile {tile_key} ({city})")
-    return places
+    # No cache at all — first visit, must fetch synchronously
+    _refresh_map_data_tile(tile_key, clat, clon, radius_m, city)
+
+    # Read back from cache
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("map_data_cache")
+                .select("places")
+                .eq("tile_key", tile_key)
+                .maybe_single()
+                .execute()
+            )
+            row = _maybe_single_data(cached)
+            if row:
+                print(f"MAP DATA: returning {len(row['places'])} places for tile {tile_key} ({city})")
+                return row["places"]
+        except Exception:
+            pass
+
+    return []
 
 
 # =========================================
