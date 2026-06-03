@@ -266,6 +266,8 @@ export function ItineraryReelScreen() {
           width: '100%', height: '100%',
           overflowY: 'scroll', overflowX: 'hidden',
           scrollSnapType: 'y mandatory',
+          display: 'flex',
+          flexDirection: 'column',
         }}
         className="no-scrollbar"
       >
@@ -306,7 +308,7 @@ export function ItineraryReelScreen() {
             card.type === 'scenic' ? `scenic-${card.pos}` :
             card.type;
           return (
-            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always' }}>
+            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always', scrollSnapAlign: 'start' }}>
               {child}
             </div>
           );
