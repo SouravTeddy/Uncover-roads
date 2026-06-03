@@ -250,7 +250,7 @@ export function ItineraryReelScreen() {
   const activeDotIdx = (() => {
     let last = -1;
     for (let i = 0; i <= activeIdx; i++) {
-      const j = dotCards.indexOf(cards[i]);
+      const j = (dotCards as typeof cards).indexOf(cards[i]);
       if (j !== -1) last = j;
     }
     return last;
