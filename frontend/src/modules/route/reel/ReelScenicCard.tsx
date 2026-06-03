@@ -201,7 +201,7 @@ function VizFor({ card }: { card: ReelScenicCardType }) {
 
 function SceneFor({ card }: { card: ReelScenicCardType }) {
   switch (card.sceneType) {
-    case 'walk':    return <WalkSpineScene photoUrl={card.photoUrl} />;
+    case 'walk':    return <WalkSpineScene card={card} />;
     case 'drive':   return <SelfDriveScene photoUrl={card.photoUrl} />;
     case 'coastal': return <CoastalScene />;
     case 'ridge':   return <RidgeScene />;

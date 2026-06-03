@@ -396,6 +396,8 @@ function buildScenicCards(
       sensoryIcon: 'directions_walk',
       reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
       photoUrl: null,
+      originPhotoUrl: a.imageUrl ?? a.photoRef ?? null,
+      destPhotoUrl: b.imageUrl ?? b.photoRef ?? null,
       _afterStopId: a.id,
     });
   }

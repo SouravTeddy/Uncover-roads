@@ -28,6 +28,8 @@ export interface ReelScenicCard {
   sensoryIcon: string; // icon key: store|camera|waves|cloud|eq|thermostat
   reelPos: string;     // e.g. "Between Stop 2 and Stop 3"
   photoUrl?: string | null; // for walk/drive scenes — real destination photo
+  originPhotoUrl?: string | null; // origin stop photo for dual-photo walk card
+  destPhotoUrl?: string | null;   // destination stop photo for dual-photo walk card
 }
 
 export interface ReelIntroCard {
