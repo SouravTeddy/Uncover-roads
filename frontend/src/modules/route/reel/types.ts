@@ -128,6 +128,8 @@ export interface ReelDayDividerCard {
   city: string;      // city name for this day
   date: string;      // ISO date string e.g. "2026-05-21"
   stopCount: number; // number of stops planned this day
+  startTime: string | null;  // "09:00" — first stop's scheduled time
+  endTime: string | null;    // "18:30" — last stop's end time (time + duration)
 }
 
 export interface ReelBalanceCard {
