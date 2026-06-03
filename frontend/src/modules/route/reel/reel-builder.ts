@@ -352,7 +352,7 @@ function buildScenicCards(
 
   const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
 
-  const personaDisplay = archetypeLower.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const personaDisplay = persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
   for (let i = 0; i < stops.length - 1; i++) {
     // Fix 5: cap at 2 scenic cards per day
@@ -362,7 +362,7 @@ function buildScenicCards(
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
     // Fix 5: skip pairs that are too close (not walkable) or too far
-    if (distKm < 0.3 || distKm > 2.0) continue;
+    if (distKm < 0.1 || distKm > 2.0) continue;
 
     // Fix 4: area label dedup — use title as fallback when both areas are the same
     const fromLabel = (a.area && a.area !== b.area) ? a.area : a.title;
@@ -543,29 +543,45 @@ export function buildReelCards(
     const day = itinerary.days[dayIdx];
 
     // Transit card between cities
-    if (dayIdx > 0 && journeyLegs) {
+    if (dayIdx > 0) {
       const prevCity = itinerary.days[dayIdx - 1].city;
-      const transitLeg = journeyLegs.find(
-        l => l.type === 'transit' &&
-          (l as Extract<JourneyLeg, { type: 'transit' }>).from === prevCity &&
-          (l as Extract<JourneyLeg, { type: 'transit' }>).to === day.city,
-      ) as Extract<JourneyLeg, { type: 'transit' }> | undefined;
+      const thisCity = day.city;
+      if (prevCity !== thisCity) {
+        const transitLeg = journeyLegs
+          ? (journeyLegs.find(
+              l => l.type === 'transit' &&
+                (l as Extract<JourneyLeg, { type: 'transit' }>).from === prevCity &&
+                (l as Extract<JourneyLeg, { type: 'transit' }>).to === thisCity,
+            ) as Extract<JourneyLeg, { type: 'transit' }> | undefined)
+          : undefined;
 
-      if (transitLeg) {
-        const hasActual = !!(transitLeg.departureTime && transitLeg.arrivalTime);
-        cards.push({
-          type: 'transit',
-          mode: transitLeg.mode,
-          from: prevCity,
-          to: day.city,
-          durationMinutes: transitLeg.durationMinutes ?? null,
-          distanceKm: transitLeg.distanceKm ?? null,
-          imageUrl: null,
-          isEstimated: !hasActual,
-          departureTime: transitLeg.departureTime ?? null,
-          arrivalTime: transitLeg.arrivalTime ?? null,
-          ref: transitLeg.transitRef ?? null,
-        });
+        if (transitLeg) {
+          const hasActual = !!(transitLeg.departureTime && transitLeg.arrivalTime);
+          cards.push({
+            type: 'transit',
+            mode: transitLeg.mode,
+            from: prevCity,
+            to: thisCity,
+            durationMinutes: transitLeg.durationMinutes ?? null,
+            distanceKm: transitLeg.distanceKm ?? null,
+            imageUrl: null,
+            isEstimated: !hasActual,
+            departureTime: transitLeg.departureTime ?? null,
+            arrivalTime: transitLeg.arrivalTime ?? null,
+            ref: transitLeg.transitRef ?? null,
+          });
+        } else {
+          cards.push({
+            type: 'transit',
+            mode: 'drive',
+            from: prevCity,
+            to: thisCity,
+            durationMinutes: null,
+            distanceKm: null,
+            imageUrl: null,
+            isEstimated: true,
+          });
+        }
       }
     }
 
