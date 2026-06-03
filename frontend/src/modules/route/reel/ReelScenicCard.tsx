@@ -293,7 +293,7 @@ export default function ReelScenicCard({ card }: Props) {
           <span className="ms fill" style={{ fontSize: 15, color: a, lineHeight: 1, marginTop: 1 }}>{msName(card.personaIcon)}</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <span style={{ ...LF, fontSize: 9, fontWeight: 700, letterSpacing: '.14em', color: a }}>
-              WHY THIS ROAD · {card.persona.toUpperCase()}
+              WHY THIS ROAD · {card.personaDisplay.toUpperCase()}
             </span>
             <p style={{ ...LF, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(242,237,230,.86)', margin: 0 }}>{card.why}</p>
           </div>
