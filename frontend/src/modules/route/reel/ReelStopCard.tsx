@@ -90,7 +90,7 @@ function SunRays() {
 export function ReelStopCard({ card, active, weather, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
-  const hour = new Date().getHours();
+  const hour = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny = condition === 'sunny' || condition === 'clear';

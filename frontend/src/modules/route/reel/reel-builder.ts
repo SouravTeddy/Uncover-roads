@@ -352,11 +352,21 @@ function buildScenicCards(
 
   const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
 
+  const personaDisplay = archetypeLower.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
   for (let i = 0; i < stops.length - 1; i++) {
+    // Fix 5: cap at 2 scenic cards per day
+    if (results.length >= 2) break;
+
     const a = stops[i];
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-    if (distKm > 2.0) continue;
+    // Fix 5: skip pairs that are too close (not walkable) or too far
+    if (distKm < 0.3 || distKm > 2.0) continue;
+
+    // Fix 4: area label dedup — use title as fallback when both areas are the same
+    const fromLabel = (a.area && a.area !== b.area) ? a.area : a.title;
+    const toLabel   = (b.area && a.area !== b.area) ? b.area : b.title;
 
     const distLabel = distKm < 1
       ? `${Math.round(distKm * 1000)}m walk`
@@ -372,13 +382,14 @@ function buildScenicCards(
       total: -1,
       timing: minutesToTime(timeToMinutes(a.time) + a.durationMin),
       metaRight: distLabel,
-      place: `${a.area || a.title} → ${b.area || b.title}`,
-      from: a.area || a.title,
-      to: b.area || b.title,
+      place: `${fromLabel} → ${toLabel}`,
+      from: fromLabel,
+      to: toLabel,
       modeIcon: 'walk',
       tag: 'Walk',
       vizType: 'corridor',
       persona: archetypeLower,
+      personaDisplay,
       personaIcon: 'walk',
       why: `${distLabel} connecting ${a.title} and ${b.title}.`,
       sensory: `~${walkMins} min on foot.`,

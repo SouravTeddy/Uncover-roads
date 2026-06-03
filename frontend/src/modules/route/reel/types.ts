@@ -20,7 +20,8 @@ export interface ReelScenicCard {
   modeIcon: 'walk' | 'car';
   tag: string;         // e.g. "Walk", "Coastal", "Mountain"
   vizType: ScenicVizType;
-  persona: string;     // e.g. "Walk-lover"
+  persona: string;        // slug e.g. "walk_lover"
+  personaDisplay: string; // e.g. "Walk Lover"
   personaIcon: string; // icon key: walk|car|twilight|terrain|person_off|forest
   why: string;
   sensory: string;
