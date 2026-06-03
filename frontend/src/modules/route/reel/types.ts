@@ -98,6 +98,7 @@ export interface ReelIntelCard {
   detail: string;
   afterStopId: string | null;
   imageUrl: string | null; // background image from the anchor stop
+  stopId: string | null;   // place_id for per-stop anchoring; null = day-level
 }
 
 export interface ReelTransitCard {

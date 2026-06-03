@@ -148,4 +148,23 @@ describe('buildReelCards', () => {
     const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'explorer', recosByDayIdx);
     expect(cards.some(c => c.type === 'balance')).toBe(true);
   });
+
+  it('intel card with stopId is anchored to matching stop, not title-matched', () => {
+    const s1 = STOP({ id: 'stop-1', placeId: 'place-abc', title: 'Museum of Art', time: '09:00', durationMin: 90 });
+    const s2 = STOP({ id: 'stop-2', placeId: 'place-xyz', title: 'City Cafe', time: '12:00', durationMin: 60 });
+    const day = DAY('Bangalore', '2026-06-10', [s1, s2]);
+    // Message anchored to s1's placeId — headline does NOT contain "Museum of Art"
+    day.messages = [{
+      id: 'msg-1', type: 'insert' as const, what: 'Added a rest break',
+      why: 'Long gap between stops', consequence: '30 min added',
+      dismissable: true, stopId: 'place-abc',
+    }];
+    const itin = { ...ITIN([s1, s2]), days: [day] };
+    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const intelIdx = cards.findIndex(c => c.type === 'intel');
+    const s1Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-1');
+    const s2Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-2');
+    expect(intelIdx).toBeGreaterThan(s1Idx);
+    expect(intelIdx).toBeLessThan(s2Idx);
+  });
 });
