@@ -507,6 +507,7 @@ export interface EngineMessage {
   consequence: string          // "You now reach Ueno with 3 hours to spare"
   dismissable: boolean
   undo_action?: string         // action key to reverse this decision
+  stopId?: string | null       // place_id of anchor stop; null for day-level messages
 }
 
 // ── Map exploration types (Phase 3) ──────────────────────────
