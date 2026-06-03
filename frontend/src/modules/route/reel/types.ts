@@ -52,6 +52,9 @@ export interface ReelSummaryCard {
   totalStops: number;
   persona: string;
   engineChanges: { type: string; count: number }[];
+  intelItems: { icon: string; label: string; count: number; detail: string }[];
+  startDate?: string;
+  neighborhoods: string[];
 }
 
 export interface ReelStopCard {
