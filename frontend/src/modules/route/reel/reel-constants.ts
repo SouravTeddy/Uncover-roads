@@ -53,11 +53,11 @@ export function todDotColor(hour: number): string {
 }
 
 export function todLabel(hour: number): string {
-  if (hour >= 20 || hour < 6) return 'Night · 20:00–04:30'
-  if (hour < 8)               return 'Early morning · 06:00–08:00'
-  if (hour < 11)              return 'Morning · 08:00–11:00'
-  if (hour < 17)              return 'Afternoon · 11:00–16:00'
-  return 'Dusk · 18:00–20:00'
+  if (hour >= 20 || hour < 6) return 'Night'
+  if (hour < 8)               return 'Early morning'
+  if (hour < 11)              return 'Morning'
+  if (hour < 17)              return 'Afternoon'
+  return 'Dusk'
 }
 
 // ── Sky tint helper ───────────────────────────────────────────
@@ -66,15 +66,15 @@ export type SkyTintResult = { single: string } | { double: string }
 
 export function skyTintForCondition(condition: string): SkyTintResult {
   const c = condition.toLowerCase()
-  if (c.includes('thunder') || c.includes('storm')) return { double: SKY_TINT_THUNDER }
-  if (c === 'rain')                                  return { double: SKY_TINT_RAIN }
-  if (c.includes('snow') || c.includes('blizzard'))  return { single: SKY_TINT_SNOW }
-  if (c === 'drizzle')                               return { single: SKY_TINT_DRIZZLE }
-  if (c === 'fog' || c === 'mist')                   return { single: SKY_TINT_FOG }
-  if (c.includes('overcast') || c === 'cloud')       return { single: SKY_TINT_OVERCAST }
-  if (c.includes('partly'))                          return { single: SKY_TINT_PC }
-  if (c === 'night' || c === 'clear night')          return { single: SKY_TINT_NIGHT }
-  return { single: SKY_TINT_SUNNY } // sunny, clear, default
+  if (c.includes('thunder') || c.includes('storm'))   return { double: SKY_TINT_THUNDER }
+  if (c.includes('rain'))                              return { double: SKY_TINT_RAIN }
+  if (c.includes('snow') || c.includes('blizzard'))    return { single: SKY_TINT_SNOW }
+  if (c.includes('drizzle'))                           return { single: SKY_TINT_DRIZZLE }
+  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return { single: SKY_TINT_FOG }
+  if (c.includes('overcast') || c.includes('cloud'))   return { single: SKY_TINT_OVERCAST }
+  if (c.includes('partly'))                            return { single: SKY_TINT_PC }
+  if (c.includes('night'))                             return { single: SKY_TINT_NIGHT }
+  return { single: SKY_TINT_SUNNY }
 }
 
 // ── Rain / drizzle particle params ───────────────────────────

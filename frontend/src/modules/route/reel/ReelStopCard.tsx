@@ -11,7 +11,7 @@ import {
   STOP_H2_FS, STOP_H2_LH, STOP_H2_MB, STOP_H2_TEXT_SHADOW,
   STOP_COUNTER_BR, STOP_COUNTER_PAD, STOP_COUNTER_MB,
   STOP_TIME_ROW_BR, STOP_TIME_ROW_PAD, STOP_TIME_ROW_MB, STOP_META_ROW_MB,
-  makeRng,
+  makeRng, WEATHER_ICON,
 } from './reel-constants';
 
 interface Props {
@@ -22,15 +22,9 @@ interface Props {
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
 }
 
-function weatherIcon(condition: string): string {
+function wxIcon(condition: string): string {
   const c = condition.toLowerCase();
-  if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
-  if (c.includes('cloud') || c.includes('overcast')) return '⛅';
-  if (c.includes('snow')) return '❄️';
-  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
-  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return '🌫️';
-  if (c.includes('wind')) return '💨';
-  return '☀️';
+  return WEATHER_ICON[c] ?? WEATHER_ICON[c.split(' ')[0]] ?? 'wb_sunny';
 }
 
 function crowdNote(category: string | undefined, hour: number): string | null {
@@ -141,10 +135,10 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const hour = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
-  const isSunny = condition === 'sunny' || condition === 'clear';
+  const isSunny = condition.includes('sunny') || condition.includes('clear');
   const isThunder = condition.includes('thunder') || condition.includes('storm');
   const isSnow = condition.includes('snow') || condition.includes('blizzard');
-  const hasParticles = ['rain', 'drizzle'].includes(condition) || isThunder || isSnow;
+  const hasParticles = condition.includes('rain') || condition.includes('drizzle') || isThunder || isSnow;
 
   // Use stop index as seed variation so each stop has different rain pattern
   const stopSeed = RAIN_SEED + (stop.day * 100 + card.stopNumber);
@@ -179,14 +173,15 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       {/* TOD badge z-index:11 — top:48px left:13px per mock */}
       <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{todLabel(hour)}</span>
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{todLabel(hour)} · {fmt12h(stop.time)}</span>
       </div>
 
       {/* Weather chip z-index:10 — top:48px right:13px per mock */}
       {card.weather && (
         <div style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(79,143,171,0.15)', border: '1px solid rgba(79,143,171,0.3)', borderRadius: 20, padding: '3px 10px' }}>
-          <span style={{ fontSize: 13 }}>{weatherIcon(card.weather.condition)}</span>
-          <span style={{ color: '#4f8fab', fontSize: 12, fontWeight: 500 }}>{Math.round(card.weather.temp)}°</span>
+          <span className="ms" style={{ fontSize: 12, color: '#38bdf8' }}>{wxIcon(card.weather.condition)}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{Math.round(card.weather.temp)}°</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.48)' }}>{card.weather.condition.split(' ').slice(0,2).join(' ')}</span>
         </div>
       )}
 
