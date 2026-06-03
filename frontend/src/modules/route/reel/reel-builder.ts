@@ -642,7 +642,7 @@ export function buildReelCards(
       cards.push(stopCard);
 
       const recos = recosByStop.get(stop.id);
-      if (recos) cards.push(...recos);
+      if (recos) cards.push(...recos.map(r => ({ ...r, anchorPhotoUrl: stopImageUrl })));
 
       // Intel cards that reference this stop (by placeId match)
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
