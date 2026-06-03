@@ -10,6 +10,7 @@ import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
+import type { WeatherData } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
@@ -67,6 +68,7 @@ export function ItineraryReelScreen() {
 
   const existingPlaceIds = state.selectedPlaces.map(p => p.place_id ?? p.id);
 
+  const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
@@ -78,20 +80,21 @@ export function ItineraryReelScreen() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const weatherRef = useRef(weather);
+  const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
 
-  useEffect(() => { weatherRef.current = weather; }, [weather]);
+  useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
 
-  function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string, photoMap = cityPhotoMap) {
+  function buildFiltered(itinerary: typeof activeItinerary, wxByCity: Map<string, WeatherData>, pName: string, photoMap = cityPhotoMap) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
     if (itinerary) {
-      itinerary.days.forEach((_, dayIdx) => {
+      itinerary.days.forEach((day, dayIdx) => {
+        const cityWeather = wxByCity.get(day.city.toLowerCase()) ?? null;
         const signal = computeRecoSignal(
-          { ...state, weather: w },
+          { ...state, weather: cityWeather },
           dayIdx,
           itinerary,
         );
@@ -101,7 +104,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName, recosByDayIdx, photoMap);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap);
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
@@ -113,7 +116,7 @@ export function ItineraryReelScreen() {
   useEffect(() => {
     if (!activeItinerary) return;
     setImagesReady(false);
-    const filtered = buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current);
+    const filtered = buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current);
     setCards(filtered);
 
     const srcs: string[] = [];
@@ -136,29 +139,42 @@ export function ItineraryReelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
-  // Enrichment-only updates — when weather, personaName, or city photos arrive
+  // Enrichment-only updates — when weatherByCity, personaName, or city photos arrive
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weather, personaName));
+    setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weather, personaName]);
+  }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current, cityPhotoMap));
+    setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
 
-  // Fetch weather if not already in state (e.g. opening saved trip without going through route screen)
+  // Fetch weather for all unique cities in the itinerary
   useEffect(() => {
-    if (state.weather) return;
-    const cityName = city || activeItinerary?.city || activeItinerary?.cities?.[0];
-    if (!cityName) return;
-    api.weather(cityName).then(wx => {
-      if (wx) dispatch({ type: 'SET_WEATHER', weather: wx });
-    }).catch(() => {});
+    if (!activeItinerary) return;
+    const cities = [
+      ...new Set([
+        ...(activeItinerary.cities ?? []),
+        activeItinerary.city,
+      ].filter(Boolean) as string[])
+    ];
+
+    cities.forEach(c => {
+      api.weather(c).then(wx => {
+        if (wx) {
+          setWeatherByCity(prev => new Map(prev).set(c.toLowerCase(), wx));
+          // Also keep global weather state for the primary city
+          if (c === (activeItinerary.city ?? cities[0])) {
+            dispatch({ type: 'SET_WEATHER', weather: wx });
+          }
+        }
+      }).catch(() => {});
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
+  }, [city, activeItinerary?.id]);
 
   // Auto-save new itinerary on first view (before user manually saves)
   useEffect(() => {

@@ -468,12 +468,15 @@ export function buildReelCards(
   itinerary: EngineItinerary,
   journeyLegs: JourneyLeg[] | null,
   _savedId: string | null,
-  weather: WeatherData | null,
+  weatherByCity: Map<string, WeatherData> = new Map(),
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string> = new Map(),
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
+
+  const getWeatherForCity = (cityName: string): WeatherData | null =>
+    weatherByCity.get(cityName.toLowerCase()) ?? null;
 
   const weights: EngineWeights = itinerary.personaSnapshot ?? DEFAULT_WEIGHTS;
   const cards: ReelCard[] = [];
@@ -511,7 +514,7 @@ export function buildReelCards(
     totalDays: itinerary.days.length,
     totalDurationMin,
     totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
-    weather,
+    weather: getWeatherForCity(primaryCity),
     proTip: itinerary.summary?.pro_tip ?? null,
     persona,
     engineChanges,
@@ -626,7 +629,7 @@ export function buildReelCards(
       : [
           ...buildMealRecos(sortedStops, persona, day.city),
           ...buildPersonaRecos(sortedStops, persona, day.city, weights),
-          ...buildWeatherReco(sortedStops, weather, persona, day.city),
+          ...buildWeatherReco(sortedStops, getWeatherForCity(day.city), persona, day.city),
           ...buildClosingConflictRecos(sortedStops, persona, day.city),
           ...buildWalkingGapRecos(sortedStops, persona, day.city, weights),
         ];
@@ -653,7 +656,7 @@ export function buildReelCards(
         orderReason: stop.orderReason ?? null,
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
-        weather: weather ?? null,
+        weather: getWeatherForCity(day.city),
       };
       cards.push(stopCard);
 
