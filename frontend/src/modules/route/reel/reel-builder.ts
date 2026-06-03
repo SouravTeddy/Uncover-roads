@@ -337,6 +337,62 @@ function buildIntelCards(day: EngineItineraryDay, anchorImageUrl: string | null)
   }));
 }
 
+// ── Scenic cards ─────────────────────────────────────────────
+
+const SCENIC_ARCHETYPES = new Set(['flaneur', 'aesthete', 'slowscholar', 'naturelover']);
+
+function buildScenicCards(
+  stops: EngineItineraryStop[],
+  persona: string,
+  weights: EngineWeights,
+): Array<ReelScenicCard & { _afterStopId: string }> {
+  const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
+  const threshold = SCENIC_ARCHETYPES.has(archetypeLower) ? 0.2 : 0.4;
+  if (weights.w_scenic < threshold) return [];
+
+  const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i];
+    const b = stops[i + 1];
+    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
+    if (distKm > 2.0) continue;
+
+    const distLabel = distKm < 1
+      ? `${Math.round(distKm * 1000)}m walk`
+      : `${distKm.toFixed(1)} km walk`;
+    const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
+
+    results.push({
+      type: 'scenic',
+      sceneType: 'walk',
+      accent: '#c4b5fd',
+      cardType: 'WALK SPINE',
+      pos: results.length + 1,
+      total: -1,
+      timing: minutesToTime(timeToMinutes(a.time) + a.durationMin),
+      metaRight: distLabel,
+      place: `${a.area || a.title} → ${b.area || b.title}`,
+      from: a.area || a.title,
+      to: b.area || b.title,
+      modeIcon: 'walk',
+      tag: 'Walk',
+      vizType: 'corridor',
+      persona: archetypeLower,
+      personaIcon: 'walk',
+      why: `${distLabel} connecting ${a.title} and ${b.title}.`,
+      sensory: `~${walkMins} min on foot.`,
+      sensoryIcon: 'directions_walk',
+      reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
+      photoUrl: null,
+      _afterStopId: a.id,
+    });
+  }
+
+  const total = results.length;
+  return results.map((c, idx) => ({ ...c, pos: idx + 1, total }));
+}
+
 // ── Main builder ─────────────────────────────────────────────
 
 export function buildReelCards(
@@ -453,6 +509,12 @@ export function buildReelCards(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
 
+    // Build scenic card lookup: stop.id → scenic card placed after that stop
+    const dayScenic = buildScenicCards(sortedStops, persona, weights);
+    const scenicByStopId = new Map<string, ReelScenicCard>(
+      dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
+    );
+
     // Use pre-computed recos from the engine; fall back to legacy functions when not provided
     const allRecos: ReelRecoCard[] = recosByDayIdx.has(dayIdx)
       ? (recosByDayIdx.get(dayIdx) ?? [])
@@ -498,6 +560,10 @@ export function buildReelCards(
         ic => ic.stopId != null && ic.stopId === stop.placeId,
       );
       cards.push(...stopIntelCards);
+
+      // Scenic walk card after this stop (if the next stop is within walking distance)
+      const scenicCard = scenicByStopId.get(stop.id);
+      if (scenicCard) cards.push(scenicCard);
     }
 
     // Remaining intel cards not matched to a specific stop — push after all stops
