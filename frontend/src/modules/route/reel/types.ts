@@ -89,6 +89,8 @@ export interface ReelRecoCard {
   // Coordinates of the anchor stop — used to fetch nearby recommendations
   stopLat?: number;
   stopLon?: number;
+  // Photo of the anchor stop — used as background in the reco card top half
+  anchorPhotoUrl?: string | null;
 }
 
 /**
