@@ -2950,14 +2950,17 @@ async def engine_itinerary(body: EngineItineraryPayload):
         for m in result.messages
     ]
 
-    # Assign all messages to the first non-travel day
-    messages_assigned = False
+    # Assign messages to days based on stop_id match; day-level (stop_id=None) go to day 1
+    is_first_non_travel_day = True
     days_out = []
     for i, day in enumerate(result.days):
         day_messages: list[dict] = []
-        if not messages_assigned and not day.is_travel_day and all_messages:
-            day_messages = all_messages
-            messages_assigned = True
+        if not day.is_travel_day:
+            day_place_ids = {s.place_id for s in day.stops if s.place_id}
+            stop_matched = [m for m in all_messages if m["stopId"] and m["stopId"] in day_place_ids]
+            day_level = [m for m in all_messages if not m["stopId"]] if is_first_non_travel_day else []
+            day_messages = stop_matched + day_level
+            is_first_non_travel_day = False
         days_out.append({
             "day": i + 1,
             "date": day.date,
