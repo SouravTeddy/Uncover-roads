@@ -20,13 +20,16 @@ export interface ReelScenicCard {
   modeIcon: 'walk' | 'car';
   tag: string;         // e.g. "Walk", "Coastal", "Mountain"
   vizType: ScenicVizType;
-  persona: string;     // e.g. "Walk-lover"
+  persona: string;        // slug e.g. "walk_lover"
+  personaDisplay: string; // e.g. "Walk Lover"
   personaIcon: string; // icon key: walk|car|twilight|terrain|person_off|forest
   why: string;
   sensory: string;
   sensoryIcon: string; // icon key: store|camera|waves|cloud|eq|thermostat
   reelPos: string;     // e.g. "Between Stop 2 and Stop 3"
   photoUrl?: string | null; // for walk/drive scenes — real destination photo
+  originPhotoUrl?: string | null; // origin stop photo for dual-photo walk card
+  destPhotoUrl?: string | null;   // destination stop photo for dual-photo walk card
 }
 
 export interface ReelIntroCard {
@@ -49,6 +52,9 @@ export interface ReelSummaryCard {
   totalStops: number;
   persona: string;
   engineChanges: { type: string; count: number }[];
+  intelItems: { icon: string; label: string; count: number; detail: string }[];
+  startDate?: string;
+  neighborhoods: string[];
 }
 
 export interface ReelStopCard {
@@ -83,6 +89,8 @@ export interface ReelRecoCard {
   // Coordinates of the anchor stop — used to fetch nearby recommendations
   stopLat?: number;
   stopLon?: number;
+  // Photo of the anchor stop — used as background in the reco card top half
+  anchorPhotoUrl?: string | null;
 }
 
 /**

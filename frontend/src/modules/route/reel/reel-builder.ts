@@ -352,11 +352,21 @@ function buildScenicCards(
 
   const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
 
+  const personaDisplay = archetypeLower.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
   for (let i = 0; i < stops.length - 1; i++) {
+    // Fix 5: cap at 2 scenic cards per day
+    if (results.length >= 2) break;
+
     const a = stops[i];
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-    if (distKm > 2.0) continue;
+    // Fix 5: skip pairs that are too close (not walkable) or too far
+    if (distKm < 0.3 || distKm > 2.0) continue;
+
+    // Fix 4: area label dedup — use title as fallback when both areas are the same
+    const fromLabel = (a.area && a.area !== b.area) ? a.area : a.title;
+    const toLabel   = (b.area && a.area !== b.area) ? b.area : b.title;
 
     const distLabel = distKm < 1
       ? `${Math.round(distKm * 1000)}m walk`
@@ -372,25 +382,65 @@ function buildScenicCards(
       total: -1,
       timing: minutesToTime(timeToMinutes(a.time) + a.durationMin),
       metaRight: distLabel,
-      place: `${a.area || a.title} → ${b.area || b.title}`,
-      from: a.area || a.title,
-      to: b.area || b.title,
+      place: `${fromLabel} → ${toLabel}`,
+      from: fromLabel,
+      to: toLabel,
       modeIcon: 'walk',
       tag: 'Walk',
       vizType: 'corridor',
       persona: archetypeLower,
+      personaDisplay,
       personaIcon: 'walk',
       why: `${distLabel} connecting ${a.title} and ${b.title}.`,
       sensory: `~${walkMins} min on foot.`,
       sensoryIcon: 'directions_walk',
       reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
       photoUrl: null,
+      originPhotoUrl: a.imageUrl ?? a.photoRef ?? null,
+      destPhotoUrl: b.imageUrl ?? b.photoRef ?? null,
       _afterStopId: a.id,
     });
   }
 
   const total = results.length;
   return results.map((c, idx) => ({ ...c, pos: idx + 1, total }));
+}
+
+// ── Intel items builder ──────────────────────────────────────
+
+function buildIntelItems(
+  engineChanges: { type: string; count: number }[],
+  totalDays: number,
+  scenicCount: number,
+): { icon: string; label: string; count: number; detail: string }[] {
+  const items: { icon: string; label: string; count: number; detail: string }[] = [];
+
+  for (const change of engineChanges) {
+    switch (change.type) {
+      case 'resequence':
+        items.push({ icon: '📍', label: 'stops reordered', count: change.count, detail: 'for the best flow' });
+        break;
+      case 'insert':
+        items.push({ icon: '✨', label: 'spots added', count: change.count, detail: 'to enrich your day' });
+        break;
+      case 'swap':
+        items.push({ icon: '🔄', label: 'stops swapped', count: change.count, detail: 'for timing or crowds' });
+        break;
+      case 'weather':
+        items.push({ icon: '⛅', label: 'weather checks', count: change.count, detail: 'factored into your plan' });
+        break;
+    }
+  }
+
+  if (scenicCount > 0) {
+    items.push({ icon: '🗺️', label: 'walkable corridors', count: scenicCount, detail: 'mapped through the neighborhood' });
+  }
+
+  if (totalDays > 1) {
+    items.push({ icon: '⏱️', label: 'days balanced', count: totalDays, detail: 'for a comfortable pace' });
+  }
+
+  return items;
 }
 
 // ── Balance message builder ──────────────────────────────────
@@ -468,6 +518,12 @@ export function buildReelCards(
   });
 
 
+  // Count scenic cards across all days (needed for intelItems before the per-day loop)
+  const totalScenicCount = itinerary.days.reduce((sum, day) => {
+    const sortedStops = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    return sum + buildScenicCards(sortedStops, persona, weights).length;
+  }, 0);
+
   // "Before you go" summary card — always shown, gives full trip overview + engine changes
   const summaryCard: ReelSummaryCard = {
     type: 'summary',
@@ -475,6 +531,9 @@ export function buildReelCards(
     totalStops: stopCount,
     persona,
     engineChanges,
+    intelItems: buildIntelItems(engineChanges, itinerary.days.length, totalScenicCount),
+    startDate: itinerary.days[0]?.date,
+    neighborhoods: [],
   };
   cards.push(summaryCard);
 
@@ -583,7 +642,7 @@ export function buildReelCards(
       cards.push(stopCard);
 
       const recos = recosByStop.get(stop.id);
-      if (recos) cards.push(...recos);
+      if (recos) cards.push(...recos.map(r => ({ ...r, anchorPhotoUrl: stopImageUrl })));
 
       // Intel cards that reference this stop (by placeId match)
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(

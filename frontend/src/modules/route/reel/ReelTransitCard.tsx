@@ -455,6 +455,7 @@ export function ReelTransitCard({ card, active }: Props) {
   const [ref, setRef] = useState('');
   const cfg = MODE_CFG[card.mode] ?? MODE_CFG.flight;
   const PATH_LEN = 200;
+  const isPlaceholder = card.durationMinutes == null && card.distanceKm == null;
 
   useEffect(() => {
     if (active) {
@@ -490,16 +491,39 @@ export function ReelTransitCard({ card, active }: Props) {
   const distanceLabel = card.distanceKm != null ? `${card.distanceKm} km` : null;
   const metaLabel = [durationLabel, distanceLabel].filter(Boolean).join(' · ');
 
+  // Mode emoji icons for placeholder
+  const modeEmoji: Record<string, string> = {
+    flight: '✈️',
+    train: '🚆',
+    drive: '🚗',
+    bus: '🚌',
+    ferry: '⛴️',
+  };
+
   return (
     <div className="reel-card" style={{
       position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden',
     }}>
       {/* Cinematic scene */}
-      {card.mode === 'train'  && <TrainScene  on={on} />}
-      {card.mode === 'flight' && <FlightScene on={on} />}
-      {card.mode === 'bus'    && <BusScene    on={on} />}
-      {card.mode === 'ferry'  && <FerryScene  on={on} />}
-      {card.mode === 'drive'  && <DriveScene  on={on} />}
+      {!isPlaceholder && card.mode === 'train'  && <TrainScene  on={on} />}
+      {!isPlaceholder && card.mode === 'flight' && <FlightScene on={on} />}
+      {!isPlaceholder && card.mode === 'bus'    && <BusScene    on={on} />}
+      {!isPlaceholder && card.mode === 'ferry'  && <FerryScene  on={on} />}
+      {!isPlaceholder && card.mode === 'drive'  && <DriveScene  on={on} />}
+
+      {/* Placeholder background — reuse mode scene colors */}
+      {isPlaceholder && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: card.mode === 'train' ? 'linear-gradient(to bottom, #0a0e1c 0%, #1c1f3a 30%, #3d2a2a 55%, #2a1612 75%, #0c0c0e 100%)'
+            : card.mode === 'flight' ? 'linear-gradient(to bottom, #0c1430 0%, #1c2552 15%, #3a3766 28%, #6e4a6e 42%, #c47a5e 58%, #e8a06a 70%, #2a1a14 100%)'
+            : card.mode === 'bus' ? 'linear-gradient(to bottom, #0c0e18 0%, #2a1f3d 20%, #5a2e2e 45%, #6e3a1e 62%, #1a1208 100%)'
+            : card.mode === 'ferry' ? 'linear-gradient(to bottom, #1a1f3d 0%, #4a2e5e 15%, #8a3f4e 30%, #c46a4e 45%, #d4a853 55%, #6a5a8e 70%, #2a3a5e 82%, #0c1428 100%)'
+            : 'linear-gradient(to bottom, #141820 0%, #2a3040 25%, #4a5038 50%, #3a4028 70%, #1a1a10 100%)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+        }} />
+      )}
 
       {/* Content gradient overlay */}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,.1) 0%, transparent 30%, transparent 50%, rgba(0,0,0,.75) 75%, rgba(0,0,0,.95) 100%)', pointerEvents: 'none' }} />
@@ -520,6 +544,59 @@ export function ReelTransitCard({ card, active }: Props) {
       )}
 
       {/* Bottom content panel */}
+      {isPlaceholder ? (
+        /* PLACEHOLDER STATE: minimal card for trips without journey data */
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px 78px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+          {/* Mode icon large emoji */}
+          <div style={{
+            fontSize: 48, marginBottom: 24,
+            opacity: on ? 1 : 0,
+            transform: on ? 'scale(1)' : 'scale(0.85)',
+            transition: 'opacity .5s .2s ease, transform .5s .2s ease',
+          }}>
+            {modeEmoji[card.mode] || '🚗'}
+          </div>
+
+          {/* FROM → TO heading */}
+          <h2 style={{
+            fontFamily: 'var(--font-heading)', fontSize: 32, fontWeight: 700,
+            color: '#f5f0ea', textAlign: 'center', marginBottom: 16,
+            opacity: on ? 1 : 0,
+            transform: on ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity .5s .3s ease, transform .5s .3s ease',
+            lineHeight: 1.1,
+          }}>
+            {card.from} → {card.to}
+          </h2>
+
+          {/* Muted text: Journey details not available */}
+          <p style={{
+            fontSize: 14, color: '#a09880', textAlign: 'center', marginBottom: 20,
+            opacity: on ? 1 : 0,
+            transform: on ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity .5s .4s ease, transform .5s .4s ease',
+          }}>
+            Journey details not yet available
+          </p>
+
+          {/* Mode badge chip */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 16px', borderRadius: 20,
+            background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.24)',
+            backdropFilter: 'blur(8px)',
+            opacity: on ? 1 : 0,
+            transform: on ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity .5s .5s ease, transform .5s .5s ease',
+          }}>
+            <span style={{ fontSize: 16 }}>{modeEmoji[card.mode] || '🚗'}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#d4a853' }}>
+              {cfg.label}
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* FULL STATE: normal card with journey details */
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px 78px' }}>
 
         {/* FROM → TO with duration inline */}
@@ -657,6 +734,8 @@ export function ReelTransitCard({ card, active }: Props) {
           Swipe to start {card.to}
         </p>
       </div>
+      )}
+      {/* End placeholder/full conditional */}
 
       {/* Transit details sheet */}
       {sheetOpen && (
