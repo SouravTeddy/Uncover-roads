@@ -108,7 +108,7 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
 
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
-  const { places, loading } = useReelRecommendations(card, archetype, existingPlaceIds, active);
+  const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const glowLeft = GLOW_LEFT_TRIGGERS.has(card.trigger);
 
@@ -156,6 +156,24 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
           {[0, 1, 2].map(i => (
             <div key={i} style={{ height: 60, borderRadius: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', opacity: 0.5 - i * 0.1, animation: 'pulse 1.6s ease-in-out infinite' }} />
           ))}
+        </div>
+      )}
+
+      {/* Error state */}
+      {!loading && error && (
+        <div style={{ padding: '14px 12px', borderRadius: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', marginBottom: RECO_PLACE_ROWS_MB }}>
+          <p style={{ fontSize: 11, color: 'var(--color-text-3)', textAlign: 'center', margin: 0 }}>
+            Couldn't load nearby spots — check your connection.
+          </p>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && places.length === 0 && (
+        <div style={{ padding: '14px 12px', borderRadius: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)', marginBottom: RECO_PLACE_ROWS_MB }}>
+          <p style={{ fontSize: 11, color: 'var(--color-text-3)', textAlign: 'center', margin: 0 }}>
+            No nearby spots found for this.
+          </p>
         </div>
       )}
 
