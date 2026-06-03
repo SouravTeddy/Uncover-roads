@@ -6,7 +6,10 @@ import type { ReelRecoCard } from './types';
 interface Result {
   places: ReelRecoPlace[];
   loading: boolean;
+  error: boolean;
 }
+
+const FETCH_TIMEOUT_MS = 8000;
 
 /**
  * Fetches persona-scored nearby recommendations when a reco card becomes active.
@@ -21,6 +24,7 @@ export function useReelRecommendations(
 ): Result {
   const [places, setPlaces] = useState<ReelRecoPlace[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const fetched = useRef(false);
 
   useEffect(() => {
@@ -29,6 +33,13 @@ export function useReelRecommendations(
 
     fetched.current = true;
     setLoading(true);
+    setError(false);
+
+    const timeoutId = setTimeout(() => {
+      fetched.current = false;
+      setLoading(false);
+      setError(true);
+    }, FETCH_TIMEOUT_MS);
 
     api.reelReco({
       lat: card.stopLat,
@@ -38,8 +49,17 @@ export function useReelRecommendations(
       existingPlaceIds,
     })
       .then(setPlaces)
-      .finally(() => setLoading(false));
+      .catch(() => {
+        fetched.current = false;
+        setError(true);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => clearTimeout(timeoutId);
   }, [active, card.id, card.stopLat, card.stopLon, card.trigger, archetype, existingPlaceIds]);
 
-  return { places, loading };
+  return { places, loading, error };
 }
