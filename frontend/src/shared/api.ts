@@ -294,6 +294,7 @@ export const api = {
     trigger: string
     archetype: string
     existingPlaceIds: string[]
+    category?: string
   }): Promise<ReelRecoPlace[]> => {
     try {
       const data = await post<{ places: Array<{
@@ -306,6 +307,7 @@ export const api = {
         trigger: params.trigger,
         archetype: params.archetype,
         existing_place_ids: params.existingPlaceIds,
+        ...(params.category !== undefined && { category: params.category }),
       });
       return (data.places ?? []).map(p => ({
         placeId:       p.place_id,
