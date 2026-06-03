@@ -212,4 +212,20 @@ describe('buildReelCards', () => {
     const cards = buildReelCards(itin, null, null, null, 'explorer');
     expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
   });
+
+  it('balance card message varies by category mix', () => {
+    const stops = [
+      STOP({ id: 's1', time: '09:00', category: 'museum' as any }),
+      STOP({ id: 's2', time: '11:00', category: 'restaurant' as any }),
+      STOP({ id: 's3', time: '14:00', category: 'park' as any }),
+    ];
+    const day = DAY('Bangalore', '2026-06-10', stops);
+    const itin = { ...ITIN(stops), days: [day] };
+    const cards = buildReelCards(itin, null, null, null, 'explorer', new Map([[0, []]]));
+    const balance = cards.find(c => c.type === 'balance') as any;
+    expect(balance).toBeDefined();
+    expect(balance.message).not.toBe('Your day looks well-balanced for your style.');
+    expect(typeof balance.message).toBe('string');
+    expect(balance.message.length).toBeGreaterThan(5);
+  });
 });
