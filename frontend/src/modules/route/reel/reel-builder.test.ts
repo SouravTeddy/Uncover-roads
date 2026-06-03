@@ -167,4 +167,49 @@ describe('buildReelCards', () => {
     expect(intelIdx).toBeGreaterThan(s1Idx);
     expect(intelIdx).toBeLessThan(s2Idx);
   });
+
+  it('generates scenic walk card between close stops when w_scenic is high', () => {
+    const s1 = STOP({ id: 'stop-1', lat: 12.97, lon: 77.59, time: '09:00', durationMin: 60 });
+    const s2 = STOP({ id: 'stop-2', lat: 12.972, lon: 77.591, time: '11:00', durationMin: 60 });
+    const day = DAY('Bangalore', '2026-06-10', [s1, s2]);
+    const itin = {
+      ...ITIN([s1, s2]),
+      days: [day],
+      personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.7 },
+    };
+    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const scenicCards = cards.filter(c => c.type === 'scenic');
+    expect(scenicCards.length).toBeGreaterThanOrEqual(1);
+    const s1Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-1');
+    const scenicIdx = cards.findIndex(c => c.type === 'scenic');
+    const s2Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-2');
+    expect(scenicIdx).toBeGreaterThan(s1Idx);
+    expect(scenicIdx).toBeLessThan(s2Idx);
+  });
+
+  it('does not generate scenic cards when w_scenic is low', () => {
+    const s1 = STOP({ id: 'stop-1', lat: 12.97, lon: 77.59, time: '09:00' });
+    const s2 = STOP({ id: 'stop-2', lat: 12.972, lon: 77.591, time: '11:00' });
+    const day = DAY('Bangalore', '2026-06-10', [s1, s2]);
+    const itin = {
+      ...ITIN([s1, s2]),
+      days: [day],
+      personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.2 },
+    };
+    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
+  });
+
+  it('does not generate scenic cards between stops more than 2km apart', () => {
+    const s1 = STOP({ id: 'stop-1', lat: 12.97, lon: 77.59, time: '09:00' });
+    const s2 = STOP({ id: 'stop-2', lat: 13.02, lon: 77.59, time: '11:00' });
+    const day = DAY('Bangalore', '2026-06-10', [s1, s2]);
+    const itin = {
+      ...ITIN([s1, s2]),
+      days: [day],
+      personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.9 },
+    };
+    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
+  });
 });
