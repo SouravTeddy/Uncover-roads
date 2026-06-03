@@ -213,6 +213,25 @@ describe('buildReelCards', () => {
     expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
   });
 
+  it('day divider card includes startTime and endTime for multi-day itinerary', () => {
+    const day1Stops = [STOP({ id: 's1', time: '09:00', durationMin: 90 })];
+    const day2Stops = [
+      STOP({ id: 's2', time: '10:00', durationMin: 120, day: 2 }),
+      STOP({ id: 's3', time: '14:00', durationMin: 60, day: 2 }),
+    ];
+    const day1 = DAY('Bangalore', '2026-06-10', day1Stops, 1);
+    const day2 = DAY('Bangalore', '2026-06-11', day2Stops, 2);
+    const itin = {
+      ...ITIN([...day1Stops, ...day2Stops]),
+      days: [day1, day2],
+    };
+    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const divider = cards.find(c => c.type === 'day_divider') as any;
+    expect(divider).toBeDefined();
+    expect(divider.startTime).toBe('10:00');   // first stop time on day 2
+    expect(divider.endTime).toBe('15:00');     // last stop time + duration on day 2
+  });
+
   it('balance card message varies by category mix', () => {
     const stops = [
       STOP({ id: 's1', time: '09:00', category: 'museum' as any }),

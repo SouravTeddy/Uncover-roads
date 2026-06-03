@@ -513,12 +513,23 @@ export function buildReelCards(
     // Day divider card — shown after any transit card, before the day's stops
     // Skip day 1 (no need to announce the first day before any cards)
     if (day.day > 1) {
+      const sortedForDivider = [...day.stops].sort(
+        (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
+      );
+      const firstStop = sortedForDivider[0] ?? null;
+      const lastStop = sortedForDivider.at(-1) ?? null;
+      const endMin = lastStop
+        ? timeToMinutes(lastStop.time) + lastStop.durationMin
+        : null;
+
       const dividerCard: ReelDayDividerCard = {
         type: 'day_divider',
         day: day.day,
         city: day.city,
         date: day.date,
         stopCount: day.stops.length,
+        startTime: firstStop?.time ?? null,
+        endTime: endMin !== null ? minutesToTime(endMin) : null,
       };
       cards.push(dividerCard);
     }

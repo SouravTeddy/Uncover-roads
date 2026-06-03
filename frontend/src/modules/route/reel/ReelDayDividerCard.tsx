@@ -8,6 +8,13 @@ interface Props {
   card: ReelDayDividerCardType;
 }
 
+function fmt12h(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return m === 0 ? `${hour} ${ampm}` : `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 function formatDividerDate(isoDate: string): string {
   try {
     const d = new Date(isoDate + 'T12:00:00Z');
@@ -50,6 +57,13 @@ export function ReelDayDividerCard({ card }: Props) {
         <div style={{ fontSize: 11, color: 'var(--color-text-3)' }}>
           {card.stopCount} stops
         </div>
+        {(card.startTime || card.endTime) && (
+          <div style={{ fontSize: 10, color: 'var(--color-text-4)', marginTop: 4 }}>
+            {card.startTime && fmt12h(card.startTime)}
+            {card.startTime && card.endTime && ' → '}
+            {card.endTime && fmt12h(card.endTime)}
+          </div>
+        )}
       </div>
 
       {/* Swipe hint */}
