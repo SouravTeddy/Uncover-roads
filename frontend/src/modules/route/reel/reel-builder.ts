@@ -406,6 +406,43 @@ function buildScenicCards(
   return results.map((c, idx) => ({ ...c, pos: idx + 1, total }));
 }
 
+// ── Intel items builder ──────────────────────────────────────
+
+function buildIntelItems(
+  engineChanges: { type: string; count: number }[],
+  totalDays: number,
+  scenicCount: number,
+): { icon: string; label: string; count: number; detail: string }[] {
+  const items: { icon: string; label: string; count: number; detail: string }[] = [];
+
+  for (const change of engineChanges) {
+    switch (change.type) {
+      case 'resequence':
+        items.push({ icon: '📍', label: 'stops reordered', count: change.count, detail: 'for the best flow' });
+        break;
+      case 'insert':
+        items.push({ icon: '✨', label: 'spots added', count: change.count, detail: 'to enrich your day' });
+        break;
+      case 'swap':
+        items.push({ icon: '🔄', label: 'stops swapped', count: change.count, detail: 'for timing or crowds' });
+        break;
+      case 'weather':
+        items.push({ icon: '⛅', label: 'weather checks', count: change.count, detail: 'factored into your plan' });
+        break;
+    }
+  }
+
+  if (scenicCount > 0) {
+    items.push({ icon: '🗺️', label: 'walkable corridors', count: scenicCount, detail: 'mapped through the neighborhood' });
+  }
+
+  if (totalDays > 1) {
+    items.push({ icon: '⏱️', label: 'days balanced', count: totalDays, detail: 'for a comfortable pace' });
+  }
+
+  return items;
+}
+
 // ── Balance message builder ──────────────────────────────────
 
 function buildBalanceMessage(
@@ -481,6 +518,12 @@ export function buildReelCards(
   });
 
 
+  // Count scenic cards across all days (needed for intelItems before the per-day loop)
+  const totalScenicCount = itinerary.days.reduce((sum, day) => {
+    const sortedStops = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    return sum + buildScenicCards(sortedStops, persona, weights).length;
+  }, 0);
+
   // "Before you go" summary card — always shown, gives full trip overview + engine changes
   const summaryCard: ReelSummaryCard = {
     type: 'summary',
@@ -488,6 +531,9 @@ export function buildReelCards(
     totalStops: stopCount,
     persona,
     engineChanges,
+    intelItems: buildIntelItems(engineChanges, itinerary.days.length, totalScenicCount),
+    startDate: itinerary.days[0]?.date,
+    neighborhoods: [],
   };
   cards.push(summaryCard);
 
