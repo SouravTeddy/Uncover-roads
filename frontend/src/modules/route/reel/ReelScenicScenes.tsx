@@ -3,6 +3,7 @@
 // Sc* prefix avoids collision with transit scene helpers.
 
 import { useId } from 'react';
+import type { ReelScenicCard } from './types';
 
 // ── Parallax helper ──────────────────────────────────────────────────────────
 interface ScParallaxProps {
@@ -118,15 +119,67 @@ function ScPhotoPlaceholder({ label, sub, tint = '#7c8aa0' }: { label: string; s
   );
 }
 
-// ── 1 · WALK SPINE — photo scene (real photo or placeholder) ─────────────────
-export function WalkSpineScene({ photoUrl }: { photoUrl?: string | null }) {
+// ── 1 · WALK SPINE — dual-photo scene (origin top, destination bottom) ────────
+export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
+  const hasOriginPhoto = !!card.originPhotoUrl;
+  const hasDestPhoto = !!card.destPhotoUrl;
+
   return (
-    <div style={{ position: 'absolute', inset: 0 }}>
-      {photoUrl
-        ? <img src={photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <ScPhotoPlaceholder label="Street photo" sub="Omotesando Blvd · dusk" tint="#a596c9" />
-      }
-      <ScenePill icon="walk" code="WALK SPINE" meta="Stop 2 → Stop 3" accent="#c4b5fd" />
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0f0d0c', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* Top half — origin photo */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {hasOriginPhoto && (
+          <img src={card.originPhotoUrl!} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }} />
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,13,12,0.3) 0%, rgba(15,13,12,0.85) 100%)' }} />
+        {/* Origin label top-left */}
+        <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>From</div>
+          <div style={{ color: '#f5f0ea', fontSize: 18, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.2 }}>{card.from}</div>
+        </div>
+      </div>
+
+      {/* Middle zone — walk info */}
+      <div style={{ background: '#0f0d0c', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(212,168,83,0.15)', border: '1px solid rgba(212,168,83,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 18 }}>🚶</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#d4a853', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>{card.tag}</div>
+          <div style={{ color: '#a09880', fontSize: 12, marginTop: 2 }}>{card.metaRight} · {card.timing}</div>
+        </div>
+        <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'right' }}>
+          <div>{card.reelPos}</div>
+        </div>
+      </div>
+
+      {/* Bottom half — destination photo */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {hasDestPhoto && (
+          <img src={card.destPhotoUrl!} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }} />
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,13,12,0.3) 0%, rgba(15,13,12,0.85) 100%)' }} />
+        {/* Destination label bottom-left */}
+        <div style={{ position: 'absolute', top: 24, left: 24, right: 24 }}>
+          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>To</div>
+          <div style={{ color: '#f5f0ea', fontSize: 18, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.2 }}>{card.to}</div>
+        </div>
+      </div>
+
+      {/* Persona badge — bottom overlay */}
+      <div style={{ position: 'absolute', bottom: 100, left: 24 }}>
+        <div style={{ background: 'rgba(212,168,83,0.15)', border: '1px solid rgba(212,168,83,0.4)', borderRadius: 20, padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12 }}>🚶</span>
+          <span style={{ color: '#d4a853', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em' }}>{card.personaDisplay}</span>
+        </div>
+      </div>
+
+      {/* Why note */}
+      {card.why && (
+        <div style={{ position: 'absolute', bottom: 60, left: 24, right: 24 }}>
+          <div style={{ color: '#a09880', fontSize: 12, lineHeight: 1.5, fontStyle: 'italic' }}>"{card.why}"</div>
+        </div>
+      )}
     </div>
   );
 }

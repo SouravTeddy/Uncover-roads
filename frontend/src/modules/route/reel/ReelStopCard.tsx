@@ -4,7 +4,6 @@ import { getPlacePhotoUrl } from '../../../shared/api';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_STOP,
   todGradient, todDotColor, todLabel, skyTintForCondition,
-  WEATHER_ICON,
   RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
   RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
   THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
@@ -21,6 +20,55 @@ interface Props {
   archetype?: string;
   weather?: { condition: string; temp: number } | null;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
+}
+
+function weatherIcon(condition: string): string {
+  const c = condition.toLowerCase();
+  if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+  if (c.includes('cloud') || c.includes('overcast')) return '⛅';
+  if (c.includes('snow')) return '❄️';
+  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return '🌫️';
+  if (c.includes('wind')) return '💨';
+  return '☀️';
+}
+
+function crowdNote(category: string | undefined, hour: number): string | null {
+  const cat = (category || '').toLowerCase();
+
+  if ((cat.includes('museum') || cat.includes('attraction') || cat.includes('landmark')) && (hour >= 10 && hour <= 14)) {
+    return 'Crowd peak 10am–2pm · visit early or after 3pm';
+  }
+  if ((cat.includes('restaurant') || cat.includes('food') || cat.includes('cafe')) && (hour >= 12 && hour <= 14)) {
+    return 'Lunch rush now · expect 15–20 min wait';
+  }
+  if ((cat.includes('restaurant') || cat.includes('food')) && (hour >= 19 && hour <= 21)) {
+    return 'Dinner peak hours · reservation recommended';
+  }
+  if ((cat.includes('market') || cat.includes('shopping')) && (hour >= 11 && hour <= 15)) {
+    return 'Busiest midday · quieter before 10am or after 4pm';
+  }
+  if ((cat.includes('park') || cat.includes('garden') || cat.includes('temple') || cat.includes('shrine')) && (hour >= 9 && hour <= 11)) {
+    return 'Morning peak · golden hour light before 8am';
+  }
+  return null;
+}
+
+function whatToDo(category: string | undefined): string[] {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('museum')) return ['Check the main collection first', 'Allow 1.5–2 hrs', 'Audio guide recommended'];
+  if (cat.includes('temple') || cat.includes('shrine')) return ['Remove shoes before entering', 'Best light in early morning', 'Respect photo restrictions'];
+  if (cat.includes('market')) return ['Go early for freshest picks', 'Bring cash for stalls', 'Haggling is welcome'];
+  if (cat.includes('park') || cat.includes('garden')) return ['Find the viewpoint first', 'Pack water', 'Great for golden hour'];
+  if (cat.includes('restaurant') || cat.includes('food')) return ['Try the house specialty', 'Check opening hours', 'Reservations for dinner'];
+  if (cat.includes('cafe') || cat.includes('coffee')) return ['Seat at the window for street views', 'Try the seasonal menu'];
+  if (cat.includes('shopping') || cat.includes('store')) return ['Check for tax-free options', 'Peak crowds midday'];
+  return ['Take your time exploring', 'Check for guided tours'];
+}
+
+function priceLabel(level: number | null | undefined): string | null {
+  if (!level) return null;
+  return '$'.repeat(Math.min(level, 4));
 }
 
 function fmt12h(time: string): string {
@@ -87,10 +135,10 @@ function SunRays() {
   );
 }
 
-export function ReelStopCard({ card, active, weather, onInteract }: Props) {
+export function ReelStopCard({ card, active, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
-  const hour = new Date().getHours();
+  const hour = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor = todDotColor(hour);
   const condition = (card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny = condition === 'sunny' || condition === 'clear';
@@ -135,11 +183,10 @@ export function ReelStopCard({ card, active, weather, onInteract }: Props) {
       </div>
 
       {/* Weather chip z-index:10 — top:48px right:13px per mock */}
-      {weather && (
-        <div style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)' }}>
-          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[weather.condition.toLowerCase()] ?? 'wb_sunny'}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{weather.temp}°</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{weather.condition}</span>
+      {card.weather && (
+        <div style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(79,143,171,0.15)', border: '1px solid rgba(79,143,171,0.3)', borderRadius: 20, padding: '3px 10px' }}>
+          <span style={{ fontSize: 13 }}>{weatherIcon(card.weather.condition)}</span>
+          <span style={{ color: '#4f8fab', fontSize: 12, fontWeight: 500 }}>{Math.round(card.weather.temp)}°</span>
         </div>
       )}
 
@@ -191,10 +238,17 @@ export function ReelStopCard({ card, active, weather, onInteract }: Props) {
           )}
         </div>
 
-        {/* Title */}
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: STOP_H2_FS, fontWeight: 700, color: '#fff', lineHeight: STOP_H2_LH, marginBottom: STOP_H2_MB, textShadow: STOP_H2_TEXT_SHADOW }}>
-          {stop.title}
-        </h2>
+        {/* Title + price level */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: STOP_H2_MB }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: STOP_H2_FS, fontWeight: 700, color: '#fff', lineHeight: STOP_H2_LH, margin: 0, textShadow: STOP_H2_TEXT_SHADOW, flex: 1 }}>
+            {stop.title}
+          </h2>
+          {priceLabel(stop.priceLevel) && (
+            <span style={{ background: 'rgba(107,148,112,0.15)', border: '1px solid rgba(107,148,112,0.35)', borderRadius: 4, padding: '2px 8px', color: '#6b9470', fontSize: 11, fontWeight: 600, flexShrink: 0, marginTop: 4 }}>
+              {priceLabel(stop.priceLevel)}
+            </span>
+          )}
+        </div>
 
         {/* Metadata row */}
         <div style={{ display: 'flex', gap: 5, marginBottom: STOP_META_ROW_MB, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -229,6 +283,24 @@ export function ReelStopCard({ card, active, weather, onInteract }: Props) {
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.55, fontStyle: 'italic' }}>{stop.whyForYou}</p>
           </div>
         )}
+
+        {/* Crowd timing note */}
+        {crowdNote(stop.category, hour) && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', background: 'rgba(212,168,83,0.08)', borderRadius: 8, borderLeft: '2px solid rgba(212,168,83,0.5)', marginTop: 8 }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>⏰</span>
+            <span style={{ color: '#a09880', fontSize: 12, lineHeight: 1.5 }}>{crowdNote(stop.category, hour)}</span>
+          </div>
+        )}
+
+        {/* What-to-do bullets */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+          {whatToDo(stop.category).map((b, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <span style={{ color: '#d4a853', fontSize: 10, marginTop: 3, flexShrink: 0 }}>▸</span>
+              <span style={{ color: '#a09880', fontSize: 12, lineHeight: 1.4 }}>{b}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

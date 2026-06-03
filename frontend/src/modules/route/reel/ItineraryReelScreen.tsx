@@ -247,7 +247,14 @@ export function ItineraryReelScreen() {
   }
 
   const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'summary' && c.type !== 'scenic');
-  const activeDotIdx = dotCards.findIndex(c => c === cards[activeIdx]);
+  const activeDotIdx = (() => {
+    let last = -1;
+    for (let i = 0; i <= activeIdx; i++) {
+      const j = (dotCards as typeof cards).indexOf(cards[i]);
+      if (j !== -1) last = j;
+    }
+    return last;
+  })();
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
@@ -299,7 +306,7 @@ export function ItineraryReelScreen() {
             card.type === 'scenic' ? `scenic-${card.pos}` :
             card.type;
           return (
-            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0 }}>
+            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always' }}>
               {child}
             </div>
           );
