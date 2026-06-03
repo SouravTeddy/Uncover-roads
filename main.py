@@ -478,7 +478,7 @@ out center 200;
     return places
 
 
-def _refresh_map_data_tile(tile_key: str, clat: float, clon: float, radius_m: int, city: str) -> None:
+def _refresh_map_data_tile(tile_key: str, clat: float, clon: float, radius_m: int, city: str) -> list:
     """Fetch fresh map data from Google/Overpass and write to cache. Safe to call from background."""
     places: list = []
     if GOOGLE_PLACES_API_KEY:
@@ -543,6 +543,8 @@ def _refresh_map_data_tile(tile_key: str, clat: float, clon: float, radius_m: in
             print(f"MAP DATA BG: refreshed tile {tile_key} with {len(places)} places")
         except Exception as e:
             print(f"MAP DATA BG: cache write failed: {e}")
+
+    return places
 
 
 @app.get("/map-data")
@@ -638,26 +640,32 @@ def map_data(
             print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
 
     # No cache at all — first visit, must fetch synchronously
-    _refresh_map_data_tile(tile_key, clat, clon, radius_m, city)
+    if not _supabase:
+        # No Supabase — fetch and return directly (local dev path)
+        fetched_places = _refresh_map_data_tile(tile_key, clat, clon, radius_m, city)
+        print(f"MAP DATA: no-Supabase path, returning {len(fetched_places)} places for tile {tile_key} ({city})")
+        return fetched_places
+
+    fetched_places = _refresh_map_data_tile(tile_key, clat, clon, radius_m, city)
 
     # Read back from cache
-    if _supabase:
-        try:
-            cached = (
-                _supabase.table("map_data_cache")
-                .select("places")
-                .eq("tile_key", tile_key)
-                .maybe_single()
-                .execute()
-            )
-            row = _maybe_single_data(cached)
-            if row:
-                print(f"MAP DATA: returning {len(row['places'])} places for tile {tile_key} ({city})")
-                return row["places"]
-        except Exception:
-            pass
+    try:
+        cached = (
+            _supabase.table("map_data_cache")
+            .select("places")
+            .eq("tile_key", tile_key)
+            .maybe_single()
+            .execute()
+        )
+        row = _maybe_single_data(cached)
+        if row:
+            print(f"MAP DATA: returning {len(row['places'])} places for tile {tile_key} ({city})")
+            return row["places"]
+    except Exception:
+        pass
 
-    return []
+    # Cache read failed — fall back to what we just fetched
+    return fetched_places
 
 
 # =========================================

@@ -35,7 +35,10 @@ export function useReelRecommendations(
     setLoading(true);
     setError(false);
 
+    let cancelled = false;
+
     const timeoutId = setTimeout(() => {
+      cancelled = true;
       fetched.current = false;
       setLoading(false);
       setError(true);
@@ -48,17 +51,21 @@ export function useReelRecommendations(
       archetype,
       existingPlaceIds,
     })
-      .then(setPlaces)
-      .catch(() => {
-        fetched.current = false;
-        setError(true);
-      })
-      .finally(() => {
+      .then(data => {
+        if (cancelled) return;
         clearTimeout(timeoutId);
+        setPlaces(data);
         setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        clearTimeout(timeoutId);
+        fetched.current = false;
+        setLoading(false);
+        setError(true);
       });
 
-    return () => clearTimeout(timeoutId);
+    return () => { cancelled = true; clearTimeout(timeoutId); fetched.current = false; };
   }, [active, card.id, card.stopLat, card.stopLon, card.trigger, archetype, existingPlaceIds]);
 
   return { places, loading, error };
