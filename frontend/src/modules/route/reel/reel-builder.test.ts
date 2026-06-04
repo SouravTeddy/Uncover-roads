@@ -46,6 +46,7 @@ const DAY = (city: string, date: string, stops: EngineItineraryStop[], day = 1):
 });
 
 const WEATHER: WeatherData = { temp: 22, condition: 'sunny', icon: 'wb_sunny' };
+const WEATHER_MAP = new Map<string, WeatherData>([['paris', WEATHER], ['lyon', WEATHER]]);
 
 const ITIN = (stops: EngineItineraryStop[]): EngineItinerary => ({
   id: 'itin-1',
@@ -58,7 +59,7 @@ const ITIN = (stops: EngineItineraryStop[]): EngineItinerary => ({
 
 describe('buildReelCards', () => {
   it('wraps stops in intro + summary + stops + finale for single city', () => {
-    const cards = buildReelCards(ITIN([STOP()]), null, null, WEATHER, 'explorer');
+    const cards = buildReelCards(ITIN([STOP()]), null, null, WEATHER_MAP, 'explorer');
     expect(cards[0].type).toBe('intro');
     expect(cards[1].type).toBe('summary');
     expect(cards.some(c => c.type === 'stop')).toBe(true);
@@ -70,7 +71,7 @@ describe('buildReelCards', () => {
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '14:30', category: 'park' }),
     ];
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'epicurean');
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
     const recos = cards.filter(c => c.type === 'reco');
     expect(recos.length).toBeGreaterThan(0);
   });
@@ -80,7 +81,7 @@ describe('buildReelCards', () => {
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '12:30', category: 'restaurant' }),
     ];
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'epicurean');
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
     const recos = cards.filter(c => c.type === 'reco');
     expect(recos.every(c => c.type === 'reco' && (c as import('./types').ReelRecoCard).trigger !== 'lunch')).toBe(true);
   });
@@ -100,7 +101,7 @@ describe('buildReelCards', () => {
       personaSnapshot: DEFAULT_WEIGHTS,
       archetypeSnapshot: 'explorer',
     };
-    const cards = buildReelCards(multiItin, legs, null, WEATHER, 'explorer');
+    const cards = buildReelCards(multiItin, legs, null, WEATHER_MAP, 'explorer');
     const transit = cards.find(c => c.type === 'transit');
     expect(transit).toBeDefined();
     expect(transit?.type).toBe('transit');
@@ -110,7 +111,7 @@ describe('buildReelCards', () => {
     }
   });
 
-  it('does not insert transit card when journeyLegs is empty', () => {
+  it('inserts placeholder transit card when journeyLegs is empty but cities differ', () => {
     const multiItin: EngineItinerary = {
       id: 'multi2',
       generatedAt: '2026-05-20T00:00:00Z',
@@ -122,9 +123,14 @@ describe('buildReelCards', () => {
       personaSnapshot: DEFAULT_WEIGHTS,
       archetypeSnapshot: 'explorer',
     };
-    const cards = buildReelCards(multiItin, [], null, WEATHER, 'explorer');
+    const cards = buildReelCards(multiItin, [], null, WEATHER_MAP, 'explorer');
     const transit = cards.find(c => c.type === 'transit');
-    expect(transit).toBeUndefined();
+    // Placeholder inserted even without leg data — isEstimated=true, no duration/distance
+    expect(transit).toBeDefined();
+    if (transit?.type === 'transit') {
+      expect(transit.isEstimated).toBe(true);
+      expect(transit.durationMinutes).toBeNull();
+    }
   });
 
   it('uses pre-computed recos when recosByDayIdx is provided', () => {
@@ -138,14 +144,14 @@ describe('buildReelCards', () => {
       nearbyCity: 'Paris', persona: 'explorer', afterStopId: 's1', weightScore: 0.5,
     };
     const recosByDayIdx = new Map([[0, [fakeReco]]]);
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'explorer', recosByDayIdx);
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'explorer', recosByDayIdx);
     expect(cards.some(c => c.type === 'reco')).toBe(true);
   });
 
   it('injects balance card when engine returns empty recos map', () => {
     const stops = [STOP()];
     const recosByDayIdx = new Map([[0, []]]);
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER, 'explorer', recosByDayIdx);
+    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'explorer', recosByDayIdx);
     expect(cards.some(c => c.type === 'balance')).toBe(true);
   });
 
@@ -160,7 +166,7 @@ describe('buildReelCards', () => {
       dismissable: true, stopId: 'place-abc',
     }];
     const itin = { ...ITIN([s1, s2]), days: [day] };
-    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     const intelIdx = cards.findIndex(c => c.type === 'intel');
     const s1Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-1');
     const s2Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-2');
@@ -177,7 +183,7 @@ describe('buildReelCards', () => {
       days: [day],
       personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.7 },
     };
-    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     const scenicCards = cards.filter(c => c.type === 'scenic');
     expect(scenicCards.length).toBeGreaterThanOrEqual(1);
     const s1Idx = cards.findIndex(c => c.type === 'stop' && (c as any).stop.id === 'stop-1');
@@ -196,7 +202,7 @@ describe('buildReelCards', () => {
       days: [day],
       personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.2 },
     };
-    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
   });
 
@@ -209,7 +215,7 @@ describe('buildReelCards', () => {
       days: [day],
       personaSnapshot: { ...DEFAULT_WEIGHTS, w_scenic: 0.9 },
     };
-    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     expect(cards.filter(c => c.type === 'scenic').length).toBe(0);
   });
 
@@ -225,7 +231,7 @@ describe('buildReelCards', () => {
       ...ITIN([...day1Stops, ...day2Stops]),
       days: [day1, day2],
     };
-    const cards = buildReelCards(itin, null, null, null, 'explorer');
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     const divider = cards.find(c => c.type === 'day_divider') as any;
     expect(divider).toBeDefined();
     expect(divider.startTime).toBe('10:00');   // first stop time on day 2
@@ -240,7 +246,7 @@ describe('buildReelCards', () => {
     ];
     const day = DAY('Bangalore', '2026-06-10', stops);
     const itin = { ...ITIN(stops), days: [day] };
-    const cards = buildReelCards(itin, null, null, null, 'explorer', new Map([[0, []]]));
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer', new Map([[0, []]]));
     const balance = cards.find(c => c.type === 'balance') as any;
     expect(balance).toBeDefined();
     expect(balance.message).not.toBe('Your day looks well-balanced for your style.');
