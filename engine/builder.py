@@ -198,6 +198,84 @@ def enforce_opening_hours(
     return days, messages, conflicted
 
 
+def apply_swapper(
+    days: list[EngineDay],
+    ctx: EngineContext,
+    conflicted: set[str],
+) -> tuple[list[EngineDay], list[EngineMessage]]:
+    """Option C: replace stops that enforce_opening_hours couldn't fix.
+
+    Uses insert_candidates scored by persona affinity × proximity.
+    If no replacement found, keeps the original and emits an advisory.
+    """
+    from engine.swapper import _find_alternatives
+    messages: list[EngineMessage] = []
+
+    if not conflicted:
+        return days, messages
+
+    all_place_ids: set[str] = {
+        s.place_id for d in days for s in d.stops if s.place_id
+    }
+
+    for day in days:
+        if day.is_travel_day:
+            continue
+        for i, stop in enumerate(day.stops):
+            if stop.place_id not in conflicted:
+                continue
+
+            excluded = all_place_ids - {stop.place_id}
+            scored = _find_alternatives(stop, ctx, excluded)
+
+            if not scored:
+                messages.append(EngineMessage(
+                    type="advisory",
+                    what=f"{stop.name} has a scheduling conflict we couldn't resolve automatically.",
+                    why="Its opening hours don't fit any available time slot, and no suitable alternative was found nearby.",
+                    consequence="Check hours before visiting — it may open later than scheduled.",
+                    dismissable=True,
+                    undo_key=None,
+                    stop_id=stop.place_id,
+                ))
+                continue
+
+            best_score, best_ic = scored[0]
+            replacement = EngineStop(
+                place_id=best_ic.place_id,
+                name=best_ic.name,
+                lat=best_ic.lat,
+                lon=best_ic.lon,
+                category=best_ic.type,
+                duration_min=best_ic.time_cost_min,
+                opening_hours=[],
+                price_level=1,
+                rating=4.0,
+                neighborhood=None,
+                is_user_added=False,
+                scheduled_time=stop.scheduled_time,
+                city=stop.city,
+            )
+            day.stops[i] = replacement
+            all_place_ids.discard(stop.place_id)
+            all_place_ids.add(replacement.place_id or "")
+
+            messages.append(EngineMessage(
+                type="swap",
+                what=f"Replaced {stop.name} with {replacement.name}.",
+                why=f"{stop.name}'s opening hours don't fit your {stop.scheduled_time} visit slot.",
+                consequence=(
+                    f"{replacement.name} is nearby and matches your "
+                    f"{ctx.persona.get('archetype', 'explorer')} profile."
+                ),
+                dismissable=True,
+                undo_key=f"swap_{stop.place_id}",
+                stop_id=stop.place_id,
+            ))
+
+    return days, messages
+
+
 def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[EngineDay]:
     """Distribute stops across travel_dates, grouping by city for multi-city trips.
 
