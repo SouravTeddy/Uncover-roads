@@ -29,3 +29,15 @@ def test_parse_multiple_days():
     assert len(result) == 1
     assert result[0]["day"] == 0
     assert result[0]["close_min"] == 1080
+
+def test_engine_stop_opening_hours_populated():
+    """EngineStop.opening_hours is populated when weekday_text is in place_details."""
+    from engine.types import EngineStop
+    parsed = _parse_weekday_text(["Monday: 9:00 AM – 6:00 PM"])
+    stop = EngineStop(
+        place_id="abc", name="Test", lat=0.0, lon=0.0,
+        category="museum", duration_min=60, opening_hours=parsed,
+        price_level=1, rating=4.5, neighborhood=None, is_user_added=True,
+    )
+    assert len(stop.opening_hours) == 1
+    assert stop.opening_hours[0]["open_min"] == 540
