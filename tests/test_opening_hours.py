@@ -116,3 +116,67 @@ def test_enforce_opening_hours_flags_unfixable():
     days, msgs, conflicted = enforce_opening_hours([day], ctx)
     # Museum can't be moved — gallery is also closed at 09:00
     assert "m1" in conflicted
+
+def test_apply_swapper_replaces_conflicted_stop():
+    from engine.types import EngineStop, EngineDay, EngineContext
+    from engine.builder import apply_swapper
+    from city.data_model import CityData, InsertCandidate
+
+    candidate = InsertCandidate(
+        place_id="cafe1", name="Corner Café", lat=0.05, lon=0.05,
+        type="coffee", time_cost_min=30,
+        persona_affinity={"explorer": 0.8},
+        trigger=None, time_of_day_match=["morning"],
+    )
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[candidate],
+        scenic_routes=[], transit_edges=[], engine_modifiers={},
+        landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "explorer", "arrival_time": "09:00", "day_buffer_min": 30,
+                 "weights": {}},
+        city=city, travel_dates=["2026-06-08"],
+    )
+    conflict_stop = EngineStop(
+        place_id="m1", name="Closed Museum", lat=0.0, lon=0.0, category="museum",
+        duration_min=60, opening_hours=[{"day": 0, "open_min": 600, "close_min": 1080}],
+        price_level=1, rating=4.5, neighborhood=None, is_user_added=True,
+        scheduled_time="09:00", city="Test",
+    )
+    day = EngineDay(date="2026-06-08", stops=[conflict_stop])
+    days, msgs = apply_swapper([day], ctx, conflicted={"m1"})
+    assert days[0].stops[0].name == "Corner Café"
+    assert len(msgs) == 1
+    assert msgs[0].type == "swap"
+    assert "Corner Café" in msgs[0].what
+
+def test_apply_swapper_emits_advisory_when_no_alternative():
+    from engine.types import EngineStop, EngineDay, EngineContext
+    from engine.builder import apply_swapper
+    from city.data_model import CityData
+
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[],  # no candidates
+        scenic_routes=[], transit_edges=[], engine_modifiers={},
+        landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "explorer", "arrival_time": "09:00", "day_buffer_min": 30,
+                 "weights": {}},
+        city=city, travel_dates=["2026-06-08"],
+    )
+    conflict_stop = EngineStop(
+        place_id="m1", name="Lonely Museum", lat=0.0, lon=0.0, category="museum",
+        duration_min=60, opening_hours=[], price_level=1, rating=4.5,
+        neighborhood=None, is_user_added=True, scheduled_time="09:00", city="Test",
+    )
+    day = EngineDay(date="2026-06-08", stops=[conflict_stop])
+    days, msgs = apply_swapper([day], ctx, conflicted={"m1"})
+    assert days[0].stops[0].name == "Lonely Museum"  # kept in place
+    assert len(msgs) == 1
+    assert msgs[0].type == "advisory"
