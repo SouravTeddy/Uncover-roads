@@ -22,6 +22,7 @@ import json as _json
 from pathlib import Path as _Path
 from engine.builder import build_itinerary
 from engine.types import EngineStop, EngineContext
+from engine.signals import compute_stop_signals, DaySignalState
 from city.data_model import load_city, CityData, _maybe_single_data
 from city.sync_job import start_scheduler as _start_sync_scheduler
 from city.persona_affinity import get_persona_affinity
@@ -98,6 +99,7 @@ class EngineItineraryPlace(BaseModel):
     category: str
     rating: Optional[float] = None
     photo_ref: Optional[str] = None
+    city: Optional[str] = None  # city context stamped on selection
 
 
 class EngineItineraryPayload(BaseModel):
@@ -109,6 +111,7 @@ class EngineItineraryPayload(BaseModel):
     selectedPlaces: list[EngineItineraryPlace]
     personaArchetype: str = "explorer"
     engineWeights: Optional[dict] = None
+    cities: Optional[list[str]] = None  # ordered city list for multi-city trips
 
 
 # ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
@@ -257,10 +260,10 @@ def _ph_capture(user_id: str, event: str, props: dict) -> None:
 _session_tokens: dict[str, str] = {}
 _SESSION_TOKEN_MAX = 10000  # max concurrent sessions to prevent unbounded growth
 
-# Simple rate limiting: max 100 Google calls per IP per hour
+# Rate limiting for Google Places API calls per IP per hour
 _rate_limit: dict[str, list[float]] = defaultdict(list)
 RATE_LIMIT_WINDOW = 3600
-RATE_LIMIT_MAX = 100
+RATE_LIMIT_MAX = 500
 
 def _check_rate_limit(ip: str) -> bool:
     now = _time()
@@ -2800,20 +2803,96 @@ _ARCHETYPE_PERSONA: dict[str, dict] = {
 }
 
 
-_WHY_FOR_YOU: dict[str, tuple[str, str]] = {
-    "museum":     ("w_culture_depth",  "Well-regarded in this area. Sits naturally in your route."),
-    "gallery":    ("w_culture_depth",  "One of the better-rated galleries nearby."),
-    "historic":   ("w_culture_depth",  "Significant site — often skipped, rarely regretted."),
-    "restaurant": ("w_food_density",   "Well-rated and fits the timing of your day."),
-    "cafe":       ("w_rest_need",      "Six consecutive stops with nothing in between."),
-    "park":       ("w_scenic",         "Good open space at this point in the route."),
-    "viewpoint":  ("w_scenic",         "High vantage point — clear views from here."),
-    "nightlife":  ("w_nightlife",      "Active later in the evening. Fits where your day ends."),
-    "bar":        ("w_nightlife",      "Well-reviewed. Good spot for this time of day."),
-    "shopping":   ("w_spontaneity",    "Lively area — good for a wander between stops."),
-    "market":     ("w_spontaneity",    "Best earlier in the day before it fills up."),
-    "beach":      ("w_scenic",         "Open stretch at a natural break in your route."),
-    "spa":        ("w_rest_need",      "Scheduled after a long stretch of stops."),
+_WHY_FOR_YOU: dict[str, tuple[str, list[str]]] = {
+    "museum":     ("w_culture_depth", [
+        "One of the better collections in this part of the city.",
+        "Significant holdings — worth more time than most visitors give it.",
+        "Fits naturally between your other cultural stops today.",
+        "Strong permanent collection; skip the temporary exhibitions if short on time.",
+        "Early visit pays off — crowds build toward midday.",
+    ]),
+    "gallery":    ("w_culture_depth", [
+        "One of the better-rated galleries in this area.",
+        "Contemporary space — good contrast to the historic stops nearby.",
+        "Smaller than a museum; usually 30–45 minutes is enough.",
+        "Worth a look even if art isn’t the focus — good architecture.",
+    ]),
+    "historic":   ("w_culture_depth", [
+        "Significant site — often skipped, rarely regretted.",
+        "More layered than it looks from outside.",
+        "Early in the day while the crowds are thin.",
+        "Context here enriches everything else you’ll see today.",
+    ]),
+    "restaurant": ("w_food_density", [
+        "Well-rated and fits the timing of your day.",
+        "Solid local option — not a tourist trap.",
+        "Matches the pace of the afternoon.",
+        "Good for a longer sit if your feet need a break.",
+        "Locals eat here. That’s usually a good sign.",
+    ]),
+    "cafe":       ("w_rest_need", [
+        "Good pause point between the morning stops.",
+        "Quieter than a restaurant — better for a slow hour.",
+        "The afternoon stretch benefits from a sit-down.",
+        "Natural break in the route here.",
+    ]),
+    "park":       ("w_scenic", [
+        "Good open space at this point in the route.",
+        "Useful reset after a stretch of indoor stops.",
+        "Lends itself to an unplanned wander.",
+        "Less crowded in the morning.",
+    ]),
+    "viewpoint":  ("w_scenic", [
+        "High vantage point — clear views from here.",
+        "Best in the morning before haze builds.",
+        "Worth the climb; most visitors skip it.",
+        "Good orientation point early in the day.",
+    ]),
+    "nightlife":  ("w_nightlife", [
+        "Active later in the evening. Fits where your day ends.",
+        "One of the better spots in this neighborhood after dark.",
+        "Peaks around 22:00 — worth staying if energy allows.",
+    ]),
+    "bar":        ("w_nightlife", [
+        "Well-reviewed. Good spot for this time of day.",
+        "Neighborhood fixture — not on most tourist lists.",
+        "Good wind-down option after the evening stops.",
+    ]),
+    "shopping":   ("w_spontaneity", [
+        "Lively area — good for a wander between stops.",
+        "More interesting than the main shopping strips.",
+        "Local designers and independents, not chains.",
+    ]),
+    "market":     ("w_spontaneity", [
+        "Best earlier in the day before it fills up.",
+        "Local market — different character from tourist-facing shops.",
+        "Weekday mornings have the best stall selection.",
+    ]),
+    "beach":      ("w_scenic", [
+        "Open stretch at a natural break in your route.",
+        "Less crowded on weekday mornings.",
+        "Good reset before the afternoon stops.",
+    ]),
+    "spa":        ("w_rest_need", [
+        "Scheduled after a long stretch of stops.",
+        "Good call if today’s route is heavy on walking.",
+        "Mid-afternoon slot tends to be quieter.",
+    ]),
+    "temple":     ("w_culture_depth", [
+        "Active site — not just a tourist landmark.",
+        "Early morning has a completely different atmosphere.",
+        "Worth the detour even if culture isn’t your primary focus.",
+    ]),
+    "shrine":     ("w_culture_depth", [
+        "Morning visits catch the ritual activity.",
+        "Quieter than the main temples; worth the diversion.",
+        "Often overlooked — the grounds are worth the time.",
+    ]),
+    "garden":     ("w_scenic", [
+        "Designed for slow movement — plan at least an hour.",
+        "Peak season matters here; off-season has its own character.",
+        "Good middle-of-day stop when you need a slower pace.",
+    ]),
 }
 
 
@@ -2835,10 +2914,55 @@ def _nearest_neighborhood_name(city_data, lat: float, lon: float) -> str:
     return best_name
 
 
+_DAY_NAME_TO_WEEKDAY: dict[str, int] = {
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+}
+_TIME_RE = re.compile(r"(\d{1,2}):(\d{2})\s*(AM|PM)", re.IGNORECASE)
+
+def _parse_weekday_text(weekday_text: list[str]) -> list[dict]:
+    """Parse Google Places weekday_text into [{day:0-6, open_min:int, close_min:int}].
+
+    0=Monday … 6=Sunday, matching datetime.weekday().
+    Closed days are omitted. 'Open 24 hours' → (0, 1440).
+    """
+    def _to_min(h: int, m: int, ampm: str) -> int:
+        if ampm.upper() == "PM" and h != 12:
+            h += 12
+        elif ampm.upper() == "AM" and h == 12:
+            h = 0
+        return h * 60 + m
+
+    result = []
+    for text in weekday_text:
+        colon_idx = text.find(":")
+        if colon_idx < 0:
+            continue
+        day_name = text[:colon_idx].strip().lower()
+        weekday = _DAY_NAME_TO_WEEKDAY.get(day_name)
+        if weekday is None:
+            continue
+        rest = text[colon_idx + 1:].strip()
+        if "closed" in rest.lower():
+            continue
+        if "open 24 hours" in rest.lower():
+            result.append({"day": weekday, "open_min": 0, "close_min": 1440})
+            continue
+        times = _TIME_RE.findall(rest)
+        if len(times) < 2:
+            continue
+        open_min = _to_min(int(times[0][0]), int(times[0][1]), times[0][2])
+        close_min = _to_min(int(times[-1][0]), int(times[-1][1]), times[-1][2])
+        if close_min == 0:   # 12:00 AM as close = midnight = end of day
+            close_min = 1440
+        result.append({"day": weekday, "open_min": open_min, "close_min": close_min})
+    return result
+
+
 def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dict]:
-    """Fetch price_level and weekday_text for a batch of place_ids from cache.
+    """Fetch rich place data for a batch of place_ids from cache.
     Never calls Google — read-only from place_details_cache.
-    Returns dict[place_id → {price_level, weekday_text}].
+    Returns dict[place_id → {price_level, weekday_text, editorial_summary, top_review, rating_count}].
     """
     if not supabase_client or not place_ids:
         return {}
@@ -2852,8 +2976,15 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
         rows = resp.data if hasattr(resp, "data") else (resp or [])
         return {
             row["place_id"]: {
-                "price_level": (row.get("data") or {}).get("price_level"),
-                "weekday_text": (row.get("data") or {}).get("weekday_text") or [],
+                "price_level":         (row.get("data") or {}).get("price_level"),
+                "weekday_text":        (row.get("data") or {}).get("weekday_text") or [],
+                "editorial_summary":   (row.get("data") or {}).get("editorial_summary"),
+                "top_review":          (row.get("data") or {}).get("top_review"),
+                "rating_count":        (row.get("data") or {}).get("rating_count"),
+                "photo_ref":           (row.get("data") or {}).get("photo_ref"),
+                "opening_hours_parsed": _parse_weekday_text(
+                    (row.get("data") or {}).get("weekday_text") or []
+                ),
             }
             for row in (rows or [])
             if row.get("place_id")
@@ -2862,12 +2993,30 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
         return {}
 
 
-def _why_for_you(category: str, weights: dict) -> str:
+def _why_for_you(
+    category: str,
+    weights: dict,
+    scheduled_time: str | None = None,
+    stop_index: int = 0,
+) -> str:
     cfg = _WHY_FOR_YOU.get(category)
     if not cfg:
         return ""
-    weight_key, phrase = cfg
-    return phrase if weights.get(weight_key, 0.5) >= 0.6 else ""
+    weight_key, phrases = cfg
+    weight = weights.get(weight_key, 0.5)
+    if weight < 0.4:
+        return ""
+    hour = int(scheduled_time.split(":")[0]) if scheduled_time else 10
+    if hour < 10:
+        base = 0
+    elif hour < 13:
+        base = 1
+    elif hour < 17:
+        base = 2
+    else:
+        base = min(3, len(phrases) - 1)
+    idx = (base + stop_index) % len(phrases)
+    return phrases[idx]
 
 
 @app.post("/engine-itinerary")
@@ -2880,7 +3029,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
     travel_dates = [(start + _td(days=i)).isoformat() for i in range(days)]
 
     archetype = body.personaArchetype.lower()
-    persona = _ARCHETYPE_PERSONA.get(archetype, _ARCHETYPE_PERSONA["explorer"])
+    persona = dict(_ARCHETYPE_PERSONA.get(archetype, _ARCHETYPE_PERSONA["explorer"]))
 
     # Try to load city seed data; fall back to a minimal stub so the engine still runs
     city_slug = body.city.lower().replace(" ", "_")
@@ -2896,6 +3045,93 @@ async def engine_itinerary(body: EngineItineraryPayload):
             engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
         )
 
+    # Auto-seed when city has no insert candidates, or is missing key food types
+    # (stale seeds from before the lunch-type fix may have only coffee/micro)
+    _has_food = any(ic.type in ("lunch", "dinner") for ic in city_data.insert_candidates)
+    if not city_data.insert_candidates or not _has_food:
+        try:
+            from city.seed_builder import build_city_seed as _build_city_seed
+            _seeded = _build_city_seed({
+                "city_id": city_slug, "name": body.city,
+                "lat": body.lat, "lon": body.lon,
+                "country_code": "", "timezone": "UTC", "tier": 2,
+            })
+            if _seeded.insert_candidates:
+                city_data = _seeded
+                if _supabase:
+                    try:
+                        from dataclasses import asdict as _dc_asdict
+                        _cd_dict = {
+                            "id": city_slug, "name": body.city, "tier": 2,
+                            "center": [body.lat, body.lon], "timezone": "UTC",
+                            "climate": _seeded.climate, "movement": _seeded.movement,
+                            "culture": _seeded.culture,
+                            "neighborhoods": [
+                                {"id": n.id, "name": n.name, "center": list(n.center),
+                                 "polygon": [list(p) for p in n.polygon],
+                                 "best_times": n.best_times, "crowd_index": n.crowd_index}
+                                for n in _seeded.neighborhoods
+                            ],
+                            "insert_candidates": [
+                                {"place_id": ic.place_id, "name": ic.name,
+                                 "lat": ic.lat, "lon": ic.lon, "type": ic.type,
+                                 "time_cost_min": ic.time_cost_min,
+                                 "persona_affinity": ic.persona_affinity,
+                                 "trigger": ic.trigger,
+                                 "time_of_day_match": ic.time_of_day_match}
+                                for ic in _seeded.insert_candidates
+                            ],
+                            "scenic_routes": _seeded.scenic_routes,
+                            "transit_edges": _seeded.transit_edges,
+                            "engine_modifiers": _seeded.engine_modifiers,
+                            "landmark_anchors": _seeded.landmark_anchors,
+                            "hidden_gems": _seeded.hidden_gems,
+                        }
+                        _supabase.table("city_data").upsert({"id": city_slug, "data": _cd_dict}).execute()
+                    except Exception:
+                        pass
+        except Exception as _seed_err:
+            print(f"[engine_itinerary] on-demand seed failed for {body.city}: {_seed_err}")
+
+    # Build per-city city_data map for area lookup and insert_candidates merging
+    _city_data_map: dict[str, object] = {city_slug: city_data}
+    if body.cities and len(body.cities) > 1:
+        from dataclasses import replace as _dc_replace
+        _all_ics = list(city_data.insert_candidates)
+        _seen_pids = {ic.place_id for ic in _all_ics}
+        for _other_city in body.cities:
+            _other_slug = _other_city.lower().replace(" ", "_")
+            if _other_slug == city_slug:
+                continue
+            try:
+                _other_data = load_city(_other_slug, _supabase)
+                _city_data_map[_other_slug] = _other_data
+                for ic in _other_data.insert_candidates:
+                    if ic.place_id not in _seen_pids:
+                        _all_ics.append(ic)
+                        _seen_pids.add(ic.place_id)
+            except Exception:
+                pass
+        if len(_all_ics) > len(city_data.insert_candidates):
+            city_data = _dc_replace(city_data, insert_candidates=_all_ics)
+
+    # Build a place_id → city map for day.city assignment after splitting
+    _place_city_map: dict[str, str] = {
+        (p.place_id or p.id): (p.city or body.city)
+        for p in body.selectedPlaces
+    }
+
+    _CATEGORY_DURATION: dict[str, int] = {
+        "museum": 100, "gallery": 60, "historic": 75, "landmark": 60,
+        "temple": 60, "shrine": 45, "castle": 90, "monument": 30,
+        "park": 50, "garden": 55, "beach": 60, "viewpoint": 30, "nature_reserve": 75,
+        "restaurant": 70, "cafe": 35, "coffee": 30, "bar": 50, "nightlife": 90,
+        "market": 55, "shopping": 60, "store": 40,
+        "spa": 90, "wellness": 75, "massage": 60,
+        "hotel": 20, "hostel": 20,
+        "theater": 120, "concert": 120, "stadium": 120,
+    }
+
     engine_stops = [
         EngineStop(
             place_id=p.place_id or p.id,
@@ -2903,12 +3139,13 @@ async def engine_itinerary(body: EngineItineraryPayload):
             lat=p.lat,
             lon=p.lon,
             category=p.category,
-            duration_min=90,
+            duration_min=_CATEGORY_DURATION.get(p.category.lower(), 75),
             opening_hours=[],
             price_level=1,
             rating=p.rating or 4.0,
             neighborhood=None,
             is_user_added=True,
+            city=p.city or body.city,
         )
         for p in body.selectedPlaces
     ]
@@ -2922,9 +3159,45 @@ async def engine_itinerary(body: EngineItineraryPayload):
 
     result = await build_itinerary(engine_stops, ctx)
 
+    # Inject short-trip warning when selected stops clearly underfill the trip
+    _stops_per_day = len(engine_stops) / max(days, 1)
+    if _stops_per_day < 1.5 and days > 1:
+        _needed = days * 2 - len(engine_stops)
+        from engine.types import EngineMessage as _EM
+        result.messages.append(_EM(
+            type="advisory",
+            what=f"Your {days}-day trip has {len(engine_stops)} stop{'s' if len(engine_stops) != 1 else ''} — that's light.",
+            why=f"Most {days}-day trips work well with {days * 2}–{days * 3} stops.",
+            consequence=f"Add {_needed} more place{'s' if _needed != 1 else ''} from the map to fill the itinerary.",
+            dismissable=True,
+            undo_key=None,
+            stop_id=None,
+        ))
+
     # Batch-fetch price level and opening hours from cache — no Google API calls
-    all_place_ids = [s.place_id for s in engine_stops if s.place_id]
+    # Include inserted stops from result so signals have access to their details
+    _all_result_stops = [s for day in result.days for s in day.stops]
+    all_place_ids = list({s.place_id for s in _all_result_stops if s.place_id})
     place_details_map = _batch_place_details(_supabase, all_place_ids)
+
+    # Fetch discovery stage (hidden_gem / rising / mainstream) from place_dynamic_profiles
+    _stage_map: dict[str, dict] = {}
+    if _supabase and all_place_ids:
+        try:
+            _sr = (
+                _supabase.table("place_dynamic_profiles")
+                .select("place_id, stage, signals")
+                .in_("place_id", all_place_ids)
+                .execute()
+            )
+            for _r in ((_sr.data if hasattr(_sr, "data") else _sr) or []):
+                if _r.get("place_id"):
+                    _stage_map[_r["place_id"]] = {
+                        "stage":         _r.get("stage"),
+                        "velocity_ratio": (_r.get("signals") or {}).get("velocity_ratio"),
+                    }
+        except Exception:
+            pass
 
     now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -2935,6 +3208,15 @@ async def engine_itinerary(body: EngineItineraryPayload):
         if p.photo_ref
     }
     weights_for_why = persona.get("weights", {})
+
+    # Deduplicate messages by (type, stop_id) — keep first occurrence
+    _seen_msg_keys: set[tuple[str, str | None]] = set()
+    _deduped_messages = []
+    for m in result.messages:
+        key = (m.type, m.stop_id)
+        if key not in _seen_msg_keys:
+            _seen_msg_keys.add(key)
+            _deduped_messages.append(m)
 
     all_messages = [
         {
@@ -2947,12 +3229,21 @@ async def engine_itinerary(body: EngineItineraryPayload):
             "undo_action": m.undo_key,
             "stopId": m.stop_id,
         }
-        for m in result.messages
+        for m in _deduped_messages
     ]
+
+    # Build lookup: stop_id → first insert/swap message for that stop (for orderReason/orderConsequence)
+    _stop_order_msg: dict[str, dict] = {}
+    for m in all_messages:
+        sid = m.get("stopId")
+        if sid and sid not in _stop_order_msg and m["type"] in ("insert", "swap", "resequence"):
+            _stop_order_msg[sid] = m
 
     # Assign messages to days based on stop_id match; day-level (stop_id=None) go to day 1
     is_first_non_travel_day = True
     days_out = []
+    # Track per-category stop index so _why_for_you rotates phrases across same-category stops
+    _category_counters: dict[str, int] = {}
     for i, day in enumerate(result.days):
         day_messages: list[dict] = []
         if not day.is_travel_day:
@@ -2961,35 +3252,85 @@ async def engine_itinerary(body: EngineItineraryPayload):
             day_level = [m for m in all_messages if not m["stopId"]] if is_first_non_travel_day else []
             day_messages = stop_matched + day_level
             is_first_non_travel_day = False
+        # Derive day city from user-added stops only (inserts inherit their city via inserts.py,
+        # so s.city is reliable for all stops that have it set)
+        day_city_candidates = [s.city for s in day.stops if s.city]
+        day_city = max(set(day_city_candidates), key=day_city_candidates.count) if day_city_candidates else body.city
+
+        stops_out = []
+        _day_sig_state = DaySignalState()
+        _cumulative_mins = 0
+        for s_idx, s in enumerate(day.stops):
+            cat_idx = _category_counters.get(s.category, 0)
+            _category_counters[s.category] = cat_idx + 1
+            order_msg = _stop_order_msg.get(s.place_id or "")
+            _stop_city = s.city or day_city
+            _stop_city_slug = _stop_city.lower().replace(" ", "_") if _stop_city else city_slug
+            _area_city_data = _city_data_map.get(_stop_city_slug, city_data)
+
+            _pd = place_details_map.get(s.place_id or "", {})
+            _sd = _stage_map.get(s.place_id or "", {})
+            _signals = compute_stop_signals(
+                stop=s,
+                stop_idx=s_idx,
+                day_stops=day.stops,
+                ctx=ctx,
+                place_details=_pd,
+                date_str=day.date if day.date != "unknown" else None,
+                day_state=_day_sig_state,
+                cumulative_mins=_cumulative_mins,
+                stage=_sd.get("stage"),
+                velocity_ratio=_sd.get("velocity_ratio"),
+                max_signals=5,
+            )
+            _cumulative_mins += s.duration_min
+
+            # transitFromPrev: distance + mode from previous stop
+            _transit_from_prev = None
+            if s_idx > 0:
+                _prev = day.stops[s_idx - 1]
+                _dist_km = math.hypot(
+                    (s.lat - _prev.lat) * 110.574,
+                    (s.lon - _prev.lon) * 111.320 * math.cos(math.radians(s.lat)),
+                )
+                _mode = _prev.transition_to_next or "walk"
+                _transit_from_prev = {"mode": _mode, "distanceKm": round(_dist_km, 2)}
+
+            stops_out.append({
+                "id": str(uuid.uuid4()),
+                "placeId": s.place_id,
+                "title": s.name,
+                "area": _nearest_neighborhood_name(_area_city_data, s.lat, s.lon),
+                "city": _stop_city,
+                "day": i + 1,
+                "time": s.scheduled_time or "09:00",
+                "durationMin": s.duration_min,
+                "category": s.category,
+                "lat": s.lat,
+                "lon": s.lon,
+                "priceLevel": _pd.get("price_level"),
+                "rating": s.rating if s.rating != 4.0 else None,
+                "weekdayText": _pd.get("weekday_text") or None,
+                "whyForYou": _why_for_you(s.category, weights_for_why, s.scheduled_time, cat_idx),
+                "orderReason": order_msg["why"] if order_msg else None,
+                "orderConsequence": order_msg["consequence"] if order_msg else None,
+                "localTip": None,
+                "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
+                "website": None,
+                "photoRef": _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None,
+                "tags": s.tags or [],
+                "signals": _signals,
+                "stage": _sd.get("stage"),
+                "velocityRatio": _sd.get("velocity_ratio"),
+                "transitFromPrev": _transit_from_prev,
+            })
+
         days_out.append({
             "day": i + 1,
             "date": day.date,
-            "city": body.city,
+            "city": day_city,
             "isTravel": day.is_travel_day,
-            "stops": [
-                {
-                    "id": str(uuid.uuid4()),
-                    "placeId": s.place_id,
-                    "title": s.name,
-                    "area": _nearest_neighborhood_name(city_data, s.lat, s.lon),
-                    "day": i + 1,
-                    "time": s.scheduled_time or "09:00",
-                    "durationMin": s.duration_min,
-                    "category": s.category,
-                    "lat": s.lat,
-                    "lon": s.lon,
-                    "priceLevel": place_details_map.get(s.place_id, {}).get("price_level"),
-                    "rating": s.rating if s.rating != 4.0 else None,
-                    "weekdayText": place_details_map.get(s.place_id, {}).get("weekday_text") or None,
-                    "whyForYou": _why_for_you(s.category, weights_for_why),
-                    "localTip": None,
-                    "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
-                    "website": None,
-                    "photoRef": _photo_ref_lookup.get(s.place_id or "", None),
-                    "tags": s.tags or [],
-                }
-                for s in day.stops
-            ],
+            "stops": stops_out,
             "messages": day_messages,
         })
 
@@ -3007,10 +3348,35 @@ async def engine_itinerary(body: EngineItineraryPayload):
         "w_rest_need":          weights.get("w_rest_need", 0.4),
     }
 
+    # Re-order days to match body.cities order (TSP may cluster Melbourne before Sydney)
+    if body.cities and len(body.cities) > 1:
+        _city_order = {c.lower(): i for i, c in enumerate(body.cities)}
+        def _day_city_rank(d: dict) -> int:
+            return _city_order.get((d["city"] or "").lower(), len(body.cities))
+        days_out = sorted(days_out, key=_day_city_rank)
+        # Re-number days sequentially after reorder
+        for _di, _d in enumerate(days_out):
+            _d["day"] = _di + 1
+            for _s in _d["stops"]:
+                _s["day"] = _di + 1
+
+    # Build ordered unique city list — use explicit cities from request if provided,
+    # else derive from per-day cities in output order
+    if body.cities and len(body.cities) > 1:
+        all_cities = body.cities
+    else:
+        seen: list[str] = []
+        for d in days_out:
+            c = d["city"]
+            if c not in seen:
+                seen.append(c)
+        all_cities = seen or [body.city]
+
     return {
         "id": result.generation_id,
         "generatedAt": now_str,
-        "cities": [body.city],
+        "cities": all_cities,
+        "city": all_cities[0],
         "days": days_out,
         "personaSnapshot": persona_snapshot,
         "archetypeSnapshot": archetype,
@@ -3209,6 +3575,28 @@ async def cities_picks(city_id: str):
         r["place_id"]: r for r in (profiles_row.data or [])
     }
 
+    # Auto-seed on first access — no manual step required
+    if not profiles and place_ids:
+        details = _batch_place_details(_supabase, place_ids)
+        seed_rows = []
+        for ic in city.insert_candidates:
+            if not ic.place_id:
+                continue
+            d = details.get(ic.place_id, {})
+            _rating = float(getattr(ic, "rating", None) or 0.0)
+            stage, signals = _stage_and_signals(_rating, d.get("rating_count"))
+            seed_rows.append({
+                "place_id": ic.place_id, "city_id": city_id,
+                "stage": stage, "signals": signals,
+                "updated_at": datetime.utcnow().isoformat(),
+            })
+        if seed_rows:
+            try:
+                _supabase.table("place_dynamic_profiles").upsert(seed_rows, on_conflict="place_id").execute()
+                profiles = {r["place_id"]: r for r in seed_rows}
+            except Exception:
+                pass  # badges degrade gracefully if seed fails
+
     def _badge(place_id: str) -> tuple[Optional[str], Optional[str]]:
         p = profiles.get(place_id)
         if not p:
@@ -3237,6 +3625,96 @@ async def cities_picks(city_id: str):
             badge=badge, badge_reason=badge_reason,
         ))
     return picks
+
+
+def _stage_and_signals(
+    rating: float | None,
+    rating_count: int | None,
+) -> tuple[str, dict]:
+    """Derive discovery stage and proxy signals from rating + rating_count alone.
+
+    Stage:
+      hidden_gem — high quality (≥4.3), still obscure (<500 reviews)
+      rising     — quality above bracket baseline (≥4.2), moderate visibility (500–4000)
+      mainstream — everything else
+
+    velocity_ratio:
+      Represents how far above the expected mean this place sits for its popularity tier.
+      Baseline rating regresses toward 4.0 as review count grows.
+        baseline = 4.0 + max(0, (2000 - count) / 2000 * 0.35)
+        → 4.35 at count=0, 4.0 at count≥2000
+      velocity_ratio = clamp(0.3, 5.0, 1.0 + (rating - baseline) × 6.0)
+        → 4.5★ / count=600: baseline≈4.24, ratio≈2.46 (→ trending badge fires at ≥2.0)
+
+    crowd_ratio:
+      Normalised popularity proxy. 5 000 reviews ≈ city-famous landmark.
+        crowd_ratio = min(0.95, count / 5000)
+        → 2 000 reviews → 0.40 (→ getting_busy badge fires at ≥0.40)
+    """
+    r   = float(rating or 0.0)
+    cnt = int(rating_count or 0)
+
+    baseline = 4.0 + max(0.0, (2000 - cnt) / 2000 * 0.35)
+    velocity_ratio = max(0.3, min(5.0, 1.0 + (r - baseline) * 6.0))
+    crowd_ratio    = min(0.95, cnt / 5000)
+
+    if r >= 4.3 and cnt < 500:
+        stage = "hidden_gem"
+    elif r >= 4.2 and 500 <= cnt < 4000:
+        stage = "rising"
+    else:
+        stage = "mainstream"
+
+    return stage, {
+        "velocity_ratio": round(velocity_ratio, 3),
+        "crowd_ratio":    round(crowd_ratio, 3),
+    }
+
+
+@app.post("/api/places/seed-profiles")
+async def seed_place_profiles(city_id: str = Query(...)):
+    """Seed place_dynamic_profiles for all insert_candidates in a city.
+
+    Reads rating + rating_count from place_details_cache (no Google API calls).
+    Upserts stage + signals derived via _stage_and_signals().
+    Idempotent — safe to call repeatedly as cache fills in.
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    try:
+        city = load_city(city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+
+    place_ids = [ic.place_id for ic in city.insert_candidates if ic.place_id]
+    if not place_ids:
+        return {"seeded": 0}
+
+    details = _batch_place_details(_supabase, place_ids)
+
+    rows = []
+    for ic in city.insert_candidates:
+        if not ic.place_id:
+            continue
+        d = details.get(ic.place_id, {})
+        rating       = d.get("rating_count") and ic.rating  # use IC's rating (from Places seed)
+        rating_count = d.get("rating_count")
+        # Fall back to IC rating if batch details didn't return one
+        _rating = float(ic.rating or 0.0) if hasattr(ic, "rating") else 0.0
+        stage, signals = _stage_and_signals(_rating, rating_count)
+        rows.append({
+            "place_id":   ic.place_id,
+            "city_id":    city_id,
+            "stage":      stage,
+            "signals":    signals,
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+
+    if not rows:
+        return {"seeded": 0}
+
+    _supabase.table("place_dynamic_profiles").upsert(rows, on_conflict="place_id").execute()
+    return {"seeded": len(rows)}
 
 
 # ── Phase 11: Surprise Me ────────────────────────────────────────────────────
