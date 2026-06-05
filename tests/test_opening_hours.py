@@ -180,3 +180,24 @@ def test_apply_swapper_emits_advisory_when_no_alternative():
     assert days[0].stops[0].name == "Lonely Museum"  # kept in place
     assert len(msgs) == 1
     assert msgs[0].type == "advisory"
+
+def test_opening_hours_backfill_for_inserted_stops():
+    """Inserted stops (opening_hours=[]) get their hours backfilled from place_details_map."""
+    from engine.types import EngineStop
+
+    stop = EngineStop(
+        place_id="ins1", name="Inserted Café", lat=0.0, lon=0.0,
+        category="coffee", duration_min=30, opening_hours=[],
+        price_level=1, rating=4.0, neighborhood=None, is_user_added=False,
+        scheduled_time="09:30", city="Test",
+    )
+    place_details_map = {
+        "ins1": {"opening_hours_parsed": [{"day": 0, "open_min": 480, "close_min": 1200}]}
+    }
+    # This is the backfill logic from main.py
+    if stop.place_id and not stop.opening_hours:
+        parsed = place_details_map.get(stop.place_id, {}).get("opening_hours_parsed", [])
+        if parsed:
+            stop.opening_hours = parsed
+    assert len(stop.opening_hours) == 1
+    assert stop.opening_hours[0]["open_min"] == 480

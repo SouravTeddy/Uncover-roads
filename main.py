@@ -3186,6 +3186,19 @@ async def engine_itinerary(body: EngineItineraryPayload):
     all_place_ids = list({s.place_id for s in _all_result_stops if s.place_id})
     place_details_map = _batch_place_details(_supabase, all_place_ids)
 
+    # Backfill opening_hours for inserted stops (inserts.detect adds stops that bypass pre-engine fetch)
+    for _s in _all_result_stops:
+        if _s.place_id and not _s.opening_hours:
+            _parsed_oh = place_details_map.get(_s.place_id, {}).get("opening_hours_parsed", [])
+            if _parsed_oh:
+                _s.opening_hours = _parsed_oh
+
+    # Post-scheduling passes: enforce opening hours (A), then swap unfixables (C)
+    from engine.builder import enforce_opening_hours as _enforce_hours, apply_swapper as _apply_swapper
+    result.days, _hour_msgs, _conflicted = _enforce_hours(result.days, ctx)
+    result.days, _swap_msgs = _apply_swapper(result.days, ctx, _conflicted)
+    result.messages.extend(_hour_msgs + _swap_msgs)
+
     # Fetch discovery stage (hidden_gem / rising / mainstream) from place_dynamic_profiles
     _stage_map: dict[str, dict] = {}
     if _supabase and all_place_ids:
