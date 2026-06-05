@@ -182,7 +182,8 @@ def test_apply_swapper_emits_advisory_when_no_alternative():
     assert msgs[0].type == "advisory"
 
 def test_opening_hours_backfill_for_inserted_stops():
-    """Inserted stops (opening_hours=[]) get their hours backfilled from place_details_map."""
+    """_backfill_opening_hours fills opening_hours for stops not fetched pre-engine."""
+    from main import _backfill_opening_hours
     from engine.types import EngineStop
 
     stop = EngineStop(
@@ -194,10 +195,16 @@ def test_opening_hours_backfill_for_inserted_stops():
     place_details_map = {
         "ins1": {"opening_hours_parsed": [{"day": 0, "open_min": 480, "close_min": 1200}]}
     }
-    # This is the backfill logic from main.py
-    if stop.place_id and not stop.opening_hours:
-        parsed = place_details_map.get(stop.place_id, {}).get("opening_hours_parsed", [])
-        if parsed:
-            stop.opening_hours = parsed
+    _backfill_opening_hours([stop], place_details_map)
     assert len(stop.opening_hours) == 1
     assert stop.opening_hours[0]["open_min"] == 480
+
+    # Negative case: stop with no entry in map retains empty hours
+    stop2 = EngineStop(
+        place_id="ins2", name="Unknown Spot", lat=0.0, lon=0.0,
+        category="cafe", duration_min=30, opening_hours=[],
+        price_level=1, rating=4.0, neighborhood=None, is_user_added=False,
+        scheduled_time="10:00", city="Test",
+    )
+    _backfill_opening_hours([stop2], place_details_map)
+    assert stop2.opening_hours == []

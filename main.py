@@ -2993,6 +2993,15 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
         return {}
 
 
+def _backfill_opening_hours(stops: list, place_details_map: dict) -> None:
+    """Populate opening_hours for stops that bypass pre-engine fetch (e.g., inserts)."""
+    for stop in stops:
+        if stop.place_id and not stop.opening_hours:
+            parsed = place_details_map.get(stop.place_id, {}).get("opening_hours_parsed", [])
+            if stop.place_id and parsed:
+                stop.opening_hours = parsed
+
+
 def _why_for_you(
     category: str,
     weights: dict,
@@ -3187,17 +3196,24 @@ async def engine_itinerary(body: EngineItineraryPayload):
     place_details_map = _batch_place_details(_supabase, all_place_ids)
 
     # Backfill opening_hours for inserted stops (inserts.detect adds stops that bypass pre-engine fetch)
-    for _s in _all_result_stops:
-        if _s.place_id and not _s.opening_hours:
-            _parsed_oh = place_details_map.get(_s.place_id, {}).get("opening_hours_parsed", [])
-            if _parsed_oh:
-                _s.opening_hours = _parsed_oh
+    _backfill_opening_hours(_all_result_stops, place_details_map)
 
     # Post-scheduling passes: enforce opening hours (A), then swap unfixables (C)
     from engine.builder import enforce_opening_hours as _enforce_hours, apply_swapper as _apply_swapper
     result.days, _hour_msgs, _conflicted = _enforce_hours(result.days, ctx)
     result.days, _swap_msgs = _apply_swapper(result.days, ctx, _conflicted)
     result.messages.extend(_hour_msgs + _swap_msgs)
+
+    # Fetch details for any stops newly introduced by apply_swapper
+    _post_swap_place_ids = [
+        s.place_id for day in result.days for s in day.stops
+        if s.place_id and s.place_id not in place_details_map
+    ]
+    if _post_swap_place_ids:
+        _swap_details = _batch_place_details(_supabase, _post_swap_place_ids)
+        place_details_map.update(_swap_details)
+        # Also update all_place_ids for subsequent queries (e.g., place_dynamic_profiles)
+        all_place_ids = list(set(all_place_ids) | set(_post_swap_place_ids))
 
     # Fetch discovery stage (hidden_gem / rising / mainstream) from place_dynamic_profiles
     _stage_map: dict[str, dict] = {}
