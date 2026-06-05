@@ -137,8 +137,6 @@ def enforce_opening_hours(
                 for j in range(i + 1, len(day.stops)):
                     day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
                     _reschedule_day(day, ctx)
-                    new_sched = _time_str_to_min(day.stops[i].scheduled_time or "09:00")
-                    new_end = new_sched + day.stops[i].duration_min
                     # Check whether the originally-problematic stop (now at position j) is fixed
                     stop_oh = next(
                         (h for h in (stop.opening_hours or []) if h.get("day") == weekday),
@@ -192,7 +190,7 @@ def enforce_opening_hours(
 
                 if not resolved and stop.place_id:
                     conflicted.add(stop.place_id)
-                    break  # stop checking this day's remaining positions after first unfixable
+                    continue  # continue to next stop; swapper will replace this one
 
             if not made_swap:
                 break  # stable — no more swaps possible
