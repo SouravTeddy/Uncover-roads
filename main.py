@@ -3132,6 +3132,10 @@ async def engine_itinerary(body: EngineItineraryPayload):
         "theater": 120, "concert": 120, "stadium": 120,
     }
 
+    # Pre-engine detail fetch — opening hours for user-selected stops only
+    _pre_place_ids = list({p.place_id or p.id for p in body.selectedPlaces if p.place_id or p.id})
+    _pre_details_map = _batch_place_details(_supabase, _pre_place_ids)
+
     engine_stops = [
         EngineStop(
             place_id=p.place_id or p.id,
@@ -3140,7 +3144,9 @@ async def engine_itinerary(body: EngineItineraryPayload):
             lon=p.lon,
             category=p.category,
             duration_min=_CATEGORY_DURATION.get(p.category.lower(), 75),
-            opening_hours=[],
+            opening_hours=_pre_details_map.get(
+                p.place_id or p.id, {}
+            ).get("opening_hours_parsed", []),
             price_level=1,
             rating=p.rating or 4.0,
             neighborhood=None,
