@@ -3,11 +3,21 @@
 build_itinerary(stops, ctx) → EngineResult
 """
 from __future__ import annotations
+import math
 import uuid
 from engine.types import EngineStop, EngineContext, EngineMessage, EngineDay, EngineResult
 from engine import constraints, sequencer, transitions, inserts, swapper
 from engine import narrator as _narrator
 from engine import tags as _tags
+
+
+def _haversine_km(a: EngineStop, b: EngineStop) -> float:
+    R = 6371.0
+    lat1, lon1 = math.radians(a.lat), math.radians(a.lon)
+    lat2, lon2 = math.radians(b.lat), math.radians(b.lon)
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(h))
 
 
 def _ensure_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:
@@ -20,7 +30,9 @@ def _ensure_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list
     scheduled = [s for s in stops if s.scheduled_time]
     if not scheduled:
         # No scheduled times set yet (shouldn't happen after sequencer, but handle it)
-        start_h = int(ctx.persona.get("arrival_time", "09:00").split(":")[0])
+        _w = ctx.persona.get("weights", {})
+        _sf = 9.0 + (_w.get("w_rest_need", 0.4) - 0.5) * 2.0 + (_w.get("w_nightlife", 0.4) - 0.4) * 2.5 - (_w.get("w_efficiency", 0.5) - 0.5) * 2.0
+        start_h = int(max(7.5, min(11.5, _sf)))
         current_min = start_h * 60
     else:
         # Start from the latest scheduled stop + its duration
@@ -38,18 +50,283 @@ def _ensure_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list
     return stops
 
 
+def _schedule_day_stops(day_stops: list[EngineStop], start_h: int, start_m: int, buffer_min: int) -> None:
+    current_min = start_h * 60 + start_m
+    for stop in day_stops:
+        h, m = divmod(current_min, 60)
+        stop.scheduled_time = f"{h:02d}:{m:02d}"
+        current_min += stop.duration_min + buffer_min
+
+
+def _time_str_to_min(t: str) -> int:
+    h, m = (int(x) for x in t.split(":"))
+    return h * 60 + m
+
+
+def _reschedule_day(day: "EngineDay", ctx: EngineContext) -> None:
+    """Re-assign scheduled_time to all stops in a day after an in-day reorder."""
+    weights = ctx.persona.get("weights", {})
+    w_rest = weights.get("w_rest_need", 0.4)
+    w_night = weights.get("w_nightlife", 0.4)
+    w_eff = weights.get("w_efficiency", 0.5)
+    _sf = 9.0 + (w_rest - 0.5) * 2.0 + (w_night - 0.4) * 2.5 - (w_eff - 0.5) * 2.0
+    _sf = max(7.5, min(11.5, _sf))
+    start_h = int(_sf)
+    start_m = round((_sf - start_h) * 60 / 15) * 15
+    if start_m >= 60:
+        start_h += 1
+        start_m = 0
+    _pa = ctx.persona.get("arrival_time")
+    if _pa and isinstance(_pa, str) and ":" in _pa:
+        try:
+            start_h, start_m = (int(x) for x in _pa.split(":")[:2])
+        except (ValueError, TypeError):
+            pass
+    buffer_min = int(ctx.persona.get("day_buffer_min", 30))
+    _schedule_day_stops(day.stops, start_h, start_m, buffer_min)
+
+
+_HOUR_TOLERANCE_MIN = 15  # allow 15-min window before/after hours
+
+
+def enforce_opening_hours(
+    days: list[EngineDay], ctx: EngineContext
+) -> tuple[list[EngineDay], list[EngineMessage], set[str]]:
+    """Option A: reorder stops within each day so no stop is visited before it opens.
+
+    Returns (updated_days, messages, conflicted_place_ids).
+    conflicted_place_ids are stops that still have violations after all swap attempts
+    and are passed to apply_swapper for replacement.
+    """
+    from datetime import datetime as _dt
+    messages: list[EngineMessage] = []
+    conflicted: set[str] = set()
+
+    for day in days:
+        if day.is_travel_day or not day.stops:
+            continue
+        try:
+            weekday = _dt.fromisoformat(day.date).weekday()  # 0=Monday
+        except (ValueError, TypeError):
+            continue
+
+        # Multiple passes — each pass attempts one swap, stops when nothing changes
+        for _pass in range(len(day.stops)):
+            made_swap = False
+            for i, stop in enumerate(day.stops):
+                oh = next(
+                    (h for h in (stop.opening_hours or []) if h.get("day") == weekday),
+                    None,
+                )
+                if not oh:
+                    continue
+                open_min = oh.get("open_min", 0)
+                close_min = oh.get("close_min", 1440)
+                sched_min = _time_str_to_min(stop.scheduled_time or "09:00")
+                end_min = sched_min + stop.duration_min
+
+                in_window = (
+                    sched_min >= open_min - _HOUR_TOLERANCE_MIN
+                    and end_min <= close_min + _HOUR_TOLERANCE_MIN
+                )
+                if in_window:
+                    continue
+
+                # Try swapping with each subsequent stop to find one that resolves this
+                resolved = False
+                for j in range(i + 1, len(day.stops)):
+                    day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
+                    _reschedule_day(day, ctx)
+                    new_sched = _time_str_to_min(day.stops[i].scheduled_time or "09:00")
+                    new_end = new_sched + day.stops[i].duration_min
+                    # Check whether the originally-problematic stop (now at position j) is fixed
+                    stop_oh = next(
+                        (h for h in (stop.opening_hours or []) if h.get("day") == weekday),
+                        None,
+                    )
+                    new_stop_sched = _time_str_to_min(day.stops[j].scheduled_time or "09:00")
+                    new_stop_end = new_stop_sched + day.stops[j].duration_min
+                    fixed = stop_oh is None or (
+                        new_stop_sched >= (stop_oh.get("open_min", 0) - _HOUR_TOLERANCE_MIN)
+                        and new_stop_end <= (stop_oh.get("close_min", 1440) + _HOUR_TOLERANCE_MIN)
+                    )
+                    # Also ensure the stop moved into position i is valid in its new (earlier) slot
+                    if fixed:
+                        candidate = day.stops[i]
+                        cand_oh = next(
+                            (h for h in (candidate.opening_hours or []) if h.get("day") == weekday),
+                            None,
+                        )
+                        if cand_oh:
+                            cand_sched = _time_str_to_min(candidate.scheduled_time or "09:00")
+                            cand_end = cand_sched + candidate.duration_min
+                            if not (
+                                cand_sched >= cand_oh.get("open_min", 0) - _HOUR_TOLERANCE_MIN
+                                and cand_end <= cand_oh.get("close_min", 1440) + _HOUR_TOLERANCE_MIN
+                            ):
+                                fixed = False
+                    if fixed:
+                        messages.append(EngineMessage(
+                            type="resequence",
+                            what=f"Moved {stop.name} to a later slot.",
+                            why=(
+                                f"{stop.name} opens at "
+                                f"{open_min // 60:02d}:{open_min % 60:02d} — "
+                                f"its original slot was too early."
+                            ),
+                            consequence=(
+                                f"Your day now starts with {day.stops[i].name}, "
+                                f"which is already open."
+                            ),
+                            dismissable=True,
+                            undo_key=f"resequence_{stop.place_id}",
+                            stop_id=stop.place_id,
+                        ))
+                        resolved = True
+                        made_swap = True
+                        break
+                    else:
+                        # Undo the swap
+                        day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
+                        _reschedule_day(day, ctx)
+
+                if not resolved and stop.place_id:
+                    conflicted.add(stop.place_id)
+                    break  # stop checking this day's remaining positions after first unfixable
+
+            if not made_swap:
+                break  # stable — no more swaps possible
+
+    return days, messages, conflicted
+
+
 def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[EngineDay]:
-    """Distribute stops across travel_dates. Naive equal split."""
+    """Distribute stops across travel_dates, grouping by city for multi-city trips.
+
+    Single-city: distribute stops evenly across all dates.
+    Multi-city: group stops by city, allocate dates proportionally per city,
+    so city transitions always fall between days (enabling transit cards).
+    """
     dates = ctx.travel_dates
     if not dates:
         return [EngineDay(date="unknown", stops=stops)]
-    per_day = max(1, len(stops) // len(dates))
-    days: list[EngineDay] = []
-    for i, date in enumerate(dates):
-        start = i * per_day
-        end = start + per_day if i < len(dates) - 1 else len(stops)
-        days.append(EngineDay(date=date, stops=stops[start:end]))
+
+    # Compute start time from persona weights — night owls start later, efficiency-seekers earlier.
+    weights = ctx.persona.get("weights", {})
+    w_rest = weights.get("w_rest_need", 0.4)
+    w_night = weights.get("w_nightlife", 0.4)
+    w_eff = weights.get("w_efficiency", 0.5)
+    _start_float = 9.0 + (w_rest - 0.5) * 2.0 + (w_night - 0.4) * 2.5 - (w_eff - 0.5) * 2.0
+    _start_float = max(7.5, min(11.5, _start_float))
+    start_h = int(_start_float)
+    start_m = round((_start_float - start_h) * 60 / 15) * 15
+    if start_m >= 60:
+        start_h += 1
+        start_m = 0
+    # Use the persona's explicit arrival_time if set — it's more accurate than the weight formula
+    _pa = ctx.persona.get("arrival_time")
+    if _pa and isinstance(_pa, str) and ":" in _pa:
+        try:
+            _ov_h, _ov_m = (int(x) for x in _pa.split(":")[:2])
+            start_h, start_m = _ov_h, _ov_m
+        except (ValueError, TypeError):
+            pass
+    buffer_min = int(ctx.persona.get("day_buffer_min", 30))
+
+    # Group stops by city, preserving optimized order within each city
+    city_order: list[str] = []
+    city_stop_map: dict[str, list[EngineStop]] = {}
+    for stop in stops:
+        city = stop.city or "__unknown__"
+        if city not in city_stop_map:
+            city_stop_map[city] = []
+            city_order.append(city)
+        city_stop_map[city].append(stop)
+
+    city_groups = [(c, city_stop_map[c]) for c in city_order]
+    n_cities = len(city_groups)
+    total_days = len(dates)
+
+    if n_cities == 1:
+        # Single city — distribute evenly
+        per_day = max(1, len(stops) // total_days)
+        days: list[EngineDay] = []
+        for i, date in enumerate(dates):
+            slice_start = i * per_day
+            slice_end = slice_start + per_day if i < total_days - 1 else len(stops)
+            day_stops = stops[slice_start:slice_end]
+            _schedule_day_stops(day_stops, start_h, start_m, buffer_min)
+            days.append(EngineDay(date=date, stops=day_stops))
+        return days
+
+    # Multi-city: allocate dates proportionally, minimum 1 day per city
+    total_stops = max(len(stops), 1)
+    city_days: list[int] = []
+    remaining = total_days
+    for i, (city, city_stops) in enumerate(city_groups):
+        if i == n_cities - 1:
+            city_days.append(remaining)
+        else:
+            alloc = max(1, round(len(city_stops) / total_stops * total_days))
+            alloc = min(alloc, remaining - (n_cities - 1 - i))
+            city_days.append(alloc)
+            remaining -= alloc
+
+    days = []
+    date_idx = 0
+    for (city, city_stops), n_days in zip(city_groups, city_days):
+        n_days = max(1, n_days)
+        per_day = max(1, len(city_stops) // n_days)
+        for j in range(n_days):
+            date = dates[date_idx] if date_idx < total_days else dates[-1]
+            date_idx += 1
+            slice_start = j * per_day
+            slice_end = slice_start + per_day if j < n_days - 1 else len(city_stops)
+            day_stops = city_stops[slice_start:slice_end]
+            _schedule_day_stops(day_stops, start_h, start_m, buffer_min)
+            days.append(EngineDay(date=date, stops=day_stops))
+
     return days
+
+
+def _heavy_walk_advisories(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Emit a day-level advisory when a day's walking distance exceeds persona rest threshold."""
+    w_rest = ctx.persona.get("weights", {}).get("w_rest_need", 0.4)
+    # At w_rest=0.5 → warn above 6km walk; at w_rest=0.8 → warn above 2.4km
+    heavy_km_threshold = 12.0 * (1.0 - min(w_rest, 0.95))
+    messages = []
+    for day in days:
+        if day.is_travel_day or len(day.stops) < 2:
+            continue
+        walk_km = sum(
+            _haversine_km(day.stops[i], day.stops[i + 1])
+            for i in range(len(day.stops) - 1)
+            if day.stops[i].transition_to_next == "walk"
+        )
+        if walk_km < heavy_km_threshold:
+            continue
+        last = day.stops[-1]
+        if last.scheduled_time:
+            lh, lm = (int(x) for x in last.scheduled_time.split(":"))
+            end_min = lh * 60 + lm + last.duration_min
+            early_end_min = end_min - 60
+            if early_end_min > 0:
+                eh, em = divmod(early_end_min, 60)
+                consequence = f"Consider wrapping up around {eh:02d}:{em:02d} to give your feet a rest."
+            else:
+                consequence = "Consider dropping the last stop to give your feet a rest."
+        else:
+            consequence = "Consider dropping one stop to give your feet a rest."
+        messages.append(EngineMessage(
+            type="advisory",
+            what=f"Heavy walking day — roughly {walk_km:.1f}km on foot.",
+            why="Your route covers a lot of ground today.",
+            consequence=consequence,
+            dismissable=True,
+            undo_key=None,
+            stop_id=None,
+        ))
+    return messages
 
 
 def _needs_recommendations(stops: list[EngineStop], ctx: EngineContext) -> bool:
@@ -88,11 +365,12 @@ async def build_itinerary(
         narrated = all_messages
 
     days = _split_into_days(stops, ctx)
+    walk_advisories = _heavy_walk_advisories(days, ctx)
     recs = await _get_recommendations(ctx) if _needs_recommendations(stops, ctx) else None
 
     return EngineResult(
         days=days,
-        messages=narrated,
+        messages=narrated + walk_advisories,
         generation_id=str(uuid.uuid4()),
         recommendations=recs,
     )
