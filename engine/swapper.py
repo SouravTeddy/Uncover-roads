@@ -92,8 +92,22 @@ def check(
             alternatives = _find_alternatives(stop, ctx, excluded_place_ids=set())
             reason = f"Composite conflict score {score:.2f} exceeds threshold {SWAP_THRESHOLD}."
             if alternatives:
-                result.append(alternatives[0])
-                messages.append(_emit_swap(stop, alternatives[0], reason))
+                _best_score, _best_stop_ic = alternatives[0]
+                _best_stop = EngineStop(
+                    place_id=_best_stop_ic.place_id,
+                    name=_best_stop_ic.name,
+                    lat=_best_stop_ic.lat,
+                    lon=_best_stop_ic.lon,
+                    category=_best_stop_ic.type,
+                    duration_min=_best_stop_ic.time_cost_min,
+                    opening_hours=[],
+                    price_level=1,
+                    rating=4.0,
+                    neighborhood=None,
+                    is_user_added=False,
+                )
+                result.append(_best_stop)
+                messages.append(_emit_swap(stop, _best_stop, reason))
             else:
                 result.append(stop)
                 messages.append(_emit_swap(stop, None, reason))
