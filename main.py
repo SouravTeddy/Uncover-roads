@@ -2924,7 +2924,7 @@ def _parse_weekday_text(weekday_text: list[str]) -> list[dict]:
     """Parse Google Places weekday_text into [{day:0-6, open_min:int, close_min:int}].
 
     0=Monday … 6=Sunday, matching datetime.weekday().
-    Closed days are omitted. 'Open 24 hours' → (0, 1440).
+    Closed days are omitted. 'Open 24 hours' → {open_min: 0, close_min: 1440}.
     """
     def _to_min(h: int, m: int, ampm: str) -> int:
         if ampm.upper() == "PM" and h != 12:
@@ -2962,7 +2962,7 @@ def _parse_weekday_text(weekday_text: list[str]) -> list[dict]:
 def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dict]:
     """Fetch rich place data for a batch of place_ids from cache.
     Never calls Google — read-only from place_details_cache.
-    Returns dict[place_id → {price_level, weekday_text, editorial_summary, top_review, rating_count}].
+    Returns dict[place_id → {price_level, weekday_text, editorial_summary, top_review, rating_count, opening_hours_parsed, photo_ref}].
     """
     if not supabase_client or not place_ids:
         return {}
