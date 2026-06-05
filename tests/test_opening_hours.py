@@ -41,3 +41,78 @@ def test_engine_stop_opening_hours_populated():
     )
     assert len(stop.opening_hours) == 1
     assert stop.opening_hours[0]["open_min"] == 540
+
+def test_enforce_opening_hours_reorders_early_stop():
+    from engine.types import EngineStop, EngineDay, EngineContext
+    from engine.builder import enforce_opening_hours
+    from city.data_model import CityData
+
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[], scenic_routes=[],
+        transit_edges=[], engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "explorer", "arrival_time": "09:00", "day_buffer_min": 30,
+                 "weights": {"w_rest_need": 0.4, "w_nightlife": 0.4, "w_efficiency": 0.5}},
+        city=city, travel_dates=["2026-06-08"],  # Monday
+    )
+    # Museum opens at 10:00 (600 min), but scheduled at 09:00
+    museum = EngineStop(
+        place_id="museum1", name="Museum", lat=0.0, lon=0.0,
+        category="museum", duration_min=60,
+        opening_hours=[{"day": 0, "open_min": 600, "close_min": 1080}],
+        price_level=1, rating=4.5, neighborhood=None, is_user_added=True,
+        scheduled_time="09:00", city="Test",
+    )
+    # Park opens at 07:00 — fine at 09:00
+    park = EngineStop(
+        place_id="park1", name="Park", lat=0.1, lon=0.0,
+        category="park", duration_min=45,
+        opening_hours=[{"day": 0, "open_min": 420, "close_min": 1200}],
+        price_level=1, rating=4.3, neighborhood=None, is_user_added=True,
+        scheduled_time="10:30", city="Test",
+    )
+    day = EngineDay(date="2026-06-08", stops=[museum, park])
+    days, msgs, conflicted = enforce_opening_hours([day], ctx)
+    # Museum should have been moved after park
+    assert days[0].stops[0].name == "Park"
+    assert days[0].stops[1].name == "Museum"
+    assert len(msgs) == 1
+    assert "Museum" in msgs[0].what
+    assert len(conflicted) == 0
+
+def test_enforce_opening_hours_flags_unfixable():
+    from engine.types import EngineStop, EngineDay, EngineContext
+    from engine.builder import enforce_opening_hours
+    from city.data_model import CityData
+
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[], scenic_routes=[],
+        transit_edges=[], engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "explorer", "arrival_time": "09:00", "day_buffer_min": 30,
+                 "weights": {"w_rest_need": 0.4, "w_nightlife": 0.4, "w_efficiency": 0.5}},
+        city=city, travel_dates=["2026-06-08"],
+    )
+    # Both stops open only at 10:00, both scheduled at 09:00
+    museum = EngineStop(
+        place_id="m1", name="Museum", lat=0.0, lon=0.0, category="museum",
+        duration_min=60, opening_hours=[{"day": 0, "open_min": 600, "close_min": 1080}],
+        price_level=1, rating=4.5, neighborhood=None, is_user_added=True,
+        scheduled_time="09:00", city="Test",
+    )
+    gallery = EngineStop(
+        place_id="g1", name="Gallery", lat=0.1, lon=0.0, category="gallery",
+        duration_min=60, opening_hours=[{"day": 0, "open_min": 600, "close_min": 1080}],
+        price_level=1, rating=4.3, neighborhood=None, is_user_added=True,
+        scheduled_time="10:00", city="Test",
+    )
+    day = EngineDay(date="2026-06-08", stops=[museum, gallery])
+    days, msgs, conflicted = enforce_opening_hours([day], ctx)
+    # Museum can't be moved — gallery is also closed at 09:00
+    assert "m1" in conflicted
