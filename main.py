@@ -3383,6 +3383,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
         "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
         "w_spontaneity":        weights.get("w_spontaneity", 0.5),
         "w_rest_need":          weights.get("w_rest_need", 0.4),
+        "arrival_time":         persona.get("arrival_time", "09:00"),
     }
 
     # Re-order days to match body.cities order (TSP may cluster Melbourne before Sydney)
