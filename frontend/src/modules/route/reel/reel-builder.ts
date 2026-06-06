@@ -8,7 +8,7 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelSummaryCard, ReelDayDividerCard, ReelScenicCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelDayDividerCard, ReelScenicCard, ReelDayTransitionCard } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -83,10 +83,12 @@ function parseEarliestClosingMinute(weekdayText: string[] | null): number | null
 
 const OUTDOOR_CATEGORIES = new Set([
   'park', 'viewpoint', 'beach', 'market', 'street_art', 'amusement_park', 'zoo',
+  'garden', 'nature_reserve', 'waterfall',
 ]);
 const BAD_WEATHER_CONDITIONS = new Set([
   'rain', 'drizzle', 'storm', 'thunderstorm', 'snow', 'sleet', 'hail', 'blizzard', 'fog',
 ]);
+const HOT_THRESHOLD_C = 32;
 
 // ── Meal reco cards (existing logic) ─────────────────────────
 
@@ -241,23 +243,80 @@ function buildWeatherReco(
   if (!weather) return [];
   const conditionLower = weather.condition.toLowerCase();
   const isBadWeather = [...BAD_WEATHER_CONDITIONS].some(c => conditionLower.includes(c));
-  if (!isBadWeather) return [];
+  const isHot = weather.temp >= HOT_THRESHOLD_C;
+  const isClear = conditionLower.includes('clear') || conditionLower.includes('sunny');
+  const recos: ReelRecoCard[] = [];
 
-  const outdoorStop = stops.find(s => OUTDOOR_CATEGORIES.has(s.category));
-  if (!outdoorStop) return [];
+  if (isBadWeather) {
+    const isRain = conditionLower.includes('rain') || conditionLower.includes('drizzle');
+    const isStorm = conditionLower.includes('storm') || conditionLower.includes('thunder');
 
-  return [{
-    type: 'reco',
-    id: `weather-${outdoorStop.id}`,
-    trigger: 'weather',
-    label: `${weather.condition} forecast today`,
-    consequence: 'Outdoor stops may be affected. Indoor alternatives nearby.',
-    nearbyCity: city,
-    persona,
-    afterStopId: outdoorStop.id,
-    stopLat: outdoorStop.lat,
-    stopLon: outdoorStop.lon,
-  }];
+    const outdoorStops = stops.filter(s => OUTDOOR_CATEGORIES.has(s.category));
+    for (const stop of outdoorStops.slice(0, 3)) {
+      let label: string;
+      let consequence: string;
+      if (isStorm) {
+        label = `Storm warning — rethink ${stop.title}`;
+        consequence = `Thunderstorm forecast may make this outdoor stop unsafe. Look for a covered museum or gallery nearby.`;
+      } else if (isRain) {
+        label = `Rain likely when you visit ${stop.title}`;
+        consequence = `${weather.condition} forecast. Bring an umbrella or swap for a covered alternative — a café, market hall, or indoor museum nearby could fit the gap.`;
+      } else {
+        label = `${weather.condition} at ${stop.title} today`;
+        consequence = `Conditions may affect your outdoor visit. Consider a sheltered spot or adjust your timing.`;
+      }
+      recos.push({
+        type: 'reco',
+        id: `weather-${stop.id}`,
+        trigger: 'weather',
+        label,
+        consequence,
+        nearbyCity: city,
+        persona,
+        afterStopId: stop.id,
+        stopLat: stop.lat,
+        stopLon: stop.lon,
+      });
+    }
+  }
+
+  if (isHot) {
+    const outdoorStop = stops.find(s => OUTDOOR_CATEGORIES.has(s.category));
+    if (outdoorStop) {
+      recos.push({
+        type: 'reco',
+        id: `heat-${outdoorStop.id}`,
+        trigger: 'weather',
+        label: `${Math.round(weather.temp)}°C — beat the heat at ${outdoorStop.title}`,
+        consequence: `High heat today. Aim for outdoor stops early morning or after 5 PM. Keep a café or shaded garden on standby for midday.`,
+        nearbyCity: city,
+        persona,
+        afterStopId: outdoorStop.id,
+        stopLat: outdoorStop.lat,
+        stopLon: outdoorStop.lon,
+      });
+    }
+  }
+
+  if (isClear && !isBadWeather && !isHot) {
+    const viewStop = stops.find(s => s.category === 'viewpoint' || s.category === 'park' || s.category === 'beach');
+    if (viewStop) {
+      recos.push({
+        type: 'reco',
+        id: `clear-${viewStop.id}`,
+        trigger: 'weather',
+        label: `Perfect day for ${viewStop.title}`,
+        consequence: `${weather.condition} skies forecast — golden light in the late afternoon. This is one of those visits that earns its photo.`,
+        nearbyCity: city,
+        persona,
+        afterStopId: viewStop.id,
+        stopLat: viewStop.lat,
+        stopLon: viewStop.lon,
+      });
+    }
+  }
+
+  return recos;
 }
 
 // ── Closing-conflict reco cards ───────────────────────────────
@@ -320,6 +379,45 @@ function buildWalkingGapRecos(
   return [];
 }
 
+// ── Discovery reco cards ─────────────────────────────────────
+function buildDiscoveryRecos(
+  stops: EngineItineraryStop[],
+  persona: string,
+  city: string,
+): ReelRecoCard[] {
+  const recos: ReelRecoCard[] = [];
+  for (const stop of stops) {
+    if (stop.stage === 'hidden_gem') {
+      recos.push({
+        type: 'reco',
+        id: `hidden-gem-${stop.id}`,
+        trigger: 'hidden_gem',
+        label: `${stop.title} — off the radar`,
+        consequence: `Highly rated but barely reviewed. The kind of place you'd only find if someone told you about it.`,
+        nearbyCity: city,
+        persona,
+        afterStopId: stop.id,
+        stopLat: stop.lat,
+        stopLon: stop.lon,
+      });
+    } else if (stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0) {
+      recos.push({
+        type: 'reco',
+        id: `trending-${stop.id}`,
+        trigger: 'hidden_gem',
+        label: `${stop.title} is trending`,
+        consequence: `This place is gaining momentum fast — catch it before the crowds arrive.`,
+        nearbyCity: city,
+        persona,
+        afterStopId: stop.id,
+        stopLat: stop.lat,
+        stopLon: stop.lon,
+      });
+    }
+  }
+  return recos;
+}
+
 // ── Intel cards from engine messages ─────────────────────────
 
 function buildIntelCards(day: EngineItineraryDay, anchorImageUrl: string | null): ReelIntelCard[] {
@@ -352,7 +450,7 @@ function buildScenicCards(
 
   const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
 
-  const personaDisplay = archetypeLower.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const personaDisplay = persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
   for (let i = 0; i < stops.length - 1; i++) {
     // Fix 5: cap at 2 scenic cards per day
@@ -362,7 +460,7 @@ function buildScenicCards(
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
     // Fix 5: skip pairs that are too close (not walkable) or too far
-    if (distKm < 0.3 || distKm > 2.0) continue;
+    if (distKm < 0.1 || distKm > 2.0) continue;
 
     // Fix 4: area label dedup — use title as fallback when both areas are the same
     const fromLabel = (a.area && a.area !== b.area) ? a.area : a.title;
@@ -396,8 +494,8 @@ function buildScenicCards(
       sensoryIcon: 'directions_walk',
       reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
       photoUrl: null,
-      originPhotoUrl: a.imageUrl ?? a.photoRef ?? null,
-      destPhotoUrl: b.imageUrl ?? b.photoRef ?? null,
+      originPhotoUrl: a.imageUrl ?? (a.photoRef ? getPlacePhotoUrl(a.photoRef, 800, 600) : null),
+      destPhotoUrl: b.imageUrl ?? (b.photoRef ? getPlacePhotoUrl(b.photoRef, 800, 600) : null),
       _afterStopId: a.id,
     });
   }
@@ -443,6 +541,15 @@ function buildIntelItems(
   return items;
 }
 
+// ── Transit mode derivation ──────────────────────────────────
+
+function deriveTransitMode(distKm: number): 'flight' | 'drive' | 'train' | null {
+  if (distKm < 30) return null;        // same metro area — no dedicated transit card needed
+  if (distKm < 80) return 'drive';
+  if (distKm < 600) return 'train';
+  return 'flight';
+}
+
 // ── Balance message builder ──────────────────────────────────
 
 function buildBalanceMessage(
@@ -468,18 +575,29 @@ export function buildReelCards(
   itinerary: EngineItinerary,
   journeyLegs: JourneyLeg[] | null,
   _savedId: string | null,
-  weather: WeatherData | null,
+  weatherByCity: Map<string, WeatherData> = new Map(),
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string> = new Map(),
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
+  const getWeatherForCity = (cityName: string): WeatherData | null =>
+    weatherByCity.get(cityName.toLowerCase()) ?? null;
+
   const weights: EngineWeights = itinerary.personaSnapshot ?? DEFAULT_WEIGHTS;
   const cards: ReelCard[] = [];
   const allStops = itinerary.days.flatMap(d => d.stops);
   const stopCount = allStops.length;
-  const cityLabel = itinerary.city ?? itinerary.cities.join(' · ');
+  // Collect all distinct cities — prefer explicit cities array, fall back to per-day cities
+  const fromDays = [...new Set(itinerary.days.map(d => d.city).filter(Boolean))];
+  const fromList = itinerary.cities?.filter(Boolean) ?? [];
+  const uniqueCities = fromList.length > fromDays.length ? fromList : fromDays.length > 1 ? fromDays : fromList.length > 0 ? fromList : [itinerary.city ?? ''];
+  const cityLabel = uniqueCities.length > 2
+    ? `${uniqueCities[0]} +${uniqueCities.length - 1}`
+    : uniqueCities.length === 2
+    ? uniqueCities.join(' · ')
+    : (itinerary.city ?? uniqueCities[0] ?? '');
 
   // Totals for intro card
   const totalDurationMin = allStops.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);
@@ -503,6 +621,12 @@ export function buildReelCards(
   }, {});
   const engineChanges = Object.entries(changeCounts).map(([type, count]) => ({ type, count }));
 
+  // Count scenic cards across all days (needed for intelItems on the intro card)
+  const totalScenicCount = itinerary.days.reduce((sum, day) => {
+    const sortedStops = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    return sum + buildScenicCards(sortedStops, persona, weights).length;
+  }, 0);
+
   cards.push({
     type: 'intro',
     city: cityLabel,
@@ -511,86 +635,95 @@ export function buildReelCards(
     totalDays: itinerary.days.length,
     totalDurationMin,
     totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
-    weather,
+    weather: getWeatherForCity(primaryCity),
     proTip: itinerary.summary?.pro_tip ?? null,
     persona,
     engineChanges,
-  });
-
-
-  // Count scenic cards across all days (needed for intelItems before the per-day loop)
-  const totalScenicCount = itinerary.days.reduce((sum, day) => {
-    const sortedStops = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-    return sum + buildScenicCards(sortedStops, persona, weights).length;
-  }, 0);
-
-  // "Before you go" summary card — always shown, gives full trip overview + engine changes
-  const summaryCard: ReelSummaryCard = {
-    type: 'summary',
-    totalDays: itinerary.days.length,
-    totalStops: stopCount,
-    persona,
-    engineChanges,
     intelItems: buildIntelItems(engineChanges, itinerary.days.length, totalScenicCount),
-    startDate: itinerary.days[0]?.date,
     neighborhoods: [],
-  };
-  cards.push(summaryCard);
+  });
 
   let globalStopNumber = 0;
 
   for (let dayIdx = 0; dayIdx < itinerary.days.length; dayIdx++) {
     const day = itinerary.days[dayIdx];
 
-    // Transit card between cities
-    if (dayIdx > 0 && journeyLegs) {
-      const prevCity = itinerary.days[dayIdx - 1].city;
-      const transitLeg = journeyLegs.find(
-        l => l.type === 'transit' &&
-          (l as Extract<JourneyLeg, { type: 'transit' }>).from === prevCity &&
-          (l as Extract<JourneyLeg, { type: 'transit' }>).to === day.city,
-      ) as Extract<JourneyLeg, { type: 'transit' }> | undefined;
+    // Single day-transition card between consecutive days — replaces wrap + transit + day-intro
+    if (dayIdx > 0) {
+      const prevDay = itinerary.days[dayIdx - 1];
+      const prevCity = prevDay.city || (itinerary.cities?.[dayIdx - 1] ?? '');
+      const thisCity = day.city || (itinerary.cities?.[dayIdx] ?? '');
+      const isCityChange = !!(prevCity && thisCity && prevCity.toLowerCase() !== thisCity.toLowerCase());
 
-      if (transitLeg) {
-        const hasActual = !!(transitLeg.departureTime && transitLeg.arrivalTime);
-        cards.push({
-          type: 'transit',
-          mode: transitLeg.mode,
-          from: prevCity,
-          to: day.city,
-          durationMinutes: transitLeg.durationMinutes ?? null,
-          distanceKm: transitLeg.distanceKm ?? null,
-          imageUrl: null,
-          isEstimated: !hasActual,
-          departureTime: transitLeg.departureTime ?? null,
-          arrivalTime: transitLeg.arrivalTime ?? null,
-          ref: transitLeg.transitRef ?? null,
-        });
+      // Previous day time range
+      const prevSorted = [...prevDay.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      const prevFirst = prevSorted[0] ?? null;
+      const prevLast  = prevSorted.at(-1) ?? null;
+      const prevEndMin = prevLast ? timeToMinutes(prevLast.time) + prevLast.durationMin : null;
+
+      // Next day (current) first stop time
+      const thisSorted = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      const thisFirst  = thisSorted[0] ?? null;
+
+      // Inter-city transit
+      let transitMode: ReelDayTransitionCard['transitMode'] = null;
+      let transitDistanceKm: number | null = null;
+      let transitDurationMin: number | null = null;
+      let transitIsEstimated = true;
+      let transitDep: string | null = null;
+      let transitArr: string | null = null;
+      let transitRef: string | null = null;
+
+      if (isCityChange) {
+        const transitLeg = journeyLegs
+          ? (journeyLegs.find(
+              l => l.type === 'transit' &&
+                (l as Extract<JourneyLeg, { type: 'transit' }>).from === prevCity &&
+                (l as Extract<JourneyLeg, { type: 'transit' }>).to === thisCity,
+            ) as Extract<JourneyLeg, { type: 'transit' }> | undefined)
+          : undefined;
+
+        if (transitLeg) {
+          transitMode         = transitLeg.mode as ReelDayTransitionCard['transitMode'];
+          transitDistanceKm   = transitLeg.distanceKm ?? null;
+          transitDurationMin  = transitLeg.durationMinutes ?? null;
+          transitIsEstimated  = !(transitLeg.departureTime && transitLeg.arrivalTime);
+          transitDep          = transitLeg.departureTime ?? null;
+          transitArr          = transitLeg.arrivalTime ?? null;
+          transitRef          = transitLeg.transitRef ?? null;
+        } else {
+          // Derive mode from distance between last stop of prev day and first stop of this day
+          if (prevLast && thisFirst) {
+            const distKm = haversineKm(prevLast.lat, prevLast.lon, thisFirst.lat, thisFirst.lon);
+            transitDistanceKm = Math.round(distKm);
+            transitMode = deriveTransitMode(distKm);
+          }
+        }
       }
-    }
 
-    // Day divider card — shown after any transit card, before the day's stops
-    // Skip day 1 (no need to announce the first day before any cards)
-    if (day.day > 1) {
-      const sortedForDivider = [...day.stops].sort(
-        (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
-      );
-      const firstStop = sortedForDivider[0] ?? null;
-      const lastStop = sortedForDivider.at(-1) ?? null;
-      const endMin = lastStop
-        ? timeToMinutes(lastStop.time) + lastStop.durationMin
-        : null;
-
-      const dividerCard: ReelDayDividerCard = {
-        type: 'day_divider',
-        day: day.day,
-        city: day.city,
-        date: day.date,
-        stopCount: day.stops.length,
-        startTime: firstStop?.time ?? null,
-        endTime: endMin !== null ? minutesToTime(endMin) : null,
+      const transitionCard: ReelDayTransitionCard = {
+        type: 'day_transition',
+        prevDay: prevDay.day,
+        prevCity,
+        prevDate: prevDay.date,
+        prevStopCount: prevDay.stops.length,
+        prevStartTime: prevFirst?.time ?? null,
+        prevEndTime: prevEndMin !== null ? minutesToTime(prevEndMin) : null,
+        nextDay: day.day,
+        nextCity: thisCity,
+        nextDate: day.date,
+        nextStopCount: day.stops.length,
+        nextStartTime: thisFirst?.time ?? null,
+        isCityChange,
+        transitMode,
+        transitDistanceKm,
+        transitDurationMin,
+        transitIsEstimated,
+        transitDepartureTime: transitDep,
+        transitArrivalTime: transitArr,
+        transitRef,
       };
-      cards.push(dividerCard);
+      cards.push(transitionCard);
     }
 
     // Sort stops chronologically — engine may return them out of order
@@ -604,16 +737,16 @@ export function buildReelCards(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
 
-    // Use pre-computed recos from the engine; fall back to legacy functions when not provided
-    const allRecos: ReelRecoCard[] = recosByDayIdx.has(dayIdx)
-      ? (recosByDayIdx.get(dayIdx) ?? [])
-      : [
-          ...buildMealRecos(sortedStops, persona, day.city),
-          ...buildPersonaRecos(sortedStops, persona, day.city, weights),
-          ...buildWeatherReco(sortedStops, weather, persona, day.city),
-          ...buildClosingConflictRecos(sortedStops, persona, day.city),
-          ...buildWalkingGapRecos(sortedStops, persona, day.city, weights),
-        ];
+    // Always run all reco functions — engine recos + meal + persona + weather + closing + walking + discovery
+    const allRecos: ReelRecoCard[] = [
+      ...(recosByDayIdx.get(dayIdx) ?? []),
+      ...buildMealRecos(sortedStops, persona, day.city),
+      ...buildPersonaRecos(sortedStops, persona, day.city, weights),
+      ...buildWeatherReco(sortedStops, getWeatherForCity(day.city), persona, day.city),
+      ...buildClosingConflictRecos(sortedStops, persona, day.city),
+      ...buildWalkingGapRecos(sortedStops, persona, day.city, weights),
+      ...buildDiscoveryRecos(sortedStops, persona, day.city),
+    ];
 
     const recosByStop = new Map<string, ReelRecoCard[]>();
     for (const reco of allRecos) {
@@ -637,7 +770,7 @@ export function buildReelCards(
         orderReason: stop.orderReason ?? null,
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
-        weather: weather ?? null,
+        weather: getWeatherForCity(day.city),
       };
       cards.push(stopCard);
 
@@ -645,8 +778,9 @@ export function buildReelCards(
       if (recos) cards.push(...recos.map(r => ({ ...r, anchorPhotoUrl: stopImageUrl })));
 
       // Intel cards that reference this stop (by placeId match)
+      // Suppress 'insert' type — the stop card's orderReason already covers it
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
-        ic => ic.stopId != null && ic.stopId === stop.placeId,
+        ic => ic.stopId != null && ic.stopId === stop.placeId && ic.messageType !== 'insert',
       );
       cards.push(...stopIntelCards);
 
@@ -665,6 +799,9 @@ export function buildReelCards(
       ic => !allIntelIds.has(ic.id),
     );
     cards.push(...unplacedIntel);
+
+    // Day-boundary transition cards are now emitted at the START of each day > 1 (above).
+    // No separate wrap-up card needed.
   }
 
   // Balance card: when engine ran but found zero recos for all days — surface a positive message
