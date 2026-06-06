@@ -174,17 +174,17 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
     <>
       {hasSeeds && (
         <Source id="area-blobs-seed" type="geojson" data={seedGeoJSON(effectiveSeeds)}>
-          <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
+          <Layer {...({ ...(hoodCityLayer as any), paint: expr({ ...(hoodCityLayer as any).paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius }) } as any)} />
         </Source>
       )}
 
       {hasHoods && (
         <>
           <Source id="area-blobs-hood-city" type="geojson" data={hoodGeoJSON(neighborhoods, false)}>
-            <Layer {...hoodCityLayer} paint={expr({ ...hoodCityLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
+            <Layer {...({ ...(hoodCityLayer as any), paint: expr({ ...(hoodCityLayer as any).paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius }) } as any)} />
           </Source>
           <Source id="area-blobs-hood-park" type="geojson" data={hoodGeoJSON(neighborhoods, true)}>
-            <Layer {...hoodParkLayer} paint={expr({ ...hoodParkLayer.paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius })} />
+            <Layer {...({ ...(hoodParkLayer as any), paint: expr({ ...(hoodParkLayer as any).paint, 'heatmap-opacity': hoodOpacity, 'heatmap-radius': hoodRadius }) } as any)} />
           </Source>
         </>
       )}
@@ -192,10 +192,10 @@ export function AreaBlobLayer({ places, neighborhoods, heatmapSeeds, visible, bb
       {places.length > 0 && (
         <>
           <Source id="area-blobs-city" type="geojson" data={pinGeoJSON(places, false)}>
-            <Layer {...pinCityLayer} paint={expr({ ...pinCityLayer.paint, 'heatmap-opacity': pinOpacity })} />
+            <Layer {...({ ...(pinCityLayer as any), paint: expr({ ...(pinCityLayer as any).paint, 'heatmap-opacity': pinOpacity }) } as any)} />
           </Source>
           <Source id="area-blobs-park" type="geojson" data={pinGeoJSON(places, true)}>
-            <Layer {...pinParkLayer} paint={expr({ ...pinParkLayer.paint, 'heatmap-opacity': pinOpacity })} />
+            <Layer {...({ ...(pinParkLayer as any), paint: expr({ ...(pinParkLayer as any).paint, 'heatmap-opacity': pinOpacity }) } as any)} />
           </Source>
         </>
       )}
