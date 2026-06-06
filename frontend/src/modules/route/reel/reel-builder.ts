@@ -737,15 +737,18 @@ export function buildReelCards(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
 
-    // Always run all reco functions — engine recos + meal + persona + weather + closing + walking + discovery
+    // Collect engine recos and their triggers so local builders can be skipped for covered triggers
+    const engineRecos = recosByDayIdx.get(dayIdx) ?? [];
+    const engineTriggers = new Set(engineRecos.map(r => r.trigger));
+
     const allRecos: ReelRecoCard[] = [
-      ...(recosByDayIdx.get(dayIdx) ?? []),
+      ...engineRecos,
       ...buildMealRecos(sortedStops, persona, day.city),
       ...buildPersonaRecos(sortedStops, persona, day.city, weights),
-      ...buildWeatherReco(sortedStops, getWeatherForCity(day.city), persona, day.city),
+      ...(engineTriggers.has('weather') ? [] : buildWeatherReco(sortedStops, getWeatherForCity(day.city), persona, day.city)),
       ...buildClosingConflictRecos(sortedStops, persona, day.city),
-      ...buildWalkingGapRecos(sortedStops, persona, day.city, weights),
-      ...buildDiscoveryRecos(sortedStops, persona, day.city),
+      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapRecos(sortedStops, persona, day.city, weights)),
+      ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryRecos(sortedStops, persona, day.city)),
     ];
 
     const recosByStop = new Map<string, ReelRecoCard[]>();
