@@ -11,6 +11,7 @@ interface Props {
   existingDetails: TripDetails | null;
   onSave: (details: TripDetails) => void;
   onClose: () => void;
+  firstDayDate?: string | null;
 }
 
 function displayDate(iso: string | null): string {
@@ -335,7 +336,7 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
   );
 }
 
-export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose }: Props) {
+export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose, firstDayDate = null }: Props) {
   const isMultiCity = cities.length > 1;
 
   const [arrivalDate, setArrivalDate] = useState<string | null>(existingDetails?.arrivalDate ?? null);
@@ -456,7 +457,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
             onExpand={() => handleExpand('arrival')}
             onDateSelect={handleArrivalDateSelect}
             onTimeChange={setArrivalTime}
-            maxDate={departureDate ?? undefined}
+            maxDate={[departureDate, firstDayDate].filter(Boolean).sort()[0] ?? undefined}
           />
 
           {/* Departure */}

@@ -38,7 +38,8 @@ def seed_city_on_demand(whitelist_row: dict, supabase) -> CityData:
         "movement": city.movement,
         "culture": city.culture,
         "neighborhoods": [
-            {"id": n.id, "name": n.name, "center": list(n.center), "polygon": n.polygon,
+            {"id": n.id, "name": n.name, "center": list(n.center),
+             "polygon": [list(p) for p in n.polygon],
              "best_times": n.best_times, "crowd_index": n.crowd_index}
             for n in city.neighborhoods
         ],

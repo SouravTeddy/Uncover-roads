@@ -19,8 +19,10 @@ import type {
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 /** Returns the URL of a Google Place photo via the backend proxy. */
-export function getPlacePhotoUrl(photoRef: string, maxWidth = 800): string {
-  return `${BASE}/place-photo?photo_ref=${encodeURIComponent(photoRef)}&max_width=${maxWidth}`;
+export function getPlacePhotoUrl(photoRef: string, maxWidth = 800, maxHeight?: number): string {
+  let url = `${BASE}/place-photo?photo_ref=${encodeURIComponent(photoRef)}&max_width=${maxWidth}`;
+  if (maxHeight !== undefined) url += `&max_height=${maxHeight}`;
+  return url;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -186,10 +188,11 @@ export async function mapData(
     console.log(`[mapData] backend → ${res.status}`);
     if (res.ok) {
       const data: Place[] = await res.json();
-      console.log(`[mapData] backend returned ${data.length} places`);
-      if (data.length > 0) {
+      const limited = data.slice(0, 150);
+      console.log(`[mapData] backend returned ${data.length} places (showing ${limited.length})`);
+      if (limited.length > 0) {
         // Stamp _city on backend results (backend doesn't set it)
-        return data.map(p => ({ ...p, _city: p._city ?? city }));
+        return limited.map(p => ({ ...p, _city: p._city ?? city }));
       }
     }
   } catch (err) {
@@ -271,9 +274,12 @@ export const api = {
       category: string
       rating?: number
       photo_ref?: string
+      city?: string
     }>
     personaArchetype: string
     engineWeights: EngineWeights | null
+    cities?: string[]
+    arrivalTime?: string | null
   }) =>
     post<EngineItinerary>('/engine-itinerary', body),
 
@@ -292,6 +298,7 @@ export const api = {
     trigger: string
     archetype: string
     existingPlaceIds: string[]
+    category?: string
   }): Promise<ReelRecoPlace[]> => {
     try {
       const data = await post<{ places: Array<{
@@ -304,6 +311,7 @@ export const api = {
         trigger: params.trigger,
         archetype: params.archetype,
         existing_place_ids: params.existingPlaceIds,
+        ...(params.category !== undefined && { category: params.category }),
       });
       return (data.places ?? []).map(p => ({
         placeId:       p.place_id,

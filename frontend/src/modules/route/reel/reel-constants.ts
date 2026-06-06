@@ -2,13 +2,13 @@
 // All values extracted from frontend/public/reel-mock.html — do not edit without checking mock first.
 
 // ── Layout ────────────────────────────────────────────────────
-export const REEL_CONTENT_PADDING_INTRO = '0 17px 96px'
-export const REEL_CONTENT_PADDING_STOP  = '0 15px 96px'
-export const REEL_CONTENT_PADDING_RECO  = '0 18px 96px'
+export const REEL_CONTENT_PADDING_INTRO = '0 17px calc(88px + env(safe-area-inset-bottom, 0px))'
+export const REEL_CONTENT_PADDING_STOP  = '0 15px calc(88px + env(safe-area-inset-bottom, 0px))'
+export const REEL_CONTENT_PADDING_RECO  = '0 18px calc(88px + env(safe-area-inset-bottom, 0px))'
 
 // ── Shared scrim (identical on all photo cards) ───────────────
 export const REEL_SCRIM =
-  'linear-gradient(180deg,transparent 0%,transparent 35%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.85) 90%,rgba(10,10,13,.95) 100%)'
+  'linear-gradient(180deg,transparent 0%,transparent 30%,rgba(0,0,0,.30) 55%,rgba(0,0,0,.80) 82%,rgba(10,10,13,.95) 100%)'
 
 // ── Sky tints ─────────────────────────────────────────────────
 export const SKY_TINT_SUNNY    = 'linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%)'
@@ -53,11 +53,11 @@ export function todDotColor(hour: number): string {
 }
 
 export function todLabel(hour: number): string {
-  if (hour >= 20 || hour < 6) return 'Night · 20:00–04:30'
-  if (hour < 8)               return 'Early morning · 06:00–08:00'
-  if (hour < 11)              return 'Morning · 08:00–11:00'
-  if (hour < 17)              return 'Afternoon · 11:00–16:00'
-  return 'Dusk · 18:00–20:00'
+  if (hour >= 20 || hour < 6) return 'Night'
+  if (hour < 8)               return 'Early morning'
+  if (hour < 11)              return 'Morning'
+  if (hour < 17)              return 'Afternoon'
+  return 'Dusk'
 }
 
 // ── Sky tint helper ───────────────────────────────────────────
@@ -66,15 +66,15 @@ export type SkyTintResult = { single: string } | { double: string }
 
 export function skyTintForCondition(condition: string): SkyTintResult {
   const c = condition.toLowerCase()
-  if (c.includes('thunder') || c.includes('storm')) return { double: SKY_TINT_THUNDER }
-  if (c === 'rain')                                  return { double: SKY_TINT_RAIN }
-  if (c.includes('snow') || c.includes('blizzard'))  return { single: SKY_TINT_SNOW }
-  if (c === 'drizzle')                               return { single: SKY_TINT_DRIZZLE }
-  if (c === 'fog' || c === 'mist')                   return { single: SKY_TINT_FOG }
-  if (c.includes('overcast') || c === 'cloud')       return { single: SKY_TINT_OVERCAST }
-  if (c.includes('partly'))                          return { single: SKY_TINT_PC }
-  if (c === 'night' || c === 'clear night')          return { single: SKY_TINT_NIGHT }
-  return { single: SKY_TINT_SUNNY } // sunny, clear, default
+  if (c.includes('thunder') || c.includes('storm'))   return { double: SKY_TINT_THUNDER }
+  if (c.includes('rain'))                              return { double: SKY_TINT_RAIN }
+  if (c.includes('snow') || c.includes('blizzard'))    return { single: SKY_TINT_SNOW }
+  if (c.includes('drizzle'))                           return { single: SKY_TINT_DRIZZLE }
+  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return { single: SKY_TINT_FOG }
+  if (c.includes('overcast') || c.includes('cloud'))   return { single: SKY_TINT_OVERCAST }
+  if (c.includes('partly'))                            return { single: SKY_TINT_PC }
+  if (c.includes('night'))                             return { single: SKY_TINT_NIGHT }
+  return { single: SKY_TINT_SUNNY }
 }
 
 // ── Rain / drizzle particle params ───────────────────────────

@@ -231,8 +231,12 @@ def _fetch_google_pois(city: dict, neighborhoods: list[Neighborhood]) -> list[di
                     if pid in seen_ids:
                         continue
                     seen_ids.add(pid)
-                    primary_type = (place.get("types") or [category])[0]
-                    insert_type = _TYPE_MAP.get(primary_type, "micro")
+                    # Use the search category as the authoritative type — Google's
+                    # returned types list often has "lodging" or "tourist_attraction"
+                    # before "restaurant"/"cafe", which would misclassify the place.
+                    all_types = place.get("types") or [category]
+                    primary_type = all_types[0]
+                    insert_type = _TYPE_MAP.get(category, "micro")
                     results.append({
                         "place_id": pid,
                         "name": place["name"],
