@@ -482,6 +482,7 @@ export interface EngineWeights {
   w_crowd_aversion: number      // 0–1: avoid high-crowd times
   w_spontaneity: number         // 0–1: openness to detours
   w_rest_need: number           // 0–1: frequency of rest breaks
+  arrival_time?: string;        // user's arrival time at the city
 }
 
 /** The 7 traveller archetypes resolved via cosine similarity against EngineWeights. */
@@ -590,6 +591,7 @@ export interface EngineItineraryStop {
   googleMapsUrl: string | null
   website: string | null
   photoRef: string | null     // Google Places photo reference
+  city?: string               // city this stop belongs to (populated for multi-city trips)
   tags?: string[]
   // Reel-specific fields (set by itinerary engine ordering pass)
   imageUrl?: string | null
@@ -597,6 +599,13 @@ export interface EngineItineraryStop {
   orderReason?: string | null
   orderConsequence?: string | null
   movedFrom?: number | null
+  // Server-computed signals (crowd, timing, value, transit, content, sequence, energy, photo)
+  signals?: { type: string; text: string; icon: string }[]
+  // Transit context from the previous stop
+  transitFromPrev?: { mode: string; distanceKm: number } | null
+  // Discovery stage from place_dynamic_profiles
+  stage?: 'hidden_gem' | 'rising' | 'mainstream' | null
+  velocityRatio?: number | null
 }
 
 /**
