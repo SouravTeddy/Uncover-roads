@@ -63,7 +63,7 @@ def _time_str_to_min(t: str) -> int:
     return h * 60 + m
 
 
-def _reschedule_day(day: "EngineDay", ctx: EngineContext) -> None:
+def _reschedule_day(day: "EngineDay", ctx: EngineContext, start_override: tuple[int, int] | None = None) -> None:
     """Re-assign scheduled_time to all stops in a day after an in-day reorder."""
     weights = ctx.persona.get("weights", {})
     w_rest = weights.get("w_rest_need", 0.4)
@@ -82,6 +82,8 @@ def _reschedule_day(day: "EngineDay", ctx: EngineContext) -> None:
             start_h, start_m = (int(x) for x in _pa.split(":")[:2])
         except (ValueError, TypeError):
             pass
+    if start_override is not None:
+        start_h, start_m = start_override
     buffer_min = int(ctx.persona.get("day_buffer_min", 30))
     _schedule_day_stops(day.stops, start_h, start_m, buffer_min)
 
@@ -102,7 +104,7 @@ def enforce_opening_hours(
     messages: list[EngineMessage] = []
     conflicted: set[str] = set()
 
-    for day in days:
+    for _day_idx, day in enumerate(days):
         if day.is_travel_day or not day.stops:
             continue
         try:
@@ -136,7 +138,12 @@ def enforce_opening_hours(
                 resolved = False
                 for j in range(i + 1, len(day.stops)):
                     day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
-                    _reschedule_day(day, ctx)
+                    _d1_override = (
+                        _day1_adjusted_start(ctx.user_arrival_time)
+                        if _day_idx == 0 and ctx.user_arrival_time
+                        else None
+                    )
+                    _reschedule_day(day, ctx, start_override=_d1_override)
                     # Check whether the originally-problematic stop (now at position j) is fixed
                     stop_oh = next(
                         (h for h in (stop.opening_hours or []) if h.get("day") == weekday),
@@ -186,7 +193,7 @@ def enforce_opening_hours(
                     else:
                         # Undo the swap
                         day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
-                        _reschedule_day(day, ctx)
+                        _reschedule_day(day, ctx, start_override=_d1_override)
 
                 if not resolved and stop.place_id:
                     conflicted.add(stop.place_id)
