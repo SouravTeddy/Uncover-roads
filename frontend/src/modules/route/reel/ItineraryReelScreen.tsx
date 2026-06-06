@@ -7,13 +7,15 @@ import { ReelRecoCard } from './ReelRecoCard';
 import { ReelIntelCard } from './ReelIntelCard';
 import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
-import { ReelSummaryCard } from './ReelSummaryCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
+import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
+import type { WeatherData } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
+import { ReelGroupCard } from './ReelGroupCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
@@ -67,6 +69,7 @@ export function ItineraryReelScreen() {
 
   const existingPlaceIds = state.selectedPlaces.map(p => p.place_id ?? p.id);
 
+  const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
@@ -78,20 +81,21 @@ export function ItineraryReelScreen() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const weatherRef = useRef(weather);
+  const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
 
-  useEffect(() => { weatherRef.current = weather; }, [weather]);
+  useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
 
-  function buildFiltered(itinerary: typeof activeItinerary, w: typeof weather, pName: string, photoMap = cityPhotoMap) {
+  function buildFiltered(itinerary: typeof activeItinerary, wxByCity: Map<string, WeatherData>, pName: string, photoMap = cityPhotoMap) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
     if (itinerary) {
-      itinerary.days.forEach((_, dayIdx) => {
+      (itinerary.days ?? []).forEach((day, dayIdx) => {
+        const cityWeather = wxByCity.get(day.city.toLowerCase()) ?? null;
         const signal = computeRecoSignal(
-          { ...state, weather: w },
+          { ...state, weather: cityWeather },
           dayIdx,
           itinerary,
         );
@@ -101,7 +105,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, w, pName, recosByDayIdx, photoMap);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap);
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
@@ -113,47 +117,65 @@ export function ItineraryReelScreen() {
   useEffect(() => {
     if (!activeItinerary) return;
     setImagesReady(false);
-    const filtered = buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current);
+    const filtered = buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current);
     setCards(filtered);
 
     const srcs: string[] = [];
     for (const c of filtered) {
       if (c.type === 'stop') {
-        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 400) : null);
+        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 800, 1200) : null);
         if (url) srcs.push(url);
       } else if (c.type === 'intro' && c.imageUrl) {
         srcs.push(c.imageUrl);
       } else if (c.type === 'intel' && c.imageUrl) {
         srcs.push(c.imageUrl);
+      } else if (c.type === 'reco' && c.anchorPhotoUrl) {
+        srcs.push(c.anchorPhotoUrl);
+      } else if (c.type === 'scenic') {
+        if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
+        if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
       }
     }
     preloadImages(srcs).then(() => setImagesReady(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
-  // Enrichment-only updates — when weather, personaName, or city photos arrive
+  // Enrichment-only updates — when weatherByCity, personaName, or city photos arrive
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weather, personaName));
+    setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weather, personaName]);
+  }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weatherRef.current, personaNameRef.current, cityPhotoMap));
+    setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
 
-  // Fetch weather if not already in state (e.g. opening saved trip without going through route screen)
+  // Fetch weather for all unique cities in the itinerary
   useEffect(() => {
-    if (state.weather) return;
-    const cityName = city || activeItinerary?.city || activeItinerary?.cities?.[0];
-    if (!cityName) return;
-    api.weather(cityName).then(wx => {
-      if (wx) dispatch({ type: 'SET_WEATHER', weather: wx });
-    }).catch(() => {});
+    if (!activeItinerary) return;
+    const cities = [
+      ...new Set([
+        ...(activeItinerary.cities ?? []),
+        activeItinerary.city,
+      ].filter(Boolean) as string[])
+    ];
+
+    cities.forEach(c => {
+      api.weather(c).then(wx => {
+        if (wx && wx.condition && wx.temp != null) {
+          setWeatherByCity(prev => new Map(prev).set(c.toLowerCase(), wx));
+          // Also keep global weather state for the primary city
+          if (c === (activeItinerary.city ?? cities[0])) {
+            dispatch({ type: 'SET_WEATHER', weather: wx });
+          }
+        }
+      }).catch(() => {});
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
+  }, [city, activeItinerary?.id]);
 
   // Auto-save new itinerary on first view (before user manually saves)
   useEffect(() => {
@@ -183,6 +205,9 @@ export function ItineraryReelScreen() {
   }, [activeItinerary]);
 
   // Scroll-based active card tracking
+  // NOTE: imagesReady is in the deps because the scroll container only mounts after
+  // imagesReady=true. Without it, scrollRef.current is null when cards.length first
+  // becomes non-zero, so the listener never gets registered and activeIdx stays 0.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || cards.length === 0) return;
@@ -192,7 +217,7 @@ export function ItineraryReelScreen() {
     };
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
-  }, [cards.length]);
+  }, [cards.length, imagesReady]);
 
 
 
@@ -246,35 +271,237 @@ export function ItineraryReelScreen() {
     );
   }
 
-  const dotCards = cards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'summary' && c.type !== 'scenic');
+  function fmtMinutes(mins: number): string {
+    if (mins < 60)  return `${mins} min`;
+    if (mins < 1440) return `${Math.round(mins / 60)}h`;
+    return `${Math.round(mins / 1440)} day${Math.round(mins / 1440) !== 1 ? 's' : ''}`;
+  }
+
+  const travelGroup = state.rawOBAnswers?.group ?? 'solo';
+
+  // Build displayCards: collect scenic/reco/intel cards between stops into group trays
+  const displayCards: ReelCard[] = (() => {
+    const TRIGGER_META: Record<string, { label: string; icon: string; color: string }> = {
+      lunch:             { label: 'Lunch window',    icon: 'restaurant',      color: '#c27c4a' },
+      dinner:            { label: 'Dinner window',   icon: 'dinner_dining',   color: '#7c6f9f' },
+      evening:           { label: 'Evening',         icon: 'nightlight',      color: '#7c6f9f' },
+      culture:           { label: 'Culture',         icon: 'museum',          color: '#8b9e6a' },
+      rest:              { label: 'Rest break',      icon: 'local_cafe',      color: '#d4a853' },
+      hidden_gem:        { label: 'Hidden gem',      icon: 'auto_awesome',    color: '#8b9e6a' },
+      category_diversity:{ label: 'Variety',         icon: 'grid_view',       color: '#8b9e6a' },
+      social_gap:        { label: 'Social',          icon: 'people',          color: '#4f8fab' },
+      density_sparse:    { label: 'Room to add',     icon: 'explore',         color: '#8b9e6a' },
+    };
+
+    // Contextual fallback images — used when no real place photo is available.
+    // Selected by trigger type and travel group so they feel intentional, not generic.
+    const u = (id: string) => `https://images.unsplash.com/photo-${id}?w=600&q=75`;
+    const CONTEXTUAL_IMAGES: Record<string, Record<string, string>> = {
+      dinner: {
+        couple:  u('1414235077428-338989a2e8c0'), // intimate candlelit table for two
+        family:  u('1555396273-367ea4eb4db5'),    // warm family restaurant scene
+        friends: u('1556909114-44e3e70034e2'),    // lively group dinner
+        solo:    u('1467003909585-2f8a72700288'), // solo dining, counter seat
+      },
+      lunch: {
+        couple:  u('1528605248644-14dd04022da1'), // bright bistro table
+        family:  u('1565557623262-b51206a682c8'), // casual family lunch
+        friends: u('1529543544282-ea669407fca3'), // group brunch
+        solo:    u('1498837167922-ddd27525d352'), // clean solo lunch setup
+      },
+      evening: {
+        couple:  u('1516450360452-9312f5e86fc7'), // couple at rooftop bar
+        family:  u('1555992336-03a23c7b20ee'),    // family evening outing
+        friends: u('1543007630-9359431a5d87'),    // friends at a bar
+        solo:    u('1514362545857-3bc16c4c7d1b'), // solo evening drinks
+      },
+      culture: {
+        _any:    u('1530305408560-82d13781b33a'), // museum interior gallery
+      },
+      rest: {
+        _any:    u('1501339847302-ac426a4a7cbb'), // cosy café corner
+      },
+      hidden_gem: {
+        _any:    u('1550159930-40066082a4fc'),    // narrow atmospheric alley
+      },
+      walking_gap: {
+        _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
+      },
+      social_gap: {
+        couple:  u('1516450360452-9312f5e86fc7'),
+        friends: u('1543007630-9359431a5d87'),
+        family:  u('1555992336-03a23c7b20ee'),
+        solo:    u('1501339847302-ac426a4a7cbb'),
+      },
+      _default: {
+        _any:    u('1476514525535-07fb3b4ae5f1'), // open street exploration
+      },
+    };
+
+    function contextualImg(trigger: string): string {
+      const map = CONTEXTUAL_IMAGES[trigger] ?? CONTEXTUAL_IMAGES['_default'];
+      return map[travelGroup] ?? map['_any'] ?? CONTEXTUAL_IMAGES['_default']['_any']!;
+    }
+
+    const result: ReelCard[] = [];
+    let lastStopTitle  = '';
+    let lastStopArea   = '';
+    let nextStopTitle  = '';
+    let nextStopArea   = '';
+    let miniCards: import('./types').ReelGroupMiniCard[] = [];
+    let usedImgUrls: Set<string> = new Set();
+    let groupAnchorLat: number | null = null;
+    let groupAnchorLon: number | null = null;
+
+    function claimImg(url: string | null | undefined, fallback: string): string {
+      if (!url) return fallback;
+      if (usedImgUrls.has(url)) return fallback;
+      usedImgUrls.add(url);
+      return url;
+    }
+
+    function flushGroup() {
+      if (miniCards.length > 0 && lastStopTitle) {
+        result.push({
+          type: 'group',
+          fromStop: lastStopTitle, fromArea: lastStopArea,
+          toStop: nextStopTitle, toArea: nextStopArea,
+          cards: miniCards,
+          anchorLat: groupAnchorLat ?? undefined,
+          anchorLon: groupAnchorLon ?? undefined,
+        });
+        miniCards = [];
+        usedImgUrls = new Set();
+        groupAnchorLat = null;
+        groupAnchorLon = null;
+      }
+    }
+
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+
+      if (card.type === 'stop') {
+        nextStopTitle = card.stop.title;
+        nextStopArea  = card.stop.area ?? '';
+        flushGroup();
+        lastStopTitle = card.stop.title;
+        lastStopArea  = card.stop.area ?? '';
+        result.push(card);
+
+      } else if (card.type === 'scenic') {
+        miniCards.push({
+          type: 'walk',
+          title: card.tag || 'Walk',
+          imageUrl: claimImg(card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl, contextualImg('walking_gap')),
+          // Use destination name — the header already shows "From → To"
+          name: card.to || card.place,
+          // metaRight has the distance (e.g. "1.5 km") — more useful than a clock time
+          data: card.metaRight || '',
+          // Sensory/atmospheric text is evocative; why is dry routing logic
+          footer: card.sensory || card.why,
+          icon: card.modeIcon === 'walk' ? 'directions_walk' : 'directions_car',
+          accent: card.accent,
+        });
+
+      } else if (card.type === 'reco') {
+        const meta = TRIGGER_META[card.trigger] ?? { label: 'Nearby', icon: 'explore', color: '#d4a853' };
+        const recoImg = claimImg(card.anchorPhotoUrl, contextualImg(card.trigger));
+        // Capture first reco's coordinates as the group's map anchor
+        if (!groupAnchorLat && card.stopLat) { groupAnchorLat = card.stopLat; groupAnchorLon = card.stopLon ?? null; }
+        miniCards.push({
+          type: 'reco',
+          title: meta.label,
+          imageUrl: recoImg,
+          name: card.label,
+          data: card.consequence || '',
+          footer: `Near ${card.nearbyCity}`,
+          icon: meta.icon,
+          accent: meta.color,
+        });
+
+      } else if (card.type === 'intel') {
+        // EXCLUDE transit-decision intel cards — these say "taking transit because distance > X km"
+        // which directly contradicts walk/scenic cards in the same group and confuses the user.
+        // Transit decisions are engine mechanics, not user-facing recommendations.
+        const isTransitDecision =
+          (card.messageType === 'insert' || card.messageType === 'transit') &&
+          (
+            (card.headline ?? '').toLowerCase().includes('transit') ||
+            (card.detail ?? '').toLowerCase().includes('walking range') ||
+            (card.detail ?? '').toLowerCase().includes('exceeds')
+          );
+        if (isTransitDecision) {
+          // skip — engine transit decisions don't belong in the group tray
+        } else if (card.messageType === 'insert' && !card.imageUrl) {
+          // Insert with no image — engine added a place (coffee, rest, etc.)
+          const rawDetail = card.detail ?? '';
+          const cleanedDetail = rawDetail.includes(' · ') ? rawDetail.split(' · ').slice(1).join(' · ') : rawDetail;
+          const footer = cleanedDetail.replace(/(\d+)\s+minutes?/g, (_m, n) => fmtMinutes(Number(n)));
+          miniCards.push({
+            type: 'activity',
+            title: 'Added for you',
+            imageUrl: null,
+            name: card.headline,
+            data: '',
+            footer: footer || 'Added to your itinerary',
+            icon: 'auto_awesome',
+            accent: '#d4a853',
+          });
+        } else if (card.messageType === 'weather' || card.messageType === 'culture' || card.messageType === 'evening') {
+          // Context cards — genuinely useful for the user
+          const typeLabel = card.messageType === 'weather' ? 'Weather' : card.messageType === 'culture' ? 'Culture' : 'Evening';
+          const typeIcon  = card.messageType === 'weather' ? 'wb_cloudy' : card.messageType === 'culture' ? 'museum' : 'nightlight';
+          miniCards.push({
+            type: 'activity',
+            title: typeLabel,
+            imageUrl: claimImg(card.imageUrl, contextualImg(card.messageType)),
+            name: card.headline,
+            data: '',
+            footer: card.detail ?? '',
+            icon: typeIcon,
+            accent: '#4f8fab',
+          });
+        }
+        // swap, resequence, advisory — pure engine mechanics, skip silently
+
+      } else {
+        // intro, finale, day_divider, transit, balance — flush and keep in vertical feed
+        flushGroup();
+        result.push(card);
+      }
+    }
+    flushGroup();
+    return result;
+  })();
+
+  const dotCards = displayCards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'scenic' && c.type !== 'group' && c.type !== 'day_transition');
   const activeDotIdx = (() => {
     let last = -1;
     for (let i = 0; i <= activeIdx; i++) {
-      const j = (dotCards as typeof cards).indexOf(cards[i]);
+      const j = (dotCards as typeof displayCards).indexOf(displayCards[i]);
       if (j !== -1) last = j;
     }
     return last;
   })();
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflow: 'hidden' }}>
-
-      {/* Snap-scroll container */}
+    <>
+      {/* Snap-scroll container — position:fixed so nothing clips its scroll events */}
       <div
         ref={scrollRef}
         style={{
-          width: '100%', height: '100%',
+          position: 'fixed', inset: 0,
           overflowY: 'scroll', overflowX: 'hidden',
           scrollSnapType: 'y mandatory',
+          background: '#0f0d0c',
         }}
         className="no-scrollbar"
       >
-        {cards.map((card, idx) => {
+        {displayCards.map((card, idx) => {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
           let child: ReactNode = null;
           if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} onShowTripDetails={() => setShowTripDetails(true)} />;
-          else if (card.type === 'summary') child = <ReelSummaryCard  card={card} active={isActive} />;
           else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} weather={weather} />;
           else if (card.type === 'reco')    child = (
             <ReelRecoCard
@@ -293,9 +520,20 @@ export function ItineraryReelScreen() {
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
           else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
+          else if (card.type === 'group')   child = (
+            <ReelGroupCard
+              card={card}
+              active={isActive}
+              onMapNavigate={(lat, lon) => {
+                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat, lat, lon, lon] } });
+                dispatch({ type: 'GO_TO', screen: 'map' });
+              }}
+            />
+          );
           else if (card.type === 'scenic') child = <ReelScenicCard card={card} active={isActive} />;
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
+          else if (card.type === 'day_transition') child = <ReelDayTransitionCard card={card} active={isActive} />;
           if (!child) return null;
           const cardKey =
             card.type === 'stop' ? card.stop.id :
@@ -303,10 +541,12 @@ export function ItineraryReelScreen() {
             card.type === 'intel' ? card.id :
             card.type === 'transit' ? `transit-${card.from}-${card.to}` :
             card.type === 'day_divider' ? `day-${card.day}` :
+            card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
             card.type === 'scenic' ? `scenic-${card.pos}` :
-            card.type;
+            card.type === 'group' ? `group-${idx}-${card.fromStop}` :
+            `${card.type}-${idx}`;
           return (
-            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always' }}>
+            <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always', scrollSnapAlign: 'start' }}>
               {child}
             </div>
           );
@@ -376,6 +616,7 @@ export function ItineraryReelScreen() {
           cities={activeItinerary.cities ?? [activeItinerary.city ?? '']}
           journeyLegs={savedItem?.journeyLegs ?? journey ?? null}
           existingDetails={savedItem?.tripDetails ?? state.pendingTripDetails ?? null}
+          firstDayDate={activeItinerary.days[0]?.date ?? null}
           onSave={(details) => {
             dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
             setShowTripDetails(false);
@@ -406,6 +647,6 @@ export function ItineraryReelScreen() {
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }
