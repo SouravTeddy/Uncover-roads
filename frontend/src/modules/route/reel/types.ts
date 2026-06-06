@@ -1,6 +1,6 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
-export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic';
+export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic' | 'day_transition';
 
 export type ScenicSceneType = 'walk' | 'drive' | 'coastal' | 'ridge' | 'crowd' | 'forest';
 export type ScenicVizType   = 'corridor' | 'route' | 'sunset' | 'elevation' | 'quiet' | 'canopy';
@@ -44,6 +44,8 @@ export interface ReelIntroCard {
   proTip: string | null;
   persona: string;
   engineChanges: { type: string; count: number }[];
+  intelItems: { icon: string; label: string; count: number; detail: string }[];
+  neighborhoods: string[];
 }
 
 export interface ReelSummaryCard {
@@ -132,18 +134,73 @@ export interface ReelFinaleCard {
 
 export interface ReelDayDividerCard {
   type: 'day_divider';
-  day: number;       // day number (2, 3, …)
+  day: number;       // day number (1, 2, 3, …)
   city: string;      // city name for this day
   date: string;      // ISO date string e.g. "2026-05-21"
   stopCount: number; // number of stops planned this day
   startTime: string | null;  // "09:00" — first stop's scheduled time
   endTime: string | null;    // "18:30" — last stop's end time (time + duration)
+  isWrapUp?: boolean;        // true = end-of-day recap card; false/absent = start-of-day card
+  nextCity?: string | null;  // city of the next day (for wrap-up cards)
 }
 
 export interface ReelBalanceCard {
   type: 'balance';
   message: string;
   persona: string;
+}
+
+export interface ReelGroupMiniCard {
+  type: 'walk' | 'reco' | 'activity';
+  title: string;       // chip label e.g. "Scenic Walk"
+  imageUrl: string | null;
+  name: string;        // main subject e.g. "Hibiya Park Promenade"
+  data: string;        // key stat e.g. "8 min · 600 m" or "4.3 ★ · $$"
+  footer: string;      // context e.g. "On the way to Ginza Six"
+  icon: string;        // material icon name
+  accent: string;      // hex colour
+}
+
+export interface ReelGroupCard {
+  type: 'group';
+  fromStop: string;
+  toStop: string;
+  fromArea: string;
+  toArea: string;
+  cards: ReelGroupMiniCard[];
+  // Anchor coordinates for the group-level "add places" CTA
+  anchorLat?: number;
+  anchorLon?: number;
+}
+
+/**
+ * Unified day-transition card that replaces the three separate "That's a wrap" +
+ * transit + "Day N" cards. One card per boundary between consecutive days.
+ */
+export interface ReelDayTransitionCard {
+  type: 'day_transition';
+  // Previous day recap
+  prevDay: number;
+  prevCity: string;
+  prevDate: string;
+  prevStopCount: number;
+  prevStartTime: string | null;
+  prevEndTime: string | null;
+  // Next day preview
+  nextDay: number;
+  nextCity: string;
+  nextDate: string;
+  nextStopCount: number;
+  nextStartTime: string | null;
+  // Inter-city transit (null when same city)
+  isCityChange: boolean;
+  transitMode: 'flight' | 'drive' | 'train' | 'bus' | 'ferry' | null;
+  transitDistanceKm: number | null;
+  transitDurationMin: number | null;
+  transitIsEstimated: boolean;
+  transitDepartureTime?: string | null;
+  transitArrivalTime?: string | null;
+  transitRef?: string | null;
 }
 
 export type ReelCard =
@@ -156,4 +213,6 @@ export type ReelCard =
   | ReelFinaleCard
   | ReelDayDividerCard
   | ReelBalanceCard
-  | ReelScenicCard;
+  | ReelScenicCard
+  | ReelGroupCard
+  | ReelDayTransitionCard;

@@ -119,9 +119,11 @@ export function computeActualProfile(
   // Social stop
   const hasSocialStop = sorted.some(s => SOCIAL_CATS.has(s.category)) ? 1 : 0;
 
-  // Hidden gem: non-famous, lower rating
-  const FAMOUS = new Set(['museum', 'historic', 'viewpoint', 'beach']);
-  const hasHiddenGem = sorted.some(s => !FAMOUS.has(s.category) && (!s.rating || s.rating < 4.2)) ? 1 : 0;
+  // Hidden gem: use server-computed stage if available, else fall back to heuristic
+  const hasHiddenGem = sorted.some(s =>
+    s.stage === 'hidden_gem' ||
+    (s.stage == null && !(['museum', 'historic', 'viewpoint', 'beach'] as string[]).includes(s.category) && (s.rating ?? 0) >= 4.3 && (s.rating ?? 0) > 0)
+  ) ? 1 : 0;
 
   // Density: scheduled time / day span
   const firstStart = timeToMin(sorted[0].time);

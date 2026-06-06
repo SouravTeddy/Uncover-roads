@@ -119,67 +119,53 @@ function ScPhotoPlaceholder({ label, sub, tint = '#7c8aa0' }: { label: string; s
   );
 }
 
-// ── 1 · WALK SPINE — dual-photo scene (origin top, destination bottom) ────────
+// ── 1 · WALK SPINE — two photos stacked, gradient overlap, walk connector ───────
 export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
-  const hasOriginPhoto = !!card.originPhotoUrl;
-  const hasDestPhoto = !!card.destPhotoUrl;
-
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0f0d0c', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {/* Top half — origin photo */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {hasOriginPhoto && (
-          <img src={card.originPhotoUrl!} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }} />
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,13,12,0.3) 0%, rgba(15,13,12,0.85) 100%)' }} />
-        {/* Origin label top-left */}
-        <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
-          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>From</div>
-          <div style={{ color: '#f5f0ea', fontSize: 18, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.2 }}>{card.from}</div>
+    <div style={{ width: '100%', height: '100%', background: '#0a0908', overflow: 'hidden', position: 'relative' }}>
+
+      {/* Origin photo — top half */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', overflow: 'hidden' }}>
+        {card.originPhotoUrl
+          ? <img src={card.originPhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(160deg, #1c1a18 0%, #100e0c 100%)' }} />
+        }
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to bottom, transparent, #0a0908)' }} />
+        <div style={{ position: 'absolute', top: 56, left: 24 }}>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>From</div>
+          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.from}</div>
         </div>
       </div>
 
-      {/* Middle zone — walk info */}
-      <div style={{ background: '#0f0d0c', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(212,168,83,0.15)', border: '1px solid rgba(212,168,83,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <span style={{ fontSize: 18 }}>🚶</span>
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ color: '#d4a853', fontSize: 13, fontWeight: 600, letterSpacing: '0.04em' }}>{card.tag}</div>
-          <div style={{ color: '#a09880', fontSize: 12, marginTop: 2 }}>{card.metaRight} · {card.timing}</div>
-        </div>
-        <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'right' }}>
-          <div>{card.reelPos}</div>
-        </div>
-      </div>
-
-      {/* Bottom half — destination photo */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        {hasDestPhoto && (
-          <img src={card.destPhotoUrl!} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.55 }} />
-        )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,13,12,0.3) 0%, rgba(15,13,12,0.85) 100%)' }} />
-        {/* Destination label bottom-left */}
-        <div style={{ position: 'absolute', top: 24, left: 24, right: 24 }}>
-          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 4 }}>To</div>
-          <div style={{ color: '#f5f0ea', fontSize: 18, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.2 }}>{card.to}</div>
+      {/* Destination photo — bottom half */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', overflow: 'hidden' }}>
+        {card.destPhotoUrl
+          ? <img src={card.destPhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(160deg, #100e0c 0%, #1c1a18 100%)' }} />
+        }
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to top, transparent, #0a0908)' }} />
+        <div style={{ position: 'absolute', bottom: 64, left: 24 }}>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>To</div>
+          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.to}</div>
         </div>
       </div>
 
-      {/* Persona badge — bottom overlay */}
-      <div style={{ position: 'absolute', bottom: 100, left: 24 }}>
-        <div style={{ background: 'rgba(212,168,83,0.15)', border: '1px solid rgba(212,168,83,0.4)', borderRadius: 20, padding: '4px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 12 }}>🚶</span>
-          <span style={{ color: '#d4a853', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em' }}>{card.personaDisplay}</span>
+      {/* Walk connector centred on the dark overlap band */}
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 56, height: 1, background: 'repeating-linear-gradient(90deg, rgba(212,168,83,0.45) 0 5px, transparent 5px 10px)' }} />
+          <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(212,168,83,0.1)', border: '1.5px solid rgba(212,168,83,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span className="ms fill" style={{ fontSize: 20, color: '#d4a853' }}>directions_walk</span>
+          </div>
+          <div style={{ width: 56, height: 1, background: 'repeating-linear-gradient(90deg, rgba(212,168,83,0.45) 0 5px, transparent 5px 10px)' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#d4a853', fontSize: 14, fontWeight: 700 }}>{card.metaRight}</span>
+          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 11 }}>·</span>
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{card.timing}</span>
         </div>
       </div>
 
-      {/* Why note */}
-      {card.why && (
-        <div style={{ position: 'absolute', bottom: 60, left: 24, right: 24 }}>
-          <div style={{ color: '#a09880', fontSize: 12, lineHeight: 1.5, fontStyle: 'italic' }}>"{card.why}"</div>
-        </div>
-      )}
     </div>
   );
 }

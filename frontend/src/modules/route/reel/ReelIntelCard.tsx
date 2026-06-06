@@ -45,7 +45,7 @@ export function ReelIntelCard({ card, active }: Props) {
         pointerEvents: 'none',
       }} />
 
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 88px' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 7,
           padding: '6px 12px', borderRadius: 10,

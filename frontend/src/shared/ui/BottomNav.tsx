@@ -41,6 +41,7 @@ export function BottomNav() {
         borderRadius: 999,
         padding: '6px 8px',
         width: 'max-content',
+        pointerEvents: 'none',
       }}
     >
       {NAV_ITEMS.map(item => {
@@ -62,6 +63,7 @@ export function BottomNav() {
               cursor: 'pointer',
               background: active ? 'var(--color-primary-bg)' : 'transparent',
               transition: 'background 0.15s',
+              pointerEvents: 'auto',
             }}
           >
             <span

@@ -546,7 +546,7 @@ export function ReelTransitCard({ card, active }: Props) {
       {/* Bottom content panel */}
       {isPlaceholder ? (
         /* PLACEHOLDER STATE: minimal card for trips without journey data */
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px 78px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px calc(88px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
           {/* Mode icon large emoji */}
           <div style={{
             fontSize: 48, marginBottom: 24,
@@ -597,7 +597,7 @@ export function ReelTransitCard({ card, active }: Props) {
         </div>
       ) : (
         /* FULL STATE: normal card with journey details */
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px 78px' }}>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 26px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* FROM → TO with duration inline */}
         <div style={{

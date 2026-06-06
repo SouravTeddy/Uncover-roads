@@ -60,7 +60,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
-  const [mapStyle, setMapStyle] = useState<string | StyleSpecification>(getMapStyleUrl());
+  const [mapStyle, setMapStyle] = useState<StyleSpecification | null>(null);
 
   useEffect(() => {
     fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
@@ -92,6 +92,8 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
   }, []);
+
+  if (!mapStyle) return null;
 
   return (
     <Map

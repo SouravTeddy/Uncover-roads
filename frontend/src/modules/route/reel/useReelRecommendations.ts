@@ -21,6 +21,7 @@ export function useReelRecommendations(
   archetype: string,
   existingPlaceIds: string[],
   active: boolean,
+  category?: string,
 ): Result {
   const [places, setPlaces] = useState<ReelRecoPlace[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +51,7 @@ export function useReelRecommendations(
       trigger: card.trigger,
       archetype,
       existingPlaceIds,
+      category: category ?? undefined,
     })
       .then(data => {
         if (cancelled) return;
@@ -60,13 +62,15 @@ export function useReelRecommendations(
       .catch(() => {
         if (cancelled) return;
         clearTimeout(timeoutId);
-        fetched.current = false;
+        fetched.current = false; // allow retry on error
         setLoading(false);
         setError(true);
       });
 
-    return () => { cancelled = true; clearTimeout(timeoutId); fetched.current = false; };
-  }, [active, card.id, card.stopLat, card.stopLon, card.trigger, archetype, existingPlaceIds]);
+    // Do NOT reset fetched.current in cleanup — that would re-trigger on every
+    // parent re-render (e.g. scroll events) since existingPlaceIds is a new array ref each time.
+    return () => { cancelled = true; clearTimeout(timeoutId); };
+  }, [active, card.id]); // only re-fetch when the card itself or its active state changes
 
   return { places, loading, error };
 }

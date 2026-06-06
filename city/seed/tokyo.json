@@ -115,7 +115,8 @@
     "siesta_window": null,
     "lunch_window_strict": false,
     "evening_end_time": "23:00",
-    "day_buffer_min": 30
+    "day_buffer_min": 30,
+    "arrival_time": "08:00"
   },
   "landmark_anchors": [
     "senso_ji",

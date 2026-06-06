@@ -1,15 +1,10 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
-  todGradient, skyTintForCondition,
-  RAIN_COUNT, RAIN_SEED, RAIN_WIDTH, RAIN_LEN_MIN, RAIN_LEN_RANGE,
-  RAIN_DUR_MIN, RAIN_DUR_RANGE, RAIN_DELAY_RANGE, RAIN_OPACITY_MIN, RAIN_OPACITY_RANGE, RAIN_BG,
-  THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR,
-  SNOW_COUNT, SNOW_SEED,
   INTRO_CITY_FS, INTRO_CITY_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
   INTRO_STRIP_BR, INTRO_STRIP_GAP, INTRO_TEXT_SHADOW,
-  WEATHER_ICON, ENGINE_STRIP_COPY, makeRng,
+  WEATHER_ICON, ENGINE_STRIP_COPY,
 } from './reel-constants';
 
 interface Props {
@@ -19,87 +14,25 @@ interface Props {
   onInteract?: (action: 'viewed' | 'lingered') => void;
 }
 
-function makeRainParticles(count: number, seedVal: number, lenMin: number, lenRange: number, color: string) {
-  const rng = makeRng(seedVal);
-  return Array.from({ length: count }, () => ({
-    position: 'absolute' as const,
-    left: `${rng() * 100}%`,
-    top: '-15%',
-    width: RAIN_WIDTH,
-    height: `${lenMin + rng() * lenRange}px`,
-    background: color === 'rain' ? RAIN_BG : `linear-gradient(to bottom,transparent,${color})`,
-    opacity: RAIN_OPACITY_MIN + rng() * RAIN_OPACITY_RANGE,
-    animation: `precip ${RAIN_DUR_MIN + rng() * RAIN_DUR_RANGE}s linear ${-rng() * RAIN_DELAY_RANGE}s infinite`,
-  }));
-}
 
-function makeSnowParticles(seedVal: number) {
-  const rng = makeRng(seedVal);
-  return Array.from({ length: SNOW_COUNT }, (_, i) => {
-    const size = 3 + rng() * 3;
-    return {
-      outer: {
-        position: 'absolute' as const,
-        left: `${rng() * 100}%`,
-        top: '-10%',
-        animation: `snowSway${(i % 3) + 1} ${2.5 + rng() * 2}s ease-in-out ${-rng() * 3}s infinite, snowFall ${3 + rng() * 4}s linear ${-rng() * 6}s infinite`,
-      } as React.CSSProperties,
-      inner: {
-        width: size, height: size, borderRadius: '50%',
-        background: 'rgba(220,235,255,0.85)', filter: 'blur(0.5px)',
-      } as React.CSSProperties,
-    };
-  });
-}
+const STYLE_TAG: Record<string, string> = {
+  gastronaut:          'Food & local flavour',
+  flaneur:             'Open-ended wandering',
+  slowscholar:         'Culture & depth',
+  neighbourhoodlocal:  'Off the tourist trail',
+  efficientexplorer:   'Maximum coverage',
+  aesthete:            'Design & beauty',
+  nightcreature:       'Evening-first',
+  ritualseeker:        'Slow & intentional',
+};
 
-function SkyTintLayers({ condition }: { condition: string }) {
-  const result = skyTintForCondition(condition);
-  if ('double' in result) {
-    return (
-      <>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, mixBlendMode: 'multiply', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.double, opacity: 0.6, pointerEvents: 'none' }} />
-      </>
-    );
-  }
-  return <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: result.single, pointerEvents: 'none' }} />;
-}
-
-function SunRays() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', right: '-20%', top: '-20%', width: '90%', height: '80%', background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.40),rgba(255,215,150,0) 60%)', filter: 'blur(6px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
-      <div style={{ position: 'absolute', top: '-40%', right: '-10%', width: '90%', height: '180%', transformOrigin: 'top right', animation: 'rayRotate 80s linear infinite' }}>
-        <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
-        <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
-      </div>
-    </div>
-  );
-}
-
-function fmtDuration(min: number): string {
-  if (min < 60) return `${min}m`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+function travelStyleTag(persona: string): string {
+  const key = persona.toLowerCase().replace(/[\s_-]/g, '');
+  return STYLE_TAG[key] ?? persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hour = new Date().getHours();
-  const condition = (card.weather?.condition ?? 'clear').toLowerCase();
-  const isSunny = condition === 'sunny' || condition === 'clear';
-  const isRain = condition === 'rain' || condition === 'drizzle';
-  const isThunder = condition.includes('thunder') || condition.includes('storm');
-  const isSnow = condition.includes('snow') || condition.includes('blizzard');
-
-  const rainParticles = useMemo(
-    () => isThunder
-      ? makeRainParticles(THUNDER_COUNT, THUNDER_SEED, THUNDER_LEN_MIN, THUNDER_LEN_RANGE, THUNDER_COLOR)
-      : makeRainParticles(RAIN_COUNT, RAIN_SEED, RAIN_LEN_MIN, RAIN_LEN_RANGE, 'rain'),
-    [isThunder],
-  );
-  const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED), []);
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -116,15 +49,15 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
 
       {/* City photo z-index:0 */}
       {card.imageUrl && (
-        <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} alt="" />
+        <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, filter: 'contrast(1.12) saturate(1.2)' }} alt="" />
       )}
 
-      {/* Weather pill z-index:11 — top:48px left:13px */}
-      {card.weather && (
+      {/* Weather pill — only render when temp is actually available */}
+      {card.weather?.temp != null && (
         <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)' }}>
-          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition.toLowerCase()] ?? 'wb_sunny'}</span>
+          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{card.weather.temp}°</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{card.weather.condition}</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{card.weather.condition ?? ''}</span>
         </div>
       )}
 
@@ -137,60 +70,93 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
         Add trip details
       </button>
 
-      {/* Sky tint z-index:2 */}
-      <SkyTintLayers condition={condition} />
-
-      {/* GRADIENT scrim z-index:3 */}
+      {/* GRADIENT scrim — dark bottom for text, clear top for photo */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
-
-      {/* ToD gradient z-index:4 */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: todGradient(hour), pointerEvents: 'none' }} />
-
-      {/* Sun rays z-index:4 (sunny only) */}
-      {isSunny && <SunRays />}
-
-      {/* Weather particles z-index:5 */}
-      {(isRain || isThunder || isSnow) && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
-          {isSnow
-            ? snowParticles.map((f, i) => (
-                <div key={`snow-${i}`} style={f.outer}><div style={f.inner as React.CSSProperties} /></div>
-              ))
-            : rainParticles.map((s, i) => <div key={`rain-${i}`} style={s} />)
-          }
-          {isThunder && (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: 'radial-gradient(ellipse at 50% 25%,rgba(230,220,255,.95),rgba(180,150,230,.5) 32%,rgba(120,80,180,0) 70%)', mixBlendMode: 'screen', pointerEvents: 'none', animation: 'flashFlicker 3.4s ease-out -1.3s infinite' }} />
-          )}
-        </div>
-      )}
 
       {/* Content z-index:10 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: INTRO_CITY_FS, fontWeight: 700, color: '#fff', lineHeight: 1, marginBottom: INTRO_CITY_MB, textShadow: INTRO_TEXT_SHADOW }}>
-          {card.city}
-        </h1>
+        {(() => {
+          const cities = card.city.split(' · ');
+          if (cities.length > 1) {
+            return (
+              <div style={{ marginBottom: INTRO_CITY_MB }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  {cities.map((c, i) => (
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1, textShadow: INTRO_TEXT_SHADOW }}>{c}</span>
+                      {i < cities.length - 1 && (
+                        <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>arrow_forward</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  {card.totalDays}-day multi-city trip
+                </span>
+              </div>
+            );
+          }
+          return (
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: INTRO_CITY_FS, fontWeight: 700, color: '#fff', lineHeight: 1, marginBottom: INTRO_CITY_MB, textShadow: INTRO_TEXT_SHADOW }}>
+              {card.city}
+            </h1>
+          );
+        })()}
 
-        {/* Info pills — stops · total time · distance */}
+        {/* Info pills */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: INTRO_PILL_GAP, marginBottom: INTRO_PILL_MB }}>
           <span className="pill pg">
             <span className="ms fill" style={{ fontSize: 11 }}>place</span>
             {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}
           </span>
-          <span className="pill pg">
-            <span className="ms fill" style={{ fontSize: 11 }}>schedule</span>
-            {fmtDuration(card.totalDurationMin)}
-          </span>
           {card.totalDistanceKm > 0 && (
             <span className="pill pg">
-              <span className="ms fill" style={{ fontSize: 11 }}>directions_walk</span>
+              <span className="ms fill" style={{ fontSize: 11 }}>directions_transit</span>
               {card.totalDistanceKm} km
             </span>
           )}
         </div>
 
+        {/* Travel style tag */}
+        <div style={{ marginBottom: 10 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999,
+            background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(212,168,83,0.4)',
+            color: '#d4a853', backdropFilter: 'blur(8px)',
+          }}>
+            Optimised for · {travelStyleTag(card.persona)}
+          </span>
+        </div>
+
+        {/* Intel items */}
+        {card.intelItems.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+            {card.intelItems.slice(0, 3).map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.09)' }}>
+                <span style={{ fontSize: 15, lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
+                  <span style={{ color: '#d4a853', fontWeight: 700 }}>{item.count} {item.label}</span>
+                  {' '}{item.detail}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Neighborhood pills */}
+        {card.neighborhoods?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {card.neighborhoods.slice(0, 4).map((n, i) => (
+              <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)' }}>
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Engine strips */}
         {card.engineChanges.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: INTRO_STRIP_GAP }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: INTRO_STRIP_GAP, marginBottom: 10 }}>
             {card.engineChanges.slice(0, 2).map((change, i) => {
               const copy = ENGINE_STRIP_COPY[change.type];
               if (!copy) return null;
@@ -205,7 +171,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
         )}
 
         {/* Swipe hint */}
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
           <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.2)' }}>swipe_up</span>
         </div>
       </div>

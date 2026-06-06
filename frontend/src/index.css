@@ -457,3 +457,5 @@ html, body {
 @keyframes pinPop    { 0% { transform: scale(0); opacity: 0 } 60% { transform: scale(1.15); opacity: 1 } 100% { transform: scale(1) } }
 @keyframes stripIn   { from { opacity: 0; transform: translate(-50%, 12px) } to { opacity: 1; transform: translate(-50%, 0) } }
 @keyframes bannerIn  { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes bokehDrift { 0%,100% { transform: translate(-50%,-50%) translateY(0)    scale(1);    } 40% { transform: translate(-50%,-50%) translateY(-22px) scale(1.06); } 70% { transform: translate(-50%,-50%) translateY(10px)  scale(0.95); } }
+@keyframes bokehPulse { 0%,100% { opacity: var(--bo-lo); } 50% { opacity: var(--bo-hi); } }

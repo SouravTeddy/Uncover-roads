@@ -31,7 +31,7 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
     const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
     void (async () => {
-      const { data } = await supabase.from('city_data').select('data').eq('id', slug).single()
+      const { data } = await supabase.from('city_data').select('data').eq('id', slug).maybeSingle()
       const nbhs = data?.data?.neighborhoods
       if (Array.isArray(nbhs) && nbhs.length > 0) { setRaw(nbhs); return }
 
@@ -40,7 +40,7 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
         await fetch(`${BASE}/api/cities/seed?city_id=${encodeURIComponent(slug)}`, { method: 'POST' })
       } catch { /* network error — skip */ }
 
-      const retry = await supabase.from('city_data').select('data').eq('id', slug).single()
+      const retry = await supabase.from('city_data').select('data').eq('id', slug).maybeSingle()
       const retryNbhs = retry.data?.data?.neighborhoods
       if (Array.isArray(retryNbhs) && retryNbhs.length > 0) setRaw(retryNbhs)
     })()

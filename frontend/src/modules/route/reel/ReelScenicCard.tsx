@@ -213,6 +213,15 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
 
 // ── Main card ─────────────────────────────────────────────────────────────────
 export default function ReelScenicCard({ card }: Props) {
+  // Walk cards: clean full-screen dual-photo layout — no repeated info block
+  if (card.sceneType === 'walk') {
+    return (
+      <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: '#0f0d0c' }}>
+        <WalkSpineScene card={card} />
+      </div>
+    );
+  }
+
   const a = card.accent;
   const { pos, total } = card;
 
