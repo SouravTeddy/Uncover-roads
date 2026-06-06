@@ -3236,6 +3236,37 @@ async def engine_itinerary(body: EngineItineraryPayload):
         except Exception:
             pass
 
+    # Auto-seed place_dynamic_profiles for user-selected stops not yet in the table
+    _unseed_ids = [pid for pid in all_place_ids if pid and pid not in _stage_map]
+    if _unseed_ids and _supabase:
+        _seed_rows = []
+        for _pid in _unseed_ids:
+            _d = place_details_map.get(_pid, {})
+            _rating = _d.get("rating") or None
+            _rating_count = _d.get("rating_count") or None
+            if _rating is None and _rating_count is None:
+                continue
+            _stage, _signals = _stage_and_signals(_rating, _rating_count)
+            _seed_rows.append({
+                "place_id": _pid,
+                "city_id": body.city,
+                "stage": _stage,
+                "signals": _signals,
+                "updated_at": datetime.utcnow().isoformat(),
+            })
+        if _seed_rows:
+            try:
+                _supabase.table("place_dynamic_profiles").upsert(
+                    _seed_rows, on_conflict="place_id"
+                ).execute()
+                for _row in _seed_rows:
+                    _stage_map[_row["place_id"]] = {
+                        "stage": _row["stage"],
+                        "velocity_ratio": (_row.get("signals") or {}).get("velocity_ratio"),
+                    }
+            except Exception:
+                pass  # signals degrade gracefully if seed fails
+
     now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
 
     # Build lookup: place_id → photo_ref (from submitted places)
