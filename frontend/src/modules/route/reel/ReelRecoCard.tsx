@@ -11,6 +11,18 @@ interface Props {
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan') => void;
 }
 
+const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
+  lunch:             'restaurant',
+  dinner:            'restaurant',
+  culture:           'museum',
+  rest:              'cafe',
+  evening:           'nightlife',
+  social_gap:        'bar',
+  hidden_gem:        'point_of_interest',
+  category_diversity:'attraction',
+  weather:           'indoor_attraction',
+};
+
 const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chipLabel: string }> = {
   lunch:             { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.1)',  chipLabel: 'Lunch window' },
   dinner:            { icon: 'dinner_dining',   color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Dinner window' },
@@ -99,19 +111,24 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
 
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
-  const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active);
+  const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasPhoto = !!card.anchorPhotoUrl;
 
-  useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
+  const onInteractRef = useRef(onInteract);
+  useEffect(() => { onInteractRef.current = onInteract; });
+
+  // Only [active] in deps — onInteract is an inline function from the parent and would
+  // change every render, causing an infinite dispatch loop via ADD_RECO_INTERACTION.
+  useEffect(() => { if (active) onInteractRef.current?.('viewed'); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (active) {
-      lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
+      lingerTimer.current = setTimeout(() => onInteractRef.current?.('lingered'), 3000);
     } else {
       if (lingerTimer.current) clearTimeout(lingerTimer.current);
     }
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
-  }, [active, onInteract]);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="reel-card" style={{ width: '100%', height: '100dvh', background: '#0f0d0c', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -152,6 +169,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
             opacity: active ? 1 : 0,
             transform: active ? 'translateY(0)' : 'translateY(8px)',
             transition: 'opacity .45s .17s ease, transform .45s .17s ease',
+            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
           }}>
             {card.label}
           </div>
