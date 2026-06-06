@@ -208,3 +208,66 @@ def test_opening_hours_backfill_for_inserted_stops():
     )
     _backfill_opening_hours([stop2], place_details_map)
     assert stop2.opening_hours == []
+
+
+def test_split_into_days_uses_user_arrival_time_for_day1():
+    from engine.types import EngineStop, EngineContext
+    from engine.builder import _split_into_days
+    from city.data_model import CityData
+
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[], scenic_routes=[],
+        transit_edges=[], engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "wanderer", "arrival_time": "10:00", "day_buffer_min": 30,
+                 "weights": {"w_rest_need": 0.5, "w_nightlife": 0.4, "w_efficiency": 0.3}},
+        city=city,
+        travel_dates=["2026-06-08", "2026-06-09"],
+        user_arrival_time="14:00",  # afternoon arrival → 14:30 start
+    )
+    stops = [
+        EngineStop(
+            place_id=f"p{i}", name=f"Place{i}", lat=float(i)*0.01, lon=0.0,
+            category="museum", duration_min=60, opening_hours=[],
+            price_level=1, rating=4.5, neighborhood=None, is_user_added=True,
+            city="Test",
+        )
+        for i in range(4)
+    ]
+    days = _split_into_days(stops, ctx)
+    # Day 1: should start at 14:30 (14:00 + 30 min)
+    assert days[0].stops[0].scheduled_time == "14:30"
+    # Day 2: should start at persona's 10:00
+    assert days[1].stops[0].scheduled_time == "10:00"
+
+def test_split_into_days_late_arrival_resets_to_0900():
+    from engine.types import EngineStop, EngineContext
+    from engine.builder import _split_into_days
+    from city.data_model import CityData
+
+    city = CityData(
+        id="test", name="Test", tier=1, center=(0.0, 0.0), timezone="UTC",
+        climate={}, movement={}, culture={},
+        neighborhoods=[], insert_candidates=[], scenic_routes=[],
+        transit_edges=[], engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
+    )
+    ctx = EngineContext(
+        persona={"archetype": "wanderer", "arrival_time": "10:00", "day_buffer_min": 30,
+                 "weights": {"w_rest_need": 0.5, "w_nightlife": 0.4, "w_efficiency": 0.3}},
+        city=city,
+        travel_dates=["2026-06-08", "2026-06-09"],
+        user_arrival_time="21:00",  # very late → reset to 09:00
+    )
+    stops = [
+        EngineStop(
+            place_id=f"p{i}", name=f"P{i}", lat=float(i)*0.01, lon=0.0,
+            category="museum", duration_min=60, opening_hours=[],
+            price_level=1, rating=4.5, neighborhood=None, is_user_added=True, city="Test",
+        )
+        for i in range(4)
+    ]
+    days = _split_into_days(stops, ctx)
+    assert days[0].stops[0].scheduled_time == "09:00"

@@ -25,6 +25,7 @@ class EngineStop:
     transition_to_next: str | None = None      # 'walk'|'transit'|'rideshare'
     type: str | None = None                    # 'coffee'|'lunch'|'scenic_walk'|'rest'
     tags: list = field(default_factory=list)
+    city: str | None = None                    # city this stop belongs to (multi-city trips)
 
     @property
     def outdoor(self) -> bool:
@@ -38,6 +39,7 @@ class EngineContext:
     travel_dates: list[str]                    # ISO date strings, one per day
     weather: dict | None = None
     generation_count: int = 0
+    user_arrival_time: str | None = None       # user's actual arrival time, day-1 only
 
 
 @dataclass
