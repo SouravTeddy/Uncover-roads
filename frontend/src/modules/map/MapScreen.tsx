@@ -20,7 +20,7 @@ import { FamousPinsLayer } from './FamousPinsLayer';
 import { ReferencePinsLayer } from './ReferencePinsLayer';
 import { UserPinsLayer } from './UserPinsLayer';
 import { BottomActionTray } from './BottomActionTray';
-import { usePinCityDetector } from './usePinCityDetector';
+import { usePinCityDetector, findNearestCity } from './usePinCityDetector';
 import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
@@ -427,24 +427,42 @@ export function MapScreen() {
     try {
       const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
       const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
+
+      // Re-derive city per place at build time using cityFootprints centroids.
+      // Fixes the case where a place was fetched while the map was still labeled
+      // with the previous city (e.g., Melbourne places with _city="Sydney").
+      const cityLookup = cityFootprints.length > 0
+        ? cityFootprints.map(f => ({ city: f.city, lat: f.lat, lon: f.lon }))
+        : [{ city: city ?? '', lat: cityGeo?.lat ?? 0, lon: cityGeo?.lon ?? 0 }];
+
+      const resolvedPlaces = selectedPlaces.map(p => ({
+        id: p.id,
+        place_id: p.place_id,
+        title: p.title,
+        lat: p.lat,
+        lon: p.lon,
+        category: p.category,
+        rating: p.rating,
+        photo_ref: p.photo_ref,
+        city: findNearestCity(p.lat, p.lon, cityLookup, 80) ?? p._city ?? city ?? '',
+      }));
+
+      const uniqueCities = [...new Set(resolvedPlaces.map(p => p.city).filter(Boolean))];
+      const orderedCities = cityFootprints.length > 0
+        ? cityFootprints.map(f => f.city).filter(c => uniqueCities.includes(c))
+        : uniqueCities;
+
       const result = await api.engineItinerary({
         city: city ?? '',
         lat: cityGeo?.lat ?? 0,
         lon: cityGeo?.lon ?? 0,
         days,
         startDate,
-        selectedPlaces: selectedPlaces.map(p => ({
-          id: p.id,
-          place_id: p.place_id,
-          title: p.title,
-          lat: p.lat,
-          lon: p.lon,
-          category: p.category,
-          rating: p.rating,
-          photo_ref: p.photo_ref,
-        })),
+        selectedPlaces: resolvedPlaces,
         personaArchetype: personaProfile?.archetype ?? 'explorer',
         engineWeights: null,
+        cities: orderedCities.length > 1 ? orderedCities : undefined,
+        arrivalTime: state.pendingTripDetails?.arrivalTime ?? null,
       })
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
       dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
