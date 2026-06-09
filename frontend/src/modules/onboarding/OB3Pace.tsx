@@ -5,13 +5,13 @@ import { resolveQ3Pace } from './ob-context-resolvers';
 import type { OBPace } from '../../shared/types';
 
 const OPTIONS = [
-  { value: 'slow',        label: 'Slow',        sublabel: '2–3 places, deep dives',
+  { value: 'slow',        label: 'Slow',      sublabel: '2–3 places, unhurried',
     imageUrl: 'https://images.unsplash.com/photo-1455587734955-081b22074882?w=400&q=80' },
-  { value: 'balanced',    label: 'Balanced',    sublabel: '4–5 places, good mix',
+  { value: 'balanced',    label: 'Balanced',  sublabel: '4–5 places, good rhythm',
     imageUrl: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&q=80' },
-  { value: 'pack',        label: 'Packed',      sublabel: '6–8 places, full day',
+  { value: 'pack',        label: 'Packed',    sublabel: '6–8 places, full throttle',
     imageUrl: 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=400&q=80' },
-  { value: 'spontaneous', label: 'Flexible',    sublabel: 'Decide on the day',
+  { value: 'spontaneous', label: 'Flexible',  sublabel: 'Let the day decide',
     imageUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400&q=80' },
 ];
 

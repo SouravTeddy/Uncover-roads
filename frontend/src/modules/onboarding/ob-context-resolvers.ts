@@ -7,7 +7,7 @@ export interface QuestionDisplay {
 
 export function resolveQ1Group(_answers: Partial<RawOBAnswers>): QuestionDisplay {
   return {
-    title:    "Who's travelling?",
+    title:    "Who's coming along?",
     subtitle: "Sets your itinerary's social context and venue filters.",
   };
 }
@@ -22,7 +22,7 @@ export function resolveQ2Mood(answers: Partial<RawOBAnswers>): QuestionDisplay {
   if (answers.group === 'friends') {
     return { title: "What's the crew's energy?", subtitle: "Pick up to 3 — shapes what we prioritise." };
   }
-  return { title: "What's the trip mood?", subtitle: "Pick up to 3 — shapes what we prioritise." };
+  return { title: "What kind of trip is this?", subtitle: "Pick up to 3 — shapes what we prioritise." };
 }
 
 export function resolveQ3Pace(answers: Partial<RawOBAnswers>): QuestionDisplay {
@@ -32,7 +32,7 @@ export function resolveQ3Pace(answers: Partial<RawOBAnswers>): QuestionDisplay {
   if (answers.mood?.includes('relax')) {
     return { title: "How slow do you want to go?", subtitle: "Affects stops per day and time at each place." };
   }
-  return { title: "How do you pace a day?", subtitle: "Affects stops per day and time at each place." };
+  return { title: "How do you move through a day?", subtitle: "Affects stops per day and time at each place." };
 }
 
 export function resolveQ4DayOpen(answers: Partial<RawOBAnswers>): QuestionDisplay {
@@ -48,7 +48,7 @@ export function resolveQ4DayOpen(answers: Partial<RawOBAnswers>): QuestionDispla
   if (answers.pace?.includes('pack')) {
     return { title: "How fast do you get going in the morning?", subtitle: "Sets your morning block." };
   }
-  return { title: "How do you ease into the day?", subtitle: "Sets your morning block." };
+  return { title: "How do you like to start the day?", subtitle: "Sets your morning block." };
 }
 
 export function resolveQ5Dietary(answers: Partial<RawOBAnswers>): QuestionDisplay {
@@ -58,7 +58,7 @@ export function resolveQ5Dietary(answers: Partial<RawOBAnswers>): QuestionDispla
   if (answers.mood?.includes('eat_drink')) {
     return { title: "Anything that limits where you eat or drink?", subtitle: "We'll still find great options." };
   }
-  return { title: "Any food situation we should know?", subtitle: "Pick all that apply. Shapes restaurant filtering." };
+  return { title: "Anything to keep in mind at the table?", subtitle: "Pick all that apply. Shapes restaurant filtering." };
 }
 
 export function resolveQ6Budget(answers: Partial<RawOBAnswers>): QuestionDisplay {
@@ -71,7 +71,7 @@ export function resolveQ6Budget(answers: Partial<RawOBAnswers>): QuestionDisplay
   if (answers.group === 'couple') {
     return { title: "What's your budget as a couple?", subtitle: "Sets your price range across venues." };
   }
-  return { title: "How are you travelling budget-wise?", subtitle: "Sets your price range across venues." };
+  return { title: "Last one — let's talk money.", subtitle: "Sets your price range across venues." };
 }
 
 export function resolveQ7Evening(answers: Partial<RawOBAnswers>): QuestionDisplay {
@@ -90,5 +90,5 @@ export function resolveQ7Evening(answers: Partial<RawOBAnswers>): QuestionDispla
   if (answers.dietary?.includes('halal')) {
     return { title: "What's your kind of evening scene?", subtitle: "Sets your evening block." };
   }
-  return { title: "What does a good evening look like?", subtitle: "Sets your evening block." };
+  return { title: "What makes an evening worth it?", subtitle: "Sets your evening block." };
 }

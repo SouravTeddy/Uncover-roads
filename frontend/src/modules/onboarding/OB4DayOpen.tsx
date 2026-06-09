@@ -5,13 +5,13 @@ import { resolveQ4DayOpen } from './ob-context-resolvers';
 import type { OBDayOpen } from '../../shared/types';
 
 const OPTIONS = [
-  { value: 'coffee',    label: 'Morning market', sublabel: 'Local café first, early start',
+  { value: 'coffee',    label: 'Morning market', sublabel: 'Local café, slow start',
     imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80' },
-  { value: 'breakfast', label: 'Hotel breakfast', sublabel: 'Sorted before exploring',
+  { value: 'breakfast', label: 'Hotel breakfast', sublabel: 'Sorted before you go',
     imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80' },
-  { value: 'straight',  label: 'Late start',      sublabel: 'Straight to it, no food stop',
+  { value: 'straight',  label: 'Late start',      sublabel: 'Straight into it',
     imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80' },
-  { value: 'grab_go',   label: 'Grab & go',       sublabel: 'Street food en route',
+  { value: 'grab_go',   label: 'Grab & go',       sublabel: 'Street food on the move',
     imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80' },
 ];
 
