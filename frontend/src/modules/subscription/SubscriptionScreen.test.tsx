@@ -68,6 +68,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     pendingTripDetails: null,
     dismissedPinIds: [],
     recoInteractions: [],
+    cityCountries: {},
     ...overrides,
   };
 }
