@@ -96,6 +96,7 @@ export interface AppState {
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
   savedEvents: SavedEvent[];
+  cityCountries: Record<string, string> // city name → country name, built up as cities are selected
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: CityContext[]          // one per city in current multi-city trip
   activeCityIndex: number              // index into cityContexts — which city is active
@@ -311,6 +312,7 @@ export const initialState: AppState = {
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
   savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
+  cityCountries: {},
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: [],
   activeCityIndex: 0,
@@ -334,6 +336,7 @@ export type Action =
   | { type: 'SET_OB_ANSWER'; key: keyof OnboardingAnswers; value: OnboardingAnswers[keyof OnboardingAnswers] }
   | { type: 'SET_PERSONA'; persona: Persona }
   | { type: 'SET_CITY'; city: string }
+  | { type: 'SET_CITY_COUNTRY'; city: string; country: string }
   | { type: 'UPDATE_CITY_LABEL'; city: string }
   | { type: 'SET_CITY_GEO'; geo: GeoData }
   | { type: 'SET_PLACES'; places: Place[] }
@@ -467,6 +470,9 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'SET_CITY_GEO':
       ssSave('ur_ss_geo', action.geo);
       return { ...state, cityGeo: action.geo };
+
+    case 'SET_CITY_COUNTRY':
+      return { ...state, cityCountries: { ...state.cityCountries, [action.city]: action.country } };
 
     case 'SET_PLACES':
       ssSave('ur_ss_places', action.places);

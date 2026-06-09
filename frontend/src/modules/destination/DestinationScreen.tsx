@@ -34,6 +34,7 @@ export function DestinationScreen() {
     dispatch({ type: 'SET_CITY', city: selectedCity });
     if (geo) {
       dispatch({ type: 'SET_CITY_GEO', geo });
+      if (geo.country) dispatch({ type: 'SET_CITY_COUNTRY', city: selectedCity, country: geo.country });
     } else {
       // Curated card tap — geocode in parallel while calendar shows
       api.geocode(selectedCity)

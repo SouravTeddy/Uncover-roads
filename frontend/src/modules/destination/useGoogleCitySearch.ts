@@ -6,7 +6,7 @@ function newSessionId(): string {
   return Math.random().toString(36).slice(2);
 }
 
-interface GeoResult { lat: number; lon: number; name: string; address: string }
+interface GeoResult { lat: number; lon: number; name: string; address: string; country?: string }
 
 // Nominatim fallback — used when Google Places returns nothing
 async function nominatimCitySearch(query: string): Promise<Array<AutocompleteResult & { _geo?: GeoResult }>> {
@@ -37,6 +37,7 @@ async function nominatimCitySearch(query: string): Promise<Array<AutocompleteRes
           lon: parseFloat(r.lon as string),
           name: mainText,
           address: r.display_name as string,
+          country: addr.country ?? undefined,
         },
       };
     });
@@ -99,7 +100,12 @@ export function useGoogleCitySearch() {
       const geo = await geocodePlace(result.place_id, sessionIdRef.current);
       sessionIdRef.current = newSessionId();
       setResults([]);
-      return geo;
+      if (!geo) return null;
+      // Extract country from secondary_text: "Tokyo, Japan" → "Japan"
+      const country = result.secondary_text
+        ? result.secondary_text.split(',').at(-1)?.trim() || undefined
+        : undefined;
+      return { ...geo, country };
     },
     [],
   );

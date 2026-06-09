@@ -33,9 +33,9 @@ export function findNearestCity(
 }
 
 /**
- * Reverse geocode a lat/lon to a city name via Nominatim.
+ * Reverse geocode a lat/lon to a city name + country via Nominatim.
  */
-async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+async function reverseGeocode(lat: number, lon: number): Promise<{ city: string | null; country: string | null }> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
@@ -43,9 +43,12 @@ async function reverseGeocode(lat: number, lon: number): Promise<string | null> 
     );
     const data = await res.json();
     const addr = data.address ?? {};
-    return addr.city ?? addr.town ?? addr.village ?? addr.county ?? null;
+    return {
+      city: addr.city ?? addr.town ?? addr.village ?? addr.county ?? null,
+      country: addr.country ?? null,
+    };
   } catch {
-    return null;
+    return { city: null, country: null };
   }
 }
 
@@ -64,7 +67,7 @@ export function usePinCityDetector(
   primaryCityLat: number | null,
   primaryCityLon: number | null,
   primaryCityName: string,
-  onNewCity: (city: string, lat: number, lon: number, transit: DetectedTransit | null) => void,
+  onNewCity: (city: string, lat: number, lon: number, transit: DetectedTransit | null, country: string | null) => void,
 ) {
   const prevCountRef = useRef(selectedPlaces.length);
   const processingRef = useRef(false);
@@ -103,7 +106,7 @@ export function usePinCityDetector(
     processingRef.current = true;
     (async () => {
       try {
-        const detectedCityName = await reverseGeocode(newPlace.lat, newPlace.lon);
+        const { city: detectedCityName, country: detectedCountry } = await reverseGeocode(newPlace.lat, newPlace.lon);
         if (!detectedCityName) return;
 
         // Check if this city is already known by name
@@ -128,7 +131,7 @@ export function usePinCityDetector(
           durationMinutes,
         };
 
-        onNewCityRef.current(detectedCityName, newPlace.lat, newPlace.lon, transit);
+        onNewCityRef.current(detectedCityName, newPlace.lat, newPlace.lon, transit, detectedCountry);
       } finally {
         processingRef.current = false;
       }
