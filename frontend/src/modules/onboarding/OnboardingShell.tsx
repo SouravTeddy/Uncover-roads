@@ -169,7 +169,7 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
 
           <h1
             className="font-[family-name:var(--font-heading)] font-bold text-[var(--color-text-1)] leading-snug mb-1"
-            style={{ fontSize: 22 }}
+            style={{ fontSize: 26 }}
           >
             {displayTitle}
           </h1>

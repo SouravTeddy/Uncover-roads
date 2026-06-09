@@ -5,15 +5,15 @@ import { resolveQ5Dietary } from './ob-context-resolvers';
 import type { OBDietary } from '../../shared/types';
 
 const OPTIONS = [
-  { value: 'none',        label: 'No restrictions',  sublabel: 'Full range — no filtering',
+  { value: 'none',        label: 'No restrictions',  sublabel: "Everything's on the table",
     imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80' },
-  { value: 'plant_based', label: 'Plant-based',       sublabel: 'Vegan/vegetarian boosted',
+  { value: 'plant_based', label: 'Plant-based',       sublabel: 'Vegan & vegetarian boosted',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&q=80' },
   { value: 'halal',       label: 'Halal',             sublabel: 'Certified venues only',
     imageUrl: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&q=80' },
   { value: 'kosher',      label: 'Kosher',            sublabel: 'Certified venues only',
     imageUrl: 'https://images.unsplash.com/photo-1574484284002-952d92456975?w=400&q=80' },
-  { value: 'allergy',     label: 'Allergy',           sublabel: 'Warning badges on places',
+  { value: 'allergy',     label: 'Allergy',           sublabel: 'Warning badges on every place',
     imageUrl: 'https://images.unsplash.com/photo-1576402187878-974f70c890a5?w=400&q=80' },
 ];
 

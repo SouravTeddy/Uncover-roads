@@ -15,7 +15,6 @@ async function nominatimCitySearch(query: string): Promise<Array<AutocompleteRes
     format: 'json',
     limit: '5',
     addressdetails: '1',
-    featuretype: 'city',
     'accept-language': 'en',
   });
   try {
@@ -61,7 +60,12 @@ export function useGoogleCitySearch() {
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const predictions = await placesAutocomplete(input, sessionIdRef.current, '(cities)');
+        // Pass 1: regions catches cities, districts, and states (e.g. "Goa")
+        let predictions = await placesAutocomplete(input, sessionIdRef.current, '(regions)');
+        // Pass 2: if nothing, try establishments — catches POIs (e.g. "Kedarnath")
+        if (predictions.length === 0) {
+          predictions = await placesAutocomplete(input, sessionIdRef.current, 'establishment');
+        }
         if (predictions.length > 0) {
           setResults(predictions);
         } else {

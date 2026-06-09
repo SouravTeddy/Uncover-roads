@@ -6,19 +6,19 @@ import type { OBMood } from '../../shared/types';
 
 const OPTIONS = [
   {
-    value: 'explore',   label: 'Explore',     sublabel: 'Hidden streets, surprises',
+    value: 'explore',   label: 'Explore',     sublabel: 'Off the beaten path',
     imageUrl: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&q=80',
   },
   {
-    value: 'relax',     label: 'Unwind',      sublabel: 'Slow pace, cafés, parks',
+    value: 'relax',     label: 'Unwind',      sublabel: 'Nowhere to be',
     imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
   },
   {
-    value: 'eat_drink', label: 'Eat & Drink', sublabel: 'Markets, tables, tastings',
+    value: 'eat_drink', label: 'Eat & Drink', sublabel: 'Every meal is the plan',
     imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80',
   },
   {
-    value: 'culture',   label: 'Culture',     sublabel: 'Museums, history, art',
+    value: 'culture',   label: 'Culture',     sublabel: 'The stories behind the stones',
     imageUrl: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=400&q=80',
   },
 ];

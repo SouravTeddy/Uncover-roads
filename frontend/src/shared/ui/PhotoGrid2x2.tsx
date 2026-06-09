@@ -77,14 +77,21 @@ export function PhotoGrid2x2({ options, selected, multi = false, onSelect }: Pro
             )}
 
             {/* Label */}
-            <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10 }}>
+            <div style={{
+              position: 'absolute', bottom: 10, left: 10, right: 10,
+              background: 'rgba(0,0,0,.28)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+              borderRadius: 10,
+              padding: '6px 8px',
+            }}>
               <div style={{
                 fontFamily: 'var(--font-heading)',
                 fontSize: 18, fontWeight: 700,
                 color: '#fff', lineHeight: 1.1,
               }}>{opt.label}</div>
               {opt.sublabel && (
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>{opt.sublabel}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{opt.sublabel}</div>
               )}
             </div>
 

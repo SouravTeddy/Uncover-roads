@@ -6,13 +6,13 @@ import { resolveQ7Evening } from './ob-context-resolvers';
 import type { OBEvening } from '../../shared/types';
 
 const OPTIONS = [
-  { value: 'dinner_wind', label: 'Dinner & wind down',    sublabel: 'Restaurant + one drink, ~10pm',
+  { value: 'dinner_wind', label: 'Dinner & wind down',    sublabel: 'Restaurant, one drink, early bed',
     imageUrl: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80' },
-  { value: 'markets',     label: 'Night markets',          sublabel: 'Evening markets, street food',
+  { value: 'markets',     label: 'Night markets',          sublabel: 'Street food, evening browsing',
     imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80' },
-  { value: 'early',       label: 'Early dinner',           sublabel: 'Dinner at 6–7pm, no evening block',
+  { value: 'early',       label: 'Early dinner',           sublabel: 'Done by 8, up fresh tomorrow',
     imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&q=80' },
-  { value: 'bars',        label: 'Bars & nightlife',       sublabel: 'Bar crawl, rooftop, stays late',
+  { value: 'bars',        label: 'Bars & nightlife',       sublabel: "Still going when others aren't",
     imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=80' },
 ];
 

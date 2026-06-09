@@ -1,7 +1,7 @@
 export type ObStep = 'ob1' | 'ob2' | 'ob3' | 'ob4' | 'ob5' | 'ob6' | 'ob7'
                    | 'ob8' | 'ob9';
 
-export const BASE_OB_STEPS: ObStep[] = ['ob1', 'ob6', 'ob2', 'ob3', 'ob7', 'ob5', 'ob4'];
+export const BASE_OB_STEPS: ObStep[] = ['ob1', 'ob2', 'ob3', 'ob7', 'ob4', 'ob5', 'ob6'];
 export const CONDITIONAL_STEPS: Record<string, ObStep> = {
   family: 'ob8',
   budget: 'ob9',
@@ -13,13 +13,13 @@ export const OB_STEP_INDEX: Record<ObStep, number> = {
 };
 
 export const STEP_TITLES: Record<ObStep, string> = {
-  ob1: "Who's travelling?",
-  ob2: "What's the trip mood?",
-  ob3: 'How do you pace a day?',
-  ob4: 'How do you ease into the day?',
-  ob5: 'Any food situation we should know?',
-  ob6: 'How are you travelling budget-wise?',
-  ob7: 'What does a good evening look like?',
+  ob1: "Who's coming along?",
+  ob2: "What kind of trip is this?",
+  ob3: 'How do you move through a day?',
+  ob4: 'How do you like to start the day?',
+  ob5: 'Anything to keep in mind at the table?',
+  ob6: "Last one — let's talk money.",
+  ob7: 'What makes an evening worth it?',
   ob8: 'What matters most for the kids?',
   ob9: 'Where do you draw the line?',
 };
