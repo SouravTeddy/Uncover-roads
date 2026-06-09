@@ -63,27 +63,50 @@ def _time_str_to_min(t: str) -> int:
     return h * 60 + m
 
 
+def _compute_day_start(first_stop: "EngineStop", ctx: "EngineContext", date_str: str) -> int:
+    """Compute day start time in minutes from midnight.
+
+    Driven by the first stop's morning affinity (its category) and actual
+    opening hours from Places data. Persona weights apply a ±45 min shift.
+    No city-level defaults — everything comes from what's actually pinned.
+    """
+    from datetime import datetime as _dt
+    morning_score = sequencer._first_stop_score(first_stop)
+    # temple (1.0) → 7:30 AM base; nightlife (0.05) → 10:21 AM base
+    base = 7.5 + (1.0 - morning_score) * 3.0
+
+    weights = ctx.persona.get("weights", {})
+    w_rest  = weights.get("w_rest_need", 0.4)
+    w_night = weights.get("w_nightlife", 0.4)
+    w_eff   = weights.get("w_efficiency", 0.5)
+    delta = (w_rest - 0.5) * 1.5 + (w_night - 0.4) * 1.0 - (w_eff - 0.5) * 1.0
+
+    start_float = max(6.0, min(23.0, base + delta))
+    start_min   = round(start_float * 60 / 15) * 15
+
+    # Hard floor: don't schedule arrival before the first stop actually opens
+    try:
+        weekday = _dt.fromisoformat(date_str).weekday()
+        oh = next((h for h in (first_stop.opening_hours or []) if h.get("day") == weekday), None)
+        if oh:
+            open_min = oh.get("open_min")
+            if open_min is not None:
+                start_min = max(start_min, open_min)
+    except (ValueError, TypeError, AttributeError):
+        pass
+
+    return start_min
+
+
 def _reschedule_day(day: "EngineDay", ctx: EngineContext, start_override: tuple[int, int] | None = None) -> None:
     """Re-assign scheduled_time to all stops in a day after an in-day reorder."""
-    weights = ctx.persona.get("weights", {})
-    w_rest = weights.get("w_rest_need", 0.4)
-    w_night = weights.get("w_nightlife", 0.4)
-    w_eff = weights.get("w_efficiency", 0.5)
-    _sf = 9.0 + (w_rest - 0.5) * 2.0 + (w_night - 0.4) * 2.5 - (w_eff - 0.5) * 2.0
-    _sf = max(7.5, min(11.5, _sf))
-    start_h = int(_sf)
-    start_m = round((_sf - start_h) * 60 / 15) * 15
-    if start_m >= 60:
-        start_h += 1
-        start_m = 0
-    _pa = ctx.persona.get("arrival_time")
-    if _pa and isinstance(_pa, str) and ":" in _pa:
-        try:
-            start_h, start_m = (int(x) for x in _pa.split(":")[:2])
-        except (ValueError, TypeError):
-            pass
     if start_override is not None:
         start_h, start_m = start_override
+    elif day.stops:
+        sm = _compute_day_start(day.stops[0], ctx, day.date)
+        start_h, start_m = sm // 60, sm % 60
+    else:
+        start_h, start_m = 9, 0
     buffer_min = int(ctx.persona.get("day_buffer_min", 30))
     _schedule_day_stops(day.stops, start_h, start_m, buffer_min)
 
@@ -319,26 +342,6 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     if not dates:
         return [EngineDay(date="unknown", stops=stops)]
 
-    # Compute start time from persona weights — night owls start later, efficiency-seekers earlier.
-    weights = ctx.persona.get("weights", {})
-    w_rest = weights.get("w_rest_need", 0.4)
-    w_night = weights.get("w_nightlife", 0.4)
-    w_eff = weights.get("w_efficiency", 0.5)
-    _start_float = 9.0 + (w_rest - 0.5) * 2.0 + (w_night - 0.4) * 2.5 - (w_eff - 0.5) * 2.0
-    _start_float = max(7.5, min(11.5, _start_float))
-    start_h = int(_start_float)
-    start_m = round((_start_float - start_h) * 60 / 15) * 15
-    if start_m >= 60:
-        start_h += 1
-        start_m = 0
-    # Use the persona's explicit arrival_time if set — it's more accurate than the weight formula
-    _pa = ctx.persona.get("arrival_time")
-    if _pa and isinstance(_pa, str) and ":" in _pa:
-        try:
-            _ov_h, _ov_m = (int(x) for x in _pa.split(":")[:2])
-            start_h, start_m = _ov_h, _ov_m
-        except (ValueError, TypeError):
-            pass
     buffer_min = int(ctx.persona.get("day_buffer_min", 30))
 
     # Group stops by city, preserving optimized order within each city
@@ -366,8 +369,9 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             if i == 0 and ctx.user_arrival_time:
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time)
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
-            else:
-                _schedule_day_stops(day_stops, start_h, start_m, buffer_min)
+            elif day_stops:
+                sm = _compute_day_start(day_stops[0], ctx, date)
+                _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
             days.append(EngineDay(date=date, stops=day_stops))
         return days
 
@@ -399,8 +403,9 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             if global_day_idx == 0 and ctx.user_arrival_time:
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time)
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
-            else:
-                _schedule_day_stops(day_stops, start_h, start_m, buffer_min)
+            elif day_stops:
+                sm = _compute_day_start(day_stops[0], ctx, date)
+                _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
             global_day_idx += 1
             days.append(EngineDay(date=date, stops=day_stops))
 

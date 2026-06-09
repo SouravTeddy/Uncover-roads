@@ -515,6 +515,10 @@ export function ItineraryReelScreen() {
                 );
                 dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
               }}
+              onMapNavigate={(lat, lon) => {
+                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
+                dispatch({ type: 'GO_TO', screen: 'map' });
+              }}
             />
           );
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;

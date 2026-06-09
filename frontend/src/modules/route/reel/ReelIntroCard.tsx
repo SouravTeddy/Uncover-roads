@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ReelIntroCard as ReelIntroCardType } from './types';
+import { ReelImg } from './ReelImg';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
   INTRO_CITY_FS, INTRO_CITY_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
@@ -31,6 +32,24 @@ function travelStyleTag(persona: string): string {
   return STYLE_TAG[key] ?? persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+const TRIP_IDENTITY: Record<string, string> = {
+  gastronaut:          'A food-first exploration',
+  flaneur:             'An open-ended wander',
+  slowscholar:         'A deep cultural immersion',
+  neighbourhoodlocal:  'Off the tourist trail',
+  efficientexplorer:   'Maximum ground covered',
+  aesthete:            'A journey through design and beauty',
+  nightcreature:       'An evening-first adventure',
+  ritualseeker:        'A slow, intentional stay',
+};
+
+function tripIdentityLine(persona: string, city: string): string {
+  const key = persona.toLowerCase().replace(/[\s_-]/g, '');
+  const base = TRIP_IDENTITY[key] ?? 'An exploration';
+  const primaryCity = city.includes(' · ') ? city.split(' · ')[0] : city;
+  return `${base} of ${primaryCity}`;
+}
+
 export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,10 +66,11 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
 
-      {/* City photo z-index:0 */}
-      {card.imageUrl && (
-        <img src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, filter: 'contrast(1.12) saturate(1.2)' }} alt="" />
-      )}
+      {/* City photo — shimmer while city photo API is in-flight, fades in when resolved */}
+      <ReelImg
+        src={card.imageUrl}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, filter: 'contrast(1.12) saturate(1.2)' }}
+      />
 
       {/* Weather pill — only render when temp is actually available */}
       {card.weather?.temp != null && (
@@ -102,6 +122,20 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
             </h1>
           );
         })()}
+
+        {/* Trip identity */}
+        <p style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontStyle: 'italic',
+          fontSize: 17,
+          fontWeight: 400,
+          color: 'rgba(255,255,255,0.72)',
+          lineHeight: 1.35,
+          marginBottom: 10,
+          textShadow: '0 1px 6px rgba(0,0,0,0.6)',
+        }}>
+          {tripIdentityLine(card.persona, card.city)}
+        </p>
 
         {/* Info pills */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: INTRO_PILL_GAP, marginBottom: INTRO_PILL_MB }}>

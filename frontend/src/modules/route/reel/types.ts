@@ -68,6 +68,7 @@ export interface ReelStopCard {
   orderConsequence: string | null;
   movedFrom: number | null;
   weather: WeatherData | null;
+  pairWith?: { title: string; category: string; time: string } | null;
 }
 
 export type RecoTrigger =

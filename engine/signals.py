@@ -167,16 +167,34 @@ def _sunset_hour(lat: float, lon: float, date_str: str | None) -> float | None:
         return None
 
 
-def _opening_close_min(stop: "EngineStop") -> int | None:
-    """Return closing time in minutes-from-midnight for today, or None."""
+def _opening_close_min(stop: "EngineStop", date_str: str | None = None) -> int | None:
+    """Return closing time in minutes-from-midnight for the visit day, or None.
+
+    opening_hours is stored as [{day: int (0=Mon), open_min: int, close_min: int}].
+    """
     if not stop.opening_hours:
         return None
     try:
-        # opening_hours is list of dicts with 'close': {'day': N, 'hour': H, 'minute': M}
+        visit_weekday: int | None = None
+        if date_str:
+            visit_weekday = _dt.fromisoformat(date_str).weekday()
+
+        # First pass: match on the visit weekday
         for period in stop.opening_hours:
-            close = period.get("close", {})
-            if close:
-                return close.get("hour", 0) * 60 + close.get("minute", 0)
+            day = period.get("day")
+            close_min = period.get("close_min")
+            if close_min is None:
+                continue
+            if visit_weekday is not None and day != visit_weekday:
+                continue
+            return close_min
+
+        # Fallback: return any available close_min (weekday unknown or no match)
+        if visit_weekday is not None:
+            for period in stop.opening_hours:
+                close_min = period.get("close_min")
+                if close_min is not None:
+                    return close_min
     except Exception:
         pass
     return None
@@ -219,11 +237,11 @@ def _sig_crowd(
 
 
 def _sig_timing(
-    stop: "EngineStop", day_state: DaySignalState,
+    stop: "EngineStop", date_str: str | None, day_state: DaySignalState,
 ) -> StopSignal | None:
     if not day_state.can_fire("timing") or not stop.scheduled_time:
         return None
-    close_min = _opening_close_min(stop)
+    close_min = _opening_close_min(stop, date_str)
     if close_min is None:
         return None
 
@@ -525,7 +543,7 @@ def compute_stop_signals(
     for fn in [
         lambda: _sig_discovery(stage, velocity_ratio, day_state),
         lambda: _sig_crowd(stop, ctx, date_str, day_state),
-        lambda: _sig_timing(stop, day_state),
+        lambda: _sig_timing(stop, date_str, day_state),
         lambda: _sig_value(stop, place_details, ctx, day_state),
         lambda: _sig_transit(stop, prev_stop, ctx, day_state),
         lambda: _sig_content(stop, place_details, day_state),
