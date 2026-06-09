@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks
 from typing import Optional
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import re
 import requests
@@ -1944,6 +1944,329 @@ async def track_event(request: Request, user=Depends(get_current_user)):
 
 
 # =========================================
+# ADMIN USAGE DASHBOARD
+# =========================================
+
+_RAILWAY_TOKEN      = os.getenv("RAILWAY_TOKEN",      "92404200-82e1-4813-bea7-e74777d08dad")
+_RAILWAY_PROJECT_ID = os.getenv("RAILWAY_PROJECT_ID", "cb36d4b3-8004-428f-9a79-f3c6a59a596a")
+_RAILWAY_SERVICE_ID = os.getenv("RAILWAY_SERVICE_ID", "e99f6079-2b32-494e-86d6-9750fac259d8")
+
+# Google Places API pricing (USD per 1000 requests, as of 2024)
+_GOOGLE_PRICES = {
+    "place_details_cache":  17.00,   # Place Details — $17/1000
+    "place_id_cache":        3.00,   # Place Search / Find Place — $3/1000  (formerly $5, now $3 with new pricing)
+    "map_data_cache":        2.00,   # Nearby Search — $2/1000
+}
+
+def _dashboard_supabase() -> dict:
+    """Query Supabase for usage stats. Returns a flat dict of metrics."""
+    out: dict = {}
+    if not _supabase:
+        return out
+    try:
+        from datetime import date as _date_only
+        today = datetime.now(timezone.utc).date().isoformat()
+        month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        # ── Subscription breakdown ──────────────────────────────
+        try:
+            subs = _supabase.table("user_subscriptions").select("status").execute()
+            rows = subs.data or []
+            out["sub_free"]  = sum(1 for r in rows if r.get("status") == "free")
+            out["sub_pack"]  = sum(1 for r in rows if r.get("status") == "pack")
+            out["sub_pro"]   = sum(1 for r in rows if r.get("status") in ("pro", "unlimited"))
+            out["sub_total"] = len(rows)
+        except Exception:
+            pass
+
+        # ── Event counts ────────────────────────────────────────
+        try:
+            ev_today = _supabase.table("user_events").select("event_type", count="exact").gte("created_at", today).execute()
+            out["events_today"] = ev_today.count or 0
+        except Exception:
+            pass
+        try:
+            ev_month = _supabase.table("user_events").select("event_type", count="exact").gte("created_at", month_start).execute()
+            out["events_month"] = ev_month.count or 0
+        except Exception:
+            pass
+
+        # Trip builds (look for any itinerary-related event)
+        try:
+            trips_today = _supabase.table("user_events").select("event_type", count="exact")\
+                .gte("created_at", today)\
+                .ilike("event_type", "%itinerary%")\
+                .execute()
+            out["trips_today"] = trips_today.count or 0
+        except Exception:
+            pass
+        try:
+            trips_month = _supabase.table("user_events").select("event_type", count="exact")\
+                .gte("created_at", month_start)\
+                .ilike("event_type", "%itinerary%")\
+                .execute()
+            out["trips_month"] = trips_month.count or 0
+        except Exception:
+            pass
+
+        # ── Cache table sizes (proxy for Google API calls saved) ─
+        for tbl in ("place_details_cache", "place_id_cache", "map_data_cache"):
+            try:
+                r = _supabase.table(tbl).select("id", count="exact").execute()
+                out[f"cache_{tbl}"] = r.count or 0
+            except Exception:
+                pass
+
+        # ── City coverage ────────────────────────────────────────
+        try:
+            cities = _supabase.table("city_data").select("id", count="exact").execute()
+            out["cities_profiled"] = cities.count or 0
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+    return out
+
+
+def _dashboard_railway() -> dict:
+    """Query Railway GraphQL API for service metrics."""
+    out: dict = {}
+    if not _RAILWAY_TOKEN:
+        return out
+    try:
+        query = """
+        query ServiceMetrics($projectId: String!, $serviceId: String!) {
+          project(id: $projectId) {
+            id
+            name
+            services {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+        """
+        resp = requests.post(
+            "https://backboard.railway.app/graphql/v2",
+            json={"query": query, "variables": {"projectId": _RAILWAY_PROJECT_ID, "serviceId": _RAILWAY_SERVICE_ID}},
+            headers={"Authorization": f"Bearer {_RAILWAY_TOKEN}", "Content-Type": "application/json"},
+            timeout=8,
+        )
+        data = resp.json()
+        if "data" in data and data["data"].get("project"):
+            proj = data["data"]["project"]
+            out["railway_project"] = proj.get("name", "")
+            services = [e["node"]["name"] for e in proj.get("services", {}).get("edges", [])]
+            out["railway_services"] = ", ".join(services)
+    except Exception:
+        pass
+
+    # Usage / spend via Railway billing API
+    try:
+        usage_query = """
+        query Usage($projectId: String!) {
+          project(id: $projectId) {
+            usage {
+              estimatedMonthlyCostUSD
+              currentMonthCostUSD
+            }
+          }
+        }
+        """
+        resp2 = requests.post(
+            "https://backboard.railway.app/graphql/v2",
+            json={"query": usage_query, "variables": {"projectId": _RAILWAY_PROJECT_ID}},
+            headers={"Authorization": f"Bearer {_RAILWAY_TOKEN}", "Content-Type": "application/json"},
+            timeout=8,
+        )
+        d2 = resp2.json()
+        if "data" in d2 and d2["data"].get("project", {}).get("usage"):
+            u = d2["data"]["project"]["usage"]
+            out["railway_cost_month"]     = u.get("currentMonthCostUSD")
+            out["railway_cost_projected"] = u.get("estimatedMonthlyCostUSD")
+    except Exception:
+        pass
+
+    return out
+
+
+def _estimate_google_spend(sb: dict) -> dict:
+    """Estimate cumulative Google API spend from cache row counts."""
+    total = 0.0
+    lines = []
+    for tbl, price_per_k in _GOOGLE_PRICES.items():
+        count = sb.get(f"cache_{tbl}", 0)
+        cost  = count / 1000 * price_per_k
+        total += cost
+        lines.append({"table": tbl, "count": count, "cost": round(cost, 2)})
+    return {"lines": lines, "total": round(total, 2)}
+
+
+@app.get("/admin/dashboard", response_class=HTMLResponse)
+def admin_dashboard():
+    sb      = _dashboard_supabase()
+    rail    = _dashboard_railway()
+    google  = _estimate_google_spend(sb)
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    # ── Google cost breakdown rows ───────────────────────────────
+    google_rows = ""
+    for l in google["lines"]:
+        label = {"place_details_cache": "Place Details", "place_id_cache": "Place Search", "map_data_cache": "Nearby Search"}.get(l["table"], l["table"])
+        google_rows += f"""
+        <tr>
+          <td>{label}</td>
+          <td class="num">{l['count']:,}</td>
+          <td class="num">${l['cost']:.2f}</td>
+        </tr>"""
+
+    # ── Railway rows ─────────────────────────────────────────────
+    rail_cost_month     = f"${rail['railway_cost_month']:.2f}"     if rail.get("railway_cost_month")     is not None else "—"
+    rail_cost_projected = f"${rail['railway_cost_projected']:.2f}" if rail.get("railway_cost_projected") is not None else "—"
+    rail_project        = rail.get("railway_project", "—")
+    rail_services       = rail.get("railway_services", "—")
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<title>Uncover Roads — Usage Dashboard</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{background:#0f0d0c;color:#f5f0ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:32px 24px;min-height:100vh}}
+  h1{{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}}
+  .sub{{font-size:12px;color:rgba(255,255,255,.38);margin-bottom:32px}}
+  .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:32px}}
+  .card{{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px}}
+  .card .label{{font-size:10px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:8px}}
+  .card .value{{font-size:28px;font-weight:700;color:#f5f0ea;line-height:1}}
+  .card .hint{{font-size:11px;color:rgba(255,255,255,.35);margin-top:6px}}
+  .card.gold{{border-color:rgba(212,168,83,.25);background:rgba(212,168,83,.06)}}
+  .card.gold .value{{color:#d4a853}}
+  .card.sky{{border-color:rgba(79,143,171,.25);background:rgba(79,143,171,.06)}}
+  .card.sky .value{{color:#4f8fab}}
+  .card.sage{{border-color:rgba(107,148,112,.25);background:rgba(107,148,112,.06)}}
+  .card.sage .value{{color:#6b9470}}
+  section{{margin-bottom:32px}}
+  section h2{{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.07)}}
+  table{{width:100%;border-collapse:collapse}}
+  th{{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:left;padding:0 0 10px}}
+  td{{font-size:13px;color:rgba(255,255,255,.75);padding:8px 0;border-top:1px solid rgba(255,255,255,.05)}}
+  td.num{{text-align:right;font-variant-numeric:tabular-nums;color:#f5f0ea}}
+  .pill{{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}}
+  .pill.free{{background:rgba(255,255,255,.07);color:rgba(255,255,255,.5)}}
+  .pill.pack{{background:rgba(79,143,171,.15);color:#4f8fab}}
+  .pill.pro{{background:rgba(212,168,83,.15);color:#d4a853}}
+  .footer{{font-size:11px;color:rgba(255,255,255,.2);margin-top:16px}}
+</style>
+</head>
+<body>
+
+<h1>Uncover Roads · Usage Dashboard</h1>
+<div class="sub">Auto-refreshes every 60s &nbsp;·&nbsp; Last updated: {now_str}</div>
+
+<!-- ── USERS ── -->
+<section>
+  <h2>Users</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="label">Total registered</div>
+      <div class="value">{sb.get('sub_total', '—')}</div>
+    </div>
+    <div class="card">
+      <div class="label">Free tier</div>
+      <div class="value">{sb.get('sub_free', '—')}</div>
+    </div>
+    <div class="card sky">
+      <div class="label">Pack buyers</div>
+      <div class="value">{sb.get('sub_pack', '—')}</div>
+    </div>
+    <div class="card gold">
+      <div class="label">Pro subscribers</div>
+      <div class="value">{sb.get('sub_pro', '—')}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ACTIVITY ── -->
+<section>
+  <h2>Activity</h2>
+  <div class="grid">
+    <div class="card sage">
+      <div class="label">Trip builds today</div>
+      <div class="value">{sb.get('trips_today', '—')}</div>
+    </div>
+    <div class="card sage">
+      <div class="label">Trip builds this month</div>
+      <div class="value">{sb.get('trips_month', '—')}</div>
+    </div>
+    <div class="card">
+      <div class="label">All events today</div>
+      <div class="value">{sb.get('events_today', '—')}</div>
+    </div>
+    <div class="card">
+      <div class="label">All events this month</div>
+      <div class="value">{sb.get('events_month', '—')}</div>
+    </div>
+    <div class="card">
+      <div class="label">Cities profiled</div>
+      <div class="value">{sb.get('cities_profiled', '—')}</div>
+      <div class="hint">in city_data table</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── GOOGLE API ── -->
+<section>
+  <h2>Google Places API — cumulative spend estimate</h2>
+  <table>
+    <thead><tr><th>API</th><th style="text-align:right">Cached rows</th><th style="text-align:right">Est. cost</th></tr></thead>
+    <tbody>
+      {google_rows}
+      <tr>
+        <td><strong>Total</strong></td>
+        <td></td>
+        <td class="num" style="color:#d4a853;font-weight:700">${google['total']:.2f}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer" style="margin-top:12px">Estimate = cached rows × API list price. Each row = one billable call that won't be repeated. Actual spend may vary.</div>
+</section>
+
+<!-- ── RAILWAY ── -->
+<section>
+  <h2>Railway compute</h2>
+  <div class="grid">
+    <div class="card">
+      <div class="label">Project</div>
+      <div class="value" style="font-size:16px">{rail_project}</div>
+      <div class="hint">{rail_services}</div>
+    </div>
+    <div class="card gold">
+      <div class="label">Spend this month</div>
+      <div class="value">{rail_cost_month}</div>
+    </div>
+    <div class="card">
+      <div class="label">Projected month-end</div>
+      <div class="value">{rail_cost_projected}</div>
+    </div>
+  </div>
+</section>
+
+<div class="footer">Supabase data is live · Railway data via GraphQL API · Google costs estimated from cache table row counts</div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+# =========================================
 # HEALTH CHECK
 # =========================================
 @app.get("/")
@@ -2785,22 +3108,22 @@ async def build_itinerary_endpoint(
 
 _ARCHETYPE_PERSONA: dict[str, dict] = {
     # ── Legacy archetypes ──────────────────────────────────────────────────────
-    "explorer":           {"archetype": "explorer",           "arrival_time": "09:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
-    "wanderer":           {"archetype": "wanderer",           "arrival_time": "10:00", "day_buffer_min": 40, "weights": {"w_walk_affinity": 0.8, "w_scenic": 0.7, "w_efficiency": 0.3, "w_food_density": 0.6, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.7, "w_spontaneity": 0.8, "w_rest_need": 0.5}},
-    "historian":          {"archetype": "historian",          "arrival_time": "09:00", "day_buffer_min": 25, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.6, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.4, "w_spontaneity": 0.3, "w_rest_need": 0.4}},
-    "epicurean":          {"archetype": "epicurean",          "arrival_time": "10:00", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.5, "w_food_density": 0.9, "w_culture_depth": 0.5, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.4, "w_spontaneity": 0.5, "w_rest_need": 0.3}},
-    "pulse":              {"archetype": "pulse",              "arrival_time": "10:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.6, "w_culture_depth": 0.4, "w_nightlife": 0.9, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.7, "w_rest_need": 0.3}},
-    "slowtraveller":      {"archetype": "slowtraveller",      "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.7, "w_efficiency": 0.2, "w_food_density": 0.6, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.6, "w_spontaneity": 0.6, "w_rest_need": 0.7}},
-    "voyager":            {"archetype": "voyager",            "arrival_time": "08:00", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.9, "w_food_density": 0.4, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.3, "w_spontaneity": 0.3, "w_rest_need": 0.3}},
+    "explorer":           {"archetype": "explorer",           "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
+    "wanderer":           {"archetype": "wanderer",           "day_buffer_min": 40, "weights": {"w_walk_affinity": 0.8, "w_scenic": 0.7, "w_efficiency": 0.3, "w_food_density": 0.6, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.7, "w_spontaneity": 0.8, "w_rest_need": 0.5}},
+    "historian":          {"archetype": "historian",          "day_buffer_min": 25, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.6, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.4, "w_spontaneity": 0.3, "w_rest_need": 0.4}},
+    "epicurean":          {"archetype": "epicurean",          "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.5, "w_food_density": 0.9, "w_culture_depth": 0.5, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.4, "w_spontaneity": 0.5, "w_rest_need": 0.3}},
+    "pulse":              {"archetype": "pulse",              "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.6, "w_culture_depth": 0.4, "w_nightlife": 0.9, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.7, "w_rest_need": 0.3}},
+    "slowtraveller":      {"archetype": "slowtraveller",      "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.7, "w_efficiency": 0.2, "w_food_density": 0.6, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.6, "w_spontaneity": 0.6, "w_rest_need": 0.7}},
+    "voyager":            {"archetype": "voyager",            "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.5, "w_efficiency": 0.9, "w_food_density": 0.4, "w_culture_depth": 0.6, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.3, "w_spontaneity": 0.3, "w_rest_need": 0.3}},
     # ── New frontend archetypes ────────────────────────────────────────────────
-    "flaneur":            {"archetype": "flaneur",            "arrival_time": "10:00", "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.9, "w_scenic": 0.8, "w_efficiency": 0.2, "w_food_density": 0.5, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.8, "w_spontaneity": 0.9, "w_rest_need": 0.5}},
-    "gastronaut":         {"archetype": "gastronaut",         "arrival_time": "10:30", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.95, "w_culture_depth": 0.4, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.3, "w_spontaneity": 0.6, "w_rest_need": 0.3}},
-    "slowscholar":        {"archetype": "slowscholar",        "arrival_time": "09:30", "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.5, "w_efficiency": 0.2, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.3, "w_rest_need": 0.75}},
-    "neighbourhoodlocal": {"archetype": "neighbourhoodlocal", "arrival_time": "10:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.85, "w_scenic": 0.6, "w_efficiency": 0.2, "w_food_density": 0.7, "w_culture_depth": 0.4, "w_nightlife": 0.3, "w_budget_sensitivity": 0.6, "w_crowd_aversion": 0.85, "w_spontaneity": 0.7, "w_rest_need": 0.5}},
-    "efficientexplorer":  {"archetype": "efficientexplorer",  "arrival_time": "08:30", "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.55, "w_scenic": 0.55, "w_efficiency": 0.9, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.3, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.3, "w_spontaneity": 0.4, "w_rest_need": 0.25}},
-    "aesthete":           {"archetype": "aesthete",           "arrival_time": "09:30", "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.9, "w_efficiency": 0.35, "w_food_density": 0.45, "w_culture_depth": 0.85, "w_nightlife": 0.25, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.6, "w_spontaneity": 0.5, "w_rest_need": 0.4}},
-    "nightcreature":      {"archetype": "nightcreature",      "arrival_time": "11:00", "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.3, "w_efficiency": 0.4, "w_food_density": 0.65, "w_culture_depth": 0.3, "w_nightlife": 0.95, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.85, "w_rest_need": 0.35}},
-    "ritualseeker":       {"archetype": "ritualseeker",       "arrival_time": "09:00", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.65, "w_scenic": 0.6, "w_efficiency": 0.3, "w_food_density": 0.55, "w_culture_depth": 0.75, "w_nightlife": 0.2, "w_budget_sensitivity": 0.45, "w_crowd_aversion": 0.6, "w_spontaneity": 0.2, "w_rest_need": 0.8}},
+    "flaneur":            {"archetype": "flaneur",            "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.9, "w_scenic": 0.8, "w_efficiency": 0.2, "w_food_density": 0.5, "w_culture_depth": 0.5, "w_nightlife": 0.3, "w_budget_sensitivity": 0.5, "w_crowd_aversion": 0.8, "w_spontaneity": 0.9, "w_rest_need": 0.5}},
+    "gastronaut":         {"archetype": "gastronaut",         "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.4, "w_efficiency": 0.5, "w_food_density": 0.95, "w_culture_depth": 0.4, "w_nightlife": 0.7, "w_budget_sensitivity": 0.2, "w_crowd_aversion": 0.3, "w_spontaneity": 0.6, "w_rest_need": 0.3}},
+    "slowscholar":        {"archetype": "slowscholar",        "day_buffer_min": 45, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.5, "w_efficiency": 0.2, "w_food_density": 0.4, "w_culture_depth": 0.9, "w_nightlife": 0.2, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.3, "w_rest_need": 0.75}},
+    "neighbourhoodlocal": {"archetype": "neighbourhoodlocal", "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.85, "w_scenic": 0.6, "w_efficiency": 0.2, "w_food_density": 0.7, "w_culture_depth": 0.4, "w_nightlife": 0.3, "w_budget_sensitivity": 0.6, "w_crowd_aversion": 0.85, "w_spontaneity": 0.7, "w_rest_need": 0.5}},
+    "efficientexplorer":  {"archetype": "efficientexplorer",  "day_buffer_min": 20, "weights": {"w_walk_affinity": 0.55, "w_scenic": 0.55, "w_efficiency": 0.9, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.3, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.3, "w_spontaneity": 0.4, "w_rest_need": 0.25}},
+    "aesthete":           {"archetype": "aesthete",           "day_buffer_min": 35, "weights": {"w_walk_affinity": 0.7, "w_scenic": 0.9, "w_efficiency": 0.35, "w_food_density": 0.45, "w_culture_depth": 0.85, "w_nightlife": 0.25, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.6, "w_spontaneity": 0.5, "w_rest_need": 0.4}},
+    "nightcreature":      {"archetype": "nightcreature",      "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.5, "w_scenic": 0.3, "w_efficiency": 0.4, "w_food_density": 0.65, "w_culture_depth": 0.3, "w_nightlife": 0.95, "w_budget_sensitivity": 0.3, "w_crowd_aversion": 0.2, "w_spontaneity": 0.85, "w_rest_need": 0.35}},
+    "ritualseeker":       {"archetype": "ritualseeker",       "day_buffer_min": 50, "weights": {"w_walk_affinity": 0.65, "w_scenic": 0.6, "w_efficiency": 0.3, "w_food_density": 0.55, "w_culture_depth": 0.75, "w_nightlife": 0.2, "w_budget_sensitivity": 0.45, "w_crowd_aversion": 0.6, "w_spontaneity": 0.2, "w_rest_need": 0.8}},
 }
 
 
@@ -3038,7 +3361,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
     start = _date.fromisoformat(body.startDate)
     travel_dates = [(start + _td(days=i)).isoformat() for i in range(days)]
 
-    archetype = body.personaArchetype.lower()
+    archetype = body.personaArchetype.lower().replace(" ", "").replace("-", "").replace("_", "")
     persona = dict(_ARCHETYPE_PERSONA.get(archetype, _ARCHETYPE_PERSONA["explorer"]))
 
     # Try to load city seed data; fall back to a minimal stub so the engine still runs
@@ -3414,7 +3737,6 @@ async def engine_itinerary(body: EngineItineraryPayload):
         "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
         "w_spontaneity":        weights.get("w_spontaneity", 0.5),
         "w_rest_need":          weights.get("w_rest_need", 0.4),
-        "arrival_time":         persona.get("arrival_time", "09:00"),
     }
 
     # Re-order days to match body.cities order (TSP may cluster Melbourne before Sydney)
@@ -3545,6 +3867,8 @@ async def cities_photos(names: str, _user=Depends(get_current_user)):
     name_list = [n.strip() for n in names.split(",") if n.strip()][:20]
     if not name_list:
         return {}
+    # Case-insensitive match — city_whitelist names may differ in capitalisation
+    name_lower_map = {n.lower(): n for n in name_list}  # lowercase → original name
     rows = (
         _supabase.table("city_whitelist")
         .select("name, image_url")
@@ -3554,6 +3878,15 @@ async def cities_photos(names: str, _user=Depends(get_current_user)):
     result: dict[str, Optional[str]] = {n: None for n in name_list}
     for r in (rows.data or []):
         result[r["name"]] = r.get("image_url")
+    # Second pass: retry unmatched names with ilike for case-insensitive match
+    unmatched = [n for n in name_list if result[n] is None]
+    for uname in unmatched:
+        try:
+            row = _supabase.table("city_whitelist").select("name, image_url").ilike("name", uname).limit(1).execute()
+            if row.data:
+                result[uname] = row.data[0].get("image_url")
+        except Exception:
+            pass
     return result
 
 
@@ -3900,7 +4233,7 @@ async def surprise_me(body: SurpriseMeRequest, user=Depends(require_auth_or_pack
 
     # Step 3: Run engine pipeline
     ctx = EngineContext(
-        persona={"archetype": body.persona, "arrival_time": "09:00", "day_buffer_min": 30},
+        persona={"archetype": body.persona, "day_buffer_min": 30},
         city=city_data,
         travel_dates=travel_dates,
         weather=None,

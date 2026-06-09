@@ -44,8 +44,9 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
   const [photoMap, setPhotoMap] = useState<Map<string, string>>(() => {
     const m = new Map<string, string>();
     for (const c of cities) {
-      const cached = _cache.get(c.toLowerCase());
-      m.set(c, cached ?? getCityPhotoUrl(c));
+      const key = c.toLowerCase();
+      const cached = _cache.get(key);
+      if (cached) m.set(key, cached);  // only pre-populate from cache — let API respond before Unsplash
     }
     return m;
   });
@@ -55,21 +56,39 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     const missing = cities.filter(c => !_cache.has(c.toLowerCase()));
     if (missing.length === 0) return;
 
+    // Applies Unsplash fallback for any city that still has no resolved URL.
+    // Called when the API fails or returns null — ensures shimmer always ends.
+    const applyFallbacks = () => {
+      setPhotoMap(prev => {
+        const updated = new Map(prev);
+        let changed = false;
+        for (const c of missing) {
+          const key = c.toLowerCase();
+          if (!updated.has(key)) {
+            const url = getCityPhotoUrl(c);
+            _cache.set(key, url);
+            updated.set(key, url);
+            changed = true;
+          }
+        }
+        return changed ? updated : prev;
+      });
+    };
+
     const params = new URLSearchParams({ names: missing.join(',') });
     fetch(`${BASE}/api/cities/photos?${params}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
-        if (!data) return;
+        if (!data) { applyFallbacks(); return; }
         const updated = new Map(photoMap);
         for (const [name, imgUrl] of Object.entries(data)) {
-          if (imgUrl) {
-            _cache.set(name.toLowerCase(), imgUrl);
-            updated.set(name, imgUrl);
-          }
+          const resolved = imgUrl ?? getCityPhotoUrl(name);
+          _cache.set(name.toLowerCase(), resolved);
+          updated.set(name.toLowerCase(), resolved);
         }
         setPhotoMap(updated);
       })
-      .catch(() => {/* keep fallbacks */});
+      .catch(applyFallbacks);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cities.join(',')]);
 

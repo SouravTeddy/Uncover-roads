@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReelIntelCard } from './types';
+import { ReelImg } from './ReelImg';
 
 interface Props { card: ReelIntelCard; active: boolean }
 
@@ -32,7 +33,7 @@ export function ReelIntelCard({ card, active }: Props) {
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden' }}>
       {card.imageUrl
-        ? <img src={card.imageUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.5) saturate(0.65)' }} />
+        ? <ReelImg src={card.imageUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.5) saturate(0.65)' }} />
         : <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(145deg, #0e0c14, #121820)' }} />
       }
       <div style={{ position: 'absolute', inset: 0, background: GRADIENT }} />

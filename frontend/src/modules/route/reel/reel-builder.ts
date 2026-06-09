@@ -90,6 +90,47 @@ const BAD_WEATHER_CONDITIONS = new Set([
 ]);
 const HOT_THRESHOLD_C = 32;
 
+// ── Pair-with helper ──────────────────────────────────────────
+
+const _BROAD_CAT: Record<string, string> = {
+  museum: 'cultural', gallery: 'cultural', historic: 'cultural', temple: 'cultural',
+  shrine: 'cultural', castle: 'cultural', church: 'cultural',
+  park: 'outdoor', garden: 'outdoor', beach: 'outdoor', viewpoint: 'outdoor',
+  nature_reserve: 'outdoor', hiking: 'outdoor',
+  restaurant: 'food', cafe: 'food', coffee: 'food', bar: 'food',
+  market: 'food', lunch: 'food', dinner: 'food',
+};
+
+function findPairWith(
+  stop: EngineItineraryStop,
+  dayStops: EngineItineraryStop[],
+): { title: string; category: string; time: string } | null {
+  const myBroad = _BROAD_CAT[stop.category?.toLowerCase() ?? ''] ?? 'other';
+  if (myBroad === 'other') return null;
+
+  // Find the nearest-scheduled stop with a different broad category (not 'other')
+  const myMin = stop.time ? timeToMinutes(stop.time) : 0;
+
+  let best: EngineItineraryStop | null = null;
+  let bestDist = Infinity;
+
+  for (const s of dayStops) {
+    if (s.id === stop.id) continue;
+    const broad = _BROAD_CAT[s.category?.toLowerCase() ?? ''] ?? 'other';
+    if (broad === 'other' || broad === myBroad) continue;
+    const sMin = s.time ? timeToMinutes(s.time) : 0;
+    const dist = Math.abs(sMin - myMin);
+    if (dist < bestDist) { bestDist = dist; best = s; }
+  }
+
+  if (!best) return null;
+  return {
+    title: best.title,
+    category: best.category ?? '',
+    time: best.time ?? '',
+  };
+}
+
 // ── Meal reco cards (existing logic) ─────────────────────────
 
 function buildMealRecos(
@@ -609,9 +650,7 @@ export function buildReelCards(
 
   // City image: prefer city-level photo, fall back to first stop photo
   const primaryCity = itinerary.city ?? itinerary.cities[0] ?? '';
-  const introImage = cityPhotoMap.get(primaryCity.toLowerCase())
-    ?? cityPhotoMap.get(primaryCity)
-    ?? null;
+  const introImage = cityPhotoMap.get(primaryCity.toLowerCase()) ?? null;
 
   // Aggregate engine changes for intro summary section
   const allMessages = itinerary.days.flatMap(d => d.messages ?? []);
@@ -774,6 +813,7 @@ export function buildReelCards(
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
         weather: getWeatherForCity(day.city),
+        pairWith: findPairWith(stop, sortedStops),
       };
       cards.push(stopCard);
 

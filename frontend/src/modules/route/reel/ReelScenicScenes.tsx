@@ -4,6 +4,7 @@
 
 import { useId } from 'react';
 import type { ReelScenicCard } from './types';
+import { ReelImg } from './ReelImg';
 
 // ── Parallax helper ──────────────────────────────────────────────────────────
 interface ScParallaxProps {
@@ -127,7 +128,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
       {/* Origin photo — top half */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', overflow: 'hidden' }}>
         {card.originPhotoUrl
-          ? <img src={card.originPhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <ReelImg src={card.originPhotoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(160deg, #1c1a18 0%, #100e0c 100%)' }} />
         }
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to bottom, transparent, #0a0908)' }} />
@@ -140,7 +141,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
       {/* Destination photo — bottom half */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', overflow: 'hidden' }}>
         {card.destPhotoUrl
-          ? <img src={card.destPhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <ReelImg src={card.destPhotoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(160deg, #100e0c 0%, #1c1a18 100%)' }} />
         }
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to top, transparent, #0a0908)' }} />
@@ -175,7 +176,7 @@ export function SelfDriveScene({ photoUrl }: { photoUrl?: string | null }) {
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       {photoUrl
-        ? <img src={photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        ? <ReelImg src={photoUrl} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         : <ScPhotoPlaceholder label="Route map" sub="Panaji → Baga · 3 viewpoints" tint="#e0a06a" />
       }
       <ScenePill icon="car" code="SELF-DRIVE" meta="Day 2 · 47 km" accent="#f4c478" />

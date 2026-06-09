@@ -228,17 +228,18 @@ export function MapScreen() {
     }
   }, [city, dispatch]);
 
-  // Trigger initial load once cityGeo is available
-  const initialLoadFired = useRef(false);
+  // Trigger initial load when city or cityGeo changes. Tracks last loaded city
+  // so that changing the city mid-session always fires a fresh load.
+  const lastLoadedCity = useRef<string | null>(null);
   useEffect(() => {
-    if (initialLoadFired.current) return;
-    if (!cityGeo) return;
-    initialLoadFired.current = true;
+    if (!cityGeo || !city) return;
+    if (lastLoadedCity.current === city) return;
+    lastLoadedCity.current = city;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
-  }, [cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [city, cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
     onFetch: useCallback((center: [number, number]) => {

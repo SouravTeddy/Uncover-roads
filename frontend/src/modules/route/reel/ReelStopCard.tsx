@@ -1,5 +1,6 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import type { ReelStopCard as ReelStopCardType } from './types';
+import { ReelImg } from './ReelImg';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import {
   REEL_SCRIM,
@@ -285,6 +286,21 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
   const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  // Category-based gradient fallback when no photo available or image failed to load
+  const noPhotoGradient = (!photoUrl || imgFailed) ? (() => {
+    const cat = stop.category ?? '';
+    if (cat.includes('cafe') || cat.includes('coffee') || cat.includes('restaurant') || cat.includes('bar'))
+      return 'linear-gradient(160deg, #1a120a 0%, #2c1c0f 40%, #0f0d0c 100%)';
+    if (cat.includes('museum') || cat.includes('gallery') || cat.includes('heritage'))
+      return 'linear-gradient(160deg, #0d1520 0%, #1a2535 40%, #0f0d0c 100%)';
+    if (cat.includes('park') || cat.includes('garden') || cat.includes('nature'))
+      return 'linear-gradient(160deg, #0a1510 0%, #132112 40%, #0f0d0c 100%)';
+    if (cat.includes('temple') || cat.includes('monument') || cat.includes('palace'))
+      return 'linear-gradient(160deg, #180e1a 0%, #2a1830 40%, #0f0d0c 100%)';
+    return 'linear-gradient(160deg, #141018 0%, #1e1a28 40%, #0f0d0c 100%)';
+  })() : null;
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -296,25 +312,31 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active, onInteract]);
 
-  // Content logic
   const serverSignals  = stop.signals ?? [];
   const hasServerSignals = serverSignals.length > 0;
-  // Fall back to static crowd + todo hints only when server signals are absent
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const todos          = whatToDo(stop.category);
-  const showTodos      = !hasServerSignals && !(card.orderReason || card.orderConsequence || stop.whyForYou);
   const hoursStr       = todayHours(stop.weekdayText);
-  const reasonText     = !hasServerSignals ? (card.orderReason ?? stop.whyForYou ?? card.orderConsequence ?? null) : null;
+  const reasonText     = card.orderReason ?? card.orderConsequence ?? null;
+
+  // Identity label from discovery stage
+  const stageLabel = stop.stage === 'hidden_gem'
+    ? { text: 'Hidden gem', icon: 'diamond' }
+    : stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0
+    ? { text: 'Trending now', icon: 'trending_up' }
+    : stop.stage === 'rising'
+    ? { text: 'Rising', icon: 'north_east' }
+    : null;
 
   return (
-    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
+    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: noPhotoGradient ?? T.bg }}>
 
-      {/* Photo z-index:0 */}
-      {photoUrl && (
-        <img
+      {/* Photo z-index:0 — shimmer while loading, retry once on error */}
+      {!imgFailed && (
+        <ReelImg
           src={photoUrl}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
-          alt=""
+          onFallback={() => setImgFailed(true)}
         />
       )}
 
@@ -362,13 +384,19 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       {/* ── stk-body: content zone, z-index:10 ─────────────────── */}
       <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
 
-        {/* Row 1: counter pill + rescheduled pill */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 7, marginBottom: 6 }}>
+        {/* Row 1: counter pill + identity chips */}
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 7, marginBottom: 6, flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', padding: '3px 9px', borderRadius: 5, background: T.ctrBg, backdropFilter: 'blur(10px)' }}>
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.pillClr }}>
               Stop {card.stopNumber} of {card.totalStops}
             </span>
           </div>
+          {stageLabel && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 5, background: T.sageBg, border: `1px solid ${T.sageBdr}` }}>
+              <span className="ms" style={{ fontSize: 10, color: T.sage }}>{stageLabel.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: T.sage }}>{stageLabel.text}</span>
+            </div>
+          )}
           {card.movedFrom != null && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 5, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
               <span style={{ fontSize: 10 }}>↕</span>
@@ -399,7 +427,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
 
         {/* Meta row */}
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 9 }}>
-          {stop.rating != null && (
+          {stop.rating != null && stop.rating > 0 && (
             <span style={{ padding: '2px 8px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
               {stop.rating} ★
             </span>
@@ -416,6 +444,13 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           )}
         </div>
 
+        {/* Narrative — WHY this stop is here. Primary story element. */}
+        {reasonText && (
+          <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(212,168,83,0.08)', borderLeft: `2px solid ${T.gold}` }}>
+            <span style={{ fontSize: 13, color: T.text1, lineHeight: 1.55, fontStyle: 'italic', letterSpacing: '0.01em' }}>{reasonText}</span>
+          </div>
+        )}
+
         {/* Server-driven signals */}
         {hasServerSignals && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 9 }}>
@@ -427,9 +462,9 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
               const bdr   = isWarning ? 'rgba(212,100,50,0.30)' : isPhoto ? T.sageBdr : isContent ? T.skyBdr : T.goldBdr;
               const clr   = isWarning ? '#e07050' : isPhoto ? T.sage : isContent ? T.sky : T.gold;
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '7px 11px', borderRadius: 8, background: bg, border: `1px solid ${bdr}` }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '7px 11px', borderRadius: 8, background: bg, border: `1px solid ${bdr}`, overflow: 'hidden' }}>
                   <span className="ms" style={{ fontSize: 13, color: clr, flexShrink: 0, marginTop: 1 }}>{sig.icon}</span>
-                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.45, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{sig.text}</span>
+                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{sig.text}</span>
                 </div>
               );
             })}
@@ -449,36 +484,26 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           </div>
         )}
 
-        {/* What-to-do — only when engine has no signals and no engine content */}
-        {showTodos && (
-          <div style={{ marginBottom: 9 }}>
-            <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.text3, margin: 0, marginBottom: 5 }}>
-              AT THIS STOP
-            </p>
-            {todos.slice(0, 2).map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < 1 ? 5 : 0 }}>
-                <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0 }}>{item.icon}</span>
-                <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{item.text}</span>
-              </div>
-            ))}
+        {/* What-to-do — always shown */}
+        <div style={{ marginBottom: 9 }}>
+          <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.text3, margin: 0, marginBottom: 5 }}>
+            AT THIS STOP
+          </p>
+          {todos.slice(0, 2).map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < 1 ? 5 : 0 }}>
+              <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer row: hours chip */}
+        {hoursStr && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}` }}>
+            <span className="ms" style={{ fontSize: 11, color: T.sage }}>schedule</span>
+            <span style={{ fontSize: 11, color: T.sage }}>{hoursStr}</span>
           </div>
         )}
-
-        {/* Footer row: hours chip + reason chip */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {hoursStr && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, flexShrink: 0 }}>
-              <span className="ms" style={{ fontSize: 11, color: T.sage }}>schedule</span>
-              <span style={{ fontSize: 11, color: T.sage }}>{hoursStr}</span>
-            </div>
-          )}
-          {reasonText && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: T.goldBg, border: `1px solid ${T.goldBdr}`, flex: 1, minWidth: 0 }}>
-              <span className="ms" style={{ fontSize: 11, color: T.gold, flexShrink: 0 }}>star</span>
-              <span style={{ fontSize: 11, color: T.gold, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reasonText}</span>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

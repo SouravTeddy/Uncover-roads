@@ -8,7 +8,6 @@ import itertools
 import math
 from engine.types import EngineStop, EngineContext, EngineMessage
 
-_START_HOUR = 9   # default day start if persona has no arrival_time
 _TRANSIT_MIN_PER_KM = 3.0  # minutes per km for transit cost
 
 
@@ -58,9 +57,23 @@ def _neighborhood_time_score(nh_id: str, time_bucket: str, city) -> float:
     return 0.5
 
 
+def _persona_start_min(ctx: EngineContext) -> int:
+    """Compute day start in minutes-from-midnight from persona weights."""
+    w = ctx.persona.get("weights", {})
+    sf = 9.0 + (w.get("w_rest_need", 0.4) - 0.5) * 2.0 \
+             + (w.get("w_nightlife", 0.4) - 0.4) * 2.5 \
+             - (w.get("w_efficiency", 0.5) - 0.5) * 2.0
+    sf = max(7.5, min(11.5, sf))
+    start_h = int(sf)
+    start_m = round((sf - start_h) * 60 / 15) * 15
+    if start_m >= 60:
+        start_h += 1
+        start_m = 0
+    return start_h * 60 + start_m
+
+
 def _assign_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:
-    start_h = int(ctx.persona.get("arrival_time", f"{_START_HOUR:02d}:00").split(":")[0])
-    current_min = start_h * 60
+    current_min = _persona_start_min(ctx)
     buffer_min = ctx.persona.get("day_buffer_min", 30)
     for stop in stops:
         h, m = divmod(int(current_min), 60)
@@ -106,18 +119,14 @@ def _first_stop_score(stop: EngineStop) -> float:
     return _MORNING_AFFINITY.get(stop.category.lower(), 0.5)
 
 
-def optimize(
-    stops: list[EngineStop], ctx: EngineContext
-) -> tuple[list[EngineStop], list[EngineMessage]]:
+def _optimize_within_city(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:
+    """TSP + morning-affinity sort for a single city's stops."""
     if len(stops) <= 1:
-        result = _assign_scheduled_times(list(stops), ctx)
-        return result, []
+        return list(stops)
 
     groups = _group_by_neighborhood(stops)
-    # Solve TSP within each neighborhood cluster
     optimized_groups = {nh: _solve_tsp(group) for nh, group in groups.items()}
 
-    # Order clusters by morning score (neighborhood time score + best first-stop in cluster)
     def _cluster_score(nh_stops: tuple[str, list[EngineStop]]) -> float:
         nh_id, group = nh_stops
         nh_score = _neighborhood_time_score(nh_id, "morning", ctx.city)
@@ -125,18 +134,40 @@ def optimize(
         return nh_score * 0.5 + best_first * 0.5
 
     ordered = sorted(optimized_groups.items(), key=_cluster_score, reverse=True)
-    flat = [stop for _, group in ordered for stop in group]
+    result = [stop for _, group in ordered for stop in group]
 
-    # Within the first cluster, ensure the best morning-appropriate stop is first
-    if flat:
-        first_cluster_size = len(list(optimized_groups.values())[0]) if optimized_groups else 0
-        first_cluster_key = list(ordered[0][0]) if ordered else None
-        first_cluster = ordered[0][1] if ordered else []
-        if len(first_cluster) > 1:
-            best_idx = max(range(len(first_cluster)), key=lambda i: _first_stop_score(first_cluster[i]))
-            if best_idx != 0:
-                first_cluster[0], first_cluster[best_idx] = first_cluster[best_idx], first_cluster[0]
-            flat = first_cluster + flat[len(first_cluster):]
+    # Best morning-appropriate stop leads the first cluster
+    first_cluster = ordered[0][1] if ordered else []
+    if len(first_cluster) > 1:
+        best_idx = max(range(len(first_cluster)), key=lambda i: _first_stop_score(first_cluster[i]))
+        if best_idx != 0:
+            first_cluster[0], first_cluster[best_idx] = first_cluster[best_idx], first_cluster[0]
+        result = first_cluster + result[len(first_cluster):]
+
+    return result
+
+
+def optimize(
+    stops: list[EngineStop], ctx: EngineContext
+) -> tuple[list[EngineStop], list[EngineMessage]]:
+    if len(stops) <= 1:
+        result = _assign_scheduled_times(list(stops), ctx)
+        return result, []
+
+    # Group stops by city, preserving the user's city order (first-occurrence).
+    # For multi-city trips this ensures Kyoto → Tokyo order is never flipped by TSP.
+    city_order: list[str] = []
+    city_stop_map: dict[str, list[EngineStop]] = {}
+    for stop in stops:
+        key = stop.city or "_unknown"
+        if key not in city_stop_map:
+            city_stop_map[key] = []
+            city_order.append(key)
+        city_stop_map[key].append(stop)
+
+    flat: list[EngineStop] = []
+    for city_key in city_order:
+        flat.extend(_optimize_within_city(city_stop_map[city_key], ctx))
 
     messages = _emit_resequence_messages(stops, flat)
     flat = _assign_scheduled_times(flat, ctx)

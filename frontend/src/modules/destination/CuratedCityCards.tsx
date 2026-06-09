@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Persona } from '../../shared/types';
 import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhotoBatch } from './useCityPhoto';
@@ -49,7 +49,7 @@ export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityC
             key={city.name}
             name={city.name}
             country={city.country}
-            photoUrl={photoMap.get(city.name) ?? ''}
+            photoUrl={photoMap.get(city.name.toLowerCase()) ?? ''}
             height={cardHeight}
             onSelect={() => onCitySelect(city.name)}
           />
@@ -68,7 +68,13 @@ interface CityCardProps {
 }
 
 function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) {
-  const [imgFailed, setImgFailed] = useState(false);
+  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  useEffect(() => {
+    if (photoUrl) setImgState('loading');
+  }, [photoUrl]);
+
+  const showShimmer = !photoUrl || imgState === 'loading';
 
   return (
     <button
@@ -80,11 +86,16 @@ function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) 
         padding: 0,
         border: 'none',
         cursor: 'pointer',
-        background: imgFailed ? CITY_PHOTO_FALLBACK_GRADIENT : undefined,
+        background: imgState === 'error' ? CITY_PHOTO_FALLBACK_GRADIENT : '#1a1814',
       }}
     >
+      {/* Shimmer while photo is loading or not yet available */}
+      {showShimmer && (
+        <div className="shimmer" style={{ position: 'absolute', inset: 0, background: '#1a1814', zIndex: 1 }} />
+      )}
+
       {/* Background photo */}
-      {!imgFailed && photoUrl && (
+      {photoUrl && imgState !== 'error' && (
         <img
           src={photoUrl}
           alt={name}
@@ -95,8 +106,12 @@ function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) 
             height: '100%',
             objectFit: 'cover',
             objectPosition: 'center',
+            opacity: imgState === 'loaded' ? 1 : 0,
+            transition: imgState === 'loaded' ? 'opacity 0.35s ease' : 'none',
+            zIndex: 0,
           }}
-          onError={() => setImgFailed(true)}
+          onLoad={() => setImgState('loaded')}
+          onError={() => setImgState('error')}
         />
       )}
 

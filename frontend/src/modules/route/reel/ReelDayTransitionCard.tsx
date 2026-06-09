@@ -51,6 +51,22 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
+function dayNarrative(prevCity: string, prevStopCount: number, prevStartTime: string | null, prevEndTime: string | null): string {
+  const stops = `${prevStopCount} stop${prevStopCount !== 1 ? 's' : ''}`;
+  if (prevStartTime && prevEndTime) {
+    const [sh, sm] = prevStartTime.split(':').map(Number);
+    const [eh, em] = prevEndTime.split(':').map(Number);
+    const durMin = (eh * 60 + em) - (sh * 60 + sm);
+    if (durMin > 0) {
+      const h = Math.floor(durMin / 60);
+      const m = durMin % 60;
+      const durStr = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
+      return `${stops} across ${prevCity} — ${durStr} on the ground.`;
+    }
+  }
+  return `${stops} across ${prevCity}.`;
+}
+
 function fmtDur(m: number): string {
   const h = Math.floor(m / 60);
   const min = m % 60;
@@ -126,14 +142,11 @@ export function ReelDayTransitionCard({ card, active }: Props) {
           <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 8 }}>
             Day {card.prevDay} · {fmtDate(card.prevDate)}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 6 }}>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
             {card.prevCity}
           </p>
-          <p style={{ fontSize: 12, color: T.text3, marginBottom: 0 }}>
-            {card.prevStopCount} stop{card.prevStopCount !== 1 ? 's' : ''}
-            {card.prevStartTime && card.prevEndTime
-              ? ` · ${fmt12h(card.prevStartTime)} → ${fmt12h(card.prevEndTime)}`
-              : card.prevStartTime ? ` · from ${fmt12h(card.prevStartTime)}` : ''}
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: 15, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
+            {dayNarrative(card.prevCity, card.prevStopCount, card.prevStartTime, card.prevEndTime)}
           </p>
         </div>
 
