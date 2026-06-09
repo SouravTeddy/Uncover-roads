@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Place, PlaceDetails } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
@@ -26,6 +26,8 @@ interface Props {
   travelStartDate?: string | null
   travelEndDate?: string | null
   ourPickBadge?: OurPickBadge
+  badgeReason?: string | null
+  userTier?: 'free' | 'pack' | 'pro'
 }
 
 const shimmerBase: React.CSSProperties = {
@@ -40,6 +42,8 @@ export function PinCard({
   onAdd, onClose, onFavourite,
   details, travelDate, travelStartDate, travelEndDate,
   ourPickBadge = null,
+  badgeReason = null,
+  userTier = 'free',
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
@@ -163,8 +167,39 @@ export function PinCard({
 
   const insights = computeAnalysisInsights(place, details ?? null, ourPickBadge, resolvedStart, resolvedEnd)
 
+  const TRENDING_VIEW_KEY = 'ur_trending_views'
+  const trendingLocked = useMemo(() => {
+    if (ourPickBadge !== 'trending') return false
+    if (userTier === 'pro') return false
+    const count = parseInt(localStorage.getItem(TRENDING_VIEW_KEY) ?? '0', 10)
+    return count >= 3
+  }, [ourPickBadge, userTier])
+
+  useEffect(() => {
+    if (ourPickBadge !== 'trending' || trendingLocked || userTier === 'pro') return
+    const count = parseInt(localStorage.getItem(TRENDING_VIEW_KEY) ?? '0', 10)
+    localStorage.setItem(TRENDING_VIEW_KEY, String(count + 1))
+  }, [ourPickBadge]) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
+      <style>{`
+        @keyframes trendPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,.5); }
+          50%      { box-shadow: 0 0 0 5px rgba(245,158,11,0); }
+        }
+        @keyframes offbeatPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(20,184,166,.5); }
+          50%      { box-shadow: 0 0 0 5px rgba(20,184,166,0); }
+        }
+        @keyframes sweep { 0% { left:-38%; } 100% { left:100%; } }
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes sectionReveal {
+          from { opacity:0; transform:translateY(4px) }
+          to   { opacity:1; transform:translateY(0) }
+        }
+      `}</style>
+
       {/* Backdrop */}
       <div
         onClick={() => { if (!closing.current) { closing.current = true; onClose() } }}
@@ -283,6 +318,32 @@ export function PinCard({
           >
             {isFavourited ? '❤️' : '🤍'}
           </button>
+
+          {/* Hero badge — trending or hidden gem */}
+          {ourPickBadge === 'trending' && !trendingLocked && (
+            <div style={{
+              position: 'absolute', top: 12, left: 12, zIndex: 6,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '4px 9px', borderRadius: 7,
+              background: 'rgba(245,158,11,.28)', border: '1px solid rgba(245,158,11,.45)',
+              backdropFilter: 'blur(6px)', fontSize: 10, fontWeight: 700, color: '#f59e0b',
+            }}>
+              <span className="ms fill" style={{ fontSize: 10 }}>trending_up</span>
+              Trending now
+            </div>
+          )}
+          {ourPickBadge === 'hidden_gem' && (
+            <div style={{
+              position: 'absolute', top: 12, left: 12, zIndex: 6,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '4px 9px', borderRadius: 7,
+              background: 'rgba(20,184,166,.25)', border: '1px solid rgba(20,184,166,.4)',
+              backdropFilter: 'blur(6px)', fontSize: 10, fontWeight: 700, color: '#14b8a6',
+            }}>
+              <span className="ms fill" style={{ fontSize: 10 }}>diamond</span>
+              Hidden gem
+            </div>
+          )}
         </div>
 
         {/* Scrollable body */}
@@ -366,6 +427,103 @@ export function PinCard({
               )}
             </div>
           ) : null}
+
+          {/* Trending description block */}
+          {ourPickBadge === 'trending' && !trendingLocked && (
+            <div style={{
+              position: 'relative', overflow: 'hidden',
+              background: '#160f00',
+              border: '1px solid rgba(245,158,11,.3)',
+              borderRadius: 12, padding: '12px 12px 12px 14px', marginBottom: 14,
+            }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(to bottom,#f59e0b,#d97706)', borderRadius: '12px 0 0 12px' }} />
+              <div style={{ position: 'absolute', top: -30, left: -30, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,.18),transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#f59e0b', marginBottom: 8, position: 'relative' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', animation: 'trendPulse 1.8s infinite', flexShrink: 0 }} />
+                What's happening here
+              </div>
+              {badgeReason && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 7, position: 'relative' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(245,158,11,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    <span className="ms fill" style={{ fontSize: 12, color: '#f59e0b' }}>trending_up</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}>{badgeReason}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 7, position: 'relative' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(245,158,11,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span className="ms fill" style={{ fontSize: 12, color: '#f59e0b' }}>groups</span>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}>People are visiting this <strong style={{ color: '#f5f0ea' }}>significantly more</strong> than a few months ago</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, position: 'relative' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(245,158,11,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span className="ms fill" style={{ fontSize: 12, color: '#f59e0b' }}>videocam</span>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}>Showing up in recent <strong style={{ color: '#f5f0ea' }}>travel content</strong> for this area</span>
+              </div>
+            </div>
+          )}
+
+          {/* Offbeat / hidden gem block */}
+          {ourPickBadge === 'hidden_gem' && (
+            <div style={{
+              position: 'relative', overflow: 'hidden',
+              background: '#001412',
+              border: '1px solid rgba(20,184,166,.28)',
+              borderRadius: 12, padding: '12px 12px 12px 14px', marginBottom: 14,
+            }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'linear-gradient(to bottom,#14b8a6,#0d9488)', borderRadius: '12px 0 0 12px' }} />
+              <div style={{ position: 'absolute', top: -30, left: -30, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle,rgba(20,184,166,.15),transparent 70%)', pointerEvents: 'none' }} />
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: '#14b8a6', marginBottom: 8, position: 'relative' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#14b8a6', animation: 'offbeatPulse 1.8s infinite', flexShrink: 0 }} />
+                Why this is offbeat
+              </div>
+              {badgeReason && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 7, position: 'relative' }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(20,184,166,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    <span className="ms fill" style={{ fontSize: 12, color: '#14b8a6' }}>explore</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}>{badgeReason}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 7, position: 'relative' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(20,184,166,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span className="ms fill" style={{ fontSize: 12, color: '#14b8a6' }}>people</span>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}><strong style={{ color: '#f5f0ea' }}>Most visitors skip this</strong> — a fraction of the foot traffic of similar spots</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, position: 'relative' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 6, background: 'rgba(20,184,166,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <span className="ms fill" style={{ fontSize: 12, color: '#14b8a6' }}>photo_camera</span>
+                </div>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,.72)', lineHeight: 1.5 }}>Rarely photographed — most angles here are still <strong style={{ color: '#f5f0ea' }}>undiscovered</strong></span>
+              </div>
+            </div>
+          )}
+
+          {/* Trending locked — free gate */}
+          {ourPickBadge === 'trending' && trendingLocked && (
+            <div style={{
+              background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+              borderRadius: 12, padding: 14, marginBottom: 14,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textAlign: 'center',
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(245,158,11,.13)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="ms fill" style={{ fontSize: 18, color: '#f59e0b' }}>lock</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-1)' }}>Trending insights are Pro</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-3)', lineHeight: 1.55 }}>Go Pro to see what's driving the buzz on every trending place.</div>
+              <button style={{
+                width: '100%', padding: 9,
+                background: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))',
+                border: 'none', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                color: '#1a1200', cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                Go Pro · $9.99/mo
+              </button>
+            </div>
+          )}
 
           {/* Analysis strip — shimmer while loading */}
           {details == null ? (
@@ -542,13 +700,25 @@ export function PinCard({
                 onClick={onAdd}
                 style={{
                   width: '100%', padding: '13px 0', borderRadius: 14,
-                  border: isSelected ? '1px solid rgba(212,168,83,.35)' : 'none',
-                  cursor: 'pointer',
+                  border: isSelected
+                    ? '1px solid rgba(212,168,83,.35)'
+                    : trendingLocked ? '1px solid var(--color-border)' : 'none',
+                  cursor: trendingLocked ? 'default' : 'pointer',
                   fontSize: '0.9rem', fontWeight: 700,
-                  background: isSelected ? 'transparent' : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-                  color: isSelected ? 'var(--color-primary)' : '#0f0d0c',
-                  boxShadow: isSelected ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
+                  background: isSelected
+                    ? 'transparent'
+                    : trendingLocked
+                    ? 'var(--color-surface2)'
+                    : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+                  color: isSelected
+                    ? 'var(--color-primary)'
+                    : trendingLocked
+                    ? 'var(--color-text-3)'
+                    : '#0f0d0c',
+                  opacity: trendingLocked ? 0.35 : 1,
+                  boxShadow: isSelected || trendingLocked ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
                   transition: 'all 0.15s ease',
+                  pointerEvents: trendingLocked ? 'none' : 'auto',
                 }}
               >
                 {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
