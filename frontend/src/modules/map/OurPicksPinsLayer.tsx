@@ -1,5 +1,8 @@
 import { Marker } from 'react-map-gl/maplibre'
-import { PICKS_PIN_SIZE, PICKS_PIN_BG, BADGE_COLORS } from './pin-visual'
+import {
+  PICKS_PIN_SIZE, PICKS_PIN_BG, BADGE_COLORS,
+  OFFBEAT_PIN_BG, OFFBEAT_PIN_COLOR, TRENDING_PIN_COLOR,
+} from './pin-visual'
 import { CATEGORY_ICONS } from './types'
 
 export interface PlacePickFE {
@@ -20,6 +23,23 @@ const BADGE_SYMBOL: Record<string, string> = {
   getting_busy: '!',
 }
 
+function pinBackground(badge: PlacePickFE['badge']): string {
+  if (badge === 'hidden_gem') return OFFBEAT_PIN_BG
+  return PICKS_PIN_BG  // trending, getting_busy, null → amber
+}
+
+function pinIcon(badge: PlacePickFE['badge'], category: string): string {
+  if (badge === 'trending') return 'local_fire_department'
+  if (badge === 'hidden_gem') return 'explore'
+  return CATEGORY_ICONS[category] ?? 'place'
+}
+
+function pinGlow(badge: PlacePickFE['badge']): string {
+  if (badge === 'hidden_gem') return `0 2px 14px ${OFFBEAT_PIN_COLOR}80`
+  if (badge === 'trending') return `0 2px 14px ${TRENDING_PIN_COLOR}99`
+  return '0 2px 8px rgba(0,0,0,0.4)'
+}
+
 interface Props {
   picks: PlacePickFE[]
   activePinId: string | null
@@ -33,7 +53,9 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
         const isActive = activePinId === pick.place_id
         const size = isActive ? PICKS_PIN_SIZE + 4 : PICKS_PIN_SIZE
         const badgeColor = pick.badge ? BADGE_COLORS[pick.badge] : null
-        const categoryIcon = CATEGORY_ICONS[pick.category] ?? 'place'
+        const icon = pinIcon(pick.badge, pick.category)
+        const bg   = pinBackground(pick.badge)
+        const glow = pinGlow(pick.badge)
 
         return (
           <Marker
@@ -52,9 +74,9 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
                   width: size,
                   height: size,
                   borderRadius: '50%',
-                  background: PICKS_PIN_BG,
+                  background: bg,
                   border: '2px solid rgba(255,255,255,0.85)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                  boxShadow: glow,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -64,7 +86,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
                 }}
               >
                 <span className="ms fill" style={{ fontSize: size * 0.45, color: '#fff', lineHeight: 1 }}>
-                  {categoryIcon}
+                  {icon}
                 </span>
               </div>
               {pick.badge && badgeColor && (
@@ -84,7 +106,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
                     fontSize: 8,
                     fontWeight: 700,
                     color: '#fff',
-                    padding: '0 2px',
+                    padding: '0 3px',
                   }}
                 >
                   {BADGE_SYMBOL[pick.badge] ?? ''}
