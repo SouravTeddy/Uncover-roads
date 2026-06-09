@@ -620,6 +620,7 @@ export function buildReelCards(
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string> = new Map(),
+  cityCountries: Record<string, string> = {},
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
@@ -634,7 +635,15 @@ export function buildReelCards(
   const fromDays = [...new Set(itinerary.days.map(d => d.city).filter(Boolean))];
   const fromList = itinerary.cities?.filter(Boolean) ?? [];
   const uniqueCities = fromList.length > fromDays.length ? fromList : fromDays.length > 1 ? fromDays : fromList.length > 0 ? fromList : [itinerary.city ?? ''];
-  const cityLabel = uniqueCities.length > 2
+  // Derive country-based label — falls back to city name if country not yet in map
+  const uniqueCountries = [...new Set(
+    uniqueCities.map(c => cityCountries[c] ?? cityCountries[c.toLowerCase()] ?? null).filter(Boolean)
+  )] as string[];
+  const cityLabel = uniqueCountries.length > 1
+    ? `${uniqueCountries[0]} +${uniqueCountries.length - 1}`
+    : uniqueCountries.length === 1
+    ? uniqueCountries[0]
+    : uniqueCities.length > 2
     ? `${uniqueCities[0]} +${uniqueCities.length - 1}`
     : uniqueCities.length === 2
     ? uniqueCities.join(' · ')

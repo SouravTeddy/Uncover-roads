@@ -38,7 +38,7 @@ export function ItineraryReelScreen() {
   const { state, dispatch } = useAppStore();
   const {
     engineItinerary, reelSavedId, savedItineraries,
-    journey, weather, persona, personaProfile, city,
+    journey, weather, persona, personaProfile, city, cityCountries,
   } = state;
 
   const savedItem = reelSavedId
@@ -105,7 +105,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries);
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);

@@ -99,7 +99,7 @@ export function MapScreen() {
   // Multi-city overlay state
   const [pendingNewCity, setPendingNewCity] = useState<{ city: string; lat: number; lon: number; transit: DetectedTransit | null } | null>(null);
 
-  const handleNewCity = useCallback((newCity: string, lat: number, lon: number, transit: DetectedTransit | null) => {
+  const handleNewCity = useCallback((newCity: string, lat: number, lon: number, transit: DetectedTransit | null, country: string | null) => {
     if (cityFootprints.some(f => f.city === newCity)) return;
     setPendingNewCity({ city: newCity, lat, lon, transit });
     const emoji = '🌍';
@@ -107,6 +107,7 @@ export function MapScreen() {
       type: 'ADD_CITY_FOOTPRINT',
       footprint: { city: newCity, emoji, pinCount: 1, lat, lon, transitMode: transit?.mode },
     });
+    if (country) dispatch({ type: 'SET_CITY_COUNTRY', city: newCity, country });
   }, [cityFootprints, dispatch]);
 
   usePinCityDetector(
