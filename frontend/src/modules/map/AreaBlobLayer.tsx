@@ -53,20 +53,18 @@ function seedGeoJSON(seeds: HeatmapPoint[]) {
   }
 }
 
-// Neighbourhood-centroid layer — city-wide distinct blobs at low zoom
+// Neighbourhood-centroid layer — reveals as user zooms in, fades when pins take over
 function makeHoodLayer(id: string, color: string): LayerProps {
   return {
     id,
     type: 'heatmap',
     paint: {
       'heatmap-weight': expr(['get', 'weight']),
-      // Large radius at city-overview so each neighbourhood fills a visible blob.
-      // Shrinks as user zooms in (pin-density layer takes over).
       'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
-        7,  60,
-        9,  80,
-        11, 60,
-        13,  0,
+        9.5, 15,
+        11,  40,
+        12,  60,
+        13,   0,
       ]),
       'heatmap-intensity': 1.8,
       'heatmap-color': expr([
@@ -76,19 +74,19 @@ function makeHoodLayer(id: string, color: string): LayerProps {
         0.35, `rgba(${color},0.30)`,
         1.0,  `rgba(${color},0.50)`,
       ]),
-      // Visible when zoomed out; fades as pin layer takes over
+      // Hidden when zoomed out, reveals on zoom-in, fades when pins appear
       'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
-        8,  0.0,
-        9,  0.92,
-        12, 0.85,
-        13, 0.0,
+        9,   0.0,
+        9.5, 0.0,
+        10,  0.85,
+        12,  0.85,
+        13,  0.0,
       ]),
     },
   }
 }
 
-// Pin-density layer — visible from city overview down to local street level.
-// Large radius at low zoom creates organic city-wide blobs from real pin clusters.
+// Pin-density layer — same reveal curve, fades at street level where pins take over
 function makePinLayer(id: string, color: string): LayerProps {
   return {
     id,
@@ -96,10 +94,10 @@ function makePinLayer(id: string, color: string): LayerProps {
     paint: {
       'heatmap-weight': expr(['get', 'weight']),
       'heatmap-radius': expr(['interpolate', ['linear'], ['zoom'],
-        8,  40,
-        10, 25,
-        12, 45,
-        14, 80,
+        9.5, 15,
+        11,  35,
+        12,  50,
+        14,  80,
       ]),
       'heatmap-intensity': 1.4,
       'heatmap-color': expr([
@@ -109,12 +107,12 @@ function makePinLayer(id: string, color: string): LayerProps {
         0.4, `rgba(${color},0.26)`,
         1.0, `rgba(${color},0.44)`,
       ]),
-      // Starts visible at city overview zoom, fades at street level where pins take over
       'heatmap-opacity': expr(['interpolate', ['linear'], ['zoom'],
-        8,  0.0,
-        9,  0.85,
-        13, 0.7,
-        14, 0.0,
+        9,   0.0,
+        9.5, 0.0,
+        10,  0.85,
+        13,  0.7,
+        14,  0.0,
       ]),
     },
   }
@@ -127,24 +125,23 @@ const pinParkLayer  = makePinLayer('area-blobs-park-layer',  '95,165,112')
 
 // Normal paint values — mirror what's inside makeHoodLayer / makePinLayer
 const hoodOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
-  8, 0.0, 9, 0.92, 12, 0.85, 13, 0.0,
+  9, 0.0, 9.5, 0.0, 10, 0.85, 12, 0.85, 13, 0.0,
 ])
 const hoodRadiusNormal = expr(['interpolate', ['linear'], ['zoom'],
-  7, 60, 9, 80, 11, 60, 13, 0,
+  9.5, 15, 11, 40, 12, 60, 13, 0,
 ])
 const pinOpacityNormal = expr(['interpolate', ['linear'], ['zoom'],
-  8, 0.0, 9, 0.85, 13, 0.7, 14, 0.0,
+  9, 0.0, 9.5, 0.0, 10, 0.85, 13, 0.7, 14, 0.0,
 ])
-// Hold paint — stays visible at street-level zoom while pins are still loading
-// Radius must be held too; opacity alone does nothing when radius is 0
+// Hold paint — extends visibility while pins are still loading, same lower bound
 const hoodOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
-  8, 0.0, 9, 0.92, 14, 0.85, 16, 0.0,
+  9, 0.0, 9.5, 0.0, 10, 0.85, 14, 0.85, 16, 0.0,
 ])
 const hoodRadiusHold = expr(['interpolate', ['linear'], ['zoom'],
-  7, 60, 9, 80, 11, 60, 13, 30, 15, 18, 16, 0,
+  9.5, 15, 11, 40, 12, 60, 13, 30, 15, 18, 16, 0,
 ])
 const pinOpacityHold = expr(['interpolate', ['linear'], ['zoom'],
-  8, 0.0, 9, 0.85, 15, 0.7, 16, 0.0,
+  9, 0.0, 9.5, 0.0, 10, 0.85, 15, 0.7, 16, 0.0,
 ])
 
 function pinsInViewport(places: Place[], bbox: [number, number, number, number]): boolean {
