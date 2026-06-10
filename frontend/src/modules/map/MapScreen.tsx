@@ -501,8 +501,10 @@ export function MapScreen() {
   const activeOurPickBadge = activeOurPickMatch?.badge ?? null
   const activeOurPickBadgeReason = activeOurPickMatch?.badge_reason ?? null
 
+  const badgedPicks = ourPicks.filter(p => p.badge !== null)
+
   const curatedCount = ourPicksLoaded
-    ? ourPicks.length + liveEvents.length + recommendedPlaces.length
+    ? badgedPicks.length + liveEvents.length + recommendedPlaces.length
     : 0
 
   const displayCount = activeCategories.length > 0 ? filteredPlaces.length : places.length
@@ -577,10 +579,10 @@ export function MapScreen() {
           />
         )}
 
-        {/* Our Picks layer */}
+        {/* Our Picks layer — only show badge-bearing picks (trending/hidden_gem/getting_busy) */}
         {activeFilter === 'curated' && (
           <OurPicksPinsLayer
-            picks={ourPicks}
+            picks={badgedPicks}
             activePinId={activePinId ?? null}
             onPinClick={handlePicksPinClick}
           />
