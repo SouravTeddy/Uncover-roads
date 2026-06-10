@@ -6,7 +6,39 @@ function newSessionId(): string {
   return Math.random().toString(36).slice(2);
 }
 
-interface GeoResult { lat: number; lon: number; name: string; address: string; country?: string }
+interface GeoResult { lat: number; lon: number; name: string; address: string; country?: string; countryCode?: string }
+
+const BLOCKED_COUNTRY_CODES = new Set([
+  'kp',  // North Korea
+  'sy',  // Syria
+  'ir',  // Iran
+  'cu',  // Cuba
+  'mm',  // Myanmar
+  'af',  // Afghanistan
+  'ly',  // Libya (active conflict)
+  'ye',  // Yemen
+  'sd',  // Sudan
+])
+
+const BLOCKED_KEYWORDS = [
+  'north korea', 'dprk', 'pyongyang',
+  'syria', 'damascus', 'aleppo',
+  'iran', 'tehran',
+  'cuba', 'havana',
+  'myanmar', 'rangoon', 'yangon', 'naypyidaw',
+  'afghanistan', 'kabul',
+  'libya', 'tripoli',
+  'yemen', 'sanaa', "sana'a",
+  'sudan', 'khartoum',
+]
+
+function isBlockedResult(r: AutocompleteResult & { _geo?: GeoResult }): boolean {
+  // Check country code for Nominatim results
+  if (r._geo?.countryCode && BLOCKED_COUNTRY_CODES.has(r._geo.countryCode)) return true
+  // Check text for Google results (no country code available pre-geocode)
+  const text = `${r.main_text} ${r.secondary_text ?? ''} ${r._geo?.country ?? ''}`.toLowerCase()
+  return BLOCKED_KEYWORDS.some(kw => text.includes(kw))
+}
 
 // Nominatim fallback — used when Google Places returns nothing
 async function nominatimCitySearch(query: string): Promise<Array<AutocompleteResult & { _geo?: GeoResult }>> {
@@ -38,6 +70,7 @@ async function nominatimCitySearch(query: string): Promise<Array<AutocompleteRes
           name: mainText,
           address: r.display_name as string,
           country: addr.country ?? undefined,
+          countryCode: (addr.country_code ?? '').toLowerCase(),
         },
       };
     });
@@ -67,18 +100,21 @@ export function useGoogleCitySearch() {
         if (predictions.length === 0) {
           predictions = await placesAutocomplete(input, sessionIdRef.current, 'establishment');
         }
-        if (predictions.length > 0) {
-          setResults(predictions);
-        } else {
+        const filteredPredictions = predictions.filter(r => !isBlockedResult(r));
+        if (filteredPredictions.length > 0) {
+          setResults(filteredPredictions);
+        } else if (predictions.length === 0) {
           // Google returned nothing — fall back to Nominatim
           const fallback = await nominatimCitySearch(input);
-          setResults(fallback);
+          setResults(fallback.filter(r => !isBlockedResult(r)));
+        } else {
+          setResults([]);
         }
       } catch {
         // On any error try Nominatim
         try {
           const fallback = await nominatimCitySearch(input);
-          setResults(fallback);
+          setResults(fallback.filter(r => !isBlockedResult(r)));
         } catch {
           setResults([]);
         }
@@ -89,7 +125,9 @@ export function useGoogleCitySearch() {
   }, []);
 
   const selectResult = useCallback(
-    async (result: AutocompleteResult & { _geo?: GeoResult }): Promise<GeoResult | null> => {
+    async (result: AutocompleteResult & { _geo?: GeoResult }): Promise<GeoResult | null | 'blocked'> => {
+      // Belt-and-suspenders: block even if somehow a blocked result reaches selection
+      if (isBlockedResult(result)) return 'blocked';
       // Nominatim results already carry geo — no extra API call needed
       if (result.place_id.startsWith('nominatim_')) {
         sessionIdRef.current = newSessionId();
@@ -105,7 +143,10 @@ export function useGoogleCitySearch() {
       const country = result.secondary_text
         ? result.secondary_text.split(',').at(-1)?.trim() || undefined
         : undefined;
-      return { ...geo, country };
+      const resolvedGeo: GeoResult = { ...geo, country };
+      // Final check: verify resolved geo doesn't belong to a blocked country
+      if (isBlockedResult({ ...result, _geo: resolvedGeo })) return 'blocked';
+      return resolvedGeo;
     },
     [],
   );

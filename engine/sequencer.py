@@ -73,7 +73,24 @@ def _persona_start_min(ctx: EngineContext) -> int:
 
 
 def _assign_scheduled_times(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:
-    current_min = _persona_start_min(ctx)
+    # Day 1 start: arrival time takes priority over persona
+    if ctx.user_arrival_time:
+        try:
+            ah, am = (int(x) for x in ctx.user_arrival_time.split(":")[:2])
+            arrival_min = ah * 60 + am
+            if arrival_min < 360:      # before 6 AM — rest, start 9 AM
+                current_min = 9 * 60
+            elif arrival_min < 540:    # 6–9 AM — start 1h after arrival
+                current_min = arrival_min + 60
+            elif arrival_min < 1020:   # 9 AM–5 PM — start 30 min after arrival
+                current_min = arrival_min + 30
+            else:                      # evening/night arrival — start 9 AM
+                current_min = 9 * 60
+        except (ValueError, AttributeError):
+            current_min = _persona_start_min(ctx)
+    else:
+        current_min = _persona_start_min(ctx)
+
     buffer_min = ctx.persona.get("day_buffer_min", 30)
     for stop in stops:
         h, m = divmod(int(current_min), 60)
@@ -115,8 +132,31 @@ _MORNING_AFFINITY: dict[str, float] = {
 }
 
 
+def _earliest_open_min(stop: EngineStop) -> int | None:
+    """Returns the earliest open time across all known days, in minutes from midnight."""
+    mins = []
+    for h in (stop.opening_hours or []):
+        v = h.get("open_min")
+        if v is not None:
+            mins.append(v)
+    return min(mins) if mins else None
+
+
 def _first_stop_score(stop: EngineStop) -> float:
-    return _MORNING_AFFINITY.get(stop.category.lower(), 0.5)
+    """Higher score = better fit as the first stop of the day.
+
+    Combines category morning-affinity with actual opening hours:
+    a place that opens at 6 AM scores like a perfect-morning category
+    regardless of whether its category has high morning affinity.
+    """
+    category_score = _MORNING_AFFINITY.get(stop.category.lower(), 0.5)
+    earliest = _earliest_open_min(stop)
+    if earliest is None:
+        return category_score
+    # 360 min (6 AM) = 1.0 bonus, 600 min (10 AM) = 0.0 bonus, later = negative
+    opening_score = max(0.0, min(1.0, (600 - earliest) / 240.0))
+    # Weight: category 50%, opening time 50%
+    return category_score * 0.5 + opening_score * 0.5
 
 
 def _optimize_within_city(stops: list[EngineStop], ctx: EngineContext) -> list[EngineStop]:

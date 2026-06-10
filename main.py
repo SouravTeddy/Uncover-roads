@@ -30,6 +30,35 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+# ── Restricted locations ────────────────────────────────────────────────────
+_BLOCKED_CITY_KEYWORDS = frozenset([
+    # North Korea
+    'north korea', 'dprk', 'pyongyang',
+    # Syria
+    'syria', 'damascus', 'aleppo', 'homs',
+    # Iran
+    'iran', 'tehran', 'isfahan',
+    # Cuba
+    'cuba', 'havana',
+    # Myanmar
+    'myanmar', 'burma', 'yangon', 'rangoon', 'naypyidaw',
+    # Afghanistan
+    'afghanistan', 'kabul',
+    # Libya
+    'libya', 'tripoli',
+    # Yemen
+    'yemen', 'sanaa',
+    # Sudan
+    'sudan', 'khartoum',
+])
+
+
+def _is_restricted_city(city: str) -> bool:
+    """Return True if the city name matches a restricted destination."""
+    normalized = city.lower().strip()
+    return any(kw in normalized for kw in _BLOCKED_CITY_KEYWORDS)
+
+
 app = FastAPI()
 
 # CORS — only allow your Vercel frontend (update after deploying)
@@ -571,6 +600,9 @@ def map_data(
     Fallback: Overpass OSM (when Google API key not configured or returns empty).
     Results cached in Supabase map_data_cache by ~5km tile key for MAP_DATA_CACHE_TTL_HOURS.
     """
+    if city and _is_restricted_city(city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
+
     # Resolve search center
     clat = center_lat or lat
     clon = center_lon or lon
@@ -3356,6 +3388,9 @@ def _why_for_you(
 async def engine_itinerary(body: EngineItineraryPayload):
     """Build an itinerary from user-selected places. Called from MapScreen Build button."""
     from datetime import date as _date, timedelta as _td
+
+    if _is_restricted_city(body.city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
 
     days = max(body.days, 1)
     start = _date.fromisoformat(body.startDate)
