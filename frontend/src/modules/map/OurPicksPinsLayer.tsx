@@ -44,12 +44,13 @@ interface Props {
   picks: PlacePickFE[]
   activePinId: string | null
   onPinClick: (placeId: string) => void
+  selectedPlaceIds?: Set<string>
 }
 
-export function OurPicksPinsLayer({ picks, activePinId, onPinClick }: Props) {
+export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds }: Props) {
   return (
     <>
-      {picks.map((pick) => {
+      {picks.filter(pick => !selectedPlaceIds?.has(pick.place_id)).map((pick) => {
         const isActive = activePinId === pick.place_id
         const size = isActive ? PICKS_PIN_SIZE + 4 : PICKS_PIN_SIZE
         const badgeColor = pick.badge ? BADGE_COLORS[pick.badge] : null

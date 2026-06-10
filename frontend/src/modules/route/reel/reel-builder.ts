@@ -827,7 +827,17 @@ export function buildReelCards(
       cards.push(stopCard);
 
       const recos = recosByStop.get(stop.id);
-      if (recos) cards.push(...recos.map(r => ({ ...r, anchorPhotoUrl: stopImageUrl })));
+      if (recos) {
+        const ADVISORY_TRIGGERS = new Set([
+          'density_excess', 'density_sparse', 'geo_efficiency',
+          'time_balance', 'category_diversity', 'social_gap',
+          'budget_mismatch', 'walking_gap', 'crowd_peak',
+        ]);
+        cards.push(...recos.map(r => ({
+          ...r,
+          anchorPhotoUrl: ADVISORY_TRIGGERS.has(r.trigger) ? null : stopImageUrl,
+        })));
+      }
 
       // Intel cards that reference this stop (by placeId match)
       // Suppress 'insert' type — the stop card's orderReason already covers it

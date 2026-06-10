@@ -585,6 +585,7 @@ export function MapScreen() {
             picks={badgedPicks}
             activePinId={activePinId ?? null}
             onPinClick={handlePicksPinClick}
+            selectedPlaceIds={selectedIds}
           />
         )}
 
@@ -835,6 +836,7 @@ export function MapScreen() {
           onPlaceAction={(id) => {
             const place = places.find(p => p.id === id)
             if (place) {
+              if (activeFilter !== 'all') setFilter('all')
               mapHandleRef.current?.flyTo(place.lat, place.lon, 15)
               dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id })
             }
