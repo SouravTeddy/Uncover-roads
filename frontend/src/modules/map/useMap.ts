@@ -113,20 +113,52 @@ export function useMap(activeCategories: string[] = []) {
 
     const nonEvents = places.filter(p => p.category !== 'event');
 
+    const archetypeLabel: Record<string, string> = {
+      explorer:          'Matched to your explorer style',
+      wanderer:          'Curated for wanderers like you',
+      foodie:            'Picked for your food interests',
+      gastronaut:        'Picked for your food interests',
+      culture:           'Aligned with your cultural taste',
+      slowscholar:       'Aligned with your cultural taste',
+      adventure:         'Suited for adventurers',
+      nightcreature:     'Fits your evening-first style',
+      aesthete:          'Chosen for its design and beauty',
+      flaneur:           'Suited for open-ended wandering',
+      neighbourhoodlocal:'Off the tourist trail, just for you',
+      efficientexplorer: 'High-value stop for your route',
+      ritualseeker:      'Slow and intentional — your pace',
+    };
+    const fallbackReason =
+      archetypeLabel[persona.archetype?.toLowerCase().replace(/[\s_-]/g, '') ?? ''] ?? 'Picked for you';
+
     // If no mapping resolved, return all non-event places
     if (targetCategories.size === 0) {
       return nonEvents.map(p => ({
         ...p,
-        reason: 'Curated for your travel style',
+        reason: fallbackReason,
         reasonSignal: 'persona' as const,
       }));
     }
+
+    const catLabel: Record<string, string> = {
+      museum:     'Matches your interest in culture',
+      gallery:    'Matches your interest in art',
+      historic:   'Matches your interest in heritage',
+      temple:     'Matches your interest in heritage',
+      park:       'Matches your love of open spaces',
+      restaurant: 'Matches your food interests',
+      cafe:       'Matches your café culture interest',
+      bar:        'Matches your nightlife preference',
+      market:     'Matches your local market interest',
+      place:      'Aligns with your neighbourhood curiosity',
+      tourism:    'A spot worth adding to your day',
+    };
 
     return nonEvents
       .filter(p => targetCategories.has(p.category))
       .map(p => ({
         ...p,
-        reason: 'Recommended for your travel style',
+        reason: catLabel[p.category] ?? fallbackReason,
         reasonSignal: 'persona' as const,
       }));
   }

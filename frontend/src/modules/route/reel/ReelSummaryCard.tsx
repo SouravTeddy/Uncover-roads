@@ -16,6 +16,22 @@ const STYLE_TAG: Record<string, string> = {
   ritualseeker:        'Slow & intentional',
 };
 
+const PERSONA_SUMMARY_LINE: Record<string, string> = {
+  explorer:          'Built around your explorer instincts.',
+  wanderer:          'Shaped for wanderers who move slow and notice more.',
+  foodie:            'Woven around the places worth eating at.',
+  gastronaut:        'Every stop chosen with your palate in mind.',
+  flaneur:           'A route made for drifting — no agenda, just good places.',
+  slowscholar:       'Depth over distance — each stop earns its place.',
+  neighbourhoodlocal:'Off the tourist circuit, entirely on purpose.',
+  efficientexplorer: 'Maximum ground covered, minimum wasted time.',
+  aesthete:          'Curated for the eye — beauty at every turn.',
+  nightcreature:     'Front-loaded rest, back-loaded life. Your kind of day.',
+  ritualseeker:      'Slow, intentional, unhurried — built for your pace.',
+  culture:           'Rich in heritage and meaning — your kind of journey.',
+  adventure:         'High-energy stops, your kind of momentum.',
+};
+
 function travelStyleTag(persona: string): string {
   const key = persona.toLowerCase().replace(/[\s_-]/g, '');
   return STYLE_TAG[key] ?? persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -116,7 +132,8 @@ export function ReelSummaryCard({ card }: Props) {
           ))}
           {card.intelItems.length === 0 && (
             <div style={{ color: '#a09880', fontSize: 14, fontStyle: 'italic' }}>
-              Route optimised for your travel style.
+              {PERSONA_SUMMARY_LINE[card.persona?.toLowerCase().replace(/[\s_-]/g, '') ?? '']
+                ?? 'Route optimised for your travel style.'}
             </div>
           )}
         </div>

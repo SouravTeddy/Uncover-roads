@@ -659,7 +659,11 @@ export function buildReelCards(
 
   // City image: prefer city-level photo, fall back to first stop photo
   const primaryCity = itinerary.city ?? itinerary.cities[0] ?? '';
-  const introImage = cityPhotoMap.get(primaryCity.toLowerCase()) ?? null;
+  const firstStop = itinerary.days[0]?.stops[0];
+  const firstStopPhotoUrl = firstStop?.imageUrl
+    ?? (firstStop?.photoRef ? getPlacePhotoUrl(firstStop.photoRef, 800, 1200) : null)
+    ?? null;
+  const introImage = cityPhotoMap.get(primaryCity.toLowerCase()) ?? firstStopPhotoUrl ?? null;
 
   // Aggregate engine changes for intro summary section
   const allMessages = itinerary.days.flatMap(d => d.messages ?? []);

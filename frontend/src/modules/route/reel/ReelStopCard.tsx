@@ -332,7 +332,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const todos          = whatToDo(stop.category);
   const hoursStr       = todayHours(stop.weekdayText);
-  const reasonText     = card.orderReason ?? card.orderConsequence ?? null;
+  const reasonText     = card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null);
 
   // Identity label from discovery stage
   const stageLabel = stop.stage === 'hidden_gem'
