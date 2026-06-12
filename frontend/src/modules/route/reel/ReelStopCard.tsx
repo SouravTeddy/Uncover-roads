@@ -383,7 +383,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       )}
 
       {/* ── stk-body: content zone, z-index:10 ─────────────────── */}
-      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
+      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
 
         {/* Row 1: counter pill + identity chips */}
         <div style={{ display: 'flex', flexDirection: 'row', gap: 7, marginBottom: 6, flexWrap: 'wrap' }}>
