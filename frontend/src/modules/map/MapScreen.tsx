@@ -495,12 +495,16 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const activeOurPickBadge = activePlace
-    ? (ourPicks.find(p => p.place_id === activePlace.id)?.badge ?? null)
+  const activeOurPickMatch = activePlace
+    ? ourPicks.find(p => p.place_id === activePlace.id) ?? null
     : null
+  const activeOurPickBadge = activeOurPickMatch?.badge ?? null
+  const activeOurPickBadgeReason = activeOurPickMatch?.badge_reason ?? null
+
+  const badgedPicks = ourPicks.filter(p => p.badge !== null)
 
   const curatedCount = ourPicksLoaded
-    ? ourPicks.length + liveEvents.length + recommendedPlaces.length
+    ? badgedPicks.length + liveEvents.length + recommendedPlaces.length
     : 0
 
   const displayCount = activeCategories.length > 0 ? filteredPlaces.length : places.length
@@ -531,20 +535,22 @@ export function MapScreen() {
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
       >
-        <FamousPinsLayer
-          places={filteredPlaces.filter(p =>
-            !selectedIds.has(p.id) &&
-            !ourPicks.some(pick =>
-              pick.place_id === p.id ||
-              pick.place_id === p.place_id ||
-              pick.name.toLowerCase() === p.title.toLowerCase()
-            )
-          )}
-          activePlaceId={activePinId}
-          discoveryMode="anchor"
-          isDark={isDark}
-          onPinClick={handlePinClick}
-        />
+        {activeFilter !== 'curated' && (
+          <FamousPinsLayer
+            places={filteredPlaces.filter(p =>
+              !selectedIds.has(p.id) &&
+              !ourPicks.some(pick =>
+                pick.place_id === p.id ||
+                pick.place_id === p.place_id ||
+                pick.name.toLowerCase() === p.title.toLowerCase()
+              )
+            )}
+            activePlaceId={activePinId}
+            discoveryMode="anchor"
+            isDark={isDark}
+            onPinClick={handlePinClick}
+          />
+        )}
         <ReferencePinsLayer
           pins={state.referencePins}
           activePinId={activePinId}
@@ -573,12 +579,13 @@ export function MapScreen() {
           />
         )}
 
-        {/* Our Picks layer */}
+        {/* Our Picks layer — only show badge-bearing picks (trending/hidden_gem/getting_busy) */}
         {activeFilter === 'curated' && (
           <OurPicksPinsLayer
-            picks={ourPicks}
+            picks={badgedPicks}
             activePinId={activePinId ?? null}
             onPinClick={handlePicksPinClick}
+            selectedPlaceIds={selectedIds}
           />
         )}
 
@@ -829,6 +836,7 @@ export function MapScreen() {
           onPlaceAction={(id) => {
             const place = places.find(p => p.id === id)
             if (place) {
+              if (activeFilter !== 'all') setFilter('all')
               mapHandleRef.current?.flyTo(place.lat, place.lon, 15)
               dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id })
             }
@@ -979,6 +987,8 @@ export function MapScreen() {
           travelStartDate={state.travelStartDate}
           travelEndDate={state.travelEndDate}
           ourPickBadge={activeOurPickBadge}
+          badgeReason={activeOurPickBadgeReason}
+          userTier={state.userTier}
         />
       )}
 

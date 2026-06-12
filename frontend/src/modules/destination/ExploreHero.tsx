@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhoto } from './useCityPhoto';
 import type { Persona } from '../../shared/types';
@@ -20,7 +20,7 @@ const ARCHETYPE_PHOTOS: Record<string, string> = {
   pulse:         'photo-1524231757912-21f4fe3a7200', // Istanbul night
 };
 
-const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1476514525405-09b77a9d1f66?w=800&q=80';
+const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&q=80';
 
 export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreHeroProps) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -44,8 +44,19 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
     photoUrl = FALLBACK_PHOTO;
   }
 
-  // Reset failed state when the city changes
-  const handleError = () => setImgFailed(true);
+  const [activeSrc, setActiveSrc] = useState(photoUrl);
+  useEffect(() => {
+    setActiveSrc(photoUrl);
+    setImgFailed(false);
+  }, [photoUrl]);
+
+  const handleError = () => {
+    if (activeSrc !== FALLBACK_PHOTO) {
+      setActiveSrc(FALLBACK_PHOTO);
+    } else {
+      setImgFailed(true);
+    }
+  };
 
   const watermarkLabel = city ? city.toUpperCase() : 'EXPLORE';
 
@@ -61,8 +72,8 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
       {/* Background image with Ken Burns animation */}
       {!imgFailed && (
         <img
-          key={photoUrl}
-          src={photoUrl}
+          key={activeSrc}
+          src={activeSrc}
           alt=""
           className="absolute inset-0 w-full h-full object-cover object-center"
           style={{ animation: 'heroKenBurns 12s ease-in-out infinite alternate' }}

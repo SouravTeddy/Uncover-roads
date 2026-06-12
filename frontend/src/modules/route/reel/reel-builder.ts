@@ -635,19 +635,21 @@ export function buildReelCards(
   const fromDays = [...new Set(itinerary.days.map(d => d.city).filter(Boolean))];
   const fromList = itinerary.cities?.filter(Boolean) ?? [];
   const uniqueCities = fromList.length > fromDays.length ? fromList : fromDays.length > 1 ? fromDays : fromList.length > 0 ? fromList : [itinerary.city ?? ''];
-  // Derive country-based label — falls back to city name if country not yet in map
-  const uniqueCountries = [...new Set(
-    uniqueCities.map(c => cityCountries[c] ?? cityCountries[c.toLowerCase()] ?? null).filter(Boolean)
-  )] as string[];
-  const cityLabel = uniqueCountries.length > 1
-    ? `${uniqueCountries[0]} +${uniqueCountries.length - 1}`
-    : uniqueCountries.length === 1
-    ? uniqueCountries[0]
-    : uniqueCities.length > 2
-    ? `${uniqueCities[0]} +${uniqueCities.length - 1}`
-    : uniqueCities.length === 2
-    ? uniqueCities.join(' · ')
-    : (itinerary.city ?? uniqueCities[0] ?? '');
+  // Country label only for multi-city trips — single city always shows the city name
+  const cityLabel = uniqueCities.length === 1
+    ? (itinerary.city ?? uniqueCities[0] ?? '')
+    : (() => {
+        const uniqueCountries = [...new Set(
+          uniqueCities.map(c => cityCountries[c] ?? cityCountries[c.toLowerCase()] ?? null).filter(Boolean)
+        )] as string[];
+        return uniqueCountries.length > 1
+          ? `${uniqueCountries[0]} +${uniqueCountries.length - 1}`
+          : uniqueCountries.length === 1
+          ? uniqueCountries[0]
+          : uniqueCities.length > 2
+          ? `${uniqueCities[0]} +${uniqueCities.length - 1}`
+          : uniqueCities.join(' · ');
+      })();
 
   // Totals for intro card
   const totalDurationMin = allStops.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);
@@ -659,7 +661,11 @@ export function buildReelCards(
 
   // City image: prefer city-level photo, fall back to first stop photo
   const primaryCity = itinerary.city ?? itinerary.cities[0] ?? '';
-  const introImage = cityPhotoMap.get(primaryCity.toLowerCase()) ?? null;
+  const firstStop = itinerary.days[0]?.stops[0];
+  const firstStopPhotoUrl = firstStop?.imageUrl
+    ?? (firstStop?.photoRef ? getPlacePhotoUrl(firstStop.photoRef, 800, 1200) : null)
+    ?? null;
+  const introImage = cityPhotoMap.get(primaryCity.toLowerCase()) ?? firstStopPhotoUrl ?? null;
 
   // Aggregate engine changes for intro summary section
   const allMessages = itinerary.days.flatMap(d => d.messages ?? []);
@@ -827,7 +833,17 @@ export function buildReelCards(
       cards.push(stopCard);
 
       const recos = recosByStop.get(stop.id);
-      if (recos) cards.push(...recos.map(r => ({ ...r, anchorPhotoUrl: stopImageUrl })));
+      if (recos) {
+        const ADVISORY_TRIGGERS = new Set([
+          'density_excess', 'density_sparse', 'geo_efficiency',
+          'time_balance', 'category_diversity', 'social_gap',
+          'budget_mismatch', 'walking_gap', 'crowd_peak',
+        ]);
+        cards.push(...recos.map(r => ({
+          ...r,
+          anchorPhotoUrl: ADVISORY_TRIGGERS.has(r.trigger) ? null : stopImageUrl,
+        })));
+      }
 
       // Intel cards that reference this stop (by placeId match)
       // Suppress 'insert' type — the stop card's orderReason already covers it

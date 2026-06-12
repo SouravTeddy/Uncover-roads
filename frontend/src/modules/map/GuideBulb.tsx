@@ -12,12 +12,14 @@ const KIND_ICON: Record<GuideMessage['kind'], string> = {
   area:      'explore',
   event:     'event',
   exploring: 'route',
+  peaceful:  'spa',
 }
 
 const KIND_COLOR: Record<GuideMessage['kind'], string> = {
   area:      '#60a5fa',
   event:     '#a5b4fc',
   exploring: '#4ade80',
+  peaceful:  '#6b9470',
 }
 
 // Inject keyframe animations once

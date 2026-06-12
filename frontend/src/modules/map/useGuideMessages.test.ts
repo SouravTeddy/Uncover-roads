@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { computeAreaText, computeBuildReadinessText, isGeographicCluster, useGuideMessages } from './useGuideMessages'
+import { computeAreaText, computeBuildReadinessText, isGeographicCluster, findPeacefulNearby, useGuideMessages } from './useGuideMessages'
 import type { Place, Persona, PersonaProfile } from '../../shared/types'
 
 function makePlace(overrides: Partial<Place> & { id: string }): Place {
@@ -113,6 +113,98 @@ describe('isGeographicCluster', () => {
       makePlace({ id: '3', lat: 48.855, lon: 2.330 }),
     ]
     expect(isGeographicCluster(places)).toBe(false)
+  })
+})
+
+// ── findPeacefulNearby ────────────────────────────────────────────────────────
+
+describe('findPeacefulNearby', () => {
+  const anchor = makePlace({ id: 'a1', title: 'Senso-ji', category: 'historic', lat: 35.7148, lon: 139.7967 })
+
+  it('finds a park within 700m of a selected place', () => {
+    // ~300m north of anchor
+    const park = makePlace({ id: 'p1', title: 'Hamarikyu Gardens', category: 'park', lat: 35.7175, lon: 139.7967 })
+    const result = findPeacefulNearby([anchor], [park], new Set())
+    expect(result).not.toBeNull()
+    expect(result?.peaceful.id).toBe('p1')
+    expect(result?.anchor.id).toBe('a1')
+  })
+
+  it('returns null when peaceful place is beyond 700m', () => {
+    // ~5km away
+    const park = makePlace({ id: 'p2', title: 'Shinjuku Gyoen', category: 'park', lat: 35.6852, lon: 139.7100 })
+    const result = findPeacefulNearby([anchor], [park], new Set())
+    expect(result).toBeNull()
+  })
+
+  it('ignores non-peaceful categories (cafe, restaurant)', () => {
+    const cafe = makePlace({ id: 'c1', title: 'Coffee Shop', category: 'cafe', lat: 35.7149, lon: 139.7968 })
+    const result = findPeacefulNearby([anchor], [cafe], new Set())
+    expect(result).toBeNull()
+  })
+
+  it('skips already-discovered peaceful places', () => {
+    const park = makePlace({ id: 'p3', title: 'Small Garden', category: 'park', lat: 35.7150, lon: 139.7968 })
+    const result = findPeacefulNearby([anchor], [park], new Set(['p3']))
+    expect(result).toBeNull()
+  })
+
+  it('returns null when selectedPlaces is empty', () => {
+    const park = makePlace({ id: 'p4', category: 'park', lat: 35.7148, lon: 139.7967 })
+    const result = findPeacefulNearby([], [park], new Set())
+    expect(result).toBeNull()
+  })
+
+  it('recognises temple and shrine as peaceful categories', () => {
+    const temple = makePlace({ id: 't1', title: 'Hidden Temple', category: 'spiritual', lat: 35.7149, lon: 139.7968 })
+    const shrine = makePlace({ id: 's1', title: 'Old Shrine', category: 'spiritual', lat: 35.7150, lon: 139.7966 })
+    expect(findPeacefulNearby([anchor], [temple], new Set())).not.toBeNull()
+    expect(findPeacefulNearby([anchor], [shrine], new Set())).not.toBeNull()
+  })
+})
+
+// ── useGuideMessages peaceful bulb message ────────────────────────────────────
+
+describe('useGuideMessages peaceful condition', () => {
+  const profileBase = { archetype: 'explorer', stops_per_day: 3, venue_filters: [] } as unknown as PersonaProfile
+  // Anchor stop added to itinerary
+  const stop = makePlace({ id: 'stop1', title: 'Asakusa Market', category: 'historic', lat: 35.7148, lon: 139.7967 })
+  // Peaceful place ~300m from stop — within radius
+  const nearPark = makePlace({ id: 'park1', title: 'Riverside Park', category: 'park', lat: 35.7175, lon: 139.7967 })
+  // Peaceful place ~5km from stop — outside radius
+  const farPark = makePlace({ id: 'park2', title: 'Far Garden', category: 'park', lat: 35.6852, lon: 139.7100 })
+
+  it('fires a peaceful message when a park is within 700m of a selected stop', () => {
+    const { result } = renderHook(() =>
+      useGuideMessages([stop], 'Tokyo', null, profileBase, [nearPark], null, [], null, null, 1)
+    )
+    const peaceful = result.current.messages.find(m => m.kind === 'peaceful')
+    expect(peaceful).toBeTruthy()
+    expect(peaceful?.text).toContain('Riverside Park')
+    expect(peaceful?.text).toContain('park')
+    expect(peaceful?.actionPlaceId).toBe('park1')
+  })
+
+  it('does not fire a peaceful message when peaceful place is beyond 700m', () => {
+    const { result } = renderHook(() =>
+      useGuideMessages([stop], 'Tokyo', null, profileBase, [farPark], null, [], null, null, 1)
+    )
+    expect(result.current.messages.find(m => m.kind === 'peaceful')).toBeUndefined()
+  })
+
+  it('does not fire peaceful message when no selected stops', () => {
+    const { result } = renderHook(() =>
+      useGuideMessages([], 'Tokyo', null, profileBase, [nearPark], null, [], null, null, 1)
+    )
+    expect(result.current.messages.find(m => m.kind === 'peaceful')).toBeUndefined()
+  })
+
+  it('does not fire peaceful for non-peaceful category even if nearby', () => {
+    const nearCafe = makePlace({ id: 'cafe1', title: 'Coffee', category: 'cafe', lat: 35.7149, lon: 139.7968 })
+    const { result } = renderHook(() =>
+      useGuideMessages([stop], 'Tokyo', null, profileBase, [nearCafe], null, [], null, null, 1)
+    )
+    expect(result.current.messages.find(m => m.kind === 'peaceful')).toBeUndefined()
   })
 })
 

@@ -4,7 +4,7 @@ import type { Place, LiveEvent, Persona, PersonaProfile } from '../../shared/typ
 export interface GuideMessage {
   id: string
   text: string
-  kind: 'area' | 'event' | 'exploring'
+  kind: 'area' | 'event' | 'exploring' | 'peaceful'
   timestamp: number
   actionPlaceId?: string  // place to reveal on map when tapped
 }
@@ -50,6 +50,31 @@ const PAIR_RADIUS_M = 700
 
 // Chains to filter out when picking a meaningful anchor to highlight
 const CHAIN_RE = /cafe coffee day|starbucks|mcdonald|kfc|domino|pizza hut|subway|costa coffee|\bccd\b|barista|burger king|dunkin|taco bell/i
+
+const PEACEFUL_CATEGORIES = new Set(['park', 'temple', 'shrine', 'spa', 'viewpoint', 'garden', 'spiritual', 'library'])
+const PEACEFUL_RADIUS_M = 700
+const PEACEFUL_LABELS: Record<string, string> = {
+  park: 'park', temple: 'temple', shrine: 'shrine', spa: 'spa',
+  viewpoint: 'viewpoint', garden: 'garden', spiritual: 'peaceful spot', library: 'library',
+}
+
+export function findPeacefulNearby(
+  selectedPlaces: Place[],
+  mapPlaces: Place[],
+  discoveredIds: Set<string>,
+): { peaceful: Place; anchor: Place } | null {
+  for (const anchor of selectedPlaces) {
+    for (const p of mapPlaces) {
+      if (p.id === anchor.id) continue
+      if (!PEACEFUL_CATEGORIES.has(p.category)) continue
+      if (discoveredIds.has(p.id)) continue
+      if (haversineM(anchor.lat, anchor.lon, p.lat, p.lon) <= PEACEFUL_RADIUS_M) {
+        return { peaceful: p, anchor }
+      }
+    }
+  }
+  return null
+}
 
 // Category tiers for anchor quality — higher tier = better starting point
 const ANCHOR_TIER: Record<string, number> = {
@@ -186,7 +211,7 @@ export function isGeographicCluster(places: Place[]): boolean {
 
 // ── Condition keys — used to detect rising edges ──────────────────────────────
 
-type ConditionKey = 'area' | 'event' | 'build-ready' | 'cluster' | 'pair'
+type ConditionKey = 'area' | 'event' | 'build-ready' | 'cluster' | 'pair' | 'peaceful'
 
 function evaluateConditions(
   selectedPlaces: Place[],
@@ -200,6 +225,7 @@ function evaluateConditions(
   travelEndDate: string | null,
   days: number,
   pairedIds: Set<string>,
+  peacefulDiscoveredIds: Set<string>,
 ): Record<ConditionKey, boolean> {
   const stopsPerDay = personaProfile?.stops_per_day ?? 3
   const count = selectedPlaces.length
@@ -236,7 +262,11 @@ function evaluateConditions(
     !pairedIds.has(lastSel.id) &&
     findNearbyComplement(lastSel, mapPlaces) !== null
 
-  return { area, event, 'build-ready': buildReady, cluster, pair }
+  const peaceful = selectedPlaces.length > 0
+    ? findPeacefulNearby(selectedPlaces, mapPlaces, peacefulDiscoveredIds) !== null
+    : false
+
+  return { area, event, 'build-ready': buildReady, cluster, pair, peaceful }
 }
 
 function buildMessage(
@@ -248,6 +278,7 @@ function buildMessage(
   mapPlaces: Place[],
   activePlace: Place | null,
   days: number,
+  peacefulDiscoveredIds: Set<string>,
 ): GuideMessage {
   const now = Date.now()
 
@@ -293,6 +324,27 @@ function buildMessage(
     return { id: `pair-${now}`, kind: 'exploring', timestamp: now, text, actionPlaceId: complement?.id }
   }
 
+  if (key === 'peaceful') {
+    const result = findPeacefulNearby(selectedPlaces, mapPlaces, peacefulDiscoveredIds)
+    if (result) {
+      const { peaceful, anchor } = result
+      const label = PEACEFUL_LABELS[peaceful.category] ?? 'peaceful spot'
+      return {
+        id: `peaceful-${now}`,
+        kind: 'peaceful',
+        timestamp: now,
+        text: `There's a peaceful ${label} near ${anchor.title} — ${peaceful.title}`,
+        actionPlaceId: peaceful.id,
+      }
+    }
+    return {
+      id: `peaceful-${now}`,
+      kind: 'peaceful',
+      timestamp: now,
+      text: `There's a peaceful spot near your route worth a quiet moment`,
+    }
+  }
+
   // cluster
   return {
     id: `cluster-${now}`,
@@ -326,18 +378,22 @@ export function useGuideMessages(
     'build-ready': false,
     cluster: false,
     pair: false,
+    peaceful: false,
   })
 
   // Cluster signal fires at most once per session
   const clusterFired = useRef(false)
   // Track which place IDs have already triggered a pair message
   const pairedIdsRef = useRef<Set<string>>(new Set())
+  // Track which peaceful place IDs have already been surfaced
+  const peacefulDiscoveredRef = useRef<Set<string>>(new Set())
 
   // Reset rising-edge tracking on city change so area message re-fires
   useEffect(() => {
-    prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false, pair: false }
+    prevConditions.current = { area: false, event: false, 'build-ready': false, cluster: false, pair: false, peaceful: false }
     clusterFired.current = false
     pairedIdsRef.current = new Set()
+    peacefulDiscoveredRef.current = new Set()
   }, [city])
 
   useEffect(() => {
@@ -345,6 +401,7 @@ export function useGuideMessages(
       selectedPlaces, city, persona, personaProfile, mapPlaces,
       activePlace, liveEvents, travelStartDate, travelEndDate, days,
       pairedIdsRef.current,
+      peacefulDiscoveredRef.current,
     )
 
     const toAppend: GuideMessage[] = []
@@ -368,7 +425,14 @@ export function useGuideMessages(
         toAppend.push(buildMessage(
           key, selectedPlaces, city, persona, personaProfile,
           mapPlaces, activePlace, days,
+          peacefulDiscoveredRef.current,
         ))
+
+        // Mark the peaceful place AFTER buildMessage so findPeacefulNearby can still locate it
+        if (key === 'peaceful') {
+          const found = findPeacefulNearby(selectedPlaces, mapPlaces, peacefulDiscoveredRef.current)
+          if (found) peacefulDiscoveredRef.current.add(found.peaceful.id)
+        }
       }
     }
 

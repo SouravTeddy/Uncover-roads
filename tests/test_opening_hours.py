@@ -114,8 +114,12 @@ def test_enforce_opening_hours_flags_unfixable():
     )
     day = EngineDay(date="2026-06-08", stops=[museum, gallery])
     days, msgs, conflicted = enforce_opening_hours([day], ctx)
-    # Museum can't be moved — gallery is also closed at 09:00
-    assert "m1" in conflicted
+    # With constraint propagation, swapping to [Gallery, Museum] pushes the day
+    # start to 10:00 AM (Gallery's opening) — both stops are now served validly.
+    # Gallery at 10:00, Museum at 11:30 → no conflicts remain.
+    assert len(conflicted) == 0
+    assert days[0].stops[0].name == "Gallery"
+    assert days[0].stops[1].name == "Museum"
 
 def test_apply_swapper_replaces_conflicted_stop():
     from engine.types import EngineStop, EngineDay, EngineContext

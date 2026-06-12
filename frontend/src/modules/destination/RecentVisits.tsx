@@ -1,6 +1,5 @@
 import type { Place } from '../../shared/types';
 import type { RecentSession } from './useRecentSessions';
-import { getCityPhotoUrl } from '../../shared/cityPhoto';
 import { getPlacePhotoUrl } from '../../shared/api';
 import { CATEGORY_LABELS } from '../map/types';
 
@@ -13,22 +12,33 @@ const MAX_VISIBLE = 4;
 const OVERFLOW_THUMB_COUNT = 2;
 const THUMB_SIZE = 120;
 
-function placeImgSrc(place: Place, fallbackCity: string): string {
-  return place.photo_ref
-    ? getPlacePhotoUrl(place.photo_ref, THUMB_SIZE)
-    : (place.imageUrl || getCityPhotoUrl(place._city ?? fallbackCity))
+function placeImgSrc(place: Place): string | null {
+  if (place.photo_ref) return getPlacePhotoUrl(place.photo_ref, THUMB_SIZE);
+  if (place.imageUrl) return place.imageUrl;
+  return null;
 }
 
 function PlaceThumbnail({
   place,
-  city,
   size,
 }: {
   place: Place;
-  city: string;
   size: number;
 }) {
-  const src = placeImgSrc(place, city)
+  const src = placeImgSrc(place);
+  if (!src) {
+    return (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 6,
+          background: 'linear-gradient(135deg, #1a1f2e 0%, #0f141e 100%)',
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
   return (
     <img
       src={src}
@@ -47,12 +57,10 @@ function PlaceThumbnail({
 
 function PlaceRow({
   place,
-  city,
   showDivider,
   onTap,
 }: {
   place: Place;
-  city: string;
   showDivider: boolean;
   onTap: () => void;
 }) {
@@ -77,7 +85,7 @@ function PlaceRow({
         }}
       >
         {/* Thumbnail */}
-        <PlaceThumbnail place={place} city={city} size={40} />
+        <PlaceThumbnail place={place} size={40} />
 
         {/* Text */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -163,7 +171,6 @@ function CityGroup({
         <PlaceRow
           key={place.id}
           place={place}
-          city={sessionCity}
           showDivider={idx > 0}
           onTap={() => onOpenMap([place], sessionCity)}
         />
@@ -190,23 +197,40 @@ function CityGroup({
           >
             {/* Stacked thumbnails */}
             <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-              {overflow.slice(0, OVERFLOW_THUMB_COUNT).map((p, i) => (
-                <img
-                  key={p.id}
-                  src={placeImgSrc(p, sessionCity)}
-                  alt={p.title}
-                  style={{
-                    position: 'absolute',
-                    width: 24,
-                    height: 24,
-                    borderRadius: 4,
-                    objectFit: 'cover',
-                    top: i === 0 ? 0 : 16,
-                    left: i === 0 ? 0 : 16,
-                    border: '1.5px solid var(--color-surface)',
-                  }}
-                />
-              ))}
+              {overflow.slice(0, OVERFLOW_THUMB_COUNT).map((p, i) => {
+                const src = placeImgSrc(p);
+                return src ? (
+                  <img
+                    key={p.id}
+                    src={src}
+                    alt={p.title}
+                    style={{
+                      position: 'absolute',
+                      width: 24,
+                      height: 24,
+                      borderRadius: 4,
+                      objectFit: 'cover',
+                      top: i === 0 ? 0 : 16,
+                      left: i === 0 ? 0 : 16,
+                      border: '1.5px solid var(--color-surface)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    key={p.id}
+                    style={{
+                      position: 'absolute',
+                      width: 24,
+                      height: 24,
+                      borderRadius: 4,
+                      background: 'linear-gradient(135deg, #1a1f2e 0%, #0f141e 100%)',
+                      top: i === 0 ? 0 : 16,
+                      left: i === 0 ? 0 : 16,
+                      border: '1.5px solid var(--color-surface)',
+                    }}
+                  />
+                );
+              })}
             </div>
 
             {/* Count text */}

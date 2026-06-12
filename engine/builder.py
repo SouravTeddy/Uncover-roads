@@ -98,12 +98,40 @@ def _compute_day_start(first_stop: "EngineStop", ctx: "EngineContext", date_str:
     return start_min
 
 
+def _propagate_opening_constraints(stops: list["EngineStop"], base_start: int, buffer_min: int, weekday: int) -> int:
+    """Advance base_start so that every stop with opening_hours is visited after it opens.
+
+    Iterates forward through stops, tracking the cumulative time offset, and bumps
+    base_start whenever a stop would be scheduled before its opening time.
+    Returns the adjusted start (in minutes from midnight).
+    """
+    cur_offset = 0
+    adjusted = base_start
+    for stop in stops:
+        oh = next((h for h in (stop.opening_hours or []) if h.get("day") == weekday), None)
+        if oh:
+            open_min = oh.get("open_min")
+            if open_min is not None:
+                required_start = open_min - _HOUR_TOLERANCE_MIN - cur_offset
+                if required_start > adjusted:
+                    adjusted = required_start
+        cur_offset += stop.duration_min + buffer_min
+    return adjusted
+
+
 def _reschedule_day(day: "EngineDay", ctx: EngineContext, start_override: tuple[int, int] | None = None) -> None:
     """Re-assign scheduled_time to all stops in a day after an in-day reorder."""
+    from datetime import datetime as _dt
     if start_override is not None:
         start_h, start_m = start_override
     elif day.stops:
         sm = _compute_day_start(day.stops[0], ctx, day.date)
+        try:
+            weekday = _dt.fromisoformat(day.date).weekday()
+        except (ValueError, TypeError):
+            weekday = 0
+        buffer_min = int(ctx.persona.get("day_buffer_min", 30))
+        sm = _propagate_opening_constraints(day.stops, sm, buffer_min, weekday)
         start_h, start_m = sm // 60, sm % 60
     else:
         start_h, start_m = 9, 0
@@ -112,6 +140,32 @@ def _reschedule_day(day: "EngineDay", ctx: EngineContext, start_override: tuple[
 
 
 _HOUR_TOLERANCE_MIN = 15  # allow 15-min window before/after hours
+
+
+def _non_day1_start_min(day_stops: list["EngineStop"], ctx: "EngineContext", date: str) -> int:
+    """Compute the day-start minute for day 2+ of a trip.
+
+    Uses persona["arrival_time"] as the preferred daily start, falling back to
+    _compute_day_start, then applies opening-hour constraint propagation so no
+    stop is ever visited before it opens.
+    """
+    from datetime import datetime as _dt
+    pa = ctx.persona.get("arrival_time")
+    if pa:
+        try:
+            ph, pm = (int(x) for x in pa.split(":")[:2])
+            sm = ph * 60 + pm
+        except (ValueError, AttributeError):
+            sm = _compute_day_start(day_stops[0], ctx, date)
+    else:
+        sm = _compute_day_start(day_stops[0], ctx, date)
+    try:
+        weekday = _dt.fromisoformat(date).weekday()
+        buffer_min = int(ctx.persona.get("day_buffer_min", 30))
+        sm = _propagate_opening_constraints(day_stops, sm, buffer_min, weekday)
+    except (ValueError, TypeError):
+        pass
+    return sm
 
 
 def enforce_opening_hours(
@@ -370,7 +424,7 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time)
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                sm = _compute_day_start(day_stops[0], ctx, date)
+                sm = _non_day1_start_min(day_stops, ctx, date)
                 _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
             days.append(EngineDay(date=date, stops=day_stops))
         return days
@@ -404,7 +458,7 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time)
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                sm = _compute_day_start(day_stops[0], ctx, date)
+                sm = _non_day1_start_min(day_stops, ctx, date)
                 _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
             global_day_idx += 1
             days.append(EngineDay(date=date, stops=day_stops))
