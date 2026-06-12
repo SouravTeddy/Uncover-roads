@@ -216,7 +216,7 @@ def enforce_opening_hours(
                 for j in range(i + 1, len(day.stops)):
                     day.stops[i], day.stops[j] = day.stops[j], day.stops[i]
                     _d1_override = (
-                        _day1_adjusted_start(ctx.user_arrival_time, ctx.city.name)
+                        _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                         if _day_idx == 0 and ctx.user_arrival_time
                         else None
                     )
@@ -360,42 +360,17 @@ def apply_swapper(
     return days, messages
 
 
-# Airport-to-city-centre transit time (minutes) for major hub cities.
-# Used to add realistic travel buffer on top of the raw arrival time.
-_AIRPORT_TRANSIT_MIN: dict[str, int] = {
-    "tokyo":        90,  # Narita ~90 min, Haneda ~35 min — use conservative estimate
-    "narita":       90,
-    "london":       45,  # Heathrow Express + tube
-    "paris":        35,  # RER B to city centre
-    "new york":     60,  # JFK AirTrain + subway
-    "bangkok":      30,  # Suvarnabhumi Express Rail Link
-    "singapore":    30,  # Changi MRT
-    "dubai":        30,  # Red Line metro
-    "istanbul":     45,  # Havataş bus / metro
-    "sydney":       20,  # Airport Link
-    "hong kong":    25,  # Airport Express
-    "amsterdam":    15,  # Schiphol direct train
-    "frankfurt":    15,  # S-Bahn direct
-    "rome":         35,  # Leonardo Express
-    "madrid":       20,  # Metro line 8
-    "barcelona":    35,  # Aerobus
-    "lisbon":       30,  # Metro Red Line
-    "delhi":        40,  # Airport Express Metro
-    "mumbai":       40,  # Monorail / taxi
-    "colombo":      45,  # No rail — highway
-    "sri lanka":    45,
+_TRANSIT_BUFFER_BY_START_TYPE: dict[str, int] = {
+    "airport": 45,   # airport → city centre (train/bus ~45 min)
+    "hotel":   30,   # already in city, check-in + freshen up
+    "custom":   0,   # user is already at the start location
 }
 
 
-def _airport_transit_min(city_name: str) -> int:
-    """Return airport transit buffer in minutes for a city (default 30 min)."""
-    return _AIRPORT_TRANSIT_MIN.get(city_name.lower().strip(), 30)
+def _day1_adjusted_start(user_arrival_time: str, start_type: str = "hotel") -> tuple[int, int]:
+    """Compute day-1 start from user arrival time + start-type transit buffer.
 
-
-def _day1_adjusted_start(user_arrival_time: str, city_name: str = "") -> tuple[int, int]:
-    """Compute day-1 start from user arrival time + city airport transit buffer.
-
-    00:00-05:59 → 09:00 (rest needed after night flight)
+    00:00-05:59 → 09:00 (rest needed after overnight travel)
     06:00-08:59 → arrival + transit_buffer + 30 min (freshen up)
     09:00-16:59 → arrival + transit_buffer (standard)
     17:00+      → 09:00 next morning (evening/night arrival)
@@ -405,7 +380,7 @@ def _day1_adjusted_start(user_arrival_time: str, city_name: str = "") -> tuple[i
     except (ValueError, TypeError):
         return 9, 0
     arr_min = ah * 60 + am
-    transit = _airport_transit_min(city_name) if city_name else 30
+    transit = _TRANSIT_BUFFER_BY_START_TYPE.get(start_type or "hotel", 30)
     if arr_min < 6 * 60:
         return 9, 0
     elif arr_min < 9 * 60:
@@ -454,7 +429,7 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             slice_end = slice_start + per_day if i < total_days - 1 else len(stops)
             day_stops = stops[slice_start:slice_end]
             if i == 0 and ctx.user_arrival_time:
-                _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.city.name)
+                _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
                 sm = _non_day1_start_min(day_stops, ctx, date)
@@ -488,7 +463,7 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             slice_end = slice_start + per_day if j < n_days - 1 else len(city_stops)
             day_stops = city_stops[slice_start:slice_end]
             if global_day_idx == 0 and ctx.user_arrival_time:
-                _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.city.name)
+                _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
                 sm = _non_day1_start_min(day_stops, ctx, date)
