@@ -333,12 +333,23 @@ export const api = {
   weather: (city: string) =>
     get<WeatherData>(`/weather?city=${encodeURIComponent(city)}`),
 
+  cityPhotos: async (cities: string[]): Promise<Record<string, string | null>> => {
+    if (cities.length === 0) return {};
+    try {
+      const params = new URLSearchParams({ names: cities.join(',') });
+      const res = await fetch(`${BASE}/api/cities/photos?${params}`);
+      return res.ok ? res.json() : {};
+    } catch { return {}; }
+  },
+
   placeImage: async (name: string, city: string): Promise<string | null> => {
     try {
       const data = await get<{ image: string | null }>(
         `/place-image?name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}`
       );
-      return data.image ?? null;
+      if (!data.image) return null;
+      // /place-image may return a relative path like "/place-photo?..." — make it absolute
+      return data.image.startsWith('/') ? `${BASE}${data.image}` : data.image;
     } catch {
       return null;
     }

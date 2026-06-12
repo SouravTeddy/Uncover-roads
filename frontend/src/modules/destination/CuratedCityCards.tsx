@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Persona } from '../../shared/types';
-import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
+import { CITY_PHOTO_FALLBACK_GRADIENT, getCityPhotoUrl } from '../../shared/cityPhoto';
 import { useCityPhotoBatch } from './useCityPhoto';
 import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 
@@ -68,13 +68,27 @@ interface CityCardProps {
 }
 
 function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) {
+  const unsplashFallback = getCityPhotoUrl(name);
+  const [activeSrc, setActiveSrc] = useState(photoUrl || unsplashFallback);
   const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>('loading');
 
   useEffect(() => {
-    if (photoUrl) setImgState('loading');
+    const next = photoUrl || unsplashFallback;
+    setActiveSrc(next);
+    setImgState('loading');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUrl]);
 
-  const showShimmer = !photoUrl || imgState === 'loading';
+  const handleError = () => {
+    if (activeSrc !== unsplashFallback) {
+      setActiveSrc(unsplashFallback);
+      setImgState('loading');
+    } else {
+      setImgState('error');
+    }
+  };
+
+  const showShimmer = !activeSrc || imgState === 'loading';
 
   return (
     <button
@@ -95,9 +109,9 @@ function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) 
       )}
 
       {/* Background photo */}
-      {photoUrl && imgState !== 'error' && (
+      {activeSrc && imgState !== 'error' && (
         <img
-          src={photoUrl}
+          src={activeSrc}
           alt={name}
           style={{
             position: 'absolute',
@@ -111,7 +125,7 @@ function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) 
             zIndex: 0,
           }}
           onLoad={() => setImgState('loaded')}
-          onError={() => setImgState('error')}
+          onError={handleError}
         />
       )}
 

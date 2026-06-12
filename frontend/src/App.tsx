@@ -58,13 +58,6 @@ function ScreenRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (isDesktop && !desktopBypassed && state.currentScreen !== 'trips') {
-    return <DesktopGate onBypass={() => {
-      try { localStorage.setItem('ur_desktop_bypass', '1'); } catch { /* ignore */ }
-      setDesktopBypassed(true);
-    }} />;
-  }
-
   async function handleSignedIn(user: User) {
     if (!BETA_ALLOWLIST.includes(user.email ?? '')) {
       await supabase.auth.signOut();
@@ -169,6 +162,13 @@ function ScreenRouter() {
     return () => subscription.unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (isDesktop && !desktopBypassed && state.currentScreen !== 'trips') {
+    return <DesktopGate onBypass={() => {
+      try { localStorage.setItem('ur_desktop_bypass', '1'); } catch { /* ignore */ }
+      setDesktopBypassed(true);
+    }} />;
+  }
 
   const { currentScreen } = state;
 

@@ -3814,12 +3814,18 @@ async def engine_itinerary(body: EngineItineraryPayload):
     # Auto-seed place_dynamic_profiles for user-selected stops not yet in the table
     _unseed_ids = [pid for pid in all_place_ids if pid and pid not in _stage_map]
     if _unseed_ids and _supabase:
+        # Build fallback: place_id → stop rating (for places not in place_details_cache)
+        _stop_rating_map: dict[str, float | None] = {
+            s.place_id: s.rating
+            for day in result.days for s in day.stops
+            if s.place_id and s.rating
+        }
         _seed_rows = []
         for _pid in _unseed_ids:
             _d = place_details_map.get(_pid, {})
-            _rating = _d.get("rating") or None
+            _rating = _d.get("rating") or _stop_rating_map.get(_pid) or None
             _rating_count = _d.get("rating_count") or None
-            if _rating is None and _rating_count is None:
+            if _rating is None:
                 continue
             _stage, _signals = _stage_and_signals(_rating, _rating_count)
             _seed_rows.append({
@@ -4109,7 +4115,7 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
 
 
 @app.get("/api/cities/photos")
-async def cities_photos(names: str, _user=Depends(get_current_user)):
+async def cities_photos(names: str):
     """Batch image URL lookup by city name. Returns {name: image_url|null}.
 
     names: comma-separated city names, max 20, case-insensitive exact match.

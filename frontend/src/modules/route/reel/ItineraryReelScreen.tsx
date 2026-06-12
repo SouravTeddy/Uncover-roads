@@ -12,6 +12,7 @@ import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import type { WeatherData } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
+import { getCityPhotoUrl } from '../../../shared/cityPhoto';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
@@ -76,6 +77,9 @@ export function ItineraryReelScreen() {
   const [undoPending, setUndoPending] = useState<{ id: string; label: string } | null>(null);
   const [saved, setSaved] = useState(!!savedItem);
   const [imagesReady, setImagesReady] = useState(false);
+  // stop title → resolved image URL (for stops that had no photoRef at build time)
+  const [resolvedStopImages, setResolvedStopImages] = useState<Map<string, string>>(new Map());
+  const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -87,7 +91,13 @@ export function ItineraryReelScreen() {
   useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
 
-  function buildFiltered(itinerary: typeof activeItinerary, wxByCity: Map<string, WeatherData>, pName: string, photoMap = cityPhotoMap) {
+  function buildFiltered(
+    itinerary: typeof activeItinerary,
+    wxByCity: Map<string, WeatherData>,
+    pName: string,
+    photoMap = cityPhotoMap,
+    stopImages = resolvedStopImages,
+  ) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
@@ -106,6 +116,15 @@ export function ItineraryReelScreen() {
     }
 
     const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries);
+
+    // Inject pre-fetched images for stops that had no photoRef at build time
+    for (const card of built) {
+      if (card.type === 'stop' && !card.stop.imageUrl && !card.stop.photoRef) {
+        const url = stopImages.get(card.stop.title);
+        if (url) card.stop.imageUrl = url;
+      }
+    }
+
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
       if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
@@ -113,30 +132,101 @@ export function ItineraryReelScreen() {
     });
   }
 
-  // Full rebuild + image preload — only on structural changes (not weather/personaName)
+  // Full rebuild + image preload — fetches ALL missing stop images before showing the reel
   useEffect(() => {
     if (!activeItinerary) return;
     setImagesReady(false);
-    const filtered = buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current);
-    setCards(filtered);
+    setLoadingStep(0);
+    let cancelled = false;
 
-    const srcs: string[] = [];
-    for (const c of filtered) {
-      if (c.type === 'stop') {
-        const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 800, 1200) : null);
-        if (url) srcs.push(url);
-      } else if (c.type === 'intro' && c.imageUrl) {
-        srcs.push(c.imageUrl);
-      } else if (c.type === 'intel' && c.imageUrl) {
-        srcs.push(c.imageUrl);
-      } else if (c.type === 'reco' && c.anchorPhotoUrl) {
-        srcs.push(c.anchorPhotoUrl);
-      } else if (c.type === 'scenic') {
-        if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
-        if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
+    const FETCH_TIMEOUT_MS = 10_000;
+
+    (async () => {
+      const primaryCity = activeItinerary.city ?? activeItinerary.cities?.[0] ?? '';
+      const allCities = [
+        ...new Set([
+          ...(activeItinerary.cities ?? []),
+          ...activeItinerary.days.map(d => d.city),
+          primaryCity,
+        ].filter(Boolean) as string[]),
+      ];
+
+      // Collect all stops that have no image yet
+      const stopsNeedingImages = activeItinerary.days.flatMap(d =>
+        d.stops
+          .filter(s => !s.imageUrl && !s.photoRef)
+          .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
+      );
+
+      // Fetch city photos + all missing stop images in parallel, race against timeout
+      const raceTimeout = new Promise<never>(resolve =>
+        setTimeout(() => resolve(undefined as never), FETCH_TIMEOUT_MS)
+      );
+
+      const [cityPhotosRaw, ...stopImageResults] = await Promise.all([
+        Promise.race([api.cityPhotos(allCities), raceTimeout.then(() => ({} as Record<string, string | null>))]),
+        ...stopsNeedingImages.map(({ stop, city }) =>
+          Promise.race([
+            api.placeImage(stop.title, city).then(url => ({ title: stop.title, url })),
+            raceTimeout.then(() => ({ title: stop.title, url: null as string | null })),
+          ])
+        ),
+      ]);
+
+      if (cancelled) return;
+
+      // Build city photo map: DB result first, Unsplash as fallback
+      const builtCityPhotoMap = new Map<string, string>();
+      for (const c of allCities) {
+        const key = c.toLowerCase();
+        const dbUrl = (cityPhotosRaw as Record<string, string | null>)[c]
+          ?? (cityPhotosRaw as Record<string, string | null>)[key]
+          ?? null;
+        builtCityPhotoMap.set(key, dbUrl ?? getCityPhotoUrl(c));
       }
-    }
-    preloadImages(srcs).then(() => setImagesReady(true));
+
+      // Store resolved stop images so enrichment rebuilds keep them
+      const newStopImages = new Map<string, string>();
+      for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
+        if (r.url) newStopImages.set(r.title, r.url);
+      }
+      setResolvedStopImages(newStopImages);
+
+      // Build cards with all resolved images
+      setLoadingStep(1);
+      const filtered = buildFiltered(
+        activeItinerary,
+        weatherByCityRef.current,
+        personaNameRef.current,
+        builtCityPhotoMap,
+        newStopImages,
+      );
+      setCards(filtered);
+
+      // Preload every image URL into the browser cache before revealing the reel
+      const srcs: string[] = [];
+      for (const c of filtered) {
+        if (c.type === 'stop') {
+          const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 800, 1200) : null);
+          if (url) srcs.push(url);
+        } else if (c.type === 'intro' && c.imageUrl) {
+          srcs.push(c.imageUrl);
+        } else if (c.type === 'intel' && c.imageUrl) {
+          srcs.push(c.imageUrl);
+        } else if (c.type === 'reco' && c.anchorPhotoUrl) {
+          srcs.push(c.anchorPhotoUrl);
+        } else if (c.type === 'scenic') {
+          if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
+          if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
+        }
+      }
+
+      await Promise.race([preloadImages(srcs), raceTimeout.catch(() => {})]);
+
+      if (!cancelled) setImagesReady(true);
+    })();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
@@ -263,10 +353,83 @@ export function ItineraryReelScreen() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!activeItinerary || !imagesReady || !state.persona) {
+    const stopCount = activeItinerary?.days.flatMap(d => d.stops).length ?? 0;
+    const days = activeItinerary?.days.length ?? 0;
+    const cityName = activeItinerary?.city ?? activeItinerary?.cities?.[0] ?? '';
+
+    const STEPS: { label: string; done: boolean }[] = [
+      { label: 'Itinerary built',      done: !!activeItinerary },
+      { label: 'Gathering photos',     done: loadingStep >= 1 },
+      { label: 'Preparing your reel',  done: imagesReady },
+    ];
+    const activeStep = STEPS.findIndex(s => !s.done);
+
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-        <span className="ms" style={{ fontSize: 36, color: 'rgba(212,168,83,.6)', animation: 'spin 1s linear infinite' }}>autorenew</span>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,.35)', letterSpacing: '.04em' }}>Preparing your trip</p>
+      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {/* Subtle radial glow */}
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 35%, rgba(212,168,83,.07) 0%, transparent 65%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, padding: '0 40px', width: '100%', maxWidth: 340 }}>
+
+          {/* Heading */}
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: 'rgba(255,255,255,.92)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
+              Your itinerary<br />is almost ready
+            </p>
+            {cityName && days > 0 && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.32)', margin: '10px 0 0', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                {cityName} · {days} day{days !== 1 ? 's' : ''} · {stopCount} stop{stopCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {/* Step indicators */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
+            {STEPS.map((step, i) => {
+              const isActive = i === activeStep;
+              const isDone = step.done;
+              return (
+                <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Icon */}
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isDone ? 'rgba(212,168,83,.18)' : isActive ? 'rgba(255,255,255,.07)' : 'transparent',
+                    border: isDone ? '1px solid rgba(212,168,83,.35)' : isActive ? '1px solid rgba(255,255,255,.2)' : '1px solid rgba(255,255,255,.1)',
+                    transition: 'all .4s ease',
+                  }}>
+                    {isDone
+                      ? <span className="ms" style={{ fontSize: 13, color: 'rgba(212,168,83,.9)' }}>check</span>
+                      : isActive
+                      ? <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+                      : null
+                    }
+                  </div>
+                  {/* Label */}
+                  <span style={{
+                    fontSize: 14,
+                    color: isDone ? 'rgba(255,255,255,.55)' : isActive ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.22)',
+                    fontWeight: isActive ? 500 : 400,
+                    transition: 'color .4s ease',
+                  }}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Thin progress bar */}
+          <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: imagesReady ? '100%' : loadingStep >= 1 ? '66%' : activeItinerary ? '33%' : '5%',
+              background: 'linear-gradient(90deg, rgba(212,168,83,.5), rgba(212,168,83,.9))',
+              borderRadius: 99,
+              transition: 'width .6s cubic-bezier(.25,0,0,1)',
+            }} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -502,7 +665,7 @@ export function ItineraryReelScreen() {
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
           let child: ReactNode = null;
           if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} onShowTripDetails={() => setShowTripDetails(true)} />;
-          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} weather={weather} />;
+          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} weather={weather} primaryCity={city || activeItinerary?.city || ''} />;
           else if (card.type === 'reco')    child = (
             <ReelRecoCard
               card={card} active={isActive}

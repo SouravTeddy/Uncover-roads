@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import type { ReelStopCard as ReelStopCardType } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl, api } from '../../../shared/api';
+import { getPlacePhotoUrl } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -17,6 +17,7 @@ interface Props {
   active: boolean;
   archetype?: string;
   weather?: { condition: string; temp: number } | null;
+  primaryCity?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
 }
 
@@ -265,7 +266,7 @@ function SunRays() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export function ReelStopCard({ card, active, onInteract }: Props) {
+export function ReelStopCard({ card, active, primaryCity, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
@@ -285,23 +286,8 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
-  const directPhotoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null);
-  const [bingPhotoUrl, setBingPhotoUrl] = useState<string | null>(null);
+  const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null);
   const [imgFailed, setImgFailed] = useState(false);
-
-  // Bing fallback for engine-inserted stops that have no photo_ref
-  useEffect(() => {
-    if (directPhotoUrl) return;
-    const city = stop.city ?? '';
-    if (!city) return;
-    let cancelled = false;
-    api.placeImage(stop.title, city).then(url => {
-      if (!cancelled && url) setBingPhotoUrl(url);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [directPhotoUrl, stop.title, stop.city]);
-
-  const photoUrl = directPhotoUrl ?? bingPhotoUrl;
 
   // Category-based gradient fallback when no photo available or image failed to load
   const noPhotoGradient = (!photoUrl || imgFailed) ? (() => {
@@ -479,7 +465,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '7px 11px', borderRadius: 8, background: bg, border: `1px solid ${bdr}`, overflow: 'hidden' }}>
                   <span className="ms" style={{ fontSize: 13, color: clr, flexShrink: 0, marginTop: 1 }}>{sig.icon}</span>
-                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{sig.text}</span>
+                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0 }}>{sig.text}</span>
                 </div>
               );
             })}
