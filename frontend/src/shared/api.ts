@@ -390,6 +390,29 @@ export const api = {
     });
   },
 
+  nearbyPlaces: async (opts: { lat: number; lon: number; category: string; limit: number }): Promise<Place[]> => {
+    try {
+      const params = new URLSearchParams({
+        lat:      String(opts.lat),
+        lon:      String(opts.lon),
+        type:     opts.category,
+        radius:   '1000',
+        limit:    String(opts.limit),
+      });
+      const res = await fetch(`${BASE}/nearby?${params}`);
+      if (!res.ok) return [];
+      const data: NearbyResult[] = await res.json();
+      return (Array.isArray(data) ? data : []).map(r => ({
+        id:       r.place_id ?? `nr-${r.name}`,
+        title:    r.name,
+        lat:      r.lat,
+        lon:      r.lon,
+        category: opts.category as Place['category'],
+        tags:     {},
+      }));
+    } catch { return []; }
+  },
+
   recalibrate: async (params: {
     stops: import('./types').ItineraryStop[];
     currentTime: string;

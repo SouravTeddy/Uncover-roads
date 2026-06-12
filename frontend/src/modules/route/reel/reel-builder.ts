@@ -152,10 +152,13 @@ function buildMealRecos(
       if (!hasStopAtOrAfterWindow) continue;
     }
 
-    const beforeWindow = stops
+    const inWindow = stops
+      .filter(s => timeToMinutes(s.time) >= timeToMinutes(window.start) && timeToMinutes(s.time) <= timeToMinutes(window.end))
+      .at(0);
+    const afterStopAnchor = inWindow ?? stops
       .filter(s => timeToMinutes(s.time) < timeToMinutes(window.start))
       .at(-1);
-    if (!beforeWindow) continue;
+    if (!afterStopAnchor) continue;
 
     const label = window.type === 'lunch'
       ? "Nothing scheduled for lunch after 14:00"
@@ -167,15 +170,15 @@ function buildMealRecos(
 
     recos.push({
       type: 'reco',
-      id: `meal-${window.type}-${beforeWindow.id}`,
+      id: `meal-${window.type}-${afterStopAnchor.id}`,
       trigger: window.type as 'lunch' | 'dinner',
       label,
       consequence,
       nearbyCity: city,
       persona,
-      afterStopId: beforeWindow.id,
-      stopLat: beforeWindow.lat,
-      stopLon: beforeWindow.lon,
+      afterStopId: afterStopAnchor.id,
+      stopLat: afterStopAnchor.lat,
+      stopLon: afterStopAnchor.lon,
     });
   }
 
@@ -428,20 +431,7 @@ function buildDiscoveryRecos(
 ): ReelRecoCard[] {
   const recos: ReelRecoCard[] = [];
   for (const stop of stops) {
-    if (stop.stage === 'hidden_gem') {
-      recos.push({
-        type: 'reco',
-        id: `hidden-gem-${stop.id}`,
-        trigger: 'hidden_gem',
-        label: `${stop.title} — off the radar`,
-        consequence: `Highly rated but barely reviewed. The kind of place you'd only find if someone told you about it.`,
-        nearbyCity: city,
-        persona,
-        afterStopId: stop.id,
-        stopLat: stop.lat,
-        stopLon: stop.lon,
-      });
-    } else if (stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0) {
+    if (stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0) {
       recos.push({
         type: 'reco',
         id: `trending-${stop.id}`,
