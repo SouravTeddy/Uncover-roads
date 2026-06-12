@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReelRecoCard as ReelRecoCardType } from './types';
-import { ReelImg } from './ReelImg';
+import type { Place } from '../../../shared/types';
+import { api } from '../../../shared/api';
 
 interface Props {
   card: ReelRecoCardType;
@@ -8,42 +9,48 @@ interface Props {
   archetype: string;
   existingPlaceIds: string[];
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan') => void;
-  onMapNavigate?: (lat: number, lon: number) => void;
+  onMapNavigate?: (lat: number, lon: number, places: Place[]) => void;
 }
 
-
-const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; chipLabel: string }> = {
-  lunch:             { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.1)',  chipLabel: 'Lunch window' },
-  dinner:            { icon: 'dinner_dining',   color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Dinner window' },
-  evening:           { icon: 'nightlight',      color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Evening' },
-  culture:           { icon: 'museum',          color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Culture' },
-  rest:              { icon: 'local_cafe',      color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Rest break' },
-  weather:           { icon: 'wb_cloudy',       color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Weather alert' },
-  closing_conflict:  { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Timing conflict' },
-  walking_gap:       { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Long walk' },
-  crowd_peak:        { icon: 'groups',          color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Peak hours' },
-  density_excess:    { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Packed day' },
-  density_sparse:    { icon: 'explore',         color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Room to add' },
-  geo_efficiency:    { icon: 'route',           color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Route' },
-  time_balance:      { icon: 'balance',         color: '#7c6f9f', bg: 'rgba(124,111,159,.1)', chipLabel: 'Time balance' },
-  category_diversity:{ icon: 'grid_view',       color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Variety' },
-  social_gap:        { icon: 'people',          color: '#4f8fab', bg: 'rgba(79,143,171,.1)',  chipLabel: 'Social' },
-  budget_mismatch:   { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.1)',  chipLabel: 'Budget' },
-  live_event:        { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.1)',  chipLabel: 'Live event' },
-  hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.1)', chipLabel: 'Hidden gem' },
+const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; border: string; chipLabel: string; searchCategory: string }> = {
+  lunch:             { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Lunch window',    searchCategory: 'restaurant' },
+  dinner:            { icon: 'dinner_dining',   color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Dinner window',   searchCategory: 'restaurant' },
+  evening:           { icon: 'nightlight',      color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Evening',         searchCategory: 'bar' },
+  culture:           { icon: 'museum',          color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Culture',         searchCategory: 'museum' },
+  rest:              { icon: 'local_cafe',      color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Rest break',      searchCategory: 'cafe' },
+  weather:           { icon: 'wb_cloudy',       color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Weather alert',   searchCategory: '' },
+  closing_conflict:  { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Timing conflict', searchCategory: '' },
+  walking_gap:       { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Long walk',       searchCategory: '' },
+  crowd_peak:        { icon: 'groups',          color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Peak hours',      searchCategory: '' },
+  density_excess:    { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Packed day',      searchCategory: '' },
+  density_sparse:    { icon: 'explore',         color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Room to add',     searchCategory: '' },
+  geo_efficiency:    { icon: 'route',           color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Route',           searchCategory: '' },
+  time_balance:      { icon: 'balance',         color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Time balance',    searchCategory: '' },
+  category_diversity:{ icon: 'grid_view',       color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Variety',         searchCategory: '' },
+  social_gap:        { icon: 'people',          color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Social',          searchCategory: '' },
+  budget_mismatch:   { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Budget',          searchCategory: '' },
+  live_event:        { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Live event',      searchCategory: '' },
+  hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Hidden gem',      searchCategory: '' },
 };
 
 export function ReelRecoCard({ card, active, archetype: _archetype, existingPlaceIds: _existing, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasPhoto = !!card.anchorPhotoUrl;
-  const [photoFailed, setPhotoFailed] = useState(false);
-
   const onInteractRef = useRef(onInteract);
   useEffect(() => { onInteractRef.current = onInteract; });
 
-  // Only [active] in deps — onInteract is an inline function from the parent and would
-  // change every render, causing an infinite dispatch loop via ADD_RECO_INTERACTION.
+  const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
+
+  // Pre-fetch nearby places when card becomes active so Browse on Map is instant
+  useEffect(() => {
+    if (!active || !cfg.searchCategory || card.stopLat == null || card.stopLon == null) return;
+    if (nearbyPlaces.length > 0) return;
+    (api as unknown as Record<string, (opts: { lat: number; lon: number; category: string; limit: number }) => Promise<Place[]>>).nearbyPlaces?.({ lat: card.stopLat, lon: card.stopLon, category: cfg.searchCategory, limit: 8 })
+      ?.then(places => { if (places?.length) setNearbyPlaces(places); })
+      ?.catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
   useEffect(() => { if (active) onInteractRef.current?.('viewed'); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (active) {
@@ -54,95 +61,112 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const hasBrowse = card.stopLat != null && card.stopLon != null;
+  const canBrowse = hasBrowse && !!onMapNavigate;
+
   return (
-    <div className="reel-card" style={{ width: '100%', height: '100dvh', background: '#0f0d0c', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-      {/* Photo / visual top half */}
-      <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden' }}>
-        {hasPhoto && !photoFailed
-          ? <ReelImg
-              src={card.anchorPhotoUrl}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
-              onFallback={() => setPhotoFailed(true)}
-            />
-          : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1714 0%, #0f0d0c 100%)' }} />
-        }
-        {/* Scrim */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,13,12,0.1) 0%, rgba(15,13,12,0.9) 100%)', pointerEvents: 'none' }} />
-
-        {/* Trigger chip */}
-        <div style={{
-          position: 'absolute', top: 20, left: 20,
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '4px 9px', borderRadius: 999,
-          background: cfg.bg, border: `1px solid ${cfg.color}26`,
+    <div
+      className="reel-card"
+      style={{
+        width: '100%', height: '100dvh',
+        background: '#0f0d0c',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '0 24px',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Large trigger icon */}
+      <div
+        style={{
+          width: 72, height: 72, borderRadius: 20,
+          background: cfg.bg,
+          border: `1px solid ${cfg.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: 24,
           opacity: active ? 1 : 0,
-          transition: 'opacity .4s .05s ease',
-        }}>
-          <span className="ms fill" style={{ fontSize: 12, color: cfg.color }}>{cfg.icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
-        </div>
-
-        {/* Label overlay at bottom of photo */}
-        <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24 }}>
-          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>Nearby</div>
-          <div style={{
-            color: '#f5f0ea', fontSize: 22,
-            fontFamily: "'Cormorant Garamond', serif", fontWeight: 600,
-            opacity: active ? 1 : 0,
-            transform: active ? 'translateY(0)' : 'translateY(8px)',
-            transition: 'opacity .45s .17s ease, transform .45s .17s ease',
-            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
-          }}>
-            {card.label}
-          </div>
-        </div>
+          transform: active ? 'scale(1)' : 'scale(0.88)',
+          transition: 'opacity .4s ease, transform .4s ease',
+        }}
+      >
+        <span className="ms fill" style={{ fontSize: 30, color: cfg.color }}>{cfg.icon}</span>
       </div>
 
-      {/* Info bottom half */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 20px 28px', gap: 12, overflowY: 'auto' }}>
-
-        {/* Consequence */}
-        <div style={{
-          color: '#a09880', fontSize: 13, lineHeight: 1.5,
+      {/* Chip label */}
+      <div
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          padding: '3px 10px', borderRadius: 999,
+          background: cfg.bg, border: `1px solid ${cfg.border}`,
+          marginBottom: 16,
           opacity: active ? 1 : 0,
-          transition: 'opacity .45s .24s ease',
-        }}>
-          {card.consequence || `Explore ${card.label.toLowerCase()} near ${card.nearbyCity}`}
-        </div>
+          transition: 'opacity .4s .06s ease',
+        }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
+      </div>
 
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
+      {/* Main label */}
+      <p
+        style={{
+          fontFamily: "'Cormorant Garamond', serif",
+          fontSize: 24, fontWeight: 600,
+          color: 'var(--color-text-1)',
+          lineHeight: 1.2, textAlign: 'center',
+          margin: 0, marginBottom: 12,
+          opacity: active ? 1 : 0,
+          transform: active ? 'translateY(0)' : 'translateY(8px)',
+          transition: 'opacity .45s .12s ease, transform .45s .12s ease',
+        }}
+      >
+        {card.label}
+      </p>
 
-        {/* Browse on map CTA */}
+      {/* Consequence */}
+      <p
+        style={{
+          fontSize: 13, color: 'var(--color-text-3)',
+          lineHeight: 1.55, textAlign: 'center',
+          margin: 0, marginBottom: 36,
+          maxWidth: 280,
+          opacity: active ? 1 : 0,
+          transition: 'opacity .45s .2s ease',
+        }}
+      >
+        {card.consequence || `Explore options near ${card.nearbyCity}`}
+      </p>
+
+      {/* Browse CTA */}
+      {canBrowse && (
         <button
           onClick={() => {
             onInteract?.('tapped');
-            if (card.stopLat != null && card.stopLon != null) {
-              onMapNavigate?.(card.stopLat, card.stopLon);
-            }
+            onMapNavigate(card.stopLat!, card.stopLon!, nearbyPlaces);
           }}
           style={{
-            background: 'rgba(212,168,83,0.15)',
-            border: '1px solid rgba(212,168,83,0.5)',
-            borderRadius: 8,
+            width: '100%', maxWidth: 320,
             padding: '14px 20px',
-            color: '#d4a853',
-            fontSize: 14,
-            fontWeight: 600,
-            letterSpacing: '0.04em',
+            borderRadius: 10,
+            background: 'rgba(212,168,83,0.12)',
+            border: '1px solid rgba(212,168,83,0.35)',
+            color: 'var(--color-primary)',
+            fontSize: 14, fontWeight: 600,
+            letterSpacing: '.03em',
             cursor: 'pointer',
-            width: '100%',
             textAlign: 'center',
+            opacity: active ? 1 : 0,
+            transition: 'opacity .45s .28s ease',
           }}
         >
-          Browse on map →
+          Browse nearby on map →
         </button>
+      )}
 
-        <div style={{ color: '#5a5248', fontSize: 11, textAlign: 'center', letterSpacing: '0.08em' }}>
+      {card.nearbyCity && (
+        <p style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 12, letterSpacing: '.06em', opacity: active ? 0.7 : 0, transition: 'opacity .45s .32s ease' }}>
           Near {card.nearbyCity}
-        </div>
-      </div>
+        </p>
+      )}
     </div>
   );
 }

@@ -383,7 +383,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       )}
 
       {/* ── stk-body: content zone, z-index:10 ─────────────────── */}
-      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
+      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
 
         {/* Row 1: counter pill + identity chips */}
         <div style={{ display: 'flex', flexDirection: 'row', gap: 7, marginBottom: 6, flexWrap: 'wrap' }}>
@@ -485,17 +485,24 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           </div>
         )}
 
-        {/* What-to-do — always shown */}
+        {/* What-to-do — persona copy when available, else generic */}
         <div style={{ marginBottom: 9 }}>
           <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.text3, margin: 0, marginBottom: 5 }}>
             AT THIS STOP
           </p>
-          {todos.slice(0, 2).map((item, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < 1 ? 5 : 0 }}>
-              <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0 }}>{item.icon}</span>
-              <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{item.text}</span>
+          {stop.whyForYou ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+              <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0, marginTop: 1 }}>auto_awesome</span>
+              <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{stop.whyForYou}</span>
             </div>
-          ))}
+          ) : (
+            todos.slice(0, 2).map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < 1 ? 5 : 0 }}>
+                <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0 }}>{item.icon}</span>
+                <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{item.text}</span>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Footer row: hours chip */}

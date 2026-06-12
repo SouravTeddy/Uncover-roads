@@ -154,7 +154,7 @@ export function ItineraryReelScreen() {
       // Collect all stops that have no image yet
       const stopsNeedingImages = activeItinerary.days.flatMap(d =>
         d.stops
-          .filter(s => !s.imageUrl && !s.photoRef)
+          .filter(s => !s.imageUrl)
           .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
       );
 
@@ -678,8 +678,10 @@ export function ItineraryReelScreen() {
                 );
                 dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
               }}
-              onMapNavigate={(lat, lon) => {
+              onMapNavigate={(lat, lon, places) => {
+                if (places.length > 0) dispatch({ type: 'SET_RECO_FOCUS_PLACES', places });
                 dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
+                dispatch({ type: 'SET_FILTER', filter: 'curated' });
                 dispatch({ type: 'GO_TO', screen: 'map' });
               }}
             />
