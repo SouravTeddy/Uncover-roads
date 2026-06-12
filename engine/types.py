@@ -40,6 +40,7 @@ class EngineContext:
     weather: dict | None = None
     generation_count: int = 0
     user_arrival_time: str | None = None       # user's actual arrival time, day-1 only
+    user_start_type: str | None = None         # 'airport' | 'hotel' | 'custom'
 
 
 @dataclass

@@ -461,6 +461,7 @@ export function MapScreen() {
         engineWeights: null,
         cities: orderedCities.length > 1 ? orderedCities : undefined,
         arrivalTime: state.pendingTripDetails?.arrivalTime ?? null,
+        startType: state.tripContext.startType ?? 'hotel',
       })
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
       dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
