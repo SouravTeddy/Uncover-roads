@@ -42,7 +42,7 @@ const defaultProps = {
   onAdd: vi.fn(),
   onClose: vi.fn(),
   onFavourite: vi.fn(),
-  details: { rating: 4.5, rating_count: 120, weekday_text: [], photo_refs: [], photo_ref: null, price_level: null, website: null, description: null, phone: null },
+  details: { place_id: 'p1', name: 'Blue Note Jazz', address: 'Tokyo', lat: 35.67, lon: 139.65, rating: 4.5, rating_count: 120, weekday_text: [], photo_refs: [], photo_ref: undefined, price_level: undefined, website: undefined, phone: undefined },
 }
 
 beforeEach(() => {

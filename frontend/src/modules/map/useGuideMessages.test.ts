@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { computeAreaText, computeBuildReadinessText, isGeographicCluster, findPeacefulNearby, useGuideMessages } from './useGuideMessages'
 import type { Place, Persona, PersonaProfile } from '../../shared/types'
 
@@ -144,7 +144,7 @@ describe('findPeacefulNearby', () => {
   })
 
   it('skips already-discovered peaceful places', () => {
-    const park = makePlace({ id: 'p3', title: 'Small Garden', category: 'garden', lat: 35.7150, lon: 139.7968 })
+    const park = makePlace({ id: 'p3', title: 'Small Garden', category: 'park', lat: 35.7150, lon: 139.7968 })
     const result = findPeacefulNearby([anchor], [park], new Set(['p3']))
     expect(result).toBeNull()
   })
@@ -156,8 +156,8 @@ describe('findPeacefulNearby', () => {
   })
 
   it('recognises temple and shrine as peaceful categories', () => {
-    const temple = makePlace({ id: 't1', title: 'Hidden Temple', category: 'temple', lat: 35.7149, lon: 139.7968 })
-    const shrine = makePlace({ id: 's1', title: 'Old Shrine', category: 'shrine', lat: 35.7150, lon: 139.7966 })
+    const temple = makePlace({ id: 't1', title: 'Hidden Temple', category: 'spiritual', lat: 35.7149, lon: 139.7968 })
+    const shrine = makePlace({ id: 's1', title: 'Old Shrine', category: 'spiritual', lat: 35.7150, lon: 139.7966 })
     expect(findPeacefulNearby([anchor], [temple], new Set())).not.toBeNull()
     expect(findPeacefulNearby([anchor], [shrine], new Set())).not.toBeNull()
   })

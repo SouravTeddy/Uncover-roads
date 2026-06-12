@@ -266,7 +266,7 @@ function SunRays() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export function ReelStopCard({ card, active, primaryCity, onInteract }: Props) {
+export function ReelStopCard({ card, active, onInteract }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
