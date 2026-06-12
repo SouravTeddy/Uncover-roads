@@ -213,6 +213,7 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
   const [val, setVal] = useState(name ?? '');
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionRef = useRef(Math.random().toString(36).slice(2));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -222,14 +223,23 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
 
   function handleInput(q: string) {
     setVal(q);
+    setFetchError(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setSuggestions([]);
     if (q.trim().length < 2) return;
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const results = await placesAutocomplete(q + ' ' + city, sessionRef.current, '');
-        setSuggestions(results.slice(0, 5));
+        const results = await placesAutocomplete(q + ' ' + city, sessionRef.current, 'lodging');
+        if (results.length === 0) {
+          // Retry without type restriction — hotel may be listed under a different category
+          const fallback = await placesAutocomplete(q + ' ' + city, sessionRef.current, '');
+          setSuggestions(fallback.slice(0, 5));
+        } else {
+          setSuggestions(results.slice(0, 5));
+        }
+      } catch {
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -305,6 +315,13 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
         {loading && <span className="ms" style={{ fontSize: 15, color: 'var(--color-text-4)', animation: 'spin 1s linear infinite' }}>progress_activity</span>}
         {name && !editing && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
       </div>
+
+      {/* Autocomplete error fallback */}
+      {fetchError && editing && (
+        <div style={{ padding: '8px 13px', fontSize: 12, color: 'var(--color-text-4)' }}>
+          Can't load suggestions — type the name and tap away to save
+        </div>
+      )}
 
       {/* Autocomplete suggestions */}
       {suggestions.length > 0 && (

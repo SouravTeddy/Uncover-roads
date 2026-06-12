@@ -498,6 +498,7 @@ export function MapScreen() {
   const activeOurPickBadgeReason = activeOurPickMatch?.badge_reason ?? null
 
   const badgedPicks = ourPicks.filter(p => p.badge !== null)
+  const badgedPickIds = new Set(badgedPicks.map(p => p.place_id))
 
   const curatedCount = ourPicksLoaded
     ? badgedPicks.length + liveEvents.length + recommendedPlaces.length
@@ -561,7 +562,7 @@ export function MapScreen() {
         {/* Reco Places layer */}
         {activeFilter === 'curated' && (
           <RecoPlacesPinsLayer
-            places={recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces}
+            places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !badgedPickIds.has(p.id) && !badgedPickIds.has(p.place_id ?? ''))}
             activePinId={activePinId ?? null}
             onPinClick={(id) => {
               const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
