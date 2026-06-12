@@ -69,6 +69,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     dismissedPinIds: [],
     recoInteractions: [],
     cityCountries: {},
+    recoFocusPlaces: null,
     ...overrides,
   };
 }

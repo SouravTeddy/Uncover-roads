@@ -10,7 +10,7 @@ import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
-import type { WeatherData, Place } from '../../../shared/types';
+import type { WeatherData } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { getCityPhotoUrl } from '../../../shared/cityPhoto';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
