@@ -30,6 +30,35 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+# ── Restricted locations ────────────────────────────────────────────────────
+_BLOCKED_CITY_KEYWORDS = frozenset([
+    # North Korea
+    'north korea', 'dprk', 'pyongyang',
+    # Syria
+    'syria', 'damascus', 'aleppo', 'homs',
+    # Iran
+    'iran', 'tehran', 'isfahan',
+    # Cuba
+    'cuba', 'havana',
+    # Myanmar
+    'myanmar', 'burma', 'yangon', 'rangoon', 'naypyidaw',
+    # Afghanistan
+    'afghanistan', 'kabul',
+    # Libya
+    'libya', 'tripoli',
+    # Yemen
+    'yemen', 'sanaa',
+    # Sudan
+    'sudan', 'khartoum',
+])
+
+
+def _is_restricted_city(city: str) -> bool:
+    """Return True if the city name matches a restricted destination."""
+    normalized = city.lower().strip()
+    return any(kw in normalized for kw in _BLOCKED_CITY_KEYWORDS)
+
+
 app = FastAPI()
 
 # CORS — only allow your Vercel frontend (update after deploying)
@@ -571,6 +600,9 @@ def map_data(
     Fallback: Overpass OSM (when Google API key not configured or returns empty).
     Results cached in Supabase map_data_cache by ~5km tile key for MAP_DATA_CACHE_TTL_HOURS.
     """
+    if city and _is_restricted_city(city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
+
     # Resolve search center
     clat = center_lat or lat
     clon = center_lon or lon
@@ -621,27 +653,36 @@ def map_data(
 
     # Auto-seed city_data for cities we haven't seen before
     if _supabase and city and clat is not None and clon is not None:
-        try:
-            city_id = re.sub(r'[^a-z0-9]+', '_', city.lower().strip()).strip('_')
-            existing = _supabase.table("city_data").select("id").eq("id", city_id).maybe_single().execute()
-            # Handle supabase-py 1.x (returns dict/None) and 2.x (returns SyncSingleAPIResponse)
-            existing_data = existing.data if hasattr(existing, "data") else existing
-            if existing_data is None:
-                minimal = {
-                    "id": city_id, "name": city, "tier": 2,
-                    "center": [clat, clon], "timezone": "UTC",
-                    "climate": {}, "movement": {}, "culture": {},
-                    "neighborhoods": [], "insert_candidates": [],
-                    "scenic_routes": [], "transit_edges": [],
-                    "engine_modifiers": {}, "landmark_anchors": [], "hidden_gems": [],
-                }
-                _supabase.table("city_data").insert({
-                    "id": city_id, "name": city, "tier": 2,
-                    "country_code": "", "data": minimal,
-                }).execute()
-                print(f"MAP DATA: auto-seeded city_data for {city_id}")
-        except Exception as e:
-            print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
+        import errno as _errno
+        city_id = re.sub(r'[^a-z0-9]+', '_', city.lower().strip()).strip('_')
+        for _attempt in range(2):
+            try:
+                existing = _supabase.table("city_data").select("id").eq("id", city_id).maybe_single().execute()
+                existing_data = existing.data if hasattr(existing, "data") else existing
+                if existing_data is None:
+                    minimal = {
+                        "id": city_id, "name": city, "tier": 2,
+                        "center": [clat, clon], "timezone": "UTC",
+                        "climate": {}, "movement": {}, "culture": {},
+                        "neighborhoods": [], "insert_candidates": [],
+                        "scenic_routes": [], "transit_edges": [],
+                        "engine_modifiers": {}, "landmark_anchors": [], "hidden_gems": [],
+                    }
+                    _supabase.table("city_data").insert({
+                        "id": city_id, "name": city, "tier": 2,
+                        "country_code": "", "data": minimal,
+                    }).execute()
+                    print(f"MAP DATA: auto-seeded city_data for {city_id}")
+                break
+            except OSError as e:
+                if e.errno == _errno.EAGAIN and _attempt == 0:
+                    import time as _time; _time.sleep(0.2)
+                    continue
+                print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
+                break
+            except Exception as e:
+                print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
+                break
 
     # No cache at all — first visit, must fetch synchronously
     if not _supabase:
@@ -1261,10 +1302,26 @@ def weather(city: str = Query(...)):
 @app.get("/place-image")
 def place_image(name: str = Query(...), city: str = Query(...)):
     VALID_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+    # 1. Google Places Text Search — most accurate for specific venues
+    if GOOGLE_PLACES_API_KEY:
+        try:
+            ts = requests.get(
+                f"{GOOGLE_PLACES_BASE}/textsearch/json",
+                params={"query": f"{name} {city}", "key": GOOGLE_PLACES_API_KEY},
+                timeout=5,
+            ).json()
+            results = ts.get("results", [])
+            if results and results[0].get("photos"):
+                ref = results[0]["photos"][0]["photo_reference"]
+                return {"image": f"/place-photo?photo_ref={ref}&max_width=800"}
+        except Exception as e:
+            print("PLACE IMAGE google error:", e)
+
     wiki_base    = "https://en.wikipedia.org/w/api.php"
     commons_base = "https://commons.wikimedia.org/w/api.php"
 
-    # 1. Wikipedia article thumbnail
+    # 2. Wikipedia article thumbnail
     try:
         search = requests.get(wiki_base, params={
             "action": "query", "list": "search",
@@ -1286,7 +1343,7 @@ def place_image(name: str = Query(...), city: str = Query(...)):
     except Exception as e:
         print("PLACE IMAGE wikipedia error:", e)
 
-    # 2. Wikimedia Commons image search (broader: covers landmarks without Wikipedia articles)
+    # 3. Wikimedia Commons image search (broader: covers landmarks without Wikipedia articles)
     try:
         commons = requests.get(commons_base, params={
             "action": "query", "generator": "search",
@@ -3335,20 +3392,189 @@ def _why_for_you(
     cfg = _WHY_FOR_YOU.get(category)
     if not cfg:
         return ""
-    weight_key, phrases = cfg
+    weight_key, _phrases = cfg
     weight = weights.get(weight_key, 0.5)
     if weight < 0.4:
         return ""
+
     hour = int(scheduled_time.split(":")[0]) if scheduled_time else 10
-    if hour < 10:
-        base = 0
-    elif hour < 13:
-        base = 1
+    # TOD buckets: morning <12, afternoon 12-17, evening 17-21, night >21
+    if hour < 12:
+        tod = "morning"
     elif hour < 17:
-        base = 2
+        tod = "afternoon"
+    elif hour < 21:
+        tod = "evening"
     else:
-        base = min(3, len(phrases) - 1)
-    idx = (base + stop_index) % len(phrases)
+        tod = "night"
+
+    # TOD-aware, category-specific copy (≤15 words each)
+    _TOD_COPY: dict[str, dict[str, list[str]]] = {
+        "museum": {
+            "morning":   ["Best visited now — crowds build toward midday.",
+                          "Your explorer instinct will love the quiet this early."],
+            "afternoon": ["Significant holdings — worth more time than most give it.",
+                          "Good depth here; skip temporary exhibitions if short on time."],
+            "evening":   ["Fewer visitors now — more room to move at your pace.",
+                          "Evening light through the skylights is worth the timing."],
+            "night":     ["Late opening hours make this a rare find.",
+                          "Most visitors miss it at this hour — you won't."],
+        },
+        "gallery": {
+            "morning":   ["Morning is the right time — space to think.",
+                          "Quieter than a museum; 30 minutes is usually enough."],
+            "afternoon": ["Good contrast to the historic stops nearby.",
+                          "Contemporary space; worth a look even if art isn't the focus."],
+            "evening":   ["Evening light changes how the work reads.",
+                          "Smaller crowd means more time in front of what matters."],
+            "night":     ["Late galleries draw a local crowd — different energy.",
+                          "Worth pausing here before the night picks up."],
+        },
+        "historic": {
+            "morning":   ["More layered than it looks — best explored slowly.",
+                          "Early morning catches it before the tour groups arrive."],
+            "afternoon": ["Context here enriches everything else you'll see today.",
+                          "Often skipped, rarely regretted."],
+            "evening":   ["The light at this hour changes the whole feel.",
+                          "Significant site — worth a slower pass at dusk."],
+            "night":     ["After dark it reads completely differently.",
+                          "Floodlit and quiet — one of the better evening stops."],
+        },
+        "restaurant": {
+            "morning":   ["Good early opening — solid local option.",
+                          "Well-rated and fits the start of your day."],
+            "afternoon": ["Fits the pace of the afternoon perfectly.",
+                          "Locals eat here; that's usually a good sign."],
+            "evening":   ["Ideal dinner timing — not too early, not too late.",
+                          "Well-reviewed and off the tourist circuit."],
+            "night":     ["Still buzzing at this hour — a good sign.",
+                          "Night crowd here tends to be local, not tourist."],
+        },
+        "cafe": {
+            "morning":   ["Perfect morning start — good coffee, low noise.",
+                          "Sets the right pace before the heavier stops."],
+            "afternoon": ["A perfect afternoon pause — matches the slower pace you prefer.",
+                          "Natural break in the route here; your feet will agree."],
+            "evening":   ["Quieter than a restaurant — better for winding down.",
+                          "Good spot to sit before the evening picks up."],
+            "night":     ["Late café — rarer than it sounds, worth the stop.",
+                          "Good place to decompress before heading back."],
+        },
+        "park": {
+            "morning":   ["Fewer people now — best version of this space.",
+                          "Open stretch at the right moment in your morning."],
+            "afternoon": ["Good reset after a stretch of indoor stops.",
+                          "Lends itself to an unplanned wander mid-route."],
+            "evening":   ["Evening in open space here is worth slowing down for.",
+                          "The crowd thins out — better for a slow walk."],
+            "night":     ["Lit pathways make this workable after dark.",
+                          "Quieter than anywhere else on the route right now."],
+        },
+        "viewpoint": {
+            "morning":   ["Best before haze builds — clear views this early.",
+                          "Worth the climb; most visitors skip it."],
+            "afternoon": ["Good orientation point mid-route.",
+                          "High vantage — clear sight lines from here."],
+            "evening":   ["Temples glow differently at dusk — worth the timing.",
+                          "The city looks best from here at this hour."],
+            "night":     ["City lights from up here — different experience entirely.",
+                          "One of the better night vantage points in the area."],
+        },
+        "nightlife": {
+            "morning":   ["Note this for tonight — it peaks around 22:00.",
+                          "Worth returning to after the evening stops wrap up."],
+            "afternoon": ["Quieter now, but worth scoping before tonight.",
+                          "Best after 21:00 — bookmark it for later."],
+            "evening":   ["Getting started now — right timing for you.",
+                          "This is where the evening comes alive."],
+            "night":     ["This is where the night comes alive — right up your alley.",
+                          "Peaks now; one of the better spots in this neighbourhood."],
+        },
+        "bar": {
+            "morning":   ["Neighbourhood fixture — worth knowing for the evening.",
+                          "Good wind-down option; note for after dinner."],
+            "afternoon": ["Quieter than the evening crowd — good for a slow drink.",
+                          "Well-reviewed neighbourhood bar; not on tourist lists."],
+            "evening":   ["Good evening stop — neighbourhood feel, solid drinks.",
+                          "Local fixture; different from the tourist-facing options."],
+            "night":     ["Active now — one of the better spots after dark.",
+                          "Good wind-down after the evening stops."],
+        },
+        "shopping": {
+            "morning":   ["Best stall selection earlier in the day.",
+                          "Local designers and independents — not chains."],
+            "afternoon": ["Lively area — good for a wander between stops.",
+                          "More interesting than the main shopping strips."],
+            "evening":   ["Evening shopping crowd is lighter — easier to browse.",
+                          "Independent shops stay open later here."],
+            "night":     ["Night market energy here — different from daytime.",
+                          "Worth a pass even if you're not buying."],
+        },
+        "market": {
+            "morning":   ["Best earlier — fullest stall selection right now.",
+                          "Local market; different from tourist-facing shops."],
+            "afternoon": ["Still lively — good mid-afternoon wander.",
+                          "Weekday afternoons have decent stall variety."],
+            "evening":   ["Evening market crowd is local — the better version.",
+                          "Good stop before dinner; pick up something fresh."],
+            "night":     ["Night market mode now — worth the stop.",
+                          "Different crowd at this hour; more local than daytime."],
+        },
+        "beach": {
+            "morning":   ["Open stretch at the right moment — fewest people now.",
+                          "Less crowded on weekday mornings; good timing."],
+            "afternoon": ["Good reset before the afternoon stops continue.",
+                          "Natural break at a good point in the route."],
+            "evening":   ["Evening light on the water here is worth pausing for.",
+                          "The crowd thins out — better for a slow walk."],
+            "night":     ["Quiet stretch at this hour — different from daytime.",
+                          "Worth a brief pass before heading inland."],
+        },
+        "spa": {
+            "morning":   ["Good early booking slot — quieter than midday.",
+                          "Scheduled before the heavier stops; smart timing."],
+            "afternoon": ["Mid-afternoon slot tends to be the quietest.",
+                          "Scheduled after a long stretch of walking — good call."],
+            "evening":   ["Good call if today's route has been heavy on walking.",
+                          "Evening slot means you finish the day properly unwound."],
+            "night":     ["Late slot available here — rarer than it sounds.",
+                          "Good way to close out a full day of movement."],
+        },
+        "temple": {
+            "morning":   ["Morning ritual activity is worth arriving for.",
+                          "Early morning has a completely different atmosphere here."],
+            "afternoon": ["Active site — not just a tourist landmark.",
+                          "Worth the detour even if culture isn't your primary focus."],
+            "evening":   ["Temples glow differently at dusk — worth timing your visit.",
+                          "Evening puja makes this a different experience entirely."],
+            "night":     ["Lit after dark — the grounds read differently at night.",
+                          "One of the few sites worth visiting after sundown."],
+        },
+        "shrine": {
+            "morning":   ["Morning visits catch the ritual activity.",
+                          "Quieter than the main temples — worth the diversion."],
+            "afternoon": ["Often overlooked — the grounds are worth the time.",
+                          "Quieter than the major sites nearby."],
+            "evening":   ["Evening light here is worth the timing.",
+                          "Small but significant — the atmosphere changes at dusk."],
+            "night":     ["Lit shrines are rarer — this one is worth it.",
+                          "Quiet and atmospheric at this hour."],
+        },
+        "garden": {
+            "morning":   ["Designed for slow movement — plan at least an hour.",
+                          "Morning light through the canopy makes it worth the early start."],
+            "afternoon": ["Good middle-of-day stop when you need a slower pace.",
+                          "Peak season matters here; this timing works well."],
+            "evening":   ["Evening in a formal garden — an underrated experience.",
+                          "Crowd drops off; more space to move at your pace."],
+            "night":     ["If lit at night, this one is worth seeing after dark.",
+                          "Quiet at this hour — the off-season version of itself."],
+        },
+    }
+
+    cat_tod = _TOD_COPY.get(category, {})
+    phrases = cat_tod.get(tod) or _phrases  # fall back to original lookup if missing
+    idx = stop_index % len(phrases)
     return phrases[idx]
 
 
@@ -3356,6 +3582,9 @@ def _why_for_you(
 async def engine_itinerary(body: EngineItineraryPayload):
     """Build an itinerary from user-selected places. Called from MapScreen Build button."""
     from datetime import date as _date, timedelta as _td
+
+    if _is_restricted_city(body.city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
 
     days = max(body.days, 1)
     start = _date.fromisoformat(body.startDate)
@@ -3540,6 +3769,29 @@ async def engine_itinerary(body: EngineItineraryPayload):
         # Also update all_place_ids for subsequent queries (e.g., place_dynamic_profiles)
         all_place_ids = list(set(all_place_ids) | set(_post_swap_place_ids))
 
+    # Backfill photo_ref for inserted stops without cache entry
+    if GOOGLE_PLACES_API_KEY:
+        _all_result_stops_now = [s for day in result.days for s in day.stops]
+        for s in _all_result_stops_now:
+            if s.place_id and s.place_id not in place_details_map:
+                try:
+                    nb = requests.get(
+                        f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                        params={
+                            "location": f"{s.lat},{s.lon}",
+                            "radius": 50,
+                            "keyword": s.name,
+                            "key": GOOGLE_PLACES_API_KEY,
+                        },
+                        timeout=4,
+                    ).json()
+                    nb_results = nb.get("results", [])
+                    if nb_results and nb_results[0].get("photos"):
+                        ref = nb_results[0]["photos"][0]["photo_reference"]
+                        place_details_map[s.place_id] = {"photo_ref": ref}
+                except Exception:
+                    pass
+
     # Fetch discovery stage (hidden_gem / rising / mainstream) from place_dynamic_profiles
     _stage_map: dict[str, dict] = {}
     if _supabase and all_place_ids:
@@ -3562,12 +3814,18 @@ async def engine_itinerary(body: EngineItineraryPayload):
     # Auto-seed place_dynamic_profiles for user-selected stops not yet in the table
     _unseed_ids = [pid for pid in all_place_ids if pid and pid not in _stage_map]
     if _unseed_ids and _supabase:
+        # Build fallback: place_id → stop rating (for places not in place_details_cache)
+        _stop_rating_map: dict[str, float | None] = {
+            s.place_id: s.rating
+            for day in result.days for s in day.stops
+            if s.place_id and s.rating
+        }
         _seed_rows = []
         for _pid in _unseed_ids:
             _d = place_details_map.get(_pid, {})
-            _rating = _d.get("rating") or None
+            _rating = _d.get("rating") or _stop_rating_map.get(_pid) or None
             _rating_count = _d.get("rating_count") or None
-            if _rating is None and _rating_count is None:
+            if _rating is None:
                 continue
             _stage, _signals = _stage_and_signals(_rating, _rating_count)
             _seed_rows.append({
@@ -3857,7 +4115,7 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
 
 
 @app.get("/api/cities/photos")
-async def cities_photos(names: str, _user=Depends(get_current_user)):
+async def cities_photos(names: str):
     """Batch image URL lookup by city name. Returns {name: image_url|null}.
 
     names: comma-separated city names, max 20, case-insensitive exact match.

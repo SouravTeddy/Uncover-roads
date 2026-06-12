@@ -33,7 +33,7 @@ const CITY_PHOTOS: Record<string, string> = {
   'budapest':   'photo-1549144511-f099e773c147',
 };
 
-const DEFAULT_CITY_PHOTO = 'photo-1476514525405-09b77a9d1f66';
+const DEFAULT_CITY_PHOTO = 'photo-1488646953014-85cb44e25828';
 
 export function getCityPhotoUrl(cityName: string): string {
   const key = cityName.toLowerCase();

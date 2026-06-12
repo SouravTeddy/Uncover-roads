@@ -33,9 +33,9 @@ export function findNearestCity(
 }
 
 /**
- * Reverse geocode a lat/lon to a city name + country via Nominatim.
+ * Reverse geocode a lat/lon to a city name, state, and country via Nominatim.
  */
-async function reverseGeocode(lat: number, lon: number): Promise<{ city: string | null; country: string | null }> {
+async function reverseGeocode(lat: number, lon: number): Promise<{ city: string | null; state: string | null; country: string | null }> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
@@ -45,21 +45,40 @@ async function reverseGeocode(lat: number, lon: number): Promise<{ city: string 
     const addr = data.address ?? {};
     return {
       city: addr.city ?? addr.town ?? addr.village ?? addr.county ?? null,
+      state: addr.state ?? null,
       country: addr.country ?? null,
     };
   } catch {
-    return { city: null, country: null };
+    return { city: null, state: null, country: null };
   }
 }
 
 /**
+ * Returns true if the reverse-geocoded state/city for a pin belongs to the
+ * primary city. Matches on state or city name — handles cases like:
+ *   Talpona (state="Goa")  + primaryCity="Goa"   → same city ✓
+ *   Shibuya (state="Tokyo") + primaryCity="Tokyo" → same city ✓
+ *   Pune    (city="Pune")   + primaryCity="Mumbai" → different ✓
+ */
+function isSameCity(
+  primaryCityName: string,
+  detectedCity: string | null,
+  detectedState: string | null,
+): boolean {
+  const primary = primaryCityName.toLowerCase();
+  const city = detectedCity?.toLowerCase() ?? '';
+  const state = detectedState?.toLowerCase() ?? '';
+  return state === primary || city === primary || state.includes(primary) || primary.includes(state && state);
+}
+
+/**
  * Watches selectedPlaces for newly added pins.
- * For each new pin, determines which city it belongs to via a 3-step process:
- *   1. Haversine fast path against known cityFootprints centroids (< 30km → assign, done)
- *   2. Nominatim reverse geocode for city name
- *   3. detectTransitMode (OSRM) if new city confirmed
+ * For each new pin, determines which city it belongs to:
+ *   1. Haversine fast path against known multi-city footprints (< 30km → same city)
+ *   2. Nominatim reverse geocode — if state/city name matches primary city, same city
+ *   3. detectTransitMode (OSRM) if genuinely new city confirmed
  *
- * Calls onNewCity when a genuinely new city is detected.
+ * Calls onNewCity only when a pin is in a genuinely different city.
  */
 export function usePinCityDetector(
   selectedPlaces: Place[],
@@ -98,22 +117,29 @@ export function usePinCityDetector(
 
     if (knownCities.length === 0) return;
 
-    // Step 1: fast haversine check
-    const nearestCity = findNearestCity(newPlace.lat, newPlace.lon, knownCities);
-    if (nearestCity) return; // pin is within 30km of a known city — no new city
+    // Step 1: fast haversine check for already-known multi-city footprints (30km)
+    if (cityFootprints.length > 0) {
+      const nearestCity = findNearestCity(newPlace.lat, newPlace.lon, knownCities, 30);
+      if (nearestCity) return; // already within a known city's radius
+    }
 
-    // Step 2 + 3: async detection
+    // Step 2 + 3: async detection — reverse geocode and check state/city name
     processingRef.current = true;
     (async () => {
       try {
-        const { city: detectedCityName, country: detectedCountry } = await reverseGeocode(newPlace.lat, newPlace.lon);
-        if (!detectedCityName) return;
+        const { city: detectedCityName, state: detectedState, country: detectedCountry } = await reverseGeocode(newPlace.lat, newPlace.lon);
 
-        // Check if this city is already known by name
-        const alreadyKnown = knownCities.some(
-          c => c.city.toLowerCase() === detectedCityName.toLowerCase(),
+        // If the pin's state or city matches the primary city name, it's the same city.
+        // Handles: Talpona (state=Goa) → primary=Goa; Tokyo suburb (state=Tokyo) → primary=Tokyo.
+        if (isSameCity(primaryCityName, detectedCityName, detectedState)) return;
+
+        // Also check against all known footprint city names
+        const alreadyKnown = knownCities.some(c =>
+          isSameCity(c.city, detectedCityName, detectedState),
         );
         if (alreadyKnown) return;
+
+        if (!detectedCityName) return;
 
         // Step 3: OSRM to determine transit mode from nearest known city
         // Uses the last footprint as the "from" city — cityFootprints is populated in

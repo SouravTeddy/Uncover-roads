@@ -17,6 +17,7 @@ interface Props {
   active: boolean;
   archetype?: string;
   weather?: { condition: string; temp: number } | null;
+  primaryCity?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
 }
 
@@ -317,7 +318,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const todos          = whatToDo(stop.category);
   const hoursStr       = todayHours(stop.weekdayText);
-  const reasonText     = card.orderReason ?? card.orderConsequence ?? null;
+  const reasonText     = card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null);
 
   // Identity label from discovery stage
   const stageLabel = stop.stage === 'hidden_gem'
@@ -464,7 +465,7 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '7px 11px', borderRadius: 8, background: bg, border: `1px solid ${bdr}`, overflow: 'hidden' }}>
                   <span className="ms" style={{ fontSize: 13, color: clr, flexShrink: 0, marginTop: 1 }}>{sig.icon}</span>
-                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{sig.text}</span>
+                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0 }}>{sig.text}</span>
                 </div>
               );
             })}

@@ -17,23 +17,28 @@ interface Props {
 export function ReelImg({ src, style, onFallback }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setAttempt(0);
     setLoaded(false);
+    setFailed(false);
   }, [src]);
 
   const handleError = () => {
     if (attempt === 0) {
       setTimeout(() => setAttempt(1), 800);
     } else {
+      setFailed(true);
       onFallback?.();
     }
   };
 
+  const showShimmer = !!src && !loaded && !failed;
+
   return (
     <>
-      {!loaded && (
+      {showShimmer && (
         <div
           className="shimmer"
           style={{ position: 'absolute', inset: 0, background: '#141210', zIndex: 0 }}

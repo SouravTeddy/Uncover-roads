@@ -90,8 +90,27 @@ def detect(
     result: list[EngineStop] = []
     messages: list[EngineMessage] = []
     mins_since_coffee = 9999
-    has_lunch_today = any(s.type == "lunch" for s in stops)
-    has_dinner_today = any(s.type == "dinner" for s in stops)
+    _FOOD_TYPES = {"lunch", "dinner", "breakfast", "restaurant", "cafe", "coffee"}
+    _FOOD_CATS  = {"restaurant", "cafe", "food", "bakery"}
+
+    def _has_food_in_window(hour_from: int, hour_to: int) -> bool:
+        for s in stops:
+            if s.scheduled_time:
+                sh = int(s.scheduled_time.split(":")[0])
+                if hour_from <= sh <= hour_to:
+                    if s.type in _FOOD_TYPES or s.category in _FOOD_CATS:
+                        return True
+        return False
+
+    has_breakfast_today = _has_food_in_window(6, 10)
+    has_lunch_today = (
+        any(s.type in {"lunch", "restaurant", "cafe"} for s in stops) or
+        _has_food_in_window(11, 14)
+    )
+    has_dinner_today = (
+        any(s.type in {"dinner", "restaurant", "cafe"} for s in stops) or
+        _has_food_in_window(17, 21)
+    )
     consecutive = 0
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
 
@@ -141,11 +160,23 @@ def detect(
                     consecutive = 0
                     continue
 
-        # Lunch insert (12:00–14:30 window) — fire on time window alone; gap check removed
-        # because scheduler uses 30-min buffers so gaps never reach the old 60-min threshold
+        # Breakfast insert (7:00–10:00 window)
+        if not has_breakfast_today and stop.scheduled_time:
+            sh = int(stop.scheduled_time.split(":")[0])
+            if 7 <= sh <= 10:
+                c = _best_candidate("breakfast", ctx, mid_lat, mid_lon, seen_ids)
+                if c:
+                    result.append(_candidate_to_stop(c, city=stop.city))
+                    messages.append(_make_insert_message(c, "Morning window reached with no breakfast planned."))
+                    seen_ids.add(c.place_id)
+                    has_breakfast_today = True
+                    consecutive = 0
+                    continue
+
+        # Lunch insert (11:00–14:00 window)
         if not has_lunch_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
-            if 12 <= sh <= 14:
+            if 11 <= sh <= 14:
                 c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
@@ -159,7 +190,7 @@ def detect(
         if not has_dinner_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 18 <= sh <= 20:
-                c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids)
+                c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
                     messages.append(_make_insert_message(c, "Evening dining window reached with no dinner planned."))

@@ -19,9 +19,23 @@ describe('OurPicksPinsLayer', () => {
     expect(screen.getAllByTestId('marker')).toHaveLength(2)
   })
 
-  it('renders badge when pick has badge', () => {
+  it('renders fire icon for trending badge', () => {
     render(<OurPicksPinsLayer picks={picks} activePinId={null} onPinClick={() => {}} />)
-    const badge = screen.getByText('↑')
-    expect(badge).toBeTruthy()
+    expect(screen.getByText('local_fire_department')).toBeTruthy()
+  })
+
+  it('renders explore icon for hidden_gem badge', () => {
+    render(<OurPicksPinsLayer picks={picks} activePinId={null} onPinClick={() => {}} />)
+    expect(screen.getByText('explore')).toBeTruthy()
+  })
+
+  it('renders badge symbol for trending', () => {
+    render(<OurPicksPinsLayer picks={picks} activePinId={null} onPinClick={() => {}} />)
+    expect(screen.getByText('↑')).toBeTruthy()
+  })
+
+  it('renders badge symbol for hidden_gem', () => {
+    render(<OurPicksPinsLayer picks={picks} activePinId={null} onPinClick={() => {}} />)
+    expect(screen.getByText('✦')).toBeTruthy()
   })
 })

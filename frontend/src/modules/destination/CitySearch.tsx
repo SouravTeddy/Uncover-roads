@@ -7,6 +7,7 @@ interface GeoResult {
   lon: number;
   name: string;
   address: string;
+  countryCode?: string;
 }
 
 interface Props {
@@ -16,19 +17,28 @@ interface Props {
 export function CitySearch({ onSelect }: Props) {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const { results, loading, search, selectResult, clear } = useGoogleCitySearch();
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
 
   function handleInput(value: string) {
     setQuery(value);
+    setBlocked(false);
     search(value);
   }
 
   async function handleSelect(result: AutocompleteResult) {
     const geo = await selectResult(result);
+    if (geo === 'blocked') {
+      setBlocked(true);
+      setQuery('');
+      clear();
+      return;
+    }
     const name = geo?.name ?? result.main_text;
     setQuery('');
+    setBlocked(false);
     onSelect(name, geo);
   }
 
@@ -52,7 +62,7 @@ export function CitySearch({ onSelect }: Props) {
   const showEmpty = focused && query.length >= 2 && !loading && results.length === 0;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       <div
         className={`bg-[var(--color-surface)] h-[50px] rounded-[18px] flex items-center px-4 gap-2 border transition-all ${
           focused ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)]'
@@ -78,6 +88,15 @@ export function CitySearch({ onSelect }: Props) {
           <button onClick={handleClear} className="ms text-text-3 text-base">close</button>
         )}
       </div>
+
+      {blocked && (
+        <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 12, background: 'rgba(232,97,90,.08)', border: '1px solid rgba(232,97,90,.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="ms fill" style={{ fontSize: 14, color: '#e8615a', flexShrink: 0 }}>block</span>
+          <span style={{ fontSize: 12, color: 'rgba(242,237,230,0.7)', lineHeight: 1.4 }}>
+            Travel planning is not available for this destination.
+          </span>
+        </div>
+      )}
 
       {(showResults || showEmpty) && (
         <div

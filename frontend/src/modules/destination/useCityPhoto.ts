@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getCityPhotoUrl } from '../../shared/cityPhoto';
 
-const BASE = import.meta.env.VITE_API_BASE ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? '';
 
 /** In-memory cache: city name (lowercased) → resolved URL */
 const _cache = new Map<string, string>();
 
-/** Fetches image URL for a single city from DB; falls back to hardcoded map. */
+/** Fetches image URL for a single city from DB; falls back to Unsplash map. */
 export function useCityPhoto(cityName: string | null): string {
   const fallback = cityName ? getCityPhotoUrl(cityName) : getCityPhotoUrl('');
 
@@ -23,7 +23,7 @@ export function useCityPhoto(cityName: string | null): string {
       return;
     }
     const params = new URLSearchParams({ names: cityName });
-    fetch(`${BASE}/api/cities/photos?${params}`, { credentials: 'include' })
+    fetch(`${BASE}/api/cities/photos?${params}`)
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
         if (!data) return;
@@ -45,8 +45,8 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     const m = new Map<string, string>();
     for (const c of cities) {
       const key = c.toLowerCase();
-      const cached = _cache.get(key);
-      if (cached) m.set(key, cached);  // only pre-populate from cache — let API respond before Unsplash
+      // Pre-populate with Unsplash fallback so map is never empty on first render.
+      m.set(key, _cache.get(key) ?? getCityPhotoUrl(c));
     }
     return m;
   });
@@ -56,8 +56,6 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     const missing = cities.filter(c => !_cache.has(c.toLowerCase()));
     if (missing.length === 0) return;
 
-    // Applies Unsplash fallback for any city that still has no resolved URL.
-    // Called when the API fails or returns null — ensures shimmer always ends.
     const applyFallbacks = () => {
       setPhotoMap(prev => {
         const updated = new Map(prev);
@@ -76,7 +74,7 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     };
 
     const params = new URLSearchParams({ names: missing.join(',') });
-    fetch(`${BASE}/api/cities/photos?${params}`, { credentials: 'include' })
+    fetch(`${BASE}/api/cities/photos?${params}`)
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
         if (!data) { applyFallbacks(); return; }

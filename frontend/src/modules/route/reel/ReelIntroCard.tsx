@@ -4,8 +4,8 @@ import { ReelImg } from './ReelImg';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
   INTRO_CITY_FS, INTRO_CITY_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
-  INTRO_STRIP_BR, INTRO_STRIP_GAP, INTRO_TEXT_SHADOW,
-  WEATHER_ICON, ENGINE_STRIP_COPY,
+  INTRO_TEXT_SHADOW,
+  WEATHER_ICON,
 } from './reel-constants';
 
 interface Props {
@@ -188,21 +188,6 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
           </div>
         )}
 
-        {/* Engine strips */}
-        {card.engineChanges.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: INTRO_STRIP_GAP, marginBottom: 10 }}>
-            {card.engineChanges.slice(0, 2).map((change, i) => {
-              const copy = ENGINE_STRIP_COPY[change.type];
-              if (!copy) return null;
-              return (
-                <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: INTRO_STRIP_BR, background: 'rgba(0,0,0,.28)', border: '1px solid var(--color-border)', backdropFilter: 'blur(6px)' }}>
-                  <span className="ms" style={{ fontSize: 12, color: 'var(--color-primary)' }}>{copy.icon}</span>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-2)' }}>{copy.text(change.count)}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Swipe hint */}
         <div style={{ textAlign: 'center', marginTop: 8 }}>

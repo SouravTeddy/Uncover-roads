@@ -48,9 +48,12 @@ export function getUserPinStyle({ saved, inItinerary }: PinFlags): UserPinStyle 
 }
 
 // ── Our Picks pin layer ──────────────────────────────────────
-export const PICKS_PIN_SIZE    = 26
-export const PICKS_PIN_BG      = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-export const PICKS_PIN_BORDER  = '2px solid rgba(255,255,255,0.85)'
+export const PICKS_PIN_SIZE     = 26
+export const PICKS_PIN_BG       = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+export const PICKS_PIN_BORDER   = '2px solid rgba(255,255,255,0.85)'
+export const TRENDING_PIN_COLOR = '#f59e0b'
+export const OFFBEAT_PIN_BG     = 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)'
+export const OFFBEAT_PIN_COLOR  = '#14b8a6'
 
 // ── Live Event pin layer ─────────────────────────────────────
 export const EVENT_PIN_COLOR   = '#7c3aed'
