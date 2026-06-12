@@ -24,7 +24,6 @@ import { usePinCityDetector, findNearestCity } from './usePinCityDetector';
 import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
-import { CityHopOverlay } from './CityHopOverlay';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import type { PlacePickFE } from './OurPicksPinsLayer'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
@@ -63,6 +62,7 @@ export function MapScreen() {
 
   // New store state for phase 4
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
+  const recoFocusPlaces = state.recoFocusPlaces ?? [];
   const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
 
@@ -96,12 +96,8 @@ export function MapScreen() {
     }
   }, [pendingActivePlace, setActivePlace, dispatch]);
 
-  // Multi-city overlay state
-  const [pendingNewCity, setPendingNewCity] = useState<{ city: string; lat: number; lon: number; transit: DetectedTransit | null } | null>(null);
-
   const handleNewCity = useCallback((newCity: string, lat: number, lon: number, transit: DetectedTransit | null, country: string | null) => {
     if (cityFootprints.some(f => f.city === newCity)) return;
-    setPendingNewCity({ city: newCity, lat, lon, transit });
     const emoji = '🌍';
     dispatch({
       type: 'ADD_CITY_FOOTPRINT',
@@ -502,6 +498,7 @@ export function MapScreen() {
   const activeOurPickBadgeReason = activeOurPickMatch?.badge_reason ?? null
 
   const badgedPicks = ourPicks.filter(p => p.badge !== null)
+  const badgedPickIds = new Set(badgedPicks.map(p => p.place_id))
 
   const curatedCount = ourPicksLoaded
     ? badgedPicks.length + liveEvents.length + recommendedPlaces.length
@@ -565,10 +562,10 @@ export function MapScreen() {
         {/* Reco Places layer */}
         {activeFilter === 'curated' && (
           <RecoPlacesPinsLayer
-            places={recommendedPlaces}
+            places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !badgedPickIds.has(p.id) && !badgedPickIds.has(p.place_id ?? ''))}
             activePinId={activePinId ?? null}
             onPinClick={(id) => {
-              const p = recommendedPlaces.find(r => r.id === id)
+              const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
               if (p) {
                 setActivePlace(p)
                 fetchDetails(p)
@@ -693,6 +690,32 @@ export function MapScreen() {
             <div style={{ fontSize: 14.5, fontWeight: 800, color: '#e8615a' }}>No {activeCategoryLabel ?? 'spots'} here</div>
             <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(242,237,230,.6)', marginTop: 1 }}>Pan back toward the city to populate spots</div>
           </div>
+        </div>
+      )}
+
+      {/* Reco focus places banner — shown when navigating from reel */}
+      {recoFocusPlaces.length > 0 && (
+        <div
+          style={{
+            position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+            left: 12, right: 12, zIndex: 50,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 14px', borderRadius: 12,
+            background: 'rgba(15,13,12,0.92)', backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(212,168,83,0.25)',
+            animation: 'bannerIn .4s cubic-bezier(.25,0,0,1) both',
+          }}
+        >
+          <span className="ms fill" style={{ fontSize: 16, color: 'var(--color-primary)', flexShrink: 0 }}>place</span>
+          <span style={{ flex: 1, fontSize: 12, color: 'var(--color-text-2)', lineHeight: 1.4 }}>
+            Nearby spots · Tap any pin to explore
+          </span>
+          <button
+            onClick={() => dispatch({ type: 'SET_RECO_FOCUS_PLACES', places: null })}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-4)', display: 'flex' }}
+          >
+            <span className="ms" style={{ fontSize: 16 }}>close</span>
+          </button>
         </div>
       )}
 
@@ -1028,15 +1051,6 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* CityHopOverlay — fires once per new city detected */}
-      {pendingNewCity && (
-        <CityHopOverlay
-          fromCity={pendingNewCity.transit?.from ?? city}
-          toCity={pendingNewCity.city}
-          storyCards={[]}
-          onDone={() => setPendingNewCity(null)}
-        />
-      )}
 
     </div>
 

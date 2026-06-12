@@ -69,6 +69,7 @@ export interface AppState {
   places: Place[];
   selectedPlaces: Place[];
   activeFilter: MapFilter | 'all';
+  recoFocusPlaces: Place[] | null;
   tripContext: TripContext;
   itinerary: Itinerary | null;
   itineraryDays: (Itinerary | null)[];
@@ -285,6 +286,7 @@ export const initialState: AppState = {
   places:         ssGet<Place[]>('ur_ss_places') ?? [],
   selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
   activeFilter:   'all',
+  recoFocusPlaces: null,
   tripContext: defaultTripCtx,
   itinerary:       ssGet<Itinerary>('ur_ss_itinerary')         ?? null,
   itineraryDays:   ssGet<(Itinerary | null)[]>('ur_ss_itin_days') ?? [],
@@ -406,7 +408,8 @@ export type Action =
   | { type: 'REMOVE_ITINERARY'; id: string }
   | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null }
   | { type: 'DISMISS_PIN'; pinId: string }
-  | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] };
+  | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] }
+  | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -838,6 +841,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'ADD_RECO_INTERACTION':
       return { ...state, recoInteractions: [...state.recoInteractions, action.interaction] };
+
+    case 'SET_RECO_FOCUS_PLACES':
+      return { ...state, recoFocusPlaces: action.places };
 
     default:
       return state;
