@@ -142,6 +142,7 @@ class EngineItineraryPayload(BaseModel):
     engineWeights: Optional[dict] = None
     cities: Optional[list[str]] = None  # ordered city list for multi-city trips
     arrivalTime: Optional[str] = None   # user's actual arrival time for day-1 adjustment
+    startType: Optional[str] = "hotel"  # 'airport' | 'hotel' | 'custom'
 
 
 # ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
@@ -3724,6 +3725,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
         travel_dates=travel_dates,
         weather=None,
         user_arrival_time=body.arrivalTime or None,
+        user_start_type=body.startType or "hotel",
     )
 
     result = await build_itinerary(engine_stops, ctx)
