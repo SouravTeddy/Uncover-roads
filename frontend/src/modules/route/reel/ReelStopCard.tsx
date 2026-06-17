@@ -122,83 +122,53 @@ function crowdNote(
   return null;
 }
 
-function whatToDo(category: string | undefined): { icon: string; text: string }[] {
-  const cat = (category || '').toLowerCase();
-  if (cat.includes('museum')) return [
-    { icon: 'photo_camera', text: 'Start with the permanent collection — skip the gift shop for now' },
-    { icon: 'schedule',     text: 'Budget 90–120 min; audio guides add 30 min' },
-  ];
-  if (cat.includes('gallery')) return [
-    { icon: 'explore',      text: 'Walk the full space before lingering — get the layout first' },
-    { icon: 'photo_camera', text: 'Natural light is best — check window-side works' },
-  ];
-  if (cat.includes('temple') || cat.includes('shrine')) return [
-    { icon: 'photo_camera', text: 'Walk through the main gate and into the courtyard' },
-    { icon: 'self_improvement', text: 'Early morning has a different quality to it — quieter and atmospheric' },
-  ];
-  if (cat.includes('castle') || cat.includes('historic') || cat.includes('landmark')) return [
-    { icon: 'explore',   text: 'Walk the perimeter before going inside' },
-    { icon: 'schedule',  text: 'Guided visits add real depth — check times at the entrance' },
-  ];
-  if (cat.includes('viewpoint')) return [
-    { icon: 'photo_camera',    text: 'Give yourself 15 min for the view to land' },
-    { icon: 'directions_walk', text: 'Walk the full platform before picking your angle' },
-  ];
-  if (cat.includes('market')) return [
-    { icon: 'payments', text: 'Bring cash — most stalls are cash only' },
-    { icon: 'schedule', text: 'First pass to scout, second pass to buy' },
-  ];
-  if (cat.includes('park') || cat.includes('garden')) return [
-    { icon: 'directions_walk', text: 'Walk the outer path first to get a feel for the space' },
-    { icon: 'photo_camera',    text: 'Best light at the edges, not the centre' },
-  ];
-  if (cat.includes('beach')) return [
-    { icon: 'directions_walk', text: 'Walk the full length first — assess before settling' },
-    { icon: 'schedule',        text: 'Morning light is the most flattering here' },
-  ];
-  if (cat.includes('restaurant') || cat.includes('food')) return [
-    { icon: 'restaurant', text: 'Ask what the kitchen is proud of today' },
-    { icon: 'schedule',   text: 'Dinner reservations fill early in popular spots' },
-  ];
-  if (cat.includes('cafe') || cat.includes('coffee')) return [
-    { icon: 'local_cafe',   text: 'Single origin if available — worth asking' },
-    { icon: 'photo_camera', text: 'Best seats are usually near the window or counter' },
-  ];
-  if (cat.includes('bar') || cat.includes('nightlife')) return [
-    { icon: 'local_bar',  text: 'Ask the bartender for a house recommendation' },
-    { icon: 'schedule',   text: 'Fills up after 9PM — earlier visit is more relaxed' },
-  ];
-  if (cat.includes('shopping') || cat.includes('store')) return [
-    { icon: 'payments',     text: 'Check for tax-free options if visiting from abroad' },
-    { icon: 'explore',      text: 'Side streets near here often have better finds' },
-  ];
-  if (cat.includes('spa') || cat.includes('wellness') || cat.includes('massage')) return [
-    { icon: 'self_improvement', text: 'Arrive 15 min early — rushing in defeats the point' },
-    { icon: 'schedule',         text: 'Ask about add-ons when booking, not on arrival' },
-  ];
-  if (cat.includes('theater') || cat.includes('concert') || cat.includes('performance')) return [
-    { icon: 'confirmation_number', text: 'Check the programme at the door for running time' },
-    { icon: 'schedule',            text: 'Doors close promptly — plan for 20 min arrival buffer' },
-  ];
-  return [
-    { icon: 'explore',      text: 'Take your time — notice what most people walk past' },
-    { icon: 'photo_camera', text: 'Best angles are usually off the main path' },
-  ];
-}
-
-function todayHours(weekdayText: string[] | null): string | null {
+function visitHours(weekdayText: string[] | null, visitDate: string | null): string | null {
   if (!weekdayText?.length) return null;
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayName = days[new Date().getDay()];
-  const entry = weekdayText.find(t => t.startsWith(todayName));
+  const date = visitDate ? new Date(visitDate) : new Date();
+  const dayName = days[date.getDay()];
+  const entry = weekdayText.find(t => t.startsWith(dayName));
   if (!entry) return null;
+  if (entry.toLowerCase().includes('closed')) return `Closed on ${dayName}`;
   const match = entry.match(/–\s*(.+)/);
   return match ? `Open until ${match[1].trim()}` : null;
 }
 
 function priceLabel(level: number | null | undefined): string | null {
-  if (!level) return null;
+  if (level == null) return null;
+  if (level === 0) return 'Free';
   return '$'.repeat(Math.min(level, 4));
+}
+
+const CAT_LABEL: Record<string, string> = {
+  restaurant: 'Restaurant', cafe: 'Café', park: 'Park', museum: 'Museum',
+  historic: 'Historic site', tourism: 'Attraction', place: 'Place',
+  bar: 'Bar', nightlife: 'Nightlife', gallery: 'Gallery', bakery: 'Bakery',
+  spa: 'Spa', spiritual: 'Spiritual', stadium: 'Stadium', zoo: 'Zoo',
+  aquarium: 'Aquarium', library: 'Library', cinema: 'Cinema',
+  amusement_park: 'Amusement park', viewpoint: 'Viewpoint', beach: 'Beach',
+  market: 'Market', street_art: 'Street art',
+};
+
+function categoryLabel(cat: string): string {
+  return CAT_LABEL[cat] ?? cat.replace(/_/g, ' ');
+}
+
+function extractDomain(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function fmtVisitDate(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  const d = new Date(isoDate);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 function fmt12h(time: string): string {
@@ -256,10 +226,15 @@ function SkyTintLayers({ condition }: { condition: string }) {
 function SunRays() {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', right: '-20%', top: '-20%', width: '90%', height: '80%', background: 'radial-gradient(ellipse at top right,rgba(255,215,150,.38),rgba(255,215,150,0) 60%)', filter: 'blur(6px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
+      {/* Primary glow — top-right corner */}
+      <div style={{ position: 'absolute', right: '-15%', top: '-25%', width: '80%', height: '75%', background: 'radial-gradient(ellipse at top right,rgba(255,210,120,.72),rgba(255,210,120,0) 58%)', filter: 'blur(4px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
+      {/* Secondary haze — fills more of the upper card */}
+      <div style={{ position: 'absolute', right: 0, top: 0, width: '100%', height: '55%', background: 'radial-gradient(ellipse at 75% 0%,rgba(255,220,140,.28),rgba(255,220,140,0) 65%)', filter: 'blur(2px)' }} />
+      {/* Rotating rays */}
       <div style={{ position: 'absolute', top: '-40%', right: '-10%', width: '90%', height: '180%', transformOrigin: 'top right', animation: 'rayRotate 80s linear infinite' }}>
-        <div style={{ position: 'absolute', top: 0, left: '40%', width: 80, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.25),rgba(255,225,160,0) 65%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(12px)' }} />
-        <div style={{ position: 'absolute', top: 0, left: '55%', width: 40, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.35),rgba(255,235,180,0) 65%)', transform: 'rotate(14deg)', transformOrigin: 'top center', filter: 'blur(8px)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '40%', width: 90, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.42),rgba(255,225,160,0) 60%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(10px)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '56%', width: 50, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.52),rgba(255,235,180,0) 55%)', transform: 'rotate(13deg)', transformOrigin: 'top center', filter: 'blur(6px)' }} />
+        <div style={{ position: 'absolute', top: 0, left: '30%', width: 30, height: '100%', background: 'linear-gradient(180deg,rgba(255,245,200,.28),rgba(255,245,200,0) 45%)', transform: 'rotate(24deg)', transformOrigin: 'top center', filter: 'blur(14px)' }} />
       </div>
     </div>
   );
@@ -271,7 +246,11 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor  = todDotColor(hour);
-  const condition = (card.weather?.condition ?? 'clear').toLowerCase();
+  // localStorage.setItem('wxOverride', 'rain') — dev override to test weather effects
+  const wxOverride = import.meta.env.DEV
+    ? (localStorage.getItem('wxOverride') ?? null)
+    : null;
+  const condition = (wxOverride ?? card.weather?.condition ?? 'clear').toLowerCase();
   const isSunny   = condition.includes('sunny') || condition.includes('clear');
   const isThunder = condition.includes('thunder') || condition.includes('storm');
   const isSnow    = condition.includes('snow') || condition.includes('blizzard');
@@ -316,18 +295,40 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const serverSignals  = stop.signals ?? [];
   const hasServerSignals = serverSignals.length > 0;
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
-  const todos          = whatToDo(stop.category);
-  const hoursStr       = todayHours(stop.weekdayText);
+  const hoursStr       = visitHours(stop.weekdayText, card.visitDate);
   const reasonText     = card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null);
+
+  const contentSig   = serverSignals.find(s => s.type === 'content');
+  const crowdSig     = serverSignals.find(s => s.type === 'crowd');
+  const timingSig    = serverSignals.find(s => s.type === 'timing');
+  const transitSig   = serverSignals.find(s => s.type === 'transit');
+  // localTip = atmospheric venue description; fall back to whyForYou when localTip absent and no orderReason already fills the narrative
+  const descriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
+
+  // Conflict: rain/bad weather vs a walking transit suggestion
+  const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;
+  const walkSig = transitSig?.text?.toLowerCase().includes('walk') ? transitSig : null;
+  const hasConflict = isRaining && !!walkSig;
 
   // Identity label from discovery stage
   const stageLabel = stop.stage === 'hidden_gem'
-    ? { text: 'Hidden gem', icon: 'diamond' }
+    ? { text: 'Hidden gem',   icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
     : stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0
-    ? { text: 'Trending now', icon: 'trending_up' }
+    ? { text: 'Trending now', icon: 'trending_up',  color: '#e07050',              bg: 'rgba(212,100,50,0.12)',     bdr: 'rgba(212,100,50,0.28)' }
     : stop.stage === 'rising'
-    ? { text: 'Rising', icon: 'north_east' }
+    ? { text: 'Rising',       icon: 'north_east',   color: T.gold,                 bg: T.goldBg,                   bdr: T.goldBdr }
+    : stop.stage === 'mainstream'
+    ? { text: 'Popular here', icon: 'groups',       color: 'rgba(255,255,255,.5)', bg: 'rgba(255,255,255,.06)',     bdr: 'rgba(255,255,255,.10)' }
     : null;
+
+  // Unified crowd/timing row — server signal preferred, fallback to static note
+  const crowdRow: { text: string; icon: string; isBusy: boolean } | null =
+    crowdSig ? { text: crowdSig.text, icon: crowdSig.icon ?? 'groups', isBusy: crowdSig.text.toLowerCase().includes('peak') || crowdSig.text.toLowerCase().includes('busy') || crowdSig.text.toLowerCase().includes('rush') }
+    : timingSig ? { text: timingSig.text, icon: timingSig.icon ?? 'schedule', isBusy: false }
+    : crowd ? { text: crowd.note, icon: 'schedule', isBusy: crowd.timing === 'during' }
+    : null;
+
+  const visitDateLabel = fmtVisitDate(card.visitDate);
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: noPhotoGradient ?? T.bg }}>
@@ -342,21 +343,28 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       )}
 
       {/* TOD badge — top-left, z-index:11 */}
-      <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)', maxWidth: 170, overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
           {todLabel(hour)}
         </span>
       </div>
 
       {/* Weather chip — top-right, z-index:10 */}
-      {card.weather && (
-        <div style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: T.skyBg, border: `1px solid ${T.skyBdr}`, borderRadius: 20, padding: '3px 10px' }}>
-          <span className="ms" style={{ fontSize: 12, color: T.sky }}>{wxIcon(card.weather.condition ?? '')}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: T.text1 }}>{card.weather.temp != null ? Math.round(card.weather.temp) : '--'}°</span>
-          <span style={{ fontSize: 10, color: T.text3 }}>{(card.weather.condition ?? '').split(' ').slice(0, 2).join(' ')}</span>
-        </div>
-      )}
+      {card.weather && (() => {
+        const wxCond = (card.weather!.condition ?? '').toLowerCase();
+        const wxIsRain = wxCond.includes('rain') || wxCond.includes('drizzle') || wxCond.includes('thunder');
+        const wxBg    = wxIsRain ? 'rgba(79,120,171,.15)' : 'rgba(245,166,35,.1)';
+        const wxBdr   = wxIsRain ? 'rgba(79,120,171,.3)' : 'rgba(245,166,35,.2)';
+        const wxClr   = wxIsRain ? '#5d9bc9' : '#f5a623';
+        return (
+          <div style={{ position: 'absolute', top: 44, right: 14, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: wxBg, border: `1px solid ${wxBdr}`, borderRadius: 20, padding: '3px 10px' }}>
+            <span className="ms" style={{ fontSize: 12, color: wxClr }}>{wxIcon(card.weather!.condition ?? '')}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
+            <span style={{ fontSize: 10, color: T.text3 }}>{(card.weather!.condition ?? '').split(' ').slice(0, 2).join(' ')}</span>
+          </div>
+        );
+      })()}
 
       {/* Sky tint z-index:2 */}
       <SkyTintLayers condition={condition} />
@@ -383,133 +391,159 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
       )}
 
       {/* ── stk-body: content zone, z-index:10 ─────────────────── */}
-      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
+      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '11px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
 
-        {/* Row 1: counter pill + identity chips */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 7, marginBottom: 6, flexWrap: 'wrap' }}>
-          <div style={{ display: 'inline-flex', padding: '3px 9px', borderRadius: 5, background: T.ctrBg, backdropFilter: 'blur(10px)' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: T.pillClr }}>
+        {/* Row 1: counter pill + identity chips — gap:5px matches proto */}
+        <div style={{ display: 'flex', gap: 5, marginBottom: 5, flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: T.ctrBg, backdropFilter: 'blur(10px)' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: T.pillClr }}>
               Stop {card.stopNumber} of {card.totalStops}
             </span>
           </div>
           {stageLabel && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 5, background: T.sageBg, border: `1px solid ${T.sageBdr}` }}>
-              <span className="ms" style={{ fontSize: 10, color: T.sage }}>{stageLabel.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: T.sage }}>{stageLabel.text}</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
+              <span className="ms" style={{ fontSize: 10, color: stageLabel.color }}>{stageLabel.icon}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: stageLabel.color }}>{stageLabel.text}</span>
+            </div>
+          )}
+          {stop.isUserAdded && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(212,168,83,.14)', border: '1px solid rgba(212,168,83,.25)' }}>
+              <span className="ms" style={{ fontSize: 10, color: '#d4a853' }}>bookmark</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#d4a853' }}>Your pick</span>
+            </div>
+          )}
+          {stop.isEngineAdded && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(150,100,210,.12)', border: '1px solid rgba(150,100,210,.25)' }}>
+              <span className="ms" style={{ fontSize: 10, color: '#a87fd4' }}>auto_awesome</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#a87fd4' }}>We added this</span>
             </div>
           )}
           {card.movedFrom != null && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 5, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-              <span style={{ fontSize: 10 }}>↕</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: T.gold }}>Rescheduled</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)' }}>
+              <span className="ms" style={{ fontSize: 10, color: 'rgba(255,255,255,.5)' }}>swap_vert</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)' }}>Moved</span>
             </div>
           )}
         </div>
 
         {/* Time row */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
           <span className="ms" style={{ fontSize: 11, color: T.text3 }}>schedule</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>{fmt12h(stop.time)}</span>
           <span style={{ fontSize: 12, color: T.text3 }}>→ leave {addMinutes(stop.time, stop.durationMin)}</span>
         </div>
 
         {/* Title + area */}
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: T.text1, lineHeight: 1.05, margin: 0, marginBottom: 4, textShadow: '0 1px 5px rgba(0,0,0,.85),0 2px 14px rgba(0,0,0,.5)' }}>
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 2, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
           {stop.title}
         </h2>
         {(stop.area || stop.city) ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 9 }}>
-            <span className="ms" style={{ fontSize: 11, color: T.text3 }}>location_on</span>
-            <span style={{ fontSize: 12, color: T.text3, letterSpacing: '0.03em' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+            <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>location_on</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>
               {stop.area && stop.city ? `${stop.area} · ${stop.city}` : (stop.area || stop.city)}
             </span>
           </div>
-        ) : <div style={{ marginBottom: 9 }} />}
+        ) : <div style={{ marginBottom: 6 }} />}
 
-        {/* Meta row */}
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 9 }}>
+        {/* Meta row: rating + price + tags (emoji→muted, text→dark) + website — gap:4px matches proto */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 7, alignItems: 'center' }}>
           {stop.rating != null && stop.rating > 0 && (
-            <span style={{ padding: '2px 8px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
+            <span style={{ padding: '2px 7px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
               {stop.rating} ★
             </span>
           )}
-          {priceLabel(stop.priceLevel) && (
-            <span style={{ padding: '2px 8px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, fontSize: 10, color: T.sage }}>
+          {priceLabel(stop.priceLevel) != null && (
+            <span style={{ padding: '2px 7px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, fontSize: 10, color: T.sage }}>
               {priceLabel(stop.priceLevel)}
             </span>
           )}
-          {stop.tags && stop.tags.length > 0 && (
-            <span style={{ padding: '2px 8px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
-              {stop.tags[0]}
+          {/* Tags: emoji tags → muted pill, plain text tags → dark pill */}
+          {(stop.tags?.length ? stop.tags : [categoryLabel(stop.category)]).map((tag, i) => {
+            const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(tag);
+            return hasEmoji ? (
+              <span key={i} style={{ padding: '2px 7px', borderRadius: 99, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)', fontSize: 9.5, color: 'rgba(255,255,255,.45)' }}>
+                {tag}
+              </span>
+            ) : (
+              <span key={i} style={{ padding: '2px 7px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
+                {tag}
+              </span>
+            );
+          })}
+          {stop.website && (() => {
+            const domain = extractDomain(stop.website);
+            return domain ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 7px', borderRadius: 99, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 9.5, color: T.sky }}>
+                <span className="ms" style={{ fontSize: 9 }}>language</span>{domain}
+              </span>
+            ) : null;
+          })()}
+        </div>
+
+        {/* Narrative — gold block for normal, blue conflict banner when weather overrides transport */}
+        {hasConflict ? (
+          <div style={{ marginBottom: 7, padding: '7px 11px', borderRadius: 8, background: 'rgba(79,120,171,.12)', borderLeft: '2px solid rgba(79,120,171,.5)', display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+            <span className="ms" style={{ fontSize: 14, color: '#5d9bc9', flexShrink: 0, marginTop: 1 }}>rainy</span>
+            <span style={{ fontSize: 12, color: 'rgba(200,220,255,.85)', lineHeight: 1.5, fontStyle: 'italic' }}>
+              {reasonText ?? "We'd skip the walk today — rain all morning. The stop itself is still worth it; the weather actually keeps the crowds away."}
             </span>
-          )}
-        </div>
-
-        {/* Narrative — WHY this stop is here. Primary story element. */}
-        {reasonText && (
-          <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(212,168,83,0.08)', borderLeft: `2px solid ${T.gold}` }}>
-            <span style={{ fontSize: 13, color: T.text1, lineHeight: 1.55, fontStyle: 'italic', letterSpacing: '0.01em' }}>{reasonText}</span>
           </div>
-        )}
-
-        {/* Server-driven signals */}
-        {hasServerSignals && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 9 }}>
-            {serverSignals.map((sig, i) => {
-              const isWarning = sig.type === 'crowd' && sig.text.includes('Peak');
-              const isPhoto   = sig.type === 'photo';
-              const isContent = sig.type === 'content';
-              const bg    = isWarning ? 'rgba(212,100,50,0.12)' : isPhoto ? T.sageBg : isContent ? 'rgba(79,143,171,0.10)' : T.goldBg;
-              const bdr   = isWarning ? 'rgba(212,100,50,0.30)' : isPhoto ? T.sageBdr : isContent ? T.skyBdr : T.goldBdr;
-              const clr   = isWarning ? '#e07050' : isPhoto ? T.sage : isContent ? T.sky : T.gold;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '7px 11px', borderRadius: 8, background: bg, border: `1px solid ${bdr}`, overflow: 'hidden' }}>
-                  <span className="ms" style={{ fontSize: 13, color: clr, flexShrink: 0, marginTop: 1 }}>{sig.icon}</span>
-                  <span style={{ fontSize: 12, color: clr, lineHeight: 1.5, flex: 1, minWidth: 0 }}>{sig.text}</span>
-                </div>
-              );
-            })}
+        ) : reasonText ? (
+          <div style={{ marginBottom: 7, padding: '7px 11px', borderRadius: 8, background: 'rgba(212,168,83,0.08)', borderLeft: `2px solid ${T.gold}` }}>
+            <span style={{ fontSize: 12, color: T.text1, lineHeight: 1.5, fontStyle: 'italic' }}>{reasonText}</span>
           </div>
-        )}
+        ) : null}
 
-        {/* Static crowd note — fallback when server signals absent */}
-        {crowd && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 8,
-            padding: '8px 12px', borderRadius: 8,
-            background: crowd.timing === 'during' ? 'rgba(212,100,50,0.12)' : T.goldBg,
-            border: `1px solid ${crowd.timing === 'during' ? 'rgba(212,100,50,0.30)' : T.goldBdr}`,
-          }}>
-            <span className="ms" style={{ fontSize: 13, color: crowd.timing === 'during' ? '#e07050' : T.gold, flexShrink: 0, marginTop: 1 }}>schedule</span>
-            <span style={{ fontSize: 12, color: crowd.timing === 'during' ? '#e07050' : T.gold, lineHeight: 1.45 }}>{crowd.note}</span>
-          </div>
-        )}
-
-        {/* What-to-do — persona copy when available, else generic */}
-        <div style={{ marginBottom: 9 }}>
-          <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.text3, margin: 0, marginBottom: 5 }}>
-            AT THIS STOP
+        {/* Venue description — very muted, plain text */}
+        {descriptionText && (
+          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,.42)', lineHeight: 1.5, margin: 0, marginBottom: 8 }}>
+            {descriptionText}
           </p>
-          {stop.whyForYou ? (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-              <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0, marginTop: 1 }}>auto_awesome</span>
-              <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{stop.whyForYou}</span>
-            </div>
-          ) : (
-            todos.slice(0, 2).map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: i < 1 ? 5 : 0 }}>
-                <span className="ms" style={{ fontSize: 13, color: T.text3, flexShrink: 0 }}>{item.icon}</span>
-                <span style={{ fontSize: 12, color: T.text2, lineHeight: 1.4 }}>{item.text}</span>
-              </div>
-            ))
-          )}
-        </div>
+        )}
 
-        {/* Footer row: hours chip */}
-        {hoursStr && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}` }}>
-            <span className="ms" style={{ fontSize: 11, color: T.sage }}>schedule</span>
-            <span style={{ fontSize: 11, color: T.sage }}>{hoursStr}</span>
+        {/* Logistics bar — crowd · transit · hours */}
+        {(crowdRow || transitSig || hoursStr) && (
+          <div style={{ borderRadius: 9, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
+            {/* Row 1: crowd / timing */}
+            {crowdRow && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
+                <span className="ms" style={{ fontSize: 13, color: crowdRow.isBusy ? '#e07050' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{crowdRow.icon}</span>
+                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: crowdRow.isBusy ? 'rgba(212,100,50,0.12)' : 'rgba(107,148,112,.15)', color: crowdRow.isBusy ? '#e07050' : T.sage, flexShrink: 0 }}>
+                  {crowdRow.isBusy ? 'Busy period' : 'Good window'}
+                </span>
+              </div>
+            )}
+            {/* Row 2: transit — conflict row shows strikethrough walk + tram alternative */}
+            {transitSig && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: hoursStr ? '1px solid rgba(255,255,255,.06)' : 'none', background: hasConflict ? 'rgba(79,120,171,.08)' : 'transparent' }}>
+                <span className="ms" style={{ fontSize: 13, color: hasConflict ? 'rgba(79,143,171,.7)' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{hasConflict ? 'directions_bus' : (transitSig.icon ?? 'directions_walk')}</span>
+                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.3, flex: 1 }}>
+                  {hasConflict ? (
+                    <>
+                      <s style={{ color: 'rgba(255,255,255,.28)' }}>{transitSig.text}</s><br />
+                      <span style={{ color: 'rgba(170,200,240,.7)' }}>Alternative transport — rain all morning</span>
+                    </>
+                  ) : transitSig.text}
+                </span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: hasConflict ? 'rgba(79,120,171,.15)' : 'rgba(255,255,255,.08)', color: hasConflict ? '#5d9bc9' : 'rgba(255,255,255,.45)', flexShrink: 0 }}>
+                  {hasConflict ? 'Rain detour' : visitDateLabel}
+                </span>
+              </div>
+            )}
+            {/* Row 3: opening hours + visit date */}
+            {hoursStr && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.32)', flexShrink: 0 }}>door_open</span>
+                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', flex: 1 }}>{hoursStr}</span>
+                {visitDateLabel && (
+                  <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.45)', flexShrink: 0 }}>
+                    {visitDateLabel}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

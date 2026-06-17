@@ -3397,6 +3397,7 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
                 "price_level":         (row.get("data") or {}).get("price_level"),
                 "weekday_text":        (row.get("data") or {}).get("weekday_text") or [],
                 "editorial_summary":   (row.get("data") or {}).get("editorial_summary"),
+                "website":             (row.get("data") or {}).get("website"),
                 "top_review":          (row.get("data") or {}).get("top_review"),
                 "reviews":             (row.get("data") or {}).get("reviews") or [],
                 "rating_count":        (row.get("data") or {}).get("rating_count"),
@@ -3426,6 +3427,7 @@ def _why_for_you(
     weights: dict,
     scheduled_time: str | None = None,
     stop_index: int = 0,
+    visit_date: str | None = None,
 ) -> str:
     cfg = _WHY_FOR_YOU.get(category)
     if not cfg:
@@ -3613,7 +3615,19 @@ def _why_for_you(
     cat_tod = _TOD_COPY.get(category, {})
     phrases = cat_tod.get(tod) or _phrases  # fall back to original lookup if missing
     idx = stop_index % len(phrases)
-    return phrases[idx]
+    phrase = phrases[idx]
+
+    # Replace "now" / "right now" with the actual day name when visit_date is available
+    if visit_date:
+        try:
+            from datetime import datetime as _dt
+            day_name = _dt.strptime(visit_date, "%Y-%m-%d").strftime("%A")
+            phrase = phrase.replace("right now", f"on {day_name}")
+            phrase = phrase.replace(" now", f" on {day_name}")
+        except Exception:
+            pass
+
+    return phrase
 
 
 @app.post("/engine-itinerary")
@@ -3999,18 +4013,20 @@ async def engine_itinerary(body: EngineItineraryPayload):
                 "priceLevel": _pd.get("price_level"),
                 "rating": s.rating if s.rating != 4.0 else None,
                 "weekdayText": _pd.get("weekday_text") or None,
-                "whyForYou": _why_for_you(s.category, weights_for_why, s.scheduled_time, cat_idx),
+                "whyForYou": _why_for_you(s.category, weights_for_why, s.scheduled_time, cat_idx, day.date),
                 "orderReason": order_msg["why"] if order_msg else None,
                 "orderConsequence": order_msg["consequence"] if order_msg else None,
-                "localTip": None,
+                "localTip": _pd.get("editorial_summary") or None,
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
-                "website": None,
+                "website": _pd.get("website") or None,
                 "photoRef": _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None,
                 "tags": s.tags or [],
                 "signals": _signals,
                 "stage": _sd.get("stage"),
                 "velocityRatio": _sd.get("velocity_ratio"),
                 "transitFromPrev": _transit_from_prev,
+                "isUserAdded": s.is_user_added,
+                "isEngineAdded": (order_msg["type"] == "insert") if order_msg else False,
             })
 
         days_out.append({
