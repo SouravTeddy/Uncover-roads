@@ -25,7 +25,7 @@ import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
-import type { PlacePickFE } from './OurPicksPinsLayer'
+import { selectCuratedPicks } from './curatedPicks'
 import { LiveEventPinsLayer } from './LiveEventPinsLayer'
 import { RecoPlacesPinsLayer } from './RecoPlacesPinsLayer'
 import type { LiveEvent } from '../../shared/types'
@@ -177,8 +177,11 @@ export function MapScreen() {
   const mapHandleRef = useRef<MapHandle>(null);
 
   // Phase 11: Our Picks layer
-  const [ourPicks, setOurPicks] = useState<PlacePickFE[]>([])
-  const [ourPicksLoaded, setOurPicksLoaded] = useState(false)
+  const archetype = personaProfile?.archetype ?? state.persona ?? null
+  const ourPicks = useMemo(
+    () => selectCuratedPicks(filteredPlaces, archetype),
+    [filteredPlaces, archetype],
+  )
 
   // Phase 11: Live events layer
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
@@ -297,23 +300,9 @@ export function MapScreen() {
     };
   }, [clusterGroup]);
 
-  useEffect(() => {
-    if (!city || activeFilter !== 'curated') { setOurPicks([]); setOurPicksLoaded(false); return }
-    const activeCityContext = cityContexts[activeCityIndex]
-    const cityId = activeCityContext?.city ?? city
-    setOurPicksLoaded(false)
-    fetch(`/api/cities/picks?city_id=${encodeURIComponent(cityId)}`)
-      .then(r => r.ok ? r.json() : [])
-      .then((data: PlacePickFE[]) => {
-        setOurPicks(data)
-        setOurPicksLoaded(true)
-        if (data.length === 0) console.warn('[MapScreen] ourPicks resolved empty for city:', cityId)
-      })
-      .catch(() => { setOurPicks([]); setOurPicksLoaded(true) })
-  }, [city, activeFilter, activeCityIndex, cityContexts])
 
   useEffect(() => {
-    if (!city || activeFilter !== 'curated') { setLiveEvents([]); return }
+    if (!city) { setLiveEvents([]); return }
 
     const startDate = state.travelStartDate
     const endDate   = state.travelEndDate
@@ -381,23 +370,11 @@ export function MapScreen() {
   }, [setActivePlace, clearDetails, dispatch]);
 
   const handlePicksPinClick = useCallback((placeId: string) => {
-    // Prefer an existing place entry so all fields are present
+    // ourPicks are Place objects — route through handlePinClick directly
+    const pick = ourPicks.find(p => p.id === placeId)
+    if (pick) { handlePinClick(pick.id); return }
     const existing = places.find(p => p.id === placeId || p.place_id === placeId)
     if (existing) { handlePinClick(existing.id); return }
-    const pick = ourPicks.find(p => p.place_id === placeId)
-    if (!pick) return
-    const synthetic: Place = {
-      id: pick.place_id,
-      title: pick.name,
-      lat: pick.lat,
-      lon: pick.lon,
-      category: pick.category as Category,
-      rating: pick.rating ?? undefined,
-      place_id: pick.place_id,
-    }
-    setActivePlace(synthetic)
-    fetchDetails(synthetic)
-    trackViewedCategory(pick.category)
     dispatch({ type: 'SET_ACTIVE_PIN_ID', id: placeId })
   }, [places, ourPicks, handlePinClick, setActivePlace, fetchDetails, trackViewedCategory, dispatch])
 
@@ -492,18 +469,9 @@ export function MapScreen() {
     ? favouritedIds.has(activePlace.id)
     : false;
 
-  const activeOurPickMatch = activePlace
-    ? ourPicks.find(p => p.place_id === activePlace.id) ?? null
-    : null
-  const activeOurPickBadge = activeOurPickMatch?.badge ?? null
-  const activeOurPickBadgeReason = activeOurPickMatch?.badge_reason ?? null
+  const ourPickIds = new Set(ourPicks.map(p => p.id))
 
-  const badgedPicks = ourPicks.filter(p => p.badge !== null)
-  const badgedPickIds = new Set(badgedPicks.map(p => p.place_id))
-
-  const curatedCount = ourPicksLoaded
-    ? badgedPicks.length + liveEvents.length + recommendedPlaces.length
-    : 0
+  const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length
 
   const displayCount = activeCategories.length > 0 ? filteredPlaces.length : places.length
 
@@ -533,22 +501,18 @@ export function MapScreen() {
         onMoveEnd={handleMapMoveEnd}
         routeGeojson={routeGeojson}
       >
-        {activeFilter !== 'curated' && (
-          <FamousPinsLayer
-            places={filteredPlaces.filter(p =>
-              !selectedIds.has(p.id) &&
-              !ourPicks.some(pick =>
-                pick.place_id === p.id ||
-                pick.place_id === p.place_id ||
-                pick.name.toLowerCase() === p.title.toLowerCase()
-              )
-            )}
-            activePlaceId={activePinId}
-            discoveryMode="anchor"
-            isDark={isDark}
-            onPinClick={handlePinClick}
-          />
-        )}
+        {/* Famous places — de-dupe against curated picks */}
+        <FamousPinsLayer
+          places={filteredPlaces.filter(p =>
+            !selectedIds.has(p.id) &&
+            !ourPickIds.has(p.id)
+          )}
+          activePlaceId={activePinId}
+          discoveryMode="anchor"
+          isDark={isDark}
+          onPinClick={handlePinClick}
+          mapZoom={mapZoom}
+        />
         <ReferencePinsLayer
           pins={state.referencePins}
           activePinId={activePinId}
@@ -560,41 +524,38 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
-        {/* Reco Places layer */}
-        {activeFilter === 'curated' && (
-          <RecoPlacesPinsLayer
-            places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !badgedPickIds.has(p.id) && !badgedPickIds.has(p.place_id ?? ''))}
-            activePinId={activePinId ?? null}
-            onPinClick={(id) => {
-              const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
-              if (p) {
-                setActivePlace(p)
-                fetchDetails(p)
-                trackViewedCategory(p.category)
-                dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
-              }
-            }}
-          />
-        )}
+        {/* Reco places — always visible */}
+        <RecoPlacesPinsLayer
+          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? ''))}
+          activePinId={activePinId ?? null}
+          mapZoom={mapZoom}
+          onPinClick={(id) => {
+            const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
+            if (p) {
+              setActivePlace(p)
+              fetchDetails(p)
+              trackViewedCategory(p.category)
+              dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
+            }
+          }}
+        />
 
-        {/* Our Picks layer — only show badge-bearing picks (trending/hidden_gem/getting_busy) */}
-        {activeFilter === 'curated' && (
-          <OurPicksPinsLayer
-            picks={badgedPicks}
-            activePinId={activePinId ?? null}
-            onPinClick={handlePicksPinClick}
-            selectedPlaceIds={selectedIds}
-          />
-        )}
 
-        {/* Live Events layer */}
-        {activeFilter === 'curated' && (
-          <LiveEventPinsLayer
-            events={liveEvents}
-            activePinId={activePinId ?? null}
-            onPinClick={handleEventPinClick}
-          />
-        )}
+        {/* Curated picks — ✦ sparkle distinguishes them visually */}
+        <OurPicksPinsLayer
+          picks={ourPicks}
+          activePinId={activePinId ?? null}
+          onPinClick={handlePicksPinClick}
+          selectedPlaceIds={selectedIds}
+          mapZoom={mapZoom}
+        />
+
+        {/* Live Events */}
+        <LiveEventPinsLayer
+          events={liveEvents}
+          activePinId={activePinId ?? null}
+          onPinClick={handleEventPinClick}
+        />
 
         {/* Numbered search result pins */}
         {showSearchStrip && searchPins.length > 0 && (
@@ -749,8 +710,8 @@ export function MapScreen() {
           </div>
         )}
 
-        {/* Filter bar */}
-        <div style={{ pointerEvents: 'auto' }}>
+        {/* Filter bar — in single-city mode push below the city name + date (≈3rem) */}
+        <div style={{ pointerEvents: 'auto', marginTop: isMultiCity ? 0 : '2.75rem' }}>
           <FilterBar
             active={activeFilter as MapFilter}
             activeCategories={activeCategories}
@@ -839,34 +800,6 @@ export function MapScreen() {
           {new Date(state.travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </span>
       )}
-      <div
-        style={{
-          position: 'absolute',
-          top: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)',
-          right: '1rem',
-          zIndex: 26,
-          pointerEvents: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: 6,
-          marginTop: isMultiCity ? 0 : '3.5rem',
-        }}
-      >
-        <GuideBulb
-          messages={guideMessages}
-          hasUnread={guideHasUnread}
-          onRead={markGuideRead}
-          onPlaceAction={(id) => {
-            const place = places.find(p => p.id === id)
-            if (place) {
-              if (activeFilter !== 'all') setFilter('all')
-              mapHandleRef.current?.flyTo(place.lat, place.lon, 15)
-              dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id })
-            }
-          }}
-        />
-      </div>
 
       {/* Events loading spinner */}
       {eventsLoading && (
@@ -1010,9 +943,11 @@ export function MapScreen() {
           travelDate={state.tripContext.date}
           travelStartDate={state.travelStartDate}
           travelEndDate={state.travelEndDate}
-          ourPickBadge={activeOurPickBadge}
-          badgeReason={activeOurPickBadgeReason}
+          ourPickBadge={null}
+          badgeReason={null}
           userTier={state.userTier}
+          persona={state.persona ?? null}
+          personaProfile={personaProfile}
         />
       )}
 

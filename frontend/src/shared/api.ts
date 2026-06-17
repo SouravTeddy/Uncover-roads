@@ -204,6 +204,13 @@ export async function mapData(
 }
 
 export const api = {
+  picks: (cityId: string, lat?: number, lon?: number) => {
+    const params = new URLSearchParams({ city_id: cityId })
+    if (lat !== undefined) params.set('lat', String(lat))
+    if (lon !== undefined) params.set('lon', String(lon))
+    return get<unknown[]>(`/api/cities/picks?${params}`)
+  },
+
   geocode: (city: string) =>
     get<GeoData>(`/geocode?city=${encodeURIComponent(city)}`),
 

@@ -36,6 +36,14 @@ export const CATEGORY_ICONS: Record<string, string> = {
   amusement_park:'attractions',
   beach:         'beach_access',
   market:        'storefront',
+  // seed_builder types
+  coffee:        'local_cafe',
+  lunch:         'restaurant',
+  dinner:        'restaurant',
+  breakfast:     'local_cafe',
+  scenic_walk:   'park',
+  rest:          'spa',
+  micro:         'photo_camera',
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {

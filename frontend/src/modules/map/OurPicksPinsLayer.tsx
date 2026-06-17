@@ -1,118 +1,113 @@
 import { Marker } from 'react-map-gl/maplibre'
+import type { Place } from '../../shared/types'
 import {
-  PICKS_PIN_SIZE, PICKS_PIN_BG, BADGE_COLORS,
-  OFFBEAT_PIN_BG, OFFBEAT_PIN_COLOR, TRENDING_PIN_COLOR,
+  UNIFIED_PIN_BG, UNIFIED_PIN_SHADOW,
+  UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  CATEGORY_MOOD, DEFAULT_MOOD,
 } from './pin-visual'
 import { CATEGORY_ICONS } from './types'
 
-export interface PlacePickFE {
-  place_id: string
-  name: string
-  lat: number
-  lon: number
-  category: string
-  rating: number | null
-  stage: string
-  badge: 'trending' | 'hidden_gem' | 'getting_busy' | null
-  badge_reason: string | null
-}
-
-const BADGE_SYMBOL: Record<string, string> = {
-  trending:     '↑',
-  hidden_gem:   '✦',
-  getting_busy: '!',
-}
-
-function pinBackground(badge: PlacePickFE['badge']): string {
-  if (badge === 'hidden_gem') return OFFBEAT_PIN_BG
-  return PICKS_PIN_BG  // trending, getting_busy, null → amber
-}
-
-function pinIcon(badge: PlacePickFE['badge'], category: string): string {
-  if (badge === 'trending') return 'local_fire_department'
-  if (badge === 'hidden_gem') return 'explore'
-  return CATEGORY_ICONS[category] ?? 'place'
-}
-
-function pinGlow(badge: PlacePickFE['badge']): string {
-  if (badge === 'hidden_gem') return `0 2px 14px ${OFFBEAT_PIN_COLOR}80`
-  if (badge === 'trending') return `0 2px 14px ${TRENDING_PIN_COLOR}99`
-  return '0 2px 8px rgba(0,0,0,0.4)'
-}
-
 interface Props {
-  picks: PlacePickFE[]
+  picks: Place[]
   activePinId: string | null
   onPinClick: (placeId: string) => void
   selectedPlaceIds?: Set<string>
+  mapZoom?: number
 }
 
-export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds }: Props) {
+const CURATED_CIRCLE_BORDER        = '1px solid rgba(212,168,83,0.35)'
+const CURATED_CIRCLE_BORDER_ACTIVE = '1.5px solid rgba(212,168,83,0.65)'
+
+export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds, mapZoom = 13 }: Props) {
+  const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
+
   return (
     <>
-      {picks.filter(pick => !selectedPlaceIds?.has(pick.place_id)).map((pick) => {
-        const isActive = activePinId === pick.place_id
-        const size = isActive ? PICKS_PIN_SIZE + 4 : PICKS_PIN_SIZE
-        const badgeColor = pick.badge ? BADGE_COLORS[pick.badge] : null
-        const icon = pinIcon(pick.badge, pick.category)
-        const bg   = pinBackground(pick.badge)
-        const glow = pinGlow(pick.badge)
+      {picks.filter(pick => !selectedPlaceIds?.has(pick.id)).map((pick) => {
+        const isActive = activePinId === pick.id
+        const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
+        const icon = CATEGORY_ICONS[pick.category] ?? 'location_on'
+        const mood = CATEGORY_MOOD[pick.category] ?? DEFAULT_MOOD
 
         return (
           <Marker
-            key={pick.place_id}
+            key={pick.id}
             latitude={pick.lat}
             longitude={pick.lon}
-            anchor="bottom"
+            anchor="center"
             onClick={(e) => {
               e.originalEvent.stopPropagation()
-              onPinClick(pick.place_id)
+              onPinClick(pick.id)
             }}
           >
-            <div style={{ position: 'relative', width: size, height: size }}>
-              <div
-                style={{
-                  width: size,
-                  height: size,
+            <div style={{ position: 'relative', width: size, height: size, cursor: 'pointer', overflow: 'visible' }}>
+
+              {/* dual ping rings — curated attention signal */}
+              <div style={{
+                position: 'absolute',
+                top: 0, right: 0, bottom: 0, left: 0,
+                borderRadius: '50%',
+                border: `1.5px solid ${mood.c}`,
+                animation: 'pinPulse 2.6s 0s cubic-bezier(.2,.6,.4,1) infinite',
+                pointerEvents: 'none',
+              }} />
+              <div style={{
+                position: 'absolute',
+                top: 0, right: 0, bottom: 0, left: 0,
+                borderRadius: '50%',
+                border: `1.5px solid ${mood.c}`,
+                animation: 'pinPulse 2.6s 1.3s cubic-bezier(.2,.6,.4,1) infinite',
+                pointerEvents: 'none',
+              }} />
+
+              {/* active ring */}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  top: -3, right: -3, bottom: -3, left: -3,
                   borderRadius: '50%',
-                  background: bg,
-                  border: '2px solid rgba(255,255,255,0.85)',
-                  boxShadow: glow,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  opacity: isActive ? 1 : 0.92,
-                }}
-              >
-                <span className="ms fill" style={{ fontSize: size * 0.45, color: '#fff', lineHeight: 1 }}>
+                  border: '1.5px solid #d4a853',
+                  animation: 'pinPulse 1.5s ease-out infinite',
+                  pointerEvents: 'none',
+                }} />
+              )}
+
+              {/* pin circle — gold border marks curated picks */}
+              <div style={{
+                width: size, height: size, borderRadius: '50%',
+                background: UNIFIED_PIN_BG,
+                backdropFilter: 'blur(10px)',
+                border: isActive ? CURATED_CIRCLE_BORDER_ACTIVE : CURATED_CIRCLE_BORDER,
+                boxShadow: isActive
+                  ? `0 0 0 3px rgba(212,168,83,0.18), ${UNIFIED_PIN_SHADOW}`
+                  : `0 0 0 1px rgba(212,168,83,0.08), ${UNIFIED_PIN_SHADOW}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'transform 0.24s cubic-bezier(.34,1.56,.64,1)',
+                transform: isActive ? 'scale(1.12)' : 'scale(1)',
+                position: 'relative', zIndex: 2,
+              }}>
+                <span className="ms fill" style={{ fontSize: UNIFIED_ICON_SIZE, color: UNIFIED_ICON_COLOR, lineHeight: 1 }}>
                   {icon}
                 </span>
               </div>
-              {pick.badge && badgeColor && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: -4,
-                    right: -4,
-                    minWidth: 14,
-                    height: 14,
-                    borderRadius: 7,
-                    backgroundColor: badgeColor,
-                    border: '1.5px solid rgba(10,14,23,0.9)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 8,
-                    fontWeight: 700,
-                    color: '#fff',
-                    padding: '0 3px',
-                  }}
-                >
-                  {BADGE_SYMBOL[pick.badge] ?? ''}
-                </div>
-              )}
+
+              {/* label card — fades with zoom */}
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 7px)',
+                left: '50%', transform: 'translateX(-50%)',
+                padding: '6px 11px', borderRadius: 13,
+                background: 'rgba(9,10,14,0.96)', backdropFilter: 'blur(14px)',
+                border: '1px solid rgba(212,168,83,0.18)',
+                boxShadow: '0 5px 16px rgba(0,0,0,0.6)',
+                whiteSpace: 'nowrap', maxWidth: 130,
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                fontSize: 12.5, fontWeight: 600, color: '#f2ede6', letterSpacing: '0.01em',
+                pointerEvents: 'none',
+                opacity: labelOpacity,
+                transition: 'opacity 0.25s ease',
+              }}>
+                {pick.title}
+              </div>
             </div>
           </Marker>
         )

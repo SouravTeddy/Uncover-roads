@@ -184,10 +184,16 @@ export function computeAnalysisInsights(
     const cat = place.category
     if ((cat === 'tourism' || cat === 'park' || cat === 'historic') && includesWeekend) {
       insights.push({ text: `Busiest on weekends · your trip includes Sat–Sun → arrive before 10am`, state: 'gold' })
+    } else if ((cat === 'museum' || cat === 'gallery') && includesWeekend) {
+      insights.push({ text: `Busiest on weekends · book tickets in advance to skip queues`, state: 'gold' })
+    } else if ((cat === 'museum' || cat === 'gallery') && allWeekdays) {
+      insights.push({ text: `Weekday visit · expect smaller crowds and more breathing room`, state: 'gold' })
     } else if (cat === 'restaurant') {
       insights.push({ text: `Peak lunch 12–2pm · your trip overlaps weekdays → book a table ahead`, state: 'gold', linkLabel: 'reserve' })
     } else if (cat === 'cafe' && allWeekdays) {
       insights.push({ text: `Quieter on weekday mornings · your trip aligns well → no need to rush`, state: 'gold' })
+    } else if (cat === 'spa' || cat === 'spiritual') {
+      insights.push({ text: `Best visited on quieter weekday mornings for a more peaceful experience`, state: 'gold' })
     }
   }
 
