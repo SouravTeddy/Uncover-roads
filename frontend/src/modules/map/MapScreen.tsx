@@ -32,7 +32,6 @@ import type { LiveEvent } from '../../shared/types'
 import { NumberedPinsLayer } from './NumberedPinsLayer'
 import type { SearchResultPin } from './NumberedPinsLayer'
 import { SearchResultsStrip } from './SearchResultsStrip'
-import { GuideBulb } from './GuideBulb'
 import { useGuideMessages } from './useGuideMessages'
 import { shouldShowPaywall } from '../../shared/tier'
 import { useNeighborhoods } from './useNeighborhoods'
@@ -177,7 +176,7 @@ export function MapScreen() {
   const mapHandleRef = useRef<MapHandle>(null);
 
   // Phase 11: Our Picks layer
-  const archetype = personaProfile?.archetype ?? state.persona ?? null
+  const archetype = personaProfile?.archetype ?? state.persona?.archetype ?? null
   const ourPicks = useMemo(
     () => selectCuratedPicks(filteredPlaces, archetype),
     [filteredPlaces, archetype],
@@ -196,7 +195,7 @@ export function MapScreen() {
   const [showDisclaimer, setShowDisclaimer] = useState(false)
   const [pendingBuild, setPendingBuild] = useState(false)
 
-  const { messages: guideMessages, hasUnread: guideHasUnread, markRead: markGuideRead } = useGuideMessages(
+  useGuideMessages(
     selectedPlaces, city, state.persona ?? null, personaProfile,
     places, activePlace, liveEvents,
     state.travelStartDate, state.travelEndDate, activeCityDays,
