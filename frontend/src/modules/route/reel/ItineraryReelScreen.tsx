@@ -182,8 +182,11 @@ export function ItineraryReelScreen() {
         const dbUrl = (cityPhotosRaw as Record<string, string | null>)[c]
           ?? (cityPhotosRaw as Record<string, string | null>)[key]
           ?? null;
-        const validDbUrl = dbUrl && dbUrl.includes('images.unsplash.com/') && !dbUrl.includes('/photo-') ? null : dbUrl;
-        builtCityPhotoMap.set(key, validDbUrl ?? getCityPhotoUrl(c));
+        const apiBase = import.meta.env.VITE_API_URL ?? '';
+        const resolvedDbUrl = dbUrl?.startsWith('/place-photo') ? `${apiBase}${dbUrl}`
+          : (dbUrl?.includes('images.unsplash.com/') && !dbUrl.includes('/photo-')) ? null
+          : dbUrl;
+        builtCityPhotoMap.set(key, resolvedDbUrl ?? getCityPhotoUrl(c));
       }
 
       // Store resolved stop images so enrichment rebuilds keep them
