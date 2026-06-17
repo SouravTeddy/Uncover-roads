@@ -36,7 +36,7 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
   const dbPhotoUrl = useCityPhoto(primaryCity);
 
   let photoUrl: string;
-  if (city || savedTripCity) {
+  if ((city || savedTripCity) && dbPhotoUrl) {
     photoUrl = dbPhotoUrl;
   } else if (persona?.archetype && ARCHETYPE_PHOTOS[persona.archetype]) {
     photoUrl = `https://images.unsplash.com/${ARCHETYPE_PHOTOS[persona.archetype]}?w=800&q=80`;
