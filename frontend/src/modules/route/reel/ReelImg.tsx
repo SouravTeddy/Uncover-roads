@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 
 interface Props {
@@ -25,6 +25,11 @@ export function ReelImg({ src, style, onFallback }: Props) {
     setFailed(false);
   }, [src]);
 
+  // When img is already in browser cache, onLoad won't fire — check img.complete on mount.
+  const imgRef = useCallback((el: HTMLImageElement | null) => {
+    if (el?.complete && el.naturalWidth > 0) setLoaded(true);
+  }, []);
+
   const handleError = () => {
     if (attempt === 0) {
       setTimeout(() => setAttempt(1), 800);
@@ -46,6 +51,7 @@ export function ReelImg({ src, style, onFallback }: Props) {
       )}
       {src && (
         <img
+          ref={imgRef}
           key={`${src}-${attempt}`}
           src={src}
           style={{

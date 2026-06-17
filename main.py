@@ -2870,19 +2870,46 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
         return {"place_id": None, "error": str(e)}
 
 
+
+# ── Photo byte cache: photo_ref → bytes, stored in memory (max 500 entries) ──
+_photo_cache: dict[str, tuple[bytes, str]] = {}   # ref → (bytes, content_type)
+_PHOTO_CACHE_MAX = 500
+
 @app.get("/place-photo")
 def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = Query(800)):
-    """Proxy Google Place Photos — keeps API key off the client."""
+    """Proxy Google Place Photos — fetches and caches bytes server-side.
+    API key never leaves the server; browser referrer restrictions don't apply.
+    """
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     if not GOOGLE_PLACES_API_KEY:
         raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY not configured")
-    url = (
+
+    cache_key = f"{photo_ref}:{max_width}"
+    if cache_key in _photo_cache:
+        data, ct = _photo_cache[cache_key]
+        return Response(content=data, media_type=ct,
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+    google_url = (
         f"https://maps.googleapis.com/maps/api/place/photo"
         f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}"
     )
-    return RedirectResponse(url=url, status_code=302)
+    try:
+        r = requests.get(google_url, timeout=10, allow_redirects=True)
+        if not r.ok:
+            raise HTTPException(status_code=502, detail="Google photo fetch failed")
+        ct = r.headers.get("Content-Type", "image/jpeg")
+        data = r.content
+        # Evict oldest entry if cache full
+        if len(_photo_cache) >= _PHOTO_CACHE_MAX:
+            _photo_cache.pop(next(iter(_photo_cache)))
+        _photo_cache[cache_key] = (data, ct)
+        return Response(content=data, media_type=ct,
+                        headers={"Cache-Control": "public, max-age=86400"})
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Photo fetch error: {e}")
 
 
 # ── Reel Recommendations ─────────────────────────────────────────────────────
