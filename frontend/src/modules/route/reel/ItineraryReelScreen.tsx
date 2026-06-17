@@ -555,19 +555,8 @@ export function ItineraryReelScreen() {
         result.push(card);
 
       } else if (card.type === 'scenic') {
-        miniCards.push({
-          type: 'walk',
-          title: card.tag || 'Walk',
-          imageUrl: claimImg(card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl, contextualImg('walking_gap')),
-          // Use destination name — the header already shows "From → To"
-          name: card.to || card.place,
-          // metaRight has the distance (e.g. "1.5 km") — more useful than a clock time
-          data: card.metaRight || '',
-          // Sensory/atmospheric text is evocative; why is dry routing logic
-          footer: card.sensory || card.why,
-          icon: card.modeIcon === 'walk' ? 'directions_walk' : 'directions_car',
-          accent: card.accent,
-        });
+        flushGroup();
+        result.push(card);
 
       } else if (card.type === 'reco') {
         const meta = TRIGGER_META[card.trigger] ?? { label: 'Nearby', icon: 'explore', color: '#d4a853' };

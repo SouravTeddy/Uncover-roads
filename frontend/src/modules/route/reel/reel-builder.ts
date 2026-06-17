@@ -520,7 +520,9 @@ function buildScenicCards(
       persona: archetypeLower,
       personaDisplay,
       personaIcon: 'walk',
-      why: `${distLabel} connecting ${a.title} and ${b.title}.`,
+      why: SCENIC_ARCHETYPES.has(archetypeLower)
+        ? `This is the walk, not just the route — ${distLabel} through the neighbourhood between ${a.title} and ${b.title}, past things most visitors never find. Given how much you enjoy exploring on foot, this one's worth the ${walkMins} minutes.`
+        : `There's a ${distLabel} walking path between these two if you want it — quiet neighbourhood lane, ${walkMins} minutes. The metro works too; both get you there at the same time.`,
       sensory: `~${walkMins} min on foot.`,
       sensoryIcon: 'directions_walk',
       reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
@@ -625,20 +627,18 @@ export function buildReelCards(
   const fromDays = [...new Set(itinerary.days.map(d => d.city).filter(Boolean))];
   const fromList = itinerary.cities?.filter(Boolean) ?? [];
   const uniqueCities = fromList.length > fromDays.length ? fromList : fromDays.length > 1 ? fromDays : fromList.length > 0 ? fromList : [itinerary.city ?? ''];
-  // Country label only for multi-city trips — single city always shows the city name
+  // City label: single city → show city name; multi-city → try to resolve a country label,
+  // fall back to the user's requested city (itinerary.city) to avoid dumping suburb names.
   const cityLabel = uniqueCities.length === 1
     ? (itinerary.city ?? uniqueCities[0] ?? '')
     : (() => {
         const uniqueCountries = [...new Set(
           uniqueCities.map(c => cityCountries[c] ?? cityCountries[c.toLowerCase()] ?? null).filter(Boolean)
         )] as string[];
-        return uniqueCountries.length > 1
-          ? `${uniqueCountries[0]} +${uniqueCountries.length - 1}`
-          : uniqueCountries.length === 1
-          ? uniqueCountries[0]
-          : uniqueCities.length > 2
-          ? `${uniqueCities[0]} +${uniqueCities.length - 1}`
-          : uniqueCities.join(' · ');
+        if (uniqueCountries.length > 1) return `${uniqueCountries[0]} +${uniqueCountries.length - 1}`;
+        if (uniqueCountries.length === 1) return uniqueCountries[0];
+        // No country found — fall back to the user's requested city rather than joining suburb names
+        return itinerary.city ?? uniqueCities[0] ?? '';
       })();
 
   // Totals for intro card
@@ -819,6 +819,7 @@ export function buildReelCards(
         movedFrom: stop.movedFrom ?? null,
         weather: getWeatherForCity(day.city),
         pairWith: findPairWith(stop, sortedStops),
+        visitDate: day.date ?? null,
       };
       cards.push(stopCard);
 
