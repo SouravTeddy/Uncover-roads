@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Place, PlaceDetails } from '../../shared/types'
+import type { Place, PlaceDetails, Persona, PersonaProfile } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights } from './pincard-utils'
 import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
+import { usePersonaInsight, computePersonaBadges } from './pincard-persona'
 
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
@@ -28,6 +29,8 @@ interface Props {
   ourPickBadge?: OurPickBadge
   badgeReason?: string | null
   userTier?: 'free' | 'pack' | 'pro'
+  persona?: Persona | null
+  personaProfile?: PersonaProfile | null
 }
 
 const shimmerBase: React.CSSProperties = {
@@ -44,10 +47,14 @@ export function PinCard({
   ourPickBadge = null,
   badgeReason = null,
   userTier = 'free',
+  persona = null,
+  personaProfile = null,
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
   const [descExpanded, setDescExpanded] = useState(false)
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [galleryIdx, setGalleryIdx] = useState(0)
   const [imgSrcs, setImgSrcs] = useState<string[]>([])
   const [slideIdx, setSlideIdx] = useState(0)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -56,6 +63,8 @@ export function PinCard({
   const closing = useRef(false)
   const heroTouchStartX = useRef(0)
   const heroTouchStartY = useRef(0)
+  const heroWasSwiped = useRef(false)
+  const insightCache = useRef(new Map<string, string>())
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setVisible(true))
@@ -105,7 +114,11 @@ export function PinCard({
   useEffect(() => {
     setHoursOpen(false)
     setDescExpanded(false)
+    setGalleryOpen(false)
+    setGalleryIdx(0)
   }, [place.id])
+
+  const { insight: personaInsight } = usePersonaInsight(place, persona, 'map', insightCache)
 
   useSheetDismiss(onClose, true)
 
@@ -142,11 +155,14 @@ export function PinCard({
     const dx = e.changedTouches[0].clientX - heroTouchStartX.current
     const dy = e.changedTouches[0].clientY - heroTouchStartY.current
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      heroWasSwiped.current = true
       setSlideIdx(i =>
         dx < 0
           ? Math.min(i + 1, imgSrcs.length - 1)
           : Math.max(i - 1, 0)
       )
+    } else {
+      heroWasSwiped.current = false
     }
   }, [imgSrcs.length])
 
@@ -161,6 +177,27 @@ export function PinCard({
   const website = details?.website ?? null
   const description = details?.editorial_summary ?? null
   const PRICE_SYMBOLS = ['', '₹', '₹₹', '₹₹₹', '₹₹₹₹']
+
+  const personaBadges = persona ? computePersonaBadges(place, persona, personaProfile, 'map') : []
+  const whyForYouText = personaInsight ?? place.reason ?? null
+
+  const archetypeStr = (persona?.archetype ?? (personaProfile as { archetype?: string } | null)?.archetype ?? '').toLowerCase()
+  const ARCHETYPE_HIGH_FIT: Record<string, string[]> = {
+    explorer:     ['park', 'viewpoint', 'museum', 'tourism', 'beach', 'historic'],
+    wanderer:     ['market', 'park', 'street_art', 'cafe', 'viewpoint', 'spiritual'],
+    epicurean:    ['restaurant', 'cafe', 'bar', 'market', 'bakery'],
+    historian:    ['historic', 'museum', 'spiritual', 'gallery', 'library'],
+    pulse:        ['bar', 'nightlife', 'market', 'restaurant', 'viewpoint'],
+    slowtraveller:['cafe', 'park', 'spiritual', 'gallery', 'viewpoint'],
+    voyager:      ['museum', 'historic', 'gallery', 'restaurant', 'viewpoint'],
+  }
+  const archetypeLabel: Record<string, string> = {
+    explorer: 'Explorer', wanderer: 'Wanderer', epicurean: 'Epicurean',
+    historian: 'Historian', pulse: 'Pulse', slowtraveller: 'Slow Traveller', voyager: 'Voyager',
+  }
+  const highFit = archetypeStr ? (ARCHETYPE_HIGH_FIT[archetypeStr] ?? []).includes(place.category) : false
+  const archetypeName = archetypeStr ? (archetypeLabel[archetypeStr] ?? archetypeStr) : null
+  const showWhyForYou = personaBadges.length > 0 || highFit || whyForYouText !== null
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
@@ -198,6 +235,10 @@ export function PinCard({
           from { opacity:0; transform:translateY(4px) }
           to   { opacity:1; transform:translateY(0) }
         }
+        @keyframes galleryIn {
+          from { opacity:0; transform:scale(.97) }
+          to   { opacity:1; transform:scale(1) }
+        }
       `}</style>
 
       {/* Backdrop */}
@@ -233,11 +274,12 @@ export function PinCard({
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)' }} />
         </div>
 
-        {/* Hero — 190px fixed height, swipeable image carousel */}
+        {/* Hero — 190px fixed height, swipeable image carousel, tap to open gallery */}
         <div
-          style={{ height: 190, position: 'relative', overflow: 'hidden', flexShrink: 0 }}
+          style={{ height: 190, position: 'relative', overflow: 'hidden', flexShrink: 0, cursor: imgSrcs.length > 0 ? 'pointer' : 'default' }}
           onTouchStart={handleHeroTouchStart}
           onTouchEnd={handleHeroTouchEnd}
+          onClick={() => { if (!heroWasSwiped.current && imgSrcs.length > 0) { setGalleryOpen(true); setGalleryIdx(slideIdx) } }}
         >
           {/* Base: category gradient + icon (always behind images) */}
           <div style={{
@@ -319,6 +361,18 @@ export function PinCard({
             {isFavourited ? '❤️' : '🤍'}
           </button>
 
+          {/* Tap hint — N photos */}
+          {imgSrcs.length > 1 && (
+            <div style={{
+              position: 'absolute', bottom: 34, right: 12, zIndex: 6,
+              background: 'rgba(0,0,0,.45)', borderRadius: 8, padding: '3px 8px',
+              fontSize: 9, color: 'rgba(255,255,255,.7)', backdropFilter: 'blur(4px)',
+              pointerEvents: 'none',
+            }}>
+              {imgSrcs.length} photos ›
+            </div>
+          )}
+
           {/* Hero badge — trending or hidden gem */}
           {ourPickBadge === 'trending' && !trendingLocked && (
             <div style={{
@@ -346,6 +400,28 @@ export function PinCard({
           )}
         </div>
 
+        {/* Thumbnail strip — only when multiple images loaded */}
+        {imgSrcs.length > 1 && (
+          <div style={{
+            display: 'flex', gap: 5, padding: '8px 14px 0',
+            overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0,
+          }}>
+            {imgSrcs.map((src, i) => (
+              <div
+                key={i}
+                onClick={() => { setSlideIdx(i); setGalleryOpen(true); setGalleryIdx(i) }}
+                style={{
+                  width: 54, height: 46, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
+                  border: i === slideIdx ? '2px solid #d4a853' : '2px solid transparent',
+                  cursor: 'pointer', transition: 'border-color 0.15s',
+                }}
+              >
+                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Scrollable body */}
         <div
           style={{
@@ -355,6 +431,29 @@ export function PinCard({
             flex: 1,
           }}
         >
+          {/* Badge reason banner — top of card, only when pin has a badge */}
+          {ourPickBadge && badgeReason && (() => {
+            const cfg = {
+              trending:     { c: '#f59e0b', bg: 'rgba(245,158,11,.10)', border: 'rgba(245,158,11,.25)', icon: 'trending_up',      label: 'Trending now' },
+              hidden_gem:   { c: '#14b8a6', bg: 'rgba(20,184,166,.10)',  border: 'rgba(20,184,166,.25)',  icon: 'diamond',           label: 'Hidden gem'  },
+              getting_busy: { c: '#f97316', bg: 'rgba(249,115,22,.10)',  border: 'rgba(249,115,22,.25)',  icon: 'local_fire_department', label: 'Getting busy' },
+            }[ourPickBadge]
+            if (!cfg) return null
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 12px', borderRadius: 11, marginBottom: 12,
+                background: cfg.bg, border: `1px solid ${cfg.border}`,
+              }}>
+                <span className="ms fill" style={{ fontSize: 16, color: cfg.c, flexShrink: 0, marginTop: 1 }}>{cfg.icon}</span>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: cfg.c, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>{cfg.label}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(242,237,230,.78)', lineHeight: 1.5 }}>{badgeReason}</div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Category chip — immediate */}
           <div style={{ marginBottom: 6 }}>
             <span style={{
@@ -427,6 +526,41 @@ export function PinCard({
               )}
             </div>
           ) : null}
+
+          {/* Why for you */}
+          {showWhyForYou && (
+            <div style={{
+              borderRadius: 12, padding: '12px 13px', marginBottom: 14,
+              background: 'linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.03))',
+              border: '1px solid rgba(99,102,241,.18)',
+              animation: 'sectionReveal 360ms 120ms cubic-bezier(.22,1,.36,1) both',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: 13 }}>✨</span>
+                Why for you
+              </div>
+              {personaBadges.map((b, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: b.color }}>{b.text.startsWith('✓') ? '✓' : '⚠'}</span>
+                  <span style={{ fontSize: 12, color: b.color, lineHeight: 1.4 }}>{b.text.replace(/^[✓⚠]\s*/, '')}</span>
+                </div>
+              ))}
+              {personaBadges.length === 0 && highFit && archetypeName && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: whyForYouText ? 6 : 0 }}>
+                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: '#a78bfa' }}>✓</span>
+                  <span style={{ fontSize: 12, color: '#a78bfa', lineHeight: 1.4 }}>{categoryLabel} is a strong match for {archetypeName} travellers</span>
+                </div>
+              )}
+              {(personaBadges.length > 0 || highFit) && whyForYouText && (
+                <div style={{ height: 1, background: 'rgba(99,102,241,.12)', margin: '6px 0 8px' }} />
+              )}
+              {whyForYouText && (
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.55 }}>
+                  {whyForYouText}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Trending description block */}
           {ourPickBadge === 'trending' && !trendingLocked && (
@@ -614,21 +748,48 @@ export function PinCard({
             </div>
           ) : null}
 
-          {/* Description — shimmer while loading */}
-          {/* Curated recommendation reason */}
-          {place.reason && (
-            <div style={{
-              marginBottom: 12, padding: '10px 12px', borderRadius: 10,
-              background: 'var(--color-primary-bg)',
-              border: '1px solid rgba(212,168,83,.18)',
-              animation: 'sectionReveal 360ms 120ms cubic-bezier(.22,1,.36,1) both',
-            }}>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-primary)', lineHeight: 1.5, fontWeight: 500 }}>
-                <span style={{ marginRight: 5, opacity: 0.8 }}>✦</span>{place.reason}
-              </p>
+          {/* Reviews section */}
+          {details?.reviews && details.reviews.length > 0 && (
+            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 160ms cubic-bezier(.22,1,.36,1) both' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'rgba(242,237,230,.22)', marginBottom: 7 }}>
+                What visitors say
+              </div>
+              {details.reviews.map((review, i) => (
+                <div key={i} style={{
+                  borderRadius: 10, padding: '10px 12px',
+                  background: 'var(--color-surface2)',
+                  marginBottom: 6,
+                }}>
+                  <p style={{ fontSize: 12, lineHeight: 1.55, fontStyle: 'italic', marginBottom: 6, color: 'rgba(242,237,230,.72)' }}>
+                    "{review.text}"
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: 'rgba(212,168,83,.18)', color: '#d4a853',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 700, flexShrink: 0,
+                    }}>{review.author_name?.[0]?.toUpperCase() ?? 'G'}</div>
+                    <span style={{ fontSize: 10, color: 'rgba(242,237,230,.38)' }}>{review.author_name || 'Google reviewer'}</span>
+                    <span style={{ fontSize: 9, color: '#c49840', marginLeft: 'auto' }}>{'★'.repeat(Math.round(review.rating))}</span>
+                  </div>
+                </div>
+              ))}
+              {details.rating_count != null && (
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ fontSize: 10, color: 'var(--color-primary)', display: 'block', textAlign: 'right', marginTop: 2, textDecoration: 'none' }}
+                >
+                  See all {(details.rating_count as number).toLocaleString()} reviews on Google →
+                </a>
+              )}
             </div>
           )}
 
+          {/* Description — shimmer while loading */}
           {details == null ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
@@ -726,6 +887,99 @@ export function PinCard({
             </div>
           )}
         </div>
+
+        {/* Gallery overlay */}
+        {galleryOpen && imgSrcs.length > 0 && (
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 50,
+            background: '#000',
+            display: 'flex', flexDirection: 'column',
+            animation: 'galleryIn 0.22s ease',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
+              <button
+                onClick={() => setGalleryOpen(false)}
+                style={{
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: 'rgba(255,255,255,.12)', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 14, cursor: 'pointer',
+                }}
+              >✕</button>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{place.title}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', marginTop: 2 }}>
+                  Photo {galleryIdx + 1} of {imgSrcs.length}
+                </div>
+              </div>
+              <div style={{ width: 30 }} />
+            </div>
+
+            {/* Main image */}
+            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img
+                src={imgSrcs[galleryIdx]}
+                alt={place.title}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+              {galleryIdx > 0 && (
+                <button
+                  onClick={() => setGalleryIdx(i => i - 1)}
+                  style={{
+                    position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                    width: 34, height: 34, borderRadius: '50%',
+                    background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(6px)',
+                    border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >‹</button>
+              )}
+              {galleryIdx < imgSrcs.length - 1 && (
+                <button
+                  onClick={() => setGalleryIdx(i => i + 1)}
+                  style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    width: 34, height: 34, borderRadius: '50%',
+                    background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(6px)',
+                    border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >›</button>
+              )}
+            </div>
+
+            {/* Dots */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '8px 0' }}>
+              {imgSrcs.map((_, i) => (
+                <div key={i} style={{
+                  height: 3, borderRadius: 2,
+                  width: i === galleryIdx ? 16 : 5,
+                  background: i === galleryIdx ? '#fff' : 'rgba(255,255,255,.25)',
+                  transition: 'all 0.2s',
+                }} />
+              ))}
+            </div>
+
+            {/* Thumbnail strip */}
+            <div style={{ display: 'flex', gap: 6, padding: '0 14px 18px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {imgSrcs.map((src, i) => (
+                <div
+                  key={i}
+                  onClick={() => setGalleryIdx(i)}
+                  style={{
+                    width: 56, height: 50, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
+                    opacity: i === galleryIdx ? 1 : 0.5,
+                    border: `2px solid ${i === galleryIdx ? '#d4a853' : 'transparent'}`,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

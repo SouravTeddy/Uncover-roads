@@ -1,14 +1,61 @@
 import type { DiscoveryMode } from '../../shared/types'
 
-// ── Famous pin layer ─────────────────────────────────────────
-// Theme-aware: dark map gets a deep navy, light map gets charcoal slate
-export const FAMOUS_PIN_COLOR_DARK  = '#1e3a5f'
-export const FAMOUS_PIN_COLOR_LIGHT = '#334155'
-export const FAMOUS_PIN_SIZE   = 28
-export const FAMOUS_STAR_ICON  = 'star'   // Material Symbol name
+// ── Unified pin design (v2) — matches map-pins-understood.html proto ──────────
+export const UNIFIED_PIN_BG        = 'rgba(18,19,24,0.94)'
+export const UNIFIED_PIN_BORDER    = '1px solid rgba(242,237,230,0.16)'
+export const UNIFIED_PIN_SHADOW    = '0 7px 18px rgba(0,0,0,0.55)'
+export const UNIFIED_PIN_SIZE      = 38
+export const UNIFIED_ICON_SIZE     = 19
+export const UNIFIED_ICON_COLOR    = '#e8e2d8'
+export const CURATED_SPARKLE_COLOR = '#d4a853'
 
-export function getFamousPinColor(isDark: boolean): string {
-  return isDark ? FAMOUS_PIN_COLOR_DARK : FAMOUS_PIN_COLOR_LIGHT
+// Mood badge: category → { color, Material Symbols Rounded icon }
+export const CATEGORY_MOOD: Record<string, { c: string; icon: string }> = {
+  restaurant:    { c: '#d8a35e', icon: 'local_fire_department' },
+  cafe:          { c: '#d8a35e', icon: 'local_fire_department' },
+  bakery:        { c: '#d8a35e', icon: 'local_fire_department' },
+  bar:           { c: '#d98aa6', icon: 'celebration' },
+  nightlife:     { c: '#d98aa6', icon: 'celebration' },
+  market:        { c: '#d98aa6', icon: 'celebration' },
+  park:          { c: '#6aa6e0', icon: 'open_in_full' },
+  beach:         { c: '#6aa6e0', icon: 'open_in_full' },
+  museum:        { c: '#8f9ce0', icon: 'menu_book' },
+  historic:      { c: '#8f9ce0', icon: 'menu_book' },
+  gallery:       { c: '#8f9ce0', icon: 'menu_book' },
+  library:       { c: '#8f9ce0', icon: 'menu_book' },
+  spiritual:     { c: '#6fb3a2', icon: 'eco' },
+  spa:           { c: '#6fb3a2', icon: 'eco' },
+  viewpoint:     { c: '#d4a853', icon: 'star' },
+  tourism:       { c: '#d4a853', icon: 'star' },
+  // seed_builder types
+  coffee:        { c: '#d8a35e', icon: 'local_fire_department' },
+  lunch:         { c: '#d8a35e', icon: 'local_fire_department' },
+  dinner:        { c: '#d98aa6', icon: 'celebration' },
+  breakfast:     { c: '#d8a35e', icon: 'local_fire_department' },
+  scenic_walk:   { c: '#6aa6e0', icon: 'open_in_full' },
+  rest:          { c: '#6fb3a2', icon: 'eco' },
+  micro:         { c: '#d4a853', icon: 'star' },
+}
+export const DEFAULT_MOOD = { c: '#ad8fd4', icon: 'bolt' }
+
+// Per-place badge → mood (OurPicks: badge field drives mood, not just category)
+export const BADGE_MOOD: Record<string, { c: string; icon: string }> = {
+  trending:     { c: '#e0a93f', icon: 'local_fire_department' },
+  hidden_gem:   { c: '#ad8fd4', icon: 'bolt' },
+  getting_busy: { c: '#d98aa6', icon: 'celebration' },
+}
+
+// ── Famous pin layer ─────────────────────────────────────────
+export const FAMOUS_PIN_SIZE   = 28
+export const FAMOUS_STAR_ICON  = 'star'
+
+/** @deprecated use UNIFIED_PIN_BG */
+export const FAMOUS_PIN_COLOR_DARK  = '#1e3a5f'
+/** @deprecated use UNIFIED_PIN_BG */
+export const FAMOUS_PIN_COLOR_LIGHT = '#334155'
+/** @deprecated use UNIFIED_PIN_BG */
+export function getFamousPinColor(_isDark: boolean): string {
+  return UNIFIED_PIN_BG
 }
 
 // ── Reference ghost pin layer ────────────────────────────────

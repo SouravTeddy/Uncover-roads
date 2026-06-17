@@ -2844,6 +2844,15 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             "types": result.get("types", []),
             "editorial_summary": _sanitise(result.get("editorial_summary", {}).get("overview")),
             "top_review": _sanitise(result["reviews"][0]["text"]) if result.get("reviews") else None,
+            "reviews": [
+                {
+                    "text": _sanitise(r.get("text", "")),
+                    "author_name": r.get("author_name", ""),
+                    "rating": r.get("rating", 5),
+                }
+                for r in (result.get("reviews") or [])[:3]
+                if r.get("text")
+            ],
         }
 
         if _supabase:
@@ -3362,6 +3371,7 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
                 "weekday_text":        (row.get("data") or {}).get("weekday_text") or [],
                 "editorial_summary":   (row.get("data") or {}).get("editorial_summary"),
                 "top_review":          (row.get("data") or {}).get("top_review"),
+                "reviews":             (row.get("data") or {}).get("reviews") or [],
                 "rating_count":        (row.get("data") or {}).get("rating_count"),
                 "photo_ref":           (row.get("data") or {}).get("photo_ref"),
                 "opening_hours_parsed": _parse_weekday_text(
@@ -4209,7 +4219,7 @@ def ensure_city_seeded(city_id: str = Query(...)):
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
-async def cities_picks(city_id: str):
+async def cities_picks(city_id: str, lat: float = None, lon: float = None):
     """Pro: curated picks with trend stage badges.
     Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
 
@@ -4221,10 +4231,60 @@ async def cities_picks(city_id: str):
     """
     if _supabase is None:
         raise HTTPException(status_code=503, detail="database_unavailable")
+    city_slug = re.sub(r'[^a-z0-9]+', '_', city_id.lower().strip()).strip('_')
     try:
-        city = load_city(city_id, _supabase)
+        city = load_city(city_slug, _supabase)
     except ValueError:
         raise HTTPException(status_code=404, detail="city_not_found")
+
+    # On-demand seed: if no candidates and caller provided coords, build now (~3-4s)
+    if not city.insert_candidates and lat and lon:
+        try:
+            from city.seed_builder import build_city_seed as _build_city_seed
+            _seeded = _build_city_seed({
+                "city_id": city_slug, "name": city_id,
+                "lat": lat, "lon": lon,
+                "country_code": "", "timezone": "UTC", "tier": 2,
+            })
+            if _seeded.insert_candidates:
+                city = _seeded
+                if _supabase:
+                    try:
+                        _cd_dict = {
+                            "id": city_slug, "name": city_id, "tier": 2,
+                            "center": [lat, lon], "timezone": "UTC",
+                            "climate": _seeded.climate, "movement": _seeded.movement,
+                            "culture": _seeded.culture,
+                            "neighborhoods": [
+                                {"id": n.id, "name": n.name, "center": list(n.center),
+                                 "polygon": [list(p) for p in n.polygon],
+                                 "best_times": n.best_times, "crowd_index": n.crowd_index}
+                                for n in _seeded.neighborhoods
+                            ],
+                            "insert_candidates": [
+                                {"place_id": ic.place_id, "name": ic.name,
+                                 "lat": ic.lat, "lon": ic.lon, "type": ic.type,
+                                 "time_cost_min": ic.time_cost_min,
+                                 "persona_affinity": ic.persona_affinity,
+                                 "trigger": ic.trigger,
+                                 "time_of_day_match": ic.time_of_day_match}
+                                for ic in _seeded.insert_candidates
+                            ],
+                            "scenic_routes": _seeded.scenic_routes,
+                            "transit_edges": _seeded.transit_edges,
+                            "engine_modifiers": _seeded.engine_modifiers,
+                            "landmark_anchors": _seeded.landmark_anchors,
+                            "hidden_gems": _seeded.hidden_gems,
+                        }
+                        _supabase.table("city_data").upsert({
+                            "id": city_slug, "name": city_id,
+                            "tier": 2, "country_code": "",
+                            "data": _cd_dict,
+                        }).execute()
+                    except Exception as _db_err:
+                        print(f"[cities_picks] DB upsert failed for {city_slug}: {_db_err}")
+        except Exception as _e:
+            print(f"[cities_picks] on-demand seed failed for {city_id}: {_e}")
 
     place_ids = [ic.place_id for ic in city.insert_candidates]
     profiles_row = (

@@ -324,6 +324,7 @@ export interface PlaceDetails {
   types?: string[];
   editorial_summary?: string;
   top_review?: string;
+  reviews?: { text: string; author_name: string; rating: number }[];
 }
 
 export interface NearbyResult {

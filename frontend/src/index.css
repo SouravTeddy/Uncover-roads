@@ -210,8 +210,13 @@ html, body {
 }
 
 @keyframes pinPulse {
-  0%   { transform: scale(1);   opacity: .7; }
-  100% { transform: scale(2.8); opacity: 0;  }
+  0%   { transform: scale(.82); opacity: .55; }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+
+@keyframes ghostPulse {
+  0%, 100% { opacity: .25; transform: scale(.92); }
+  50%       { opacity: .55; transform: scale(1.06); }
 }
 
 @keyframes confetti {
