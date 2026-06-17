@@ -211,15 +211,122 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
   }
 }
 
+// ── Walk corridor card — matches proto Card 4 / Card 5 ───────────────────────
+function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
+  const isHighWalk = card.persona.includes('walk') || card.persona.includes('hike') || card.persona.includes('slow');
+
+  // Parse "1.9 km walk" → "1.9 km"
+  const distValue = card.metaRight.replace(/\s*walk$/i, '').trim();
+  // Parse "~23 min on foot." → "~23 min"
+  const timeMatch = card.sensory.match(/~?(\d+)\s*min/i);
+  const timeValue = timeMatch ? timeMatch[0] : card.sensory.replace('.', '');
+  const walkMins = timeMatch ? parseInt(timeMatch[1], 10) : 15;
+  // Estimated alternative transport times
+  const metroMins = Math.max(2, Math.round(walkMins * 0.25));
+  const rideMins = Math.max(3, Math.round(walkMins * 0.4));
+
+  const photoUrl = card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl;
+
+  return (
+    <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: isHighWalk ? 'linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)' : 'linear-gradient(160deg,#120a18 0%,#1a0f22 40%,#100c15 100%)' }}>
+      {/* Background photo */}
+      {photoUrl && (
+        <img src={photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0 }} />
+      )}
+      {/* Dark overlay scrim */}
+      {photoUrl && (
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,.80) 100%)', zIndex: 1 }} />
+      )}
+      {/* Subtle radial glow */}
+      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 280px 350px at 50% 35%,${isHighWalk ? 'rgba(79,143,171,.12)' : 'rgba(150,100,210,.08)'},transparent)`, pointerEvents: 'none', zIndex: 2 }} />
+
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 20px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 5 }}>
+        {/* Top label — pushes to top, content below */}
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 'auto', color: isHighWalk ? '#4f8fab' : 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span className="ms" style={{ fontSize: 11, verticalAlign: 'middle' }}>directions_walk</span>
+          {isHighWalk ? `Walking connector · ${distValue}` : 'Optional detour'}
+        </div>
+
+        {/* Route title + subtitle */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 26 : 22, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.15 }}>
+            {card.place}
+          </div>
+          <div style={{ fontSize: 11, color: isHighWalk ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.3)', marginTop: 2 }}>
+            {isHighWalk
+              ? `${card.from} → ${card.to} · ${timeValue} on foot`
+              : `${distValue} on foot · or metro in ~${metroMins} min`}
+          </div>
+        </div>
+
+        {/* Why — persona voice */}
+        <div style={{ fontSize: isHighWalk ? 13 : 12, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.5)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
+          {card.why}
+        </div>
+
+        {/* Stats bar */}
+        <div style={{ display: 'flex', borderRadius: 8, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.09)', overflow: 'hidden' }}>
+          {isHighWalk ? (
+            <>
+              {/* High-walk: time · distance · path type */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1 }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(79,143,171,.7)' }}>timer</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>{timeValue}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>on foot</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(79,143,171,.7)' }}>straighten</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>{distValue}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>flat route</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(107,148,112,.7)' }}>nature</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>street</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>local path</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Low-walk: walk · metro · rideshare alternatives */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1 }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{timeValue} walk</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>on foot</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>subway</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{metroMins} min metro</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>nearest line</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>local_taxi</span>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>~{rideMins} min ride</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>rideshare</div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main card ─────────────────────────────────────────────────────────────────
 export default function ReelScenicCard({ card }: Props) {
-  // Walk cards: clean full-screen dual-photo layout — no repeated info block
   if (card.sceneType === 'walk') {
-    return (
-      <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: '#0f0d0c' }}>
-        <WalkSpineScene card={card} />
-      </div>
-    );
+    return <WalkCorridorCard card={card} />;
   }
 
   const a = card.accent;

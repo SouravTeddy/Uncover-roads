@@ -11,7 +11,7 @@ export const REEL_SCRIM =
   'linear-gradient(180deg,transparent 0%,transparent 30%,rgba(0,0,0,.30) 55%,rgba(0,0,0,.80) 82%,rgba(10,10,13,.95) 100%)'
 
 // ── Sky tints ─────────────────────────────────────────────────
-export const SKY_TINT_SUNNY    = 'linear-gradient(180deg,rgba(255,210,140,.18),rgba(255,210,140,.04) 40%,transparent 70%)'
+export const SKY_TINT_SUNNY    = 'linear-gradient(180deg,rgba(255,200,100,.38),rgba(255,210,140,.12) 40%,transparent 70%)'
 export const SKY_TINT_RAIN     = 'linear-gradient(180deg,rgba(25,38,62,.65),rgba(25,38,62,.40))'   // used as double layer
 export const SKY_TINT_THUNDER  = 'linear-gradient(180deg,rgba(85,40,125,.60),rgba(60,25,95,.45))'  // used as double layer
 export const SKY_TINT_OVERCAST = 'linear-gradient(180deg,rgba(70,82,100,.65) 0%,rgba(70,82,100,.48) 60%,rgba(70,82,100,.35) 100%)'

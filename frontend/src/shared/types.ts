@@ -607,6 +607,8 @@ export interface EngineItineraryStop {
   // Discovery stage from place_dynamic_profiles
   stage?: 'hidden_gem' | 'rising' | 'mainstream' | null
   velocityRatio?: number | null
+  isUserAdded?: boolean        // true = user explicitly selected this stop
+  isEngineAdded?: boolean      // true = engine inserted (not in original selection)
 }
 
 /**

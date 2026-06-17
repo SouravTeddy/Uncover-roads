@@ -69,6 +69,7 @@ export interface ReelStopCard {
   movedFrom: number | null;
   weather: WeatherData | null;
   pairWith?: { title: string; category: string; time: string } | null;
+  visitDate: string | null;  // ISO "YYYY-MM-DD" — the actual date the user visits this stop
 }
 
 export type RecoTrigger =
