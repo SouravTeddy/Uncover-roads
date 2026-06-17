@@ -3,12 +3,15 @@ import { getCityPhotoUrl } from '../../shared/cityPhoto';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-// Old Unsplash Source short IDs (e.g. "dWwICKioRBU") are deprecated and 404.
-// Valid modern URLs use the "/photo-<id>" path segment.
-function isValidCityImageUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  if (url.includes('images.unsplash.com/') && !url.includes('/photo-')) return false;
-  return true;
+// Normalise a raw URL from the DB:
+// - Relative proxy paths ("/place-photo?...") → prepend API base (Google primary)
+// - Old Unsplash short IDs (no "/photo-") → null (fall back to local map)
+// - Valid absolute URLs → use as-is
+function resolveDbUrl(raw: string | null | undefined, cityFallback: string): string {
+  if (!raw) return cityFallback;
+  if (raw.startsWith('/place-photo')) return `${BASE}${raw}`;
+  if (raw.includes('images.unsplash.com/') && !raw.includes('/photo-')) return cityFallback;
+  return raw;
 }
 
 /** In-memory cache: city name (lowercased) → resolved URL */
@@ -36,10 +39,9 @@ export function useCityPhoto(cityName: string | null): string {
       .then((data: Record<string, string | null> | null) => {
         if (!data) return;
         const found = Object.values(data)[0];
-        if (isValidCityImageUrl(found)) {
-          _cache.set(key, found);
-          setUrl(found);
-        }
+        const resolved = resolveDbUrl(found, fallback);
+        _cache.set(key, resolved);
+        setUrl(resolved);
       })
       .catch(() => {/* keep fallback */});
   }, [cityName]);
@@ -53,7 +55,6 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     const m = new Map<string, string>();
     for (const c of cities) {
       const key = c.toLowerCase();
-      // Pre-populate with Unsplash fallback so map is never empty on first render.
       m.set(key, _cache.get(key) ?? getCityPhotoUrl(c));
     }
     return m;
@@ -88,7 +89,7 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
         if (!data) { applyFallbacks(); return; }
         const updated = new Map(photoMap);
         for (const [name, imgUrl] of Object.entries(data)) {
-          const resolved = isValidCityImageUrl(imgUrl) ? imgUrl : getCityPhotoUrl(name);
+          const resolved = resolveDbUrl(imgUrl, getCityPhotoUrl(name));
           _cache.set(name.toLowerCase(), resolved);
           updated.set(name.toLowerCase(), resolved);
         }
