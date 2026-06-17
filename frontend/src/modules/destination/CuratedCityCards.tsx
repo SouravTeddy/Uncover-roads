@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Persona } from '../../shared/types';
-import { CITY_PHOTO_FALLBACK_GRADIENT, getCityPhotoUrl } from '../../shared/cityPhoto';
+import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhotoBatch } from './useCityPhoto';
 import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 
@@ -49,7 +49,7 @@ export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityC
             key={city.name}
             name={city.name}
             country={city.country}
-            photoUrl={photoMap.get(city.name.toLowerCase()) ?? ''}
+            photoUrl={photoMap.get(city.name.toLowerCase()) ?? null}
             height={cardHeight}
             onSelect={() => onCitySelect(city.name)}
           />
@@ -62,30 +62,23 @@ export default function CuratedCityCards({ persona, onCitySelect }: CuratedCityC
 interface CityCardProps {
   name: string;
   country: string;
-  photoUrl: string;
+  photoUrl: string | null;
   height: number;
   onSelect: () => void;
 }
 
 function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) {
-  const unsplashFallback = getCityPhotoUrl(name);
-  const [activeSrc, setActiveSrc] = useState(photoUrl || unsplashFallback);
-  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [activeSrc, setActiveSrc] = useState<string | null>(photoUrl);
+  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>(photoUrl ? 'loading' : 'error');
 
   useEffect(() => {
-    const next = photoUrl || unsplashFallback;
-    setActiveSrc(next);
-    setImgState('loading');
+    setActiveSrc(photoUrl);
+    setImgState(photoUrl ? 'loading' : 'error');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUrl]);
 
   const handleError = () => {
-    if (activeSrc !== unsplashFallback) {
-      setActiveSrc(unsplashFallback);
-      setImgState('loading');
-    } else {
-      setImgState('error');
-    }
+    setImgState('error');
   };
 
   const showShimmer = !activeSrc || imgState === 'loading';

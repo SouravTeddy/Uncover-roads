@@ -4126,10 +4126,32 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
     )
 
 
+def _fetch_city_photo_ref(city_name: str) -> Optional[str]:
+    """Call Google Places Text Search and return the first photo_reference."""
+    if not GOOGLE_PLACES_API_KEY:
+        return None
+    try:
+        r = requests.get(
+            f"{GOOGLE_PLACES_BASE}/textsearch/json",
+            params={"query": city_name, "type": "locality", "key": GOOGLE_PLACES_API_KEY},
+            timeout=8,
+        )
+        for result in (r.json().get("results") or []):
+            photos = result.get("photos") or []
+            if photos:
+                ref = photos[0].get("photo_reference")
+                if ref:
+                    return ref
+    except Exception:
+        pass
+    return None
+
+
 @app.get("/api/cities/photos")
 async def cities_photos(names: str):
-    """Batch image URL lookup by city name. Returns {name: image_url|null}.
+    """Batch image URL lookup by city name. Returns {name: proxy_path|null}.
 
+    DB miss → auto-fetch from Google Places and persist.
     names: comma-separated city names, max 20, case-insensitive exact match.
     """
     if _supabase is None:
@@ -4137,8 +4159,6 @@ async def cities_photos(names: str):
     name_list = [n.strip() for n in names.split(",") if n.strip()][:20]
     if not name_list:
         return {}
-    # Case-insensitive match — city_whitelist names may differ in capitalisation
-    name_lower_map = {n.lower(): n for n in name_list}  # lowercase → original name
     rows = (
         _supabase.table("city_whitelist")
         .select("name, image_url")
@@ -4146,17 +4166,33 @@ async def cities_photos(names: str):
         .execute()
     )
     result: dict[str, Optional[str]] = {n: None for n in name_list}
+    db_name_map: dict[str, str] = {}  # canonical DB name → original request name
     for r in (rows.data or []):
+        db_name_map[r["name"]] = r["name"]
         result[r["name"]] = r.get("image_url")
-    # Second pass: retry unmatched names with ilike for case-insensitive match
+    # Second pass: case-insensitive match for unresolved names
     unmatched = [n for n in name_list if result[n] is None]
     for uname in unmatched:
         try:
             row = _supabase.table("city_whitelist").select("name, image_url").ilike("name", uname).limit(1).execute()
             if row.data:
+                db_name = row.data[0]["name"]
                 result[uname] = row.data[0].get("image_url")
+                db_name_map[uname] = db_name
         except Exception:
             pass
+    # Third pass: for cities still without an image, fetch from Google and persist
+    still_missing = [n for n in name_list if not result.get(n)]
+    for city in still_missing:
+        ref = _fetch_city_photo_ref(city)
+        proxy_path = f"/place-photo?photo_ref={ref}&max_width=800" if ref else None
+        result[city] = proxy_path
+        if proxy_path:
+            try:
+                canonical = db_name_map.get(city, city)
+                _supabase.table("city_whitelist").update({"image_url": proxy_path}).ilike("name", canonical).execute()
+            except Exception:
+                pass
     return result
 
 
