@@ -3,6 +3,14 @@ import { getCityPhotoUrl } from '../../shared/cityPhoto';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
+// Old Unsplash Source short IDs (e.g. "dWwICKioRBU") are deprecated and 404.
+// Valid modern URLs use the "/photo-<id>" path segment.
+function isValidCityImageUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (url.includes('images.unsplash.com/') && !url.includes('/photo-')) return false;
+  return true;
+}
+
 /** In-memory cache: city name (lowercased) → resolved URL */
 const _cache = new Map<string, string>();
 
@@ -28,7 +36,7 @@ export function useCityPhoto(cityName: string | null): string {
       .then((data: Record<string, string | null> | null) => {
         if (!data) return;
         const found = Object.values(data)[0];
-        if (found) {
+        if (isValidCityImageUrl(found)) {
           _cache.set(key, found);
           setUrl(found);
         }
@@ -80,7 +88,7 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
         if (!data) { applyFallbacks(); return; }
         const updated = new Map(photoMap);
         for (const [name, imgUrl] of Object.entries(data)) {
-          const resolved = imgUrl ?? getCityPhotoUrl(name);
+          const resolved = isValidCityImageUrl(imgUrl) ? imgUrl : getCityPhotoUrl(name);
           _cache.set(name.toLowerCase(), resolved);
           updated.set(name.toLowerCase(), resolved);
         }
