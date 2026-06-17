@@ -1,30 +1,24 @@
 import { useEffect, useState } from 'react';
-import { getCityPhotoUrl } from '../../shared/cityPhoto';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-// Normalise a raw URL from the DB:
-// - Relative proxy paths ("/place-photo?...") → prepend API base (Google primary)
-// - Old Unsplash short IDs (no "/photo-") → null (fall back to local map)
-// - Valid absolute URLs → use as-is
-function resolveDbUrl(raw: string | null | undefined, cityFallback: string): string {
-  if (!raw) return cityFallback;
+// DB stores either a Google proxy path ("/place-photo?...") or null.
+// Old Unsplash short IDs are treated as missing.
+function resolveDbUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
   if (raw.startsWith('/place-photo')) return `${BASE}${raw}`;
-  if (raw.includes('images.unsplash.com/') && !raw.includes('/photo-')) return cityFallback;
-  return raw;
+  if (raw.startsWith('http')) return raw; // future-proof for absolute Google URLs
+  return null;
 }
 
-/** In-memory cache: city name (lowercased) → resolved URL */
-const _cache = new Map<string, string>();
+/** In-memory cache: city name (lowercased) → resolved URL or null */
+const _cache = new Map<string, string | null>();
 
-/** Fetches image URL for a single city from DB; falls back to Unsplash map. */
-export function useCityPhoto(cityName: string | null): string {
-  const fallback = cityName ? getCityPhotoUrl(cityName) : getCityPhotoUrl('');
-
-  const [url, setUrl] = useState<string>(() => {
-    if (!cityName) return fallback;
-    return _cache.get(cityName.toLowerCase()) ?? fallback;
-  });
+/** Fetches Google-backed image URL for a city. Returns null until resolved. */
+export function useCityPhoto(cityName: string | null): string | null {
+  const [url, setUrl] = useState<string | null>(() =>
+    cityName ? (_cache.get(cityName.toLowerCase()) ?? null) : null
+  );
 
   useEffect(() => {
     if (!cityName) return;
@@ -38,24 +32,22 @@ export function useCityPhoto(cityName: string | null): string {
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
         if (!data) return;
-        const found = Object.values(data)[0];
-        const resolved = resolveDbUrl(found, fallback);
+        const resolved = resolveDbUrl(Object.values(data)[0]);
         _cache.set(key, resolved);
         setUrl(resolved);
       })
-      .catch(() => {/* keep fallback */});
+      .catch(() => {});
   }, [cityName]);
 
   return url;
 }
 
-/** Batch-fetches image URLs for multiple cities. Returns a stable map. */
-export function useCityPhotoBatch(cities: string[]): Map<string, string> {
-  const [photoMap, setPhotoMap] = useState<Map<string, string>>(() => {
-    const m = new Map<string, string>();
+/** Batch-fetches Google-backed image URLs for multiple cities. */
+export function useCityPhotoBatch(cities: string[]): Map<string, string | null> {
+  const [photoMap, setPhotoMap] = useState<Map<string, string | null>>(() => {
+    const m = new Map<string, string | null>();
     for (const c of cities) {
-      const key = c.toLowerCase();
-      m.set(key, _cache.get(key) ?? getCityPhotoUrl(c));
+      m.set(c.toLowerCase(), _cache.get(c.toLowerCase()) ?? null);
     }
     return m;
   });
@@ -65,37 +57,20 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string> {
     const missing = cities.filter(c => !_cache.has(c.toLowerCase()));
     if (missing.length === 0) return;
 
-    const applyFallbacks = () => {
-      setPhotoMap(prev => {
-        const updated = new Map(prev);
-        let changed = false;
-        for (const c of missing) {
-          const key = c.toLowerCase();
-          if (!updated.has(key)) {
-            const url = getCityPhotoUrl(c);
-            _cache.set(key, url);
-            updated.set(key, url);
-            changed = true;
-          }
-        }
-        return changed ? updated : prev;
-      });
-    };
-
     const params = new URLSearchParams({ names: missing.join(',') });
     fetch(`${BASE}/api/cities/photos?${params}`)
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
-        if (!data) { applyFallbacks(); return; }
         const updated = new Map(photoMap);
-        for (const [name, imgUrl] of Object.entries(data)) {
-          const resolved = resolveDbUrl(imgUrl, getCityPhotoUrl(name));
+        const entries = data ? Object.entries(data) : missing.map(c => [c, null] as [string, null]);
+        for (const [name, imgUrl] of entries) {
+          const resolved = resolveDbUrl(imgUrl);
           _cache.set(name.toLowerCase(), resolved);
           updated.set(name.toLowerCase(), resolved);
         }
         setPhotoMap(updated);
       })
-      .catch(applyFallbacks);
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cities.join(',')]);
 

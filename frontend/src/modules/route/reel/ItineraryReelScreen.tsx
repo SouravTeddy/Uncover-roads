@@ -12,7 +12,6 @@ import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
 import type { WeatherData } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
-import { getCityPhotoUrl } from '../../../shared/cityPhoto';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
@@ -175,18 +174,18 @@ export function ItineraryReelScreen() {
 
       if (cancelled) return;
 
-      // Build city photo map: DB result first, Unsplash as fallback
-      const builtCityPhotoMap = new Map<string, string>();
+      // Build city photo map: Google proxy paths from DB only
+      const apiBase = import.meta.env.VITE_API_URL ?? '';
+      const builtCityPhotoMap = new Map<string, string | null>();
       for (const c of allCities) {
         const key = c.toLowerCase();
         const dbUrl = (cityPhotosRaw as Record<string, string | null>)[c]
           ?? (cityPhotosRaw as Record<string, string | null>)[key]
           ?? null;
-        const apiBase = import.meta.env.VITE_API_URL ?? '';
-        const resolvedDbUrl = dbUrl?.startsWith('/place-photo') ? `${apiBase}${dbUrl}`
-          : (dbUrl?.includes('images.unsplash.com/') && !dbUrl.includes('/photo-')) ? null
-          : dbUrl;
-        builtCityPhotoMap.set(key, resolvedDbUrl ?? getCityPhotoUrl(c));
+        const resolved = dbUrl?.startsWith('/place-photo') ? `${apiBase}${dbUrl}`
+          : dbUrl?.startsWith('http') ? dbUrl
+          : null;
+        builtCityPhotoMap.set(key, resolved);
       }
 
       // Store resolved stop images so enrichment rebuilds keep them

@@ -609,7 +609,7 @@ export function buildReelCards(
   weatherByCity: Map<string, WeatherData> = new Map(),
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
-  cityPhotoMap: Map<string, string> = new Map(),
+  cityPhotoMap: Map<string, string | null> = new Map(),
   cityCountries: Record<string, string> = {},
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
