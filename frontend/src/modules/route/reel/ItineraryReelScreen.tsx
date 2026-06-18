@@ -20,6 +20,7 @@ import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
+import { enrichScenicCardsWithTransit } from './transit-enrichment';
 
 
 
@@ -205,6 +206,13 @@ export function ItineraryReelScreen() {
         newStopImages,
       );
       setCards(filtered);
+
+      // Async transit enrichment — fires in background, updates scenic cards
+      // when transit data arrives without blocking the reel from showing
+      const apiBase = import.meta.env.VITE_API_URL ?? '';
+      enrichScenicCardsWithTransit(filtered, apiBase).then(enriched => {
+        if (!cancelled) setCards(enriched);
+      }).catch(() => { /* transit enrichment is best-effort */ });
 
       // Preload every image URL into the browser cache before revealing the reel
       const srcs: string[] = [];
