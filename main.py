@@ -2551,7 +2551,7 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
             if row.data:
                 r = row.data[0]
                 fetched = datetime.fromisoformat(r["fetched_at"].replace("Z", "+00:00"))
-                if (datetime.now(timezone.utc) - fetched).days < 30:
+                if datetime.now(timezone.utc) - fetched < timedelta(days=30):
                     return {k: r[k] for k in (
                         "has_transit","transit_type","duration_min","line_name",
                         "departure_stop","arrival_stop","transfers","walk_to_stop_min"
@@ -2566,6 +2566,7 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
 
     api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
+        _write_transit_cache(key, result)
         return result
 
     try:
