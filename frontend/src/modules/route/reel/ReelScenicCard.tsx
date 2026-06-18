@@ -212,7 +212,7 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
 }
 
 // ── Walk corridor card — matches proto Card 4 / Card 5 ───────────────────────
-function _transitLabel(type: string | null | undefined, lineName: string | null | undefined): string {
+function getTransitLabel(type: string | null | undefined, lineName: string | null | undefined): string {
   const name = lineName ?? '';
   switch (type) {
     case 'SUBWAY': return name || 'metro';
@@ -238,7 +238,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
   const hasRealTransit = ti?.has_transit === true;
   const rideMins = Math.max(3, Math.round(walkMins * 0.4));
   const transitLabel = hasRealTransit
-    ? _transitLabel(ti!.transit_type, ti!.line_name)
+    ? getTransitLabel(ti!.transit_type, ti!.line_name)
     : null;
   const transitMins = hasRealTransit ? ti!.duration_min : null;
   const transitSubLabel = hasRealTransit && ti!.departure_stop
@@ -328,7 +328,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
                   <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>subway</span>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins} min {transitLabel}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins ?? '?'} min {transitLabel}</div>
                     <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>{transitSubLabel}</div>
                   </div>
                 </div>

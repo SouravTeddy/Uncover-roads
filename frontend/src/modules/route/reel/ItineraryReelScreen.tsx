@@ -209,7 +209,6 @@ export function ItineraryReelScreen() {
 
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
-      const apiBase = import.meta.env.VITE_API_URL ?? '';
       enrichScenicCardsWithTransit(filtered, apiBase).then(enriched => {
         if (!cancelled) setCards(enriched);
       }).catch(() => { /* transit enrichment is best-effort */ });
