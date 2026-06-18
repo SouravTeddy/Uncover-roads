@@ -522,7 +522,7 @@ function buildScenicCards(
       personaIcon: 'walk',
       why: SCENIC_ARCHETYPES.has(archetypeLower)
         ? `This is the walk, not just the route — ${distLabel} through the neighbourhood between ${a.title} and ${b.title}, past things most visitors never find. Given how much you enjoy exploring on foot, this one's worth the ${walkMins} minutes.`
-        : `There's a ${distLabel} walking path between these two if you want it — quiet neighbourhood lane, ${walkMins} minutes. The metro works too; both get you there at the same time.`,
+        : `There's a ${distLabel} walking path between these two if you want it — quiet neighbourhood lane, ${walkMins} minutes.`,
       sensory: `~${walkMins} min on foot.`,
       sensoryIcon: 'directions_walk',
       reelPos: `Between Stop ${i + 1} and Stop ${i + 2}`,
