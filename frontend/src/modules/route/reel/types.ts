@@ -1,5 +1,16 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
+export interface TransitInfo {
+  has_transit: boolean;
+  transit_type: string | null;   // SUBWAY | BUS | TRAM | HEAVY_RAIL | COMMUTER_TRAIN | FERRY
+  duration_min: number | null;
+  line_name: string | null;
+  departure_stop: string | null;
+  arrival_stop: string | null;
+  transfers: number | null;
+  walk_to_stop_min: number | null;
+}
+
 export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic' | 'day_transition';
 
 export type ScenicSceneType = 'walk' | 'drive' | 'coastal' | 'ridge' | 'crowd' | 'forest';
@@ -30,6 +41,7 @@ export interface ReelScenicCard {
   photoUrl?: string | null; // for walk/drive scenes — real destination photo
   originPhotoUrl?: string | null; // origin stop photo for dual-photo walk card
   destPhotoUrl?: string | null;   // destination stop photo for dual-photo walk card
+  transitInfo?: TransitInfo | null;
 }
 
 export interface ReelIntroCard {
