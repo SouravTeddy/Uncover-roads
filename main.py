@@ -2534,6 +2534,117 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
     return {"place_id": place_id}
 
 
+# ── Transit corridor cache ──────────────────────────────────────────────────
+
+def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
+    return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
+
+
+def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) -> dict:
+    key = _corridor_key(olat, olon, dlat, dlon)
+
+    # 1. Cache read
+    if _supabase:
+        try:
+            row = _supabase.table("transit_corridor_cache") \
+                .select("*").eq("corridor_key", key).execute()
+            if row.data:
+                r = row.data[0]
+                fetched = datetime.fromisoformat(r["fetched_at"].replace("Z", "+00:00"))
+                if (datetime.now(timezone.utc) - fetched).days < 30:
+                    return {k: r[k] for k in (
+                        "has_transit","transit_type","duration_min","line_name",
+                        "departure_stop","arrival_stop","transfers","walk_to_stop_min"
+                    )}
+        except Exception as e:
+            print(f"TRANSIT CACHE READ: {e}")
+
+    # 2. Google Directions API
+    result = {"has_transit": False, "transit_type": None, "duration_min": None,
+              "line_name": None, "departure_stop": None, "arrival_stop": None,
+              "transfers": None, "walk_to_stop_min": None}
+
+    api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
+    if not api_key:
+        return result
+
+    try:
+        resp = requests.get(
+            "https://maps.googleapis.com/maps/api/directions/json",
+            params={
+                "origin": f"{olat},{olon}",
+                "destination": f"{dlat},{dlon}",
+                "mode": "transit",
+                "key": api_key,
+            },
+            timeout=5,
+        )
+        data = resp.json()
+        routes = data.get("routes", [])
+        if not routes:
+            _write_transit_cache(key, result)
+            return result
+
+        leg = routes[0]["legs"][0]
+        steps = leg.get("steps", [])
+        total_sec = leg.get("duration", {}).get("value", 0)
+
+        transit_steps = [s for s in steps if s.get("travel_mode") == "TRANSIT"]
+        walk_steps    = [s for s in steps if s.get("travel_mode") == "WALKING"]
+
+        if not transit_steps:
+            _write_transit_cache(key, result)
+            return result
+
+        first_transit = transit_steps[0]
+        td = first_transit.get("transit_details", {})
+        line = td.get("line", {})
+
+        result = {
+            "has_transit":      True,
+            "transit_type":     line.get("vehicle", {}).get("type"),
+            "duration_min":     max(1, round(total_sec / 60)),
+            "line_name":        line.get("short_name") or line.get("name"),
+            "departure_stop":   td.get("departure_stop", {}).get("name"),
+            "arrival_stop":     td.get("arrival_stop", {}).get("name"),
+            "transfers":        max(0, len(transit_steps) - 1),
+            "walk_to_stop_min": max(1, round(sum(s.get("duration",{}).get("value",0) for s in walk_steps) / 60)) if walk_steps else 0,
+        }
+    except Exception as e:
+        print(f"TRANSIT API: {e}")
+
+    _write_transit_cache(key, result)
+    return result
+
+
+def _write_transit_cache(key: str, result: dict) -> None:
+    if not _supabase:
+        return
+    try:
+        _supabase.table("transit_corridor_cache").upsert({
+            "corridor_key": key,
+            **result,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        print(f"TRANSIT CACHE WRITE: {e}")
+
+
+@app.get("/transit-corridor")
+def transit_corridor(
+    origin_lat: float = Query(...),
+    origin_lon: float = Query(...),
+    dest_lat:   float = Query(...),
+    dest_lon:   float = Query(...),
+):
+    """
+    Returns transit options between two coordinates.
+    Cached in transit_corridor_cache for 30 days.
+    Used by the frontend scenic walk cards to show real transit data.
+    """
+    return _fetch_transit_corridor(origin_lat, origin_lon, dest_lat, dest_lon)
+
+
 # =========================================
 # PLACE DETAILS
 # =========================================
