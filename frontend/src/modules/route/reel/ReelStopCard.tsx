@@ -296,7 +296,10 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
   const hasServerSignals = serverSignals.length > 0;
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const hoursStr       = visitHours(stop.weekdayText, card.visitDate);
-  const reasonText     = card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null);
+  // When isEngineAdded, orderReason is already shown inline below the badge — don't repeat it in the narrative block
+  const reasonText     = (stop.isEngineAdded && card.orderReason)
+    ? (card.orderConsequence ?? (stop.whyForYou || null))
+    : (card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null));
 
   const contentSig   = serverSignals.find(s => s.type === 'content');
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
@@ -425,6 +428,16 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
             </div>
           )}
         </div>
+
+        {/* Engine-added reason line — connects the badge to the why */}
+        {stop.isEngineAdded && card.orderReason && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+            <span className="ms" style={{ fontSize: 10, color: 'rgba(168,127,212,.5)' }}>subdirectory_arrow_right</span>
+            <span style={{ fontSize: 11, color: 'rgba(168,127,212,.7)', fontStyle: 'italic' }}>
+              We thought: {card.orderReason}
+            </span>
+          </div>
+        )}
 
         {/* Time row */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
