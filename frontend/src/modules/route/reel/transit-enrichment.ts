@@ -23,9 +23,9 @@ export async function enrichScenicCardsWithTransit(
     if (card.type !== 'scenic' || card.sceneType !== 'walk') continue;
 
     // scenic cards don't carry lat/lon directly — find the adjacent stop cards
-    const prevStop = [...cards].slice(0, i).reverse().find(c => c.type === 'stop');
+    const prevStop = cards.slice(0, i).reverse().find(c => c.type === 'stop');
     const nextStop = cards.slice(i + 1).find(c => c.type === 'stop');
-    if (!prevStop || prevStop.type !== 'stop') continue;
+    if (!prevStop) continue;
     if (!nextStop || nextStop.type !== 'stop') continue;
 
     const oLat = prevStop.stop.lat;
