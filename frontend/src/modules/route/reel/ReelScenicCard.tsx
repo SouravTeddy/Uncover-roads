@@ -212,6 +212,19 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
 }
 
 // ── Walk corridor card — matches proto Card 4 / Card 5 ───────────────────────
+function _transitLabel(type: string | null | undefined, lineName: string | null | undefined): string {
+  const name = lineName ?? '';
+  switch (type) {
+    case 'SUBWAY': return name || 'metro';
+    case 'BUS': return name ? `Bus ${name}` : 'bus';
+    case 'TRAM': return name || 'tram';
+    case 'HEAVY_RAIL':
+    case 'COMMUTER_TRAIN': return name || 'train';
+    case 'FERRY': return 'ferry';
+    default: return name || 'transit';
+  }
+}
+
 function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
   const isHighWalk = card.persona.includes('walk') || card.persona.includes('hike') || card.persona.includes('slow');
 
@@ -221,9 +234,16 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
   const timeMatch = card.sensory.match(/~?(\d+)\s*min/i);
   const timeValue = timeMatch ? timeMatch[0] : card.sensory.replace('.', '');
   const walkMins = timeMatch ? parseInt(timeMatch[1], 10) : 15;
-  // Estimated alternative transport times
-  const metroMins = Math.max(2, Math.round(walkMins * 0.25));
+  const ti = card.transitInfo;
+  const hasRealTransit = ti?.has_transit === true;
   const rideMins = Math.max(3, Math.round(walkMins * 0.4));
+  const transitLabel = hasRealTransit
+    ? _transitLabel(ti!.transit_type, ti!.line_name)
+    : null;
+  const transitMins = hasRealTransit ? ti!.duration_min : null;
+  const transitSubLabel = hasRealTransit && ti!.departure_stop
+    ? `board at ${ti!.departure_stop}`
+    : hasRealTransit ? 'nearest stop' : null;
 
   const photoUrl = card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl;
 
@@ -255,7 +275,9 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           <div style={{ fontSize: 11, color: isHighWalk ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.3)', marginTop: 2 }}>
             {isHighWalk
               ? `${card.from} → ${card.to} · ${timeValue} on foot`
-              : `${distValue} on foot · or metro in ~${metroMins} min`}
+              : transitLabel
+                ? `${distValue} on foot · or ${transitLabel} in ~${transitMins} min`
+                : `${distValue} on foot`}
           </div>
         </div>
 
@@ -293,21 +315,25 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
             </>
           ) : (
             <>
-              {/* Low-walk: walk · metro · rideshare alternatives */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1 }}>
+              {/* Walk chip — always shown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: transitLabel ? 1 : 2 }}>
                 <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{timeValue} walk</div>
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>on foot</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>subway</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{metroMins} min metro</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>nearest line</div>
+              {/* Transit chip — only shown when city has real transit */}
+              {transitLabel && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
+                  <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>subway</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins} min {transitLabel}</div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>{transitSubLabel}</div>
+                  </div>
                 </div>
-              </div>
+              )}
+              {/* Rideshare chip — always shown */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
                 <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>local_taxi</span>
                 <div>
