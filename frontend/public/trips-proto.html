@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My Journeys — Proto v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#131110; --surface:#1e1b18; --surface2:#262219;
+    --border:rgba(255,255,255,.08);
+    --gold:#d4a853; --gold-glow:rgba(212,168,83,.15); --gold-bdr:rgba(212,168,83,.28);
+    --terra:#e07854; --sage:#6b9470; --amber:#c49840; --sky:#4f8fab;
+    --text1:#f2ede6; --text2:rgba(242,237,230,.62); --text3:rgba(242,237,230,.35);
+    --serif:'Cormorant Garamond',serif; --sans:'DM Sans',sans-serif;
+  }
+  html,body{background:#0a0908;color:var(--text1);font-family:var(--sans);height:100%;overflow:hidden}
+  .ms{font-family:'Material Symbols Outlined';font-size:inherit;line-height:1;vertical-align:middle;font-weight:300}
+
+  /* shell */
+  .shell{width:390px;height:844px;margin:16px auto;border-radius:48px;background:var(--bg);overflow:hidden;position:relative;box-shadow:0 40px 100px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.06)}
+  @media(max-width:430px){.shell{width:100vw;height:100dvh;border-radius:0;margin:0}}
+
+  /* status bar */
+  .sbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px 0;font-size:13px;font-weight:600;color:var(--text1)}
+
+  /* screen */
+  .screen{height:calc(100% - 36px);display:flex;flex-direction:column;overflow:hidden}
+
+  /* header */
+  .header{padding:14px 20px 0;flex-shrink:0;border-bottom:1px solid var(--border)}
+  .header h1{font-family:var(--serif);font-size:26px;font-weight:600;margin-bottom:13px;letter-spacing:-.01em}
+  .tabs{display:flex}
+  .tab{padding:8px 0;margin-right:22px;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--text3);display:flex;align-items:center;gap:6px;transition:color .2s,border-color .2s}
+  .tab.active{color:var(--text1);border-bottom-color:var(--gold);font-weight:600}
+  .tc{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--surface2);color:var(--text3)}
+  .tab.active .tc{background:var(--gold-glow);color:var(--gold)}
+
+  /* list */
+  .list{flex:1;overflow-y:auto;padding:14px 16px 96px;scrollbar-width:none}
+  .list::-webkit-scrollbar{display:none}
+
+  /* ── card ── */
+  .tc-wrap{margin-bottom:12px;cursor:pointer}
+  .tc-wrap:active .card{transform:scale(.982)}
+
+  .card{
+    position:relative;border-radius:20px;overflow:hidden;height:186px;
+    transition:transform .15s ease;
+  }
+  .card .bg{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .5s ease}
+  .tc-wrap:hover .bg{transform:scale(1.03)}
+
+  /* scrim: clear top, heavier bottom */
+  .card .scrim{
+    position:absolute;inset:0;
+    background:linear-gradient(180deg,
+      rgba(10,9,8,.18) 0%,
+      rgba(10,9,8,.04) 30%,
+      rgba(10,9,8,.52) 58%,
+      rgba(10,9,8,.94) 100%
+    );
+  }
+
+  /* top row */
+  .ct{position:absolute;top:0;left:0;right:0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+
+  /* date / status pill — NO animation, clean label */
+  .dpill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:600;letter-spacing:.01em;backdrop-filter:blur(12px)}
+  .dpill.today   {background:rgba(107,148,112,.2);color:#82c087;border:1px solid rgba(107,148,112,.32)}
+  .dpill.upcoming{background:rgba(212,168,83,.16);color:var(--gold);border:1px solid var(--gold-bdr)}
+  .dpill.past    {background:rgba(255,255,255,.07);color:var(--text3);border:1px solid var(--border)}
+
+  .alert-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:600;background:rgba(224,120,84,.18);color:var(--terra);border:1px solid rgba(224,120,84,.28);backdrop-filter:blur(12px)}
+
+  /* bottom info */
+  .cb{position:absolute;bottom:0;left:0;right:0;padding:0 14px 13px;display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+  .ci{flex:1;min-width:0}
+
+  /* stat row — sits above city name */
+  .stat-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+  .stat-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:rgba(255,255,255,.48);font-weight:500}
+  .stat-chip .ms{font-size:11px;color:rgba(255,255,255,.32)}
+  .stat-div{width:1px;height:10px;background:rgba(255,255,255,.14)}
+
+  /* city name */
+  .card-city{font-family:var(--serif);font-size:28px;font-weight:600;color:#fff;line-height:1;margin-bottom:4px;text-shadow:0 2px 14px rgba(0,0,0,.55)}
+
+  /* open arrow */
+  .open-btn{flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.8);font-size:15px;cursor:pointer;transition:background .15s}
+  .open-btn:hover{background:rgba(255,255,255,.18)}
+
+  /* past dim */
+  .tc-wrap.past{opacity:.62;filter:saturate(.45)}
+
+  /* entry anim */
+  @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .tc-wrap{animation:up .38s ease both}
+  .tc-wrap:nth-child(1){animation-delay:.04s}
+  .tc-wrap:nth-child(2){animation-delay:.1s}
+  .tc-wrap:nth-child(3){animation-delay:.16s}
+  .tc-wrap:nth-child(4){animation-delay:.22s}
+
+  /* ── Bottom nav ── */
+  .bnav{position:absolute;bottom:0;left:0;right:0;height:70px;background:rgba(19,17,16,.94);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:0 8px 6px}
+  .ni{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:6px 16px}
+  .ni .ms{font-size:22px;color:var(--text3)}
+  .ni span.nl{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.04em;text-transform:uppercase}
+  .ni.active .ms,.ni.active .nl{color:var(--gold)}
+
+  /* ────────────────────────────────────────
+     NUDGE SHEET — small, not hero
+  ──────────────────────────────────────── */
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+  .overlay.open{opacity:1;pointer-events:auto}
+
+  .nudge{
+    position:absolute;bottom:0;left:0;right:0;
+    background:var(--surface);
+    border-radius:24px 24px 0 0;
+    border-top:1px solid var(--border);
+    transform:translateY(100%);
+    transition:transform .32s cubic-bezier(.32,1,.46,1);
+    z-index:11;
+    /* no fixed height — content-driven, ~40% screen */
+  }
+  .nudge.open{transform:translateY(0)}
+
+  .nudge-handle{width:34px;height:4px;border-radius:99px;background:var(--border);margin:10px auto 0}
+
+  /* trip identity in nudge — compact */
+  .nudge-id{display:flex;align-items:center;gap:10px;padding:14px 18px 12px;border-bottom:1px solid var(--border)}
+  .nudge-thumb{width:44px;height:44px;border-radius:10px;flex-shrink:0;background-size:cover;background-position:center;overflow:hidden}
+  .nudge-city{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--text1);line-height:1}
+  .nudge-sub{font-size:11px;color:var(--text3);margin-top:2px}
+
+  /* change items inside nudge */
+  .nudge-body{padding:12px 18px}
+
+  .change-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+  .change-row:last-child{border-bottom:none}
+  .cr-icon{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;margin-top:1px}
+  .cr-icon.warn{background:rgba(224,120,84,.14);color:var(--terra)}
+  .cr-icon.info{background:rgba(196,152,64,.14);color:var(--amber)}
+  .cr-icon.wx  {background:rgba(79,143,171,.14);color:var(--sky)}
+  .cr-title{font-size:12.5px;font-weight:600;color:var(--text1);margin-bottom:2px}
+  .cr-desc {font-size:11.5px;color:var(--text2);line-height:1.45}
+
+  /* all good state */
+  .all-good{display:flex;align-items:center;gap:10px;padding:14px 0}
+  .ag-icon{width:32px;height:32px;border-radius:10px;background:rgba(107,148,112,.14);color:var(--sage);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .ag-text{font-size:12.5px;color:var(--text2);line-height:1.45}
+  .ag-text strong{color:var(--text1);font-weight:600}
+
+  /* nudge footer */
+  .nudge-footer{padding:10px 18px 22px;display:flex;gap:9px}
+  .btn-skip{padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:none;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;white-space:nowrap;transition:background .15s}
+  .btn-skip:hover{background:var(--surface2)}
+  .btn-open{flex:1;padding:12px;border-radius:12px;border:1px solid var(--gold-bdr);background:var(--gold-glow);font-family:var(--sans);font-size:13px;font-weight:600;color:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s}
+  .btn-open:hover{background:rgba(212,168,83,.24)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="sbar">
+    <span>11:57</span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <span class="ms" style="font-size:16px">wifi</span>
+      <span class="ms" style="font-size:16px">signal_cellular_alt</span>
+      <span class="ms" style="font-size:16px">battery_4_bar</span>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="header">
+      <h1>My Journeys</h1>
+      <div class="tabs">
+        <button class="tab active">Trips <span class="tc">4</span></button>
+        <button class="tab">Places <span class="tc">12</span></button>
+      </div>
+    </div>
+
+    <div class="list">
+
+      <!-- Jaipur — upcoming, has changes -->
+      <div class="tc-wrap" onclick="showTrip('jaipur')">
+        <div class="card">
+          <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1599661046289-e31897846e41?w=800&q=80')"></div>
+          <div class="scrim"></div>
+          <div class="ct">
+            <div class="dpill upcoming">
+              <span class="ms" style="font-size:11px">calendar_month</span>
+              In 8 days · Jun 26–27
+            </div>
+            <!-- alert pill replaces meta pill when there are changes -->
+            <div class="alert-pill"><span class="ms" style="font-size:11px">warning</span>2 updates</div>
+          </div>
+          <div class="cb">
+            <div class="ci">
+              <div class="card-city">Jaipur</div>
+              <div class="stat-row">
+                <span class="stat-chip"><span class="ms">wb_sunny</span>36°, sunny</span>
+                <div class="stat-div"></div>
+                <span class="stat-chip"><span class="ms">route</span>7 stops · 2 days</span>
+              </div>
+            </div>
+            <button class="open-btn" onclick="event.stopPropagation()"><span class="ms">arrow_forward</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delhi — today, no changes -->
+      <div class="tc-wrap" onclick="showTrip('delhi')">
+        <div class="card">
+          <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&q=80')"></div>
+          <div class="scrim"></div>
+          <div class="ct">
+            <div class="dpill today">
+              <span class="ms" style="font-size:11px">today</span>
+              Today · Jun 18
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:600;background:rgba(107,148,112,.16);color:#82c087;border:1px solid rgba(107,148,112,.28);backdrop-filter:blur(12px)">
+              <span class="ms" style="font-size:11px">check_circle</span>All good
+            </div>
+          </div>
+          <div class="cb">
+            <div class="ci">
+              <div class="card-city">Delhi</div>
+              <div class="stat-row">
+                <span class="stat-chip"><span class="ms">wb_cloudy</span>29°, cloudy</span>
+                <div class="stat-div"></div>
+                <span class="stat-chip"><span class="ms">route</span>5 stops · 1 day</span>
+              </div>
+            </div>
+            <button class="open-btn" onclick="event.stopPropagation()"><span class="ms">arrow_forward</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- London — past -->
+      <div class="tc-wrap past" onclick="showTrip('london')">
+        <div class="card">
+          <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&q=80')"></div>
+          <div class="scrim"></div>
+          <div class="ct">
+            <div class="dpill past">Apr 5, 2026</div>
+            <div style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:10px;color:rgba(255,255,255,.3);border:1px solid var(--border);backdrop-filter:blur(12px)">
+              Visited
+            </div>
+          </div>
+          <div class="cb">
+            <div class="ci">
+              <div class="card-city">City of London</div>
+              <div class="stat-row">
+                <span class="stat-chip"><span class="ms">route</span>5 stops · 1 day</span>
+                <div class="stat-div"></div>
+                <span class="stat-chip"><span class="ms">history</span>2 months ago</span>
+              </div>
+            </div>
+            <button class="open-btn" onclick="event.stopPropagation()"><span class="ms">arrow_forward</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tokyo — past -->
+      <div class="tc-wrap past" onclick="showTrip('tokyo')">
+        <div class="card">
+          <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80')"></div>
+          <div class="scrim"></div>
+          <div class="ct">
+            <div class="dpill past">Mar 31, 2026</div>
+            <div style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:10px;color:rgba(255,255,255,.3);border:1px solid var(--border);backdrop-filter:blur(12px)">
+              Visited
+            </div>
+          </div>
+          <div class="cb">
+            <div class="ci">
+              <div class="card-city">Tokyo</div>
+              <div class="stat-row">
+                <span class="stat-chip"><span class="ms">route</span>6 stops · 1 day</span>
+                <div class="stat-div"></div>
+                <span class="stat-chip"><span class="ms">history</span>3 months ago</span>
+              </div>
+            </div>
+            <button class="open-btn" onclick="event.stopPropagation()"><span class="ms">arrow_forward</span></button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bnav">
+    <div class="ni"><span class="ms">explore</span><span class="nl">Explore</span></div>
+    <div class="ni active"><span class="ms">route</span><span class="nl">Itinerary</span></div>
+    <div class="ni"><span class="ms">person</span><span class="nl">Profile</span></div>
+  </div>
+
+  <!-- overlay -->
+  <div class="overlay" id="ov" onclick="hideNudge();" style="cursor:default"></div>
+
+  <!-- ── NUDGE: Jaipur (has changes) ── -->
+  <div class="nudge" id="n-jaipur">
+    <div class="nudge-handle"></div>
+    <div class="nudge-id">
+      <div class="nudge-thumb" style="background-image:url('https://images.unsplash.com/photo-1599661046289-e31897846e41?w=300&q=70')"></div>
+      <div>
+        <div class="nudge-city">Jaipur</div>
+        <div class="nudge-sub">Jun 26–27 · 2 days · 7 stops</div>
+      </div>
+    </div>
+    <div class="nudge-body">
+      <div class="change-row">
+        <div class="cr-icon warn"><span class="ms">block</span></div>
+        <div>
+          <div class="cr-title">Albert Hall closed on your visit day</div>
+          <div class="cr-desc">Closed Thursdays — you're arriving Jun 26.</div>
+        </div>
+      </div>
+      <div class="change-row">
+        <div class="cr-icon info"><span class="ms">groups</span></div>
+        <div>
+          <div class="cr-title">Amer Fort is busier now</div>
+          <div class="cr-desc">Peak crowds 10am–2pm. Your slot is 11am.</div>
+        </div>
+      </div>
+    </div>
+    <div class="nudge-footer">
+      <button class="btn-skip" onclick="hideNudge()">Later</button>
+      <button class="btn-open" onclick="hideNudge()">
+        <span class="ms" style="font-size:15px">play_circle</span>Open plan
+      </button>
+    </div>
+  </div>
+
+  <!-- ── NUDGE: Delhi (all good) ── -->
+  <div class="nudge" id="n-delhi">
+    <div class="nudge-handle"></div>
+    <div class="nudge-id">
+      <div class="nudge-thumb" style="background-image:url('https://images.unsplash.com/photo-1587474260584-136574528ed5?w=300&q=70')"></div>
+      <div>
+        <div class="nudge-city">Delhi</div>
+        <div class="nudge-sub">Today · Jun 18 · 5 stops</div>
+      </div>
+    </div>
+    <div class="nudge-body">
+      <div class="all-good">
+        <div class="ag-icon"><span class="ms">check_circle</span></div>
+        <div class="ag-text"><strong>All good.</strong> No closures, no crowd spikes, weather's fine. Your plan is exactly as you left it.</div>
+      </div>
+    </div>
+    <div class="nudge-footer">
+      <button class="btn-open" onclick="hideNudge()" style="flex:1">
+        <span class="ms" style="font-size:15px">play_circle</span>Open plan
+      </button>
+    </div>
+  </div>
+
+  <!-- ── NUDGE: London (past) ── -->
+  <div class="nudge" id="n-london">
+    <div class="nudge-handle"></div>
+    <div class="nudge-id">
+      <div class="nudge-thumb" style="background-image:url('https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=300&q=70')"></div>
+      <div>
+        <div class="nudge-city">City of London</div>
+        <div class="nudge-sub">Apr 5, 2026 · 5 stops · Visited</div>
+      </div>
+    </div>
+    <div class="nudge-body">
+      <div class="all-good">
+        <div class="ag-icon" style="background:rgba(255,255,255,.06);color:var(--text3)"><span class="ms">history</span></div>
+        <div class="ag-text" style="color:var(--text3)">This trip is complete. Replay the reel to revisit it.</div>
+      </div>
+    </div>
+    <div class="nudge-footer">
+      <button class="btn-open" onclick="hideNudge()" style="flex:1">
+        <span class="ms" style="font-size:15px">play_circle</span>Open plan
+      </button>
+    </div>
+  </div>
+
+  <!-- ── NUDGE: Tokyo (past) ── -->
+  <div class="nudge" id="n-tokyo">
+    <div class="nudge-handle"></div>
+    <div class="nudge-id">
+      <div class="nudge-thumb" style="background-image:url('https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=300&q=70')"></div>
+      <div>
+        <div class="nudge-city">Tokyo</div>
+        <div class="nudge-sub">Mar 31, 2026 · 6 stops · Visited</div>
+      </div>
+    </div>
+    <div class="nudge-body">
+      <div class="all-good">
+        <div class="ag-icon" style="background:rgba(255,255,255,.06);color:var(--text3)"><span class="ms">history</span></div>
+        <div class="ag-text" style="color:var(--text3)">This trip is complete. Replay the reel to revisit it.</div>
+      </div>
+    </div>
+    <div class="nudge-footer">
+      <button class="btn-open" onclick="hideNudge()" style="flex:1">
+        <span class="ms" style="font-size:15px">play_circle</span>Open plan
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let cur = null;
+
+  function showTrip(city) {
+    hideNudge();
+    const n = document.getElementById('n-' + city);
+    if (!n) return;
+    cur = n;
+    document.getElementById('ov').classList.add('open');
+    requestAnimationFrame(() => n.classList.add('open'));
+  }
+
+  function hideNudge() {
+    if (!cur) return;
+    cur.classList.remove('open');
+    document.getElementById('ov').classList.remove('open');
+    cur = null;
+  }
+
+  // swipe down to dismiss
+  let sy = null;
+  document.querySelectorAll('.nudge').forEach(n => {
+    n.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, { passive: true });
+    n.addEventListener('touchend', e => {
+      if (sy !== null && e.changedTouches[0].clientY - sy > 60) hideNudge();
+      sy = null;
+    }, { passive: true });
+  });
+</script>
+</body>
+</html>
