@@ -6,7 +6,7 @@ import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights, getTravelDateBadge } from './pincard-utils'
 import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
-import { usePersonaInsight, computePersonaBadges } from './pincard-persona'
+import { usePersonaInsight } from './pincard-persona'
 
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
@@ -224,26 +224,7 @@ export function PinCard({
   const description = details?.editorial_summary ?? null
   const PRICE_SYMBOLS = ['', '₹', '₹₹', '₹₹₹', '₹₹₹₹']
 
-  const personaBadges = persona ? computePersonaBadges(place, persona, personaProfile, 'map') : []
   const whyForYouText = personaInsight ?? place.reason ?? null
-
-  const archetypeStr = (persona?.archetype ?? (personaProfile as { archetype?: string } | null)?.archetype ?? '').toLowerCase()
-  const ARCHETYPE_HIGH_FIT: Record<string, string[]> = {
-    explorer:     ['park', 'viewpoint', 'museum', 'tourism', 'beach', 'historic'],
-    wanderer:     ['market', 'park', 'street_art', 'cafe', 'viewpoint', 'spiritual'],
-    epicurean:    ['restaurant', 'cafe', 'bar', 'market', 'bakery'],
-    historian:    ['historic', 'museum', 'spiritual', 'gallery', 'library'],
-    pulse:        ['bar', 'nightlife', 'market', 'restaurant', 'viewpoint'],
-    slowtraveller:['cafe', 'park', 'spiritual', 'gallery', 'viewpoint'],
-    voyager:      ['museum', 'historic', 'gallery', 'restaurant', 'viewpoint'],
-  }
-  const archetypeLabel: Record<string, string> = {
-    explorer: 'Explorer', wanderer: 'Wanderer', epicurean: 'Epicurean',
-    historian: 'Historian', pulse: 'Pulse', slowtraveller: 'Slow Traveller', voyager: 'Voyager',
-  }
-  const highFit = archetypeStr ? (ARCHETYPE_HIGH_FIT[archetypeStr] ?? []).includes(place.category) : false
-  const archetypeName = archetypeStr ? (archetypeLabel[archetypeStr] ?? archetypeStr) : null
-  const showWhyForYou = personaBadges.length > 0 || highFit || whyForYouText !== null
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
