@@ -323,6 +323,7 @@ export interface PlaceDetails {
   photo_refs?: string[];
   types?: string[];
   editorial_summary?: string;
+  review_summary?: string;
   top_review?: string;
   reviews?: { text: string; author_name: string; rating: number }[];
 }

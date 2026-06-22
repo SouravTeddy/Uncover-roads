@@ -350,10 +350,11 @@ export const api = {
     } catch { return {}; }
   },
 
-  placeImage: async (name: string, city: string): Promise<string | null> => {
+  placeImage: async (name: string, city: string, pid?: string): Promise<string | null> => {
     try {
+      const pidParam = pid ? `&pid=${encodeURIComponent(pid)}` : '';
       const data = await get<{ image: string | null }>(
-        `/place-image?name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}`
+        `/place-image?name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}${pidParam}`
       );
       if (!data.image) return null;
       // /place-image may return a relative path like "/place-photo?..." — make it absolute
