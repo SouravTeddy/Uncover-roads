@@ -743,8 +743,8 @@ export function PinCard({
                 </div>
               )}
 
-              {/* ② What's best here — gold, only when review_summary available */}
-              {details.review_summary && (
+              {/* ② What's best here — review_summary when available, persona insight as fallback */}
+              {(details.review_summary || whyForYouText) && (
                 <div style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <button
                     onClick={() => setBestHereOpen(o => !o)}
@@ -756,7 +756,10 @@ export function PinCard({
                         {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {details.review_summary.length > 55 ? details.review_summary.slice(0, 55) + '…' : details.review_summary}
+                        {(() => {
+                          const text = details.review_summary ?? whyForYouText ?? ''
+                          return text.length > 55 ? text.slice(0, 55) + '…' : text
+                        })()}
                       </div>
                     </div>
                     <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: bestHereOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
@@ -765,11 +768,15 @@ export function PinCard({
                     {bestHereOpen && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                         <div style={{ paddingBottom: 12 }}>
-                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>{details.review_summary}</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
-                            <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
-                            AI summary from thousands of reviews
-                          </div>
+                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
+                            {details.review_summary ?? whyForYouText}
+                          </p>
+                          {details.review_summary && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
+                              <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
+                              AI summary from thousands of reviews
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     )}
