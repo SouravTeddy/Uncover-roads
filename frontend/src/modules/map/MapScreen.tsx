@@ -235,6 +235,9 @@ export function MapScreen() {
     if (lastLoadedCity.current === city) return;
     lastLoadedCity.current = city;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
+    // Fly to city — handles the case where MapScreen was already mounted
+    // (initialViewState only applies at mount, so we must flyTo explicitly)
+    mapHandleRef.current?.flyTo(cityGeo.lat, cityGeo.lon, 13);
     // Reset filter to 'all' so stale category filters don't hide fresh pins
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
