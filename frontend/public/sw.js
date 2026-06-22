@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uncover-roads-v2';
+const CACHE_NAME = 'uncover-roads-v3';
 
 // Static assets to pre-cache on install
 const STATIC_ASSETS = [
