@@ -591,40 +591,6 @@ export function PinCard({
             </div>
           )}
 
-          {/* Why for you */}
-          {showWhyForYou && (
-            <div style={{
-              borderRadius: 12, padding: '12px 13px', marginBottom: 14,
-              background: 'linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.03))',
-              border: '1px solid rgba(99,102,241,.18)',
-              animation: 'sectionReveal 360ms 120ms cubic-bezier(.22,1,.36,1) both',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, fontSize: 10, fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
-                <span style={{ fontSize: 13 }}>✨</span>
-                Why for you
-              </div>
-              {personaBadges.map((b, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: b.color }}>{b.text.startsWith('✓') ? '✓' : '⚠'}</span>
-                  <span style={{ fontSize: 12, color: b.color, lineHeight: 1.4 }}>{b.text.replace(/^[✓⚠]\s*/, '')}</span>
-                </div>
-              ))}
-              {personaBadges.length === 0 && highFit && archetypeName && (
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: whyForYouText ? 6 : 0 }}>
-                  <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: '#a78bfa' }}>✓</span>
-                  <span style={{ fontSize: 12, color: '#a78bfa', lineHeight: 1.4 }}>{categoryLabel} is a strong match for {archetypeName} travellers</span>
-                </div>
-              )}
-              {(personaBadges.length > 0 || highFit) && whyForYouText && (
-                <div style={{ height: 1, background: 'rgba(99,102,241,.12)', margin: '6px 0 8px' }} />
-              )}
-              {whyForYouText && (
-                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.55 }}>
-                  {whyForYouText}
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Trending description block */}
           {ourPickBadge === 'trending' && !trendingLocked && (
