@@ -48,6 +48,10 @@ export function MapScreen() {
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
+  // When coming from saved places, suppress all non-favourited pins for 2s so
+  // the user can spot their saved pin before the full map loads in.
+  const [pinRevealReady, setPinRevealReady] = useState(true)
+  const pinRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
@@ -226,6 +230,23 @@ export function MapScreen() {
       setInitialLoading(false);
     }
   }, [city, dispatch]);
+
+  // When filter is set to 'saved' (only happens via navigation from saved places),
+  // hide all non-favourited pin layers for 2 s so the saved pin is clearly visible first.
+  useEffect(() => {
+    if (activeFilter === 'saved') {
+      setPinRevealReady(false);
+      if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current);
+      pinRevealTimer.current = setTimeout(() => {
+        setPinRevealReady(true);
+        setFilter('all');
+      }, 2000);
+    } else {
+      setPinRevealReady(true);
+      if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current);
+    }
+    return () => { if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current); };
+  }, [activeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Trigger initial load when city or cityGeo changes. Tracks last loaded city
   // so that changing the city mid-session always fires a fresh load.
@@ -505,10 +526,10 @@ export function MapScreen() {
       >
         {/* Famous places — de-dupe against curated picks */}
         <FamousPinsLayer
-          places={filteredPlaces.filter(p =>
+          places={pinRevealReady ? filteredPlaces.filter(p =>
             !selectedIds.has(p.id) &&
             !ourPickIds.has(p.id)
-          )}
+          ) : []}
           activePlaceId={activePinId}
           discoveryMode="anchor"
           isDark={isDark}
@@ -528,7 +549,7 @@ export function MapScreen() {
         />
         {/* Reco places — always visible */}
         <RecoPlacesPinsLayer
-          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? ''))}
+          places={pinRevealReady ? (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '')) : []}
           activePinId={activePinId ?? null}
           mapZoom={mapZoom}
           onPinClick={(id) => {
@@ -545,7 +566,7 @@ export function MapScreen() {
 
         {/* Curated picks — ✦ sparkle distinguishes them visually */}
         <OurPicksPinsLayer
-          picks={ourPicks}
+          picks={pinRevealReady ? ourPicks : []}
           activePinId={activePinId ?? null}
           onPinClick={handlePicksPinClick}
           selectedPlaceIds={selectedIds}
