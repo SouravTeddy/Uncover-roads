@@ -95,6 +95,7 @@ export function PinCard({
   const [descOpen, setDescOpen] = useState(true)
   const [bestHereOpen, setBestHereOpen] = useState(false)
   const [planVisitOpen, setPlanVisitOpen] = useState(false)
+  const [reviewsOpen, setReviewsOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIdx, setGalleryIdx] = useState(0)
   const [imgSrcs, setImgSrcs] = useState<string[]>([])
@@ -158,6 +159,7 @@ export function PinCard({
     setDescOpen(true)
     setBestHereOpen(false)
     setPlanVisitOpen(false)
+    setReviewsOpen(false)
     setGalleryOpen(false)
     setGalleryIdx(0)
   }, [place.id])
@@ -535,14 +537,32 @@ export function PinCard({
             </p>
           ) : null}
 
-          {/* Meta chips — rating + price, shimmer while loading */}
+          {/* Chips row — travel-date timing + rating + price */}
           {details == null ? (
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              <div style={{ ...shimmerBase, height: 22, width: 120, borderRadius: 99 }} />
               <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
-              <div style={{ ...shimmerBase, height: 22, width: 38, borderRadius: 99 }} />
             </div>
-          ) : (rating !== null || priceLevel !== null) ? (
+          ) : (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, animation: 'sectionReveal 360ms 50ms cubic-bezier(.22,1,.36,1) both' }}>
+              {weekdayText.length > 0 && resolvedStart && (() => {
+                const badge = getTravelDateBadge(weekdayText, resolvedStart)
+                if (!badge) return null
+                const isOpen = badge.status === 'open'
+                return (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: '0.72rem', fontWeight: 600,
+                    padding: '3px 9px', borderRadius: 99,
+                    background: isOpen ? 'rgba(107,148,112,.15)' : 'rgba(194,100,100,.15)',
+                    border: `1px solid ${isOpen ? 'rgba(107,148,112,.3)' : 'rgba(194,100,100,.3)'}`,
+                    color: isOpen ? '#7aaa80' : '#d48080',
+                  }}>
+                    <span className="ms fill" style={{ fontSize: 11 }}>schedule</span>
+                    {badge.text}
+                  </span>
+                )
+              })()}
               {rating !== null && (
                 <span style={{
                   fontSize: '0.72rem', fontWeight: 700,
@@ -569,29 +589,7 @@ export function PinCard({
                 </span>
               )}
             </div>
-          ) : null}
-
-          {/* Travel date timing chip */}
-          {details !== null && weekdayText.length > 0 && resolvedStart && (() => {
-            const badge = getTravelDateBadge(weekdayText, resolvedStart)
-            if (!badge) return null
-            const isOpen = badge.status === 'open'
-            return (
-              <div style={{ marginBottom: 12, animation: 'sectionReveal 360ms 60ms cubic-bezier(.22,1,.36,1) both' }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  fontSize: '0.72rem', fontWeight: 600,
-                  padding: '4px 10px', borderRadius: 99,
-                  background: isOpen ? 'rgba(107,148,112,.15)' : 'rgba(194,100,100,.15)',
-                  border: `1px solid ${isOpen ? 'rgba(107,148,112,.3)' : 'rgba(194,100,100,.3)'}`,
-                  color: isOpen ? '#7aaa80' : '#d48080',
-                }}>
-                  <span className="ms fill" style={{ fontSize: 12 }}>schedule</span>
-                  {badge.text}
-                </span>
-              </div>
-            )
-          })()}
+          )}
 
           {/* Why for you */}
           {showWhyForYou && (
@@ -725,166 +723,147 @@ export function PinCard({
             </div>
           )}
 
-          {/* Description accordion — default open */}
+          {/* ── Accordion sections ── */}
           {details == null ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
-              <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
-              <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
-              <div style={{ ...shimmerBase, height: 10, width: '55%' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
+              <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
+              <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
+              <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
             </div>
-          ) : (description || website || phone) ? (
-            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 200ms cubic-bezier(.22,1,.36,1) both' }}>
-              <button
-                onClick={() => setDescOpen(o => !o)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-              >
-                <span className="ms" style={{ fontSize: 14 }}>description</span>
-                About this place
-                <span className="ms" style={{ fontSize: 13 }}>{descOpen ? 'expand_less' : 'expand_more'}</span>
-              </button>
-              <AnimatePresence>
-                {descOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ paddingTop: 8 }}>
-                      {description ? (
-                        <p style={{ margin: '0 0 4px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
-                          {description}
-                        </p>
-                      ) : (
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                        >
-                          Find out more about this place ↗
-                        </a>
-                      )}
-                      {(website || phone) && (
-                        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
-                          {website && (
-                            <a
-                              href={website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                            >
-                              Official website ↗
-                            </a>
-                          )}
-                          {phone && (
-                            <a
-                              href={`tel:${phone}`}
-                              onClick={e => e.stopPropagation()}
-                              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                            >
-                              {phone}
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : null}
+          ) : (
+            <div style={{ animation: 'sectionReveal 360ms 180ms cubic-bezier(.22,1,.36,1) both' }}>
 
-          {/* What's best here — gold AI summary, only when review_summary available */}
-          {details?.review_summary && (
-            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 210ms cubic-bezier(.22,1,.36,1) both' }}>
-              <button
-                onClick={() => setBestHereOpen(o => !o)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600 }}
-              >
-                <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-primary)' }}>auto_awesome</span>
-                {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
-                <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{bestHereOpen ? 'expand_less' : 'expand_more'}</span>
-              </button>
-              <AnimatePresence>
-                {bestHereOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ overflow: 'hidden' }}
+              {/* ① Description */}
+              {(description || website || phone) && (
+                <div style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <button
+                    onClick={() => setDescOpen(o => !o)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
                   >
-                    <div style={{ paddingTop: 8 }}>
-                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
-                        {details.review_summary}
-                      </p>
-                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
-                        <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
-                        AI summary from thousands of reviews
+                    <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>description</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {description
+                          ? description.length > 60 ? description.slice(0, 60) + '…' : description
+                          : website ? 'Official website available' : phone ?? 'Tap to find out more'}
                       </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: descOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
+                  </button>
+                  <AnimatePresence>
+                    {descOpen && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                        <div style={{ paddingBottom: 12 }}>
+                          {description && (
+                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.55 }}>{description}</p>
+                          )}
+                          {(website || phone) && (
+                            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                              {website && (
+                                <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>Official website ↗</a>
+                              )}
+                              {phone && (
+                                <a href={`tel:${phone}`} onClick={e => e.stopPropagation()} style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>{phone}</a>
+                              )}
+                            </div>
+                          )}
+                          {!description && !website && !phone && (
+                            <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>Find out more ↗</a>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* ② What's best here — gold, only when review_summary available */}
+              {details.review_summary && (
+                <div style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <button
+                    onClick={() => setBestHereOpen(o => !o)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
+                  >
+                    <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-primary)', flexShrink: 0 }}>auto_awesome</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--color-primary)', marginBottom: 2 }}>
+                        {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {details.review_summary.length > 55 ? details.review_summary.slice(0, 55) + '…' : details.review_summary}
+                      </div>
+                    </div>
+                    <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: bestHereOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
+                  </button>
+                  <AnimatePresence>
+                    {bestHereOpen && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                        <div style={{ paddingBottom: 12 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>{details.review_summary}</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
+                            <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
+                            AI summary from thousands of reviews
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* ③ Plan your visit */}
+              {(() => {
+                const duration = CATEGORY_DURATION[place.category] ?? '1–2 hours'
+                const bestTime = CATEGORY_BEST_TIME[place.category]
+                return (
+                  <div style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <button
+                      onClick={() => setPlanVisitOpen(o => !o)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
+                    >
+                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>timer</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          Allow {duration}{website ? ' · check bookings' : ''}
+                        </div>
+                      </div>
+                      <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: planVisitOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
+                    </button>
+                    <AnimatePresence>
+                      {planVisitOpen && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                          <div style={{ paddingBottom: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                              <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 8 }} />
+                              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                                Allow <strong style={{ color: 'var(--color-text-1)' }}>{duration}</strong> for a comfortable visit
+                              </span>
+                            </div>
+                            {bestTime && (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 8 }} />
+                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>Best visited {bestTime}</span>
+                              </div>
+                            )}
+                            {website && (
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#6b9470', flexShrink: 0, marginTop: 8 }} />
+                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                                  Check for reservations or tickets —{' '}
+                                  <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>official website ↗</a>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )
+              })()}
+
             </div>
           )}
-
-          {/* Plan your visit */}
-          {details !== null && (() => {
-            const duration = CATEGORY_DURATION[place.category] ?? '1–2 hours'
-            const bestTime = CATEGORY_BEST_TIME[place.category]
-            return (
-              <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 220ms cubic-bezier(.22,1,.36,1) both' }}>
-                <button
-                  onClick={() => setPlanVisitOpen(o => !o)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
-                >
-                  <span className="ms" style={{ fontSize: 14 }}>calendar_today</span>
-                  Plan your visit
-                  <span className="ms" style={{ fontSize: 13 }}>{planVisitOpen ? 'expand_less' : 'expand_more'}</span>
-                </button>
-                <AnimatePresence>
-                  {planVisitOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ overflow: 'hidden' }}
-                    >
-                      <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>timer</span>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
-                            Allow <strong style={{ color: 'var(--color-text-1)' }}>{duration}</strong> for a comfortable visit
-                          </span>
-                        </div>
-                        {bestTime && (
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>wb_sunny</span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>Best visited {bestTime}</span>
-                          </div>
-                        )}
-                        {website && (
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>confirmation_number</span>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
-                              Check for reservations or tickets at the{' '}
-                              <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>official website ↗</a>
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })()}
 
           {/* Analysis strip — shimmer while loading */}
           {details == null ? (
@@ -942,77 +921,93 @@ export function PinCard({
             </div>
           ) : null}
 
-          {/* Hours toggle — shimmer while loading */}
-          {details == null ? (
-            <div style={{ ...shimmerBase, height: 13, width: '40%', marginBottom: 14 }} />
-          ) : weekdayText.length > 0 ? (
-            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 150ms cubic-bezier(.22,1,.36,1) both' }}>
+          {/* ④ Hours accordion */}
+          {weekdayText.length > 0 && (
+            <div style={{ borderBottom: '1px solid var(--color-border)', animation: 'sectionReveal 360ms 150ms cubic-bezier(.22,1,.36,1) both' }}>
               <button
                 onClick={() => setHoursOpen(h => !h)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
               >
-                <span className="ms" style={{ fontSize: 14 }}>schedule</span>
-                Hours
-                <span className="ms" style={{ fontSize: 13 }}>{hoursOpen ? 'expand_less' : 'expand_more'}</span>
+                <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>schedule</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {(() => {
+                      const visitLine = resolvedStart ? weekdayText.find(l => {
+                        const d = new Date(resolvedStart + 'T00:00:00')
+                        const day = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]
+                        return l.startsWith(day)
+                      }) : null
+                      return visitLine
+                        ? visitLine.replace(/^[^:]+:\s*/, '')
+                        : weekdayText[0].replace(/^[^:]+:\s*/, '')
+                    })()}
+                  </div>
+                </div>
+                <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: hoursOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
               </button>
               <AnimatePresence>
                 {hoursOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ paddingTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {weekdayText.map((line, i) => (
-                        <p key={i} style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-3)' }}>{line}</p>
-                      ))}
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ paddingBottom: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {weekdayText.map((line, i) => {
+                        const isVisitDay = resolvedStart ? (() => {
+                          const d = new Date(resolvedStart + 'T00:00:00')
+                          const day = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]
+                          return line.startsWith(day)
+                        })() : false
+                        return (
+                          <p key={i} style={{ margin: 0, fontSize: '0.75rem', color: isVisitDay ? 'var(--color-text-2)' : 'var(--color-text-3)', fontWeight: isVisitDay ? 600 : 400 }}>
+                            {line}{isVisitDay ? ' ← your visit' : ''}
+                          </p>
+                        )
+                      })}
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-          ) : null}
+          )}
 
-          {/* Reviews section */}
+          {/* ⑤ Reviews accordion */}
           {details?.reviews && details.reviews.length > 0 && (
-            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 160ms cubic-bezier(.22,1,.36,1) both' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'rgba(242,237,230,.22)', marginBottom: 7 }}>
-                What visitors say
-              </div>
-              {details.reviews.map((review, i) => (
-                <div key={i} style={{
-                  borderRadius: 10, padding: '10px 12px',
-                  background: 'var(--color-surface2)',
-                  marginBottom: 6,
-                }}>
-                  <p style={{ fontSize: 12, lineHeight: 1.55, fontStyle: 'italic', marginBottom: 6, color: 'rgba(242,237,230,.72)' }}>
-                    "{review.text}"
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: 'rgba(212,168,83,.18)', color: '#d4a853',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 700, flexShrink: 0,
-                    }}>{review.author_name?.[0]?.toUpperCase() ?? 'G'}</div>
-                    <span style={{ fontSize: 10, color: 'rgba(242,237,230,.38)' }}>{review.author_name || 'Google reviewer'}</span>
-                    <span style={{ fontSize: 9, color: '#c49840', marginLeft: 'auto' }}>{'★'.repeat(Math.round(review.rating))}</span>
+            <div style={{ borderBottom: '1px solid var(--color-border)', animation: 'sectionReveal 360ms 160ms cubic-bezier(.22,1,.36,1) both' }}>
+              <button
+                onClick={() => setReviewsOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
+              >
+                <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>chat_bubble</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    "{details.reviews[0].text.slice(0, 55)}{details.reviews[0].text.length > 55 ? '…' : ''}"
                   </div>
                 </div>
-              ))}
-              {details.rating_count != null && (
-                <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  style={{ fontSize: 10, color: 'var(--color-primary)', display: 'block', textAlign: 'right', marginTop: 2, textDecoration: 'none' }}
-                >
-                  See all {(details.rating_count as number).toLocaleString()} reviews on Google →
-                </a>
-              )}
+                <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: reviewsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
+              </button>
+              <AnimatePresence>
+                {reviewsOpen && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ paddingBottom: 12 }}>
+                      {details.reviews.map((review, i) => (
+                        <div key={i} style={{ borderRadius: 10, padding: '10px 12px', background: 'var(--color-surface2)', marginBottom: 6 }}>
+                          <p style={{ fontSize: 12, lineHeight: 1.55, fontStyle: 'italic', marginBottom: 6, color: 'rgba(242,237,230,.72)' }}>"{review.text}"</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(212,168,83,.18)', color: '#d4a853', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
+                              {review.author_name?.[0]?.toUpperCase() ?? 'G'}
+                            </div>
+                            <span style={{ fontSize: 10, color: 'rgba(242,237,230,.38)' }}>{review.author_name || 'Google reviewer'}</span>
+                            <span style={{ fontSize: 9, color: '#c49840', marginLeft: 'auto' }}>{'★'.repeat(Math.round(review.rating))}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {details.rating_count != null && (
+                        <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-primary)', display: 'block', textAlign: 'right', marginTop: 2, textDecoration: 'none' }}>
+                          See all {(details.rating_count as number).toLocaleString()} reviews on Google →
+                        </a>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
 
