@@ -238,8 +238,8 @@ export function MapScreen() {
     // Fly to city — handles the case where MapScreen was already mounted
     // (initialViewState only applies at mount, so we must flyTo explicitly)
     mapHandleRef.current?.flyTo(cityGeo.lat, cityGeo.lon, 13);
-    // Reset filter to 'all' so stale category filters don't hide fresh pins
-    if (activeFilter !== 'all') setFilter('all');
+    // Reset category filters on city change, but preserve 'saved' if coming from saved places
+    if (activeFilter !== 'all' && activeFilter !== 'saved') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
   }, [city, cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -728,33 +728,6 @@ export function MapScreen() {
           />
         </div>
 
-        {/* Saved filter chip — appears when places are hearted */}
-        {citySavedCount > 0 && (
-          <div style={{ pointerEvents: 'auto' }}>
-            <button
-              onClick={() => {
-                if (activeFilter === 'saved') {
-                  setFilter('all');
-                } else {
-                  setFilter('saved' as MapFilter);
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 h-7 rounded-full text-[11px] font-medium transition-all"
-              style={{
-                background: activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.15)',
-                color: activeFilter === 'saved' ? '#fff' : 'var(--color-primary)',
-                border: `1px solid ${activeFilter === 'saved' ? 'var(--color-primary)' : 'rgba(224,120,84,.3)'}`,
-              }}
-            >
-              <span className="ms" style={{ fontSize: 13 }}>bookmark</span>
-              Saved
-              <span style={{ opacity: 0.7 }}>{citySavedCount}</span>
-              {activeFilter === 'saved' && (
-                <span className="ms" style={{ fontSize: 12 }}>close</span>
-              )}
-            </button>
-          </div>
-        )}
 
         {/* Journey breadcrumb */}
         <div style={{ pointerEvents: 'auto' }}>
