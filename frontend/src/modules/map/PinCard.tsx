@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { Place, PlaceDetails, Persona, PersonaProfile } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
-import { computeAnalysisInsights } from './pincard-utils'
+import { computeAnalysisInsights, getTravelDateBadge } from './pincard-utils'
 import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 import { usePersonaInsight, computePersonaBadges } from './pincard-persona'
@@ -12,6 +12,46 @@ const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
   museum: '#8b5cf6', historic: '#a16207', tourism: '#0ea5e9',
   event: '#ec4899', place: '#6b7280',
+}
+
+const CATEGORY_BEST_LABEL: Record<string, string> = {
+  restaurant: 'Best thing to order', cafe: 'Best thing to order',
+  bar: 'Best thing to order', bakery: 'Best thing to order',
+  park: 'Best thing to do', viewpoint: 'Best thing to do',
+  beach: 'Best thing to do', market: 'Best thing to do',
+  zoo: 'Best thing to do', aquarium: 'Best thing to do',
+  amusement_park: 'Best thing to do',
+  museum: 'Best thing to experience', historic: 'Best thing to experience',
+  gallery: 'Best thing to experience', spiritual: 'Best thing to experience',
+  library: 'Best thing to experience', cinema: 'Best thing to experience',
+}
+
+const CATEGORY_DURATION: Record<string, string> = {
+  restaurant: '1–2 hours', cafe: '45 min – 1.5 hours', bakery: '30–60 min',
+  bar: '1–3 hours', nightlife: '2–4 hours',
+  park: '2–4 hours', beach: '2–5 hours', viewpoint: '30–60 min',
+  museum: '2–3 hours', gallery: '1–2 hours', zoo: '3–4 hours',
+  aquarium: '2–3 hours', historic: '1–2 hours', spiritual: '30–60 min',
+  market: '1–2 hours', cinema: '2–3 hours', library: '1–2 hours',
+  amusement_park: '3–5 hours',
+}
+
+const CATEGORY_BEST_TIME: Record<string, string> = {
+  restaurant: 'for dinner — arrive 15–20 min early to avoid queues',
+  cafe: 'on a weekday morning for the quietest experience',
+  bakery: 'early morning for fresh-baked items',
+  bar: 'an hour after opening for atmosphere without the full crowd',
+  nightlife: 'after 10 PM when the energy picks up',
+  park: 'early morning or late afternoon for cooler air and better light',
+  beach: 'early morning — smaller crowds and golden-hour light',
+  viewpoint: 'at sunrise or sunset for the best views',
+  museum: 'at opening time on a weekday — crowds thin out by noon',
+  gallery: 'on a weekday afternoon for a peaceful browse',
+  zoo: 'in the morning when animals are most active',
+  aquarium: 'on a weekday morning for smaller crowds',
+  historic: 'in the morning for soft light and fewer tourists',
+  spiritual: 'early morning for a tranquil visit',
+  market: 'mid-morning when all stalls are set up and stocked',
 }
 
 interface Props {
@@ -52,7 +92,9 @@ export function PinCard({
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
-  const [descExpanded, setDescExpanded] = useState(false)
+  const [descOpen, setDescOpen] = useState(true)
+  const [bestHereOpen, setBestHereOpen] = useState(false)
+  const [planVisitOpen, setPlanVisitOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIdx, setGalleryIdx] = useState(0)
   const [imgSrcs, setImgSrcs] = useState<string[]>([])
@@ -102,18 +144,20 @@ export function PinCard({
         if (loaded.length > 0) {
           setImgSrcs(loaded)
         } else {
-          api.placeImage(place.title, city).then(url => { if (url) setImgSrcs([url]) })
+          api.placeImage(place.title, city, place.id).then(url => { if (url) setImgSrcs([url]) })
         }
       })
     } else {
-      api.placeImage(place.title, city).then(url => { if (url) setImgSrcs([url]) })
+      api.placeImage(place.title, city, place.id).then(url => { if (url) setImgSrcs([url]) })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [place.id, details?.photo_refs, details?.photo_ref])
 
   useEffect(() => {
     setHoursOpen(false)
-    setDescExpanded(false)
+    setDescOpen(true)
+    setBestHereOpen(false)
+    setPlanVisitOpen(false)
     setGalleryOpen(false)
     setGalleryIdx(0)
   }, [place.id])
@@ -427,7 +471,7 @@ export function PinCard({
           style={{
             overflowY: 'auto',
             scrollbarWidth: 'none',
-            padding: '12px 16px 32px',
+            padding: '12px 16px 16px',
             flex: 1,
           }}
         >
@@ -526,6 +570,28 @@ export function PinCard({
               )}
             </div>
           ) : null}
+
+          {/* Travel date timing chip */}
+          {details !== null && weekdayText.length > 0 && resolvedStart && (() => {
+            const badge = getTravelDateBadge(weekdayText, resolvedStart)
+            if (!badge) return null
+            const isOpen = badge.status === 'open'
+            return (
+              <div style={{ marginBottom: 12, animation: 'sectionReveal 360ms 60ms cubic-bezier(.22,1,.36,1) both' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: '0.72rem', fontWeight: 600,
+                  padding: '4px 10px', borderRadius: 99,
+                  background: isOpen ? 'rgba(107,148,112,.15)' : 'rgba(194,100,100,.15)',
+                  border: `1px solid ${isOpen ? 'rgba(107,148,112,.3)' : 'rgba(194,100,100,.3)'}`,
+                  color: isOpen ? '#7aaa80' : '#d48080',
+                }}>
+                  <span className="ms fill" style={{ fontSize: 12 }}>schedule</span>
+                  {badge.text}
+                </span>
+              </div>
+            )
+          })()}
 
           {/* Why for you */}
           {showWhyForYou && (
@@ -659,6 +725,167 @@ export function PinCard({
             </div>
           )}
 
+          {/* Description accordion — default open */}
+          {details == null ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+              <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
+              <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
+              <div style={{ ...shimmerBase, height: 10, width: '55%' }} />
+            </div>
+          ) : (description || website || phone) ? (
+            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 200ms cubic-bezier(.22,1,.36,1) both' }}>
+              <button
+                onClick={() => setDescOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+              >
+                <span className="ms" style={{ fontSize: 14 }}>description</span>
+                About this place
+                <span className="ms" style={{ fontSize: 13 }}>{descOpen ? 'expand_less' : 'expand_more'}</span>
+              </button>
+              <AnimatePresence>
+                {descOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ paddingTop: 8 }}>
+                      {description ? (
+                        <p style={{ margin: '0 0 4px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
+                          {description}
+                        </p>
+                      ) : (
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
+                        >
+                          Find out more about this place ↗
+                        </a>
+                      )}
+                      {(website || phone) && (
+                        <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                          {website && (
+                            <a
+                              href={website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
+                            >
+                              Official website ↗
+                            </a>
+                          )}
+                          {phone && (
+                            <a
+                              href={`tel:${phone}`}
+                              onClick={e => e.stopPropagation()}
+                              style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
+                            >
+                              {phone}
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : null}
+
+          {/* What's best here — gold AI summary, only when review_summary available */}
+          {details?.review_summary && (
+            <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 210ms cubic-bezier(.22,1,.36,1) both' }}>
+              <button
+                onClick={() => setBestHereOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600 }}
+              >
+                <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-primary)' }}>auto_awesome</span>
+                {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
+                <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{bestHereOpen ? 'expand_less' : 'expand_more'}</span>
+              </button>
+              <AnimatePresence>
+                {bestHereOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{ paddingTop: 8 }}>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
+                        {details.review_summary}
+                      </p>
+                      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
+                        <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
+                        AI summary from thousands of reviews
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Plan your visit */}
+          {details !== null && (() => {
+            const duration = CATEGORY_DURATION[place.category] ?? '1–2 hours'
+            const bestTime = CATEGORY_BEST_TIME[place.category]
+            return (
+              <div style={{ marginBottom: 14, animation: 'sectionReveal 360ms 220ms cubic-bezier(.22,1,.36,1) both' }}>
+                <button
+                  onClick={() => setPlanVisitOpen(o => !o)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-text-3)', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+                >
+                  <span className="ms" style={{ fontSize: 14 }}>calendar_today</span>
+                  Plan your visit
+                  <span className="ms" style={{ fontSize: 13 }}>{planVisitOpen ? 'expand_less' : 'expand_more'}</span>
+                </button>
+                <AnimatePresence>
+                  {planVisitOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ overflow: 'hidden' }}
+                    >
+                      <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 9 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>timer</span>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                            Allow <strong style={{ color: 'var(--color-text-1)' }}>{duration}</strong> for a comfortable visit
+                          </span>
+                        </div>
+                        {bestTime && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>wb_sunny</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>Best visited {bestTime}</span>
+                          </div>
+                        )}
+                        {website && (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-text-3)', flexShrink: 0, marginTop: 1 }}>confirmation_number</span>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                              Check for reservations or tickets at the{' '}
+                              <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>official website ↗</a>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })()}
+
           {/* Analysis strip — shimmer while loading */}
           {details == null ? (
             <div style={{ ...shimmerBase, height: 62, width: '100%', borderRadius: 10, marginBottom: 14 }} />
@@ -789,102 +1016,40 @@ export function PinCard({
             </div>
           )}
 
-          {/* Description — shimmer while loading */}
-          {details == null ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 12 }}>
-              <div style={{ ...shimmerBase, height: 10, width: '100%' }} />
-              <div style={{ ...shimmerBase, height: 10, width: '80%' }} />
-              <div style={{ ...shimmerBase, height: 10, width: '55%' }} />
-            </div>
-          ) : (
-            <div style={{ marginBottom: 12, animation: 'sectionReveal 360ms 200ms cubic-bezier(.22,1,.36,1) both' }}>
-              {description ? (
-                <>
-                  <p style={{ margin: '0 0 4px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.5 }}>
-                    {descExpanded || description.length <= 120 ? description : description.slice(0, 120) + '…'}
-                  </p>
-                  {description.length > 120 && (
-                    <button
-                      onClick={() => setDescExpanded(e => !e)}
-                      style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.75rem', color: 'var(--color-primary)', cursor: 'pointer', marginTop: 2 }}
-                    >
-                      {descExpanded ? 'See less' : 'See more →'}
-                    </button>
-                  )}
-                </>
-              ) : (
-                <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  style={{ fontSize: '0.78rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                >
-                  Find out more about this place ↗
-                </a>
-              )}
+        </div>
 
-              {/* Website and phone — always shown when available */}
-              {(website || phone) && (
-                <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
-                  {website && (
-                    <a
-                      href={website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                    >
-                      Official website ↗
-                    </a>
-                  )}
-                  {phone && (
-                    <a
-                      href={`tel:${phone}`}
-                      onClick={e => e.stopPropagation()}
-                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}
-                    >
-                      {phone}
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* CTA — shimmer while loading */}
+        {/* Pinned CTA footer */}
+        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'env(safe-area-inset-bottom, 10px)', borderTop: '1px solid var(--color-border)' }}>
           {details == null ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
-            <div style={{ animation: 'sectionReveal 360ms 250ms cubic-bezier(.22,1,.36,1) both' }}>
-              <button
-                onClick={onAdd}
-                style={{
-                  width: '100%', padding: '13px 0', borderRadius: 14,
-                  border: isSelected
-                    ? '1px solid rgba(212,168,83,.35)'
-                    : trendingLocked ? '1px solid var(--color-border)' : 'none',
-                  cursor: trendingLocked ? 'default' : 'pointer',
-                  fontSize: '0.9rem', fontWeight: 700,
-                  background: isSelected
-                    ? 'transparent'
-                    : trendingLocked
-                    ? 'var(--color-surface2)'
-                    : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-                  color: isSelected
-                    ? 'var(--color-primary)'
-                    : trendingLocked
-                    ? 'var(--color-text-3)'
-                    : '#0f0d0c',
-                  opacity: trendingLocked ? 0.35 : 1,
-                  boxShadow: isSelected || trendingLocked ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
-                  transition: 'all 0.15s ease',
-                  pointerEvents: trendingLocked ? 'none' : 'auto',
-                }}
-              >
-                {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
-              </button>
-            </div>
+            <button
+              onClick={onAdd}
+              style={{
+                width: '100%', padding: '13px 0', borderRadius: 14,
+                border: isSelected
+                  ? '1px solid rgba(212,168,83,.35)'
+                  : trendingLocked ? '1px solid var(--color-border)' : 'none',
+                cursor: trendingLocked ? 'default' : 'pointer',
+                fontSize: '0.9rem', fontWeight: 700, fontFamily: 'inherit',
+                background: isSelected
+                  ? 'transparent'
+                  : trendingLocked
+                  ? 'var(--color-surface2)'
+                  : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+                color: isSelected
+                  ? 'var(--color-primary)'
+                  : trendingLocked
+                  ? 'var(--color-text-3)'
+                  : '#0f0d0c',
+                opacity: trendingLocked ? 0.35 : 1,
+                boxShadow: isSelected || trendingLocked ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
+                transition: 'all 0.15s ease',
+                pointerEvents: trendingLocked ? 'none' : 'auto',
+              }}
+            >
+              {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
+            </button>
           )}
         </div>
 

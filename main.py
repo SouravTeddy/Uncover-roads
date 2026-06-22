@@ -1300,8 +1300,23 @@ def weather(city: str = Query(...)):
 # =========================================
 # PLACE IMAGE
 # =========================================
+def _cache_photo_ref_bg(pid: str, photo_ref: str) -> None:
+    """Write a resolved photo_ref back into map_data_cache via RPC (background thread)."""
+    if not _supabase:
+        return
+    try:
+        _supabase.rpc("patch_place_photo_ref", {"p_place_id": pid, "p_photo_ref": photo_ref}).execute()
+    except Exception as e:
+        print(f"PLACE IMAGE cache-back failed for {pid}: {e}")
+
+
 @app.get("/place-image")
-def place_image(name: str = Query(...), city: str = Query(...)):
+def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query(default="")):
+    """
+    Resolve an image for a named place. When Google Text Search succeeds and a
+    place ID is supplied (pid), the found photo_ref is written back to the
+    map_data_cache tile in the background so the next load skips this call.
+    """
     VALID_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 
     # 1. Google Places Text Search — most accurate for specific venues
@@ -1315,6 +1330,9 @@ def place_image(name: str = Query(...), city: str = Query(...)):
             results = ts.get("results", [])
             if results and results[0].get("photos"):
                 ref = results[0]["photos"][0]["photo_reference"]
+                if pid:
+                    import threading
+                    threading.Thread(target=_cache_photo_ref_bg, args=(pid, ref), daemon=True).start()
                 return {"image": f"/place-photo?photo_ref={ref}&max_width=800"}
         except Exception as e:
             print("PLACE IMAGE google error:", e)
