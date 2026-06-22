@@ -371,7 +371,7 @@ export function PinCard({
           <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 55%)', pointerEvents: 'none' }} />
           {/* Heart button */}
           <button
-            onClick={onFavourite}
+            onClick={e => { e.stopPropagation(); onFavourite(); }}
             style={{
               position: 'absolute', top: 11, right: 11, zIndex: 5,
               width: 36, height: 36, borderRadius: '50%',

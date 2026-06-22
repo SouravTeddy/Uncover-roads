@@ -4,6 +4,7 @@ import type { DiscoveryMode } from '../../shared/types'
 import {
   UNIFIED_PIN_BG, UNIFIED_PIN_BORDER, UNIFIED_PIN_SHADOW,
   UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
   getFamousLayerOpacity,
 } from './pin-visual'
 import { CATEGORY_ICONS } from './types'
@@ -15,9 +16,10 @@ interface Props {
   isDark: boolean
   onPinClick: (placeId: string) => void
   mapZoom?: number
+  favouritedIds?: Set<string>
 }
 
-export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinClick, mapZoom = 13 }: Props) {
+export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinClick, mapZoom = 13, favouritedIds }: Props) {
   const layerOpacity = getFamousLayerOpacity(discoveryMode)
   const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
 
@@ -25,6 +27,7 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
     <>
       {places.map((place) => {
         const isActive = activePlaceId === place.id
+        const isSaved = favouritedIds?.has(place.id) ?? false
         const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon = CATEGORY_ICONS[place.category] ?? 'location_on'
 
@@ -41,7 +44,6 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
           >
             <div style={{ position: 'relative', width: size, height: size, opacity: layerOpacity, cursor: 'pointer' }}>
 
-              {/* sparkle spacer — no sparkle, no badge on famous pins */}
               <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', height: 14, opacity: labelOpacity }} />
 
               {/* pin circle */}
@@ -61,6 +63,14 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
                   {icon}
                 </span>
               </div>
+
+              {isSaved && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  fontSize: SAVED_BADGE_SIZE, lineHeight: 1,
+                  color: SAVED_BADGE_COLOR, pointerEvents: 'none',
+                }}>❤️</span>
+              )}
 
               {/* label card — fades with zoom */}
               <div style={{

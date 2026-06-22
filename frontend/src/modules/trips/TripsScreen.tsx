@@ -376,7 +376,6 @@ function PlacesTab() {
         },
       });
     }
-    dispatch({ type: 'SET_FILTER', filter: 'saved' });
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 
