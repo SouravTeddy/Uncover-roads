@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Place, PlaceDetails, Persona, PersonaProfile } from '../../shared/types'
+import type { Place, PlaceDetails, Persona } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
 import { computeAnalysisInsights, getTravelDateBadge } from './pincard-utils'
@@ -70,7 +70,6 @@ interface Props {
   badgeReason?: string | null
   userTier?: 'free' | 'pack' | 'pro'
   persona?: Persona | null
-  personaProfile?: PersonaProfile | null
 }
 
 const shimmerBase: React.CSSProperties = {
@@ -88,7 +87,6 @@ export function PinCard({
   badgeReason = null,
   userTier = 'free',
   persona = null,
-  personaProfile = null,
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
