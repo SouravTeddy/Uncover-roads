@@ -687,11 +687,13 @@ export function PinCard({
                   >
                     <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>description</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {description
-                          ? description.length > 60 ? description.slice(0, 60) + '…' : description
-                          : website ? 'Official website available' : phone ?? 'Tap to find out more'}
-                      </div>
+                      {!descOpen && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {description
+                            ? description.length > 60 ? description.slice(0, 60) + '…' : description
+                            : website ? 'Official website available' : phone ?? 'Tap to find out more'}
+                        </div>
+                      )}
                     </div>
                     <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: descOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
                   </button>
@@ -734,12 +736,14 @@ export function PinCard({
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--color-primary)', marginBottom: 2 }}>
                         {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {(() => {
-                          const text = details.review_summary ?? whyForYouText ?? ''
-                          return text.length > 55 ? text.slice(0, 55) + '…' : text
-                        })()}
-                      </div>
+                      {!bestHereOpen && (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {(() => {
+                            const text = details.review_summary ?? whyForYouText ?? ''
+                            return text.length > 55 ? text.slice(0, 55) + '…' : text
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: bestHereOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
                   </button>
@@ -775,9 +779,11 @@ export function PinCard({
                     >
                       <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>timer</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          Allow {duration}{website ? ' · check bookings' : ''}
-                        </div>
+                        {!planVisitOpen && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Allow {duration}{website ? ' · check bookings' : ''}
+                          </div>
+                        )}
                       </div>
                       <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: planVisitOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
                     </button>
@@ -882,18 +888,20 @@ export function PinCard({
               >
                 <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>schedule</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {(() => {
-                      const visitLine = resolvedStart ? weekdayText.find(l => {
-                        const d = new Date(resolvedStart + 'T00:00:00')
-                        const day = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]
-                        return l.startsWith(day)
-                      }) : null
-                      return visitLine
-                        ? visitLine.replace(/^[^:]+:\s*/, '')
-                        : weekdayText[0].replace(/^[^:]+:\s*/, '')
-                    })()}
-                  </div>
+                  {!hoursOpen && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {(() => {
+                        const visitLine = resolvedStart ? weekdayText.find(l => {
+                          const d = new Date(resolvedStart + 'T00:00:00')
+                          const day = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()]
+                          return l.startsWith(day)
+                        }) : null
+                        return visitLine
+                          ? visitLine.replace(/^[^:]+:\s*/, '')
+                          : weekdayText[0].replace(/^[^:]+:\s*/, '')
+                      })()}
+                    </div>
+                  )}
                 </div>
                 <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: hoursOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
               </button>
@@ -929,9 +937,11 @@ export function PinCard({
               >
                 <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>chat_bubble</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    "{details.reviews[0].text.slice(0, 55)}{details.reviews[0].text.length > 55 ? '…' : ''}"
-                  </div>
+                  {!reviewsOpen && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      "{details.reviews[0].text.slice(0, 55)}{details.reviews[0].text.length > 55 ? '…' : ''}"
+                    </div>
+                  )}
                 </div>
                 <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: reviewsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
               </button>
