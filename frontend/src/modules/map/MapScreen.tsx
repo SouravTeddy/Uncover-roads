@@ -946,7 +946,6 @@ export function MapScreen() {
           badgeReason={null}
           userTier={state.userTier}
           persona={state.persona ?? null}
-          personaProfile={personaProfile}
         />
       )}
 
