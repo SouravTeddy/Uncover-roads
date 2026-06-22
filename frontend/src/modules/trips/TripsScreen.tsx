@@ -364,7 +364,18 @@ function PlacesTab() {
   }
 
   function handleOpenMap(city: string) {
+    const pin = favouritedPins.find(p => p.city === city)
     dispatch({ type: 'SET_CITY', city });
+    if (pin) {
+      dispatch({
+        type: 'SET_CITY_GEO',
+        geo: {
+          lat: pin.lat,
+          lon: pin.lon,
+          bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15],
+        },
+      });
+    }
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 
