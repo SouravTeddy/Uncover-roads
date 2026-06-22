@@ -3,6 +3,7 @@ import type { Place } from '../../shared/types'
 import {
   UNIFIED_PIN_BG, UNIFIED_PIN_BORDER, UNIFIED_PIN_SHADOW,
   UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
 } from './pin-visual'
 import { CATEGORY_ICONS } from './types'
 
@@ -11,15 +12,17 @@ interface Props {
   activePinId: string | null
   onPinClick:  (placeId: string) => void
   mapZoom?:    number
+  favouritedIds?: Set<string>
 }
 
-export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom = 13 }: Props) {
+export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom = 13, favouritedIds }: Props) {
   const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
 
   return (
     <>
       {places.map(place => {
         const isActive = activePinId === place.id
+        const isSaved  = favouritedIds?.has(place.id) ?? false
         const size     = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon     = CATEGORY_ICONS[place.category] ?? 'location_on'
 
@@ -33,7 +36,6 @@ export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom =
           >
             <div style={{ position: 'relative', width: size, height: size, cursor: 'pointer' }}>
 
-              {/* sparkle spacer — no badge, no sparkle on reco pins */}
               <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', height: 14, opacity: labelOpacity }} />
 
               {/* pin circle */}
@@ -53,6 +55,14 @@ export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom =
                   {icon}
                 </span>
               </div>
+
+              {isSaved && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  fontSize: SAVED_BADGE_SIZE, lineHeight: 1,
+                  color: SAVED_BADGE_COLOR, pointerEvents: 'none',
+                }}>❤️</span>
+              )}
 
               {/* label card — fades with zoom */}
               <div style={{

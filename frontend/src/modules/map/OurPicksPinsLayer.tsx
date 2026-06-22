@@ -3,6 +3,7 @@ import type { Place } from '../../shared/types'
 import {
   UNIFIED_PIN_BG, UNIFIED_PIN_SHADOW,
   UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
   CATEGORY_MOOD, DEFAULT_MOOD,
 } from './pin-visual'
 import { CATEGORY_ICONS } from './types'
@@ -13,18 +14,20 @@ interface Props {
   onPinClick: (placeId: string) => void
   selectedPlaceIds?: Set<string>
   mapZoom?: number
+  favouritedIds?: Set<string>
 }
 
 const CURATED_CIRCLE_BORDER        = '1px solid rgba(212,168,83,0.35)'
 const CURATED_CIRCLE_BORDER_ACTIVE = '1.5px solid rgba(212,168,83,0.65)'
 
-export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds, mapZoom = 13 }: Props) {
+export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds, mapZoom = 13, favouritedIds }: Props) {
   const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
 
   return (
     <>
       {picks.filter(pick => !selectedPlaceIds?.has(pick.id)).map((pick) => {
         const isActive = activePinId === pick.id
+        const isSaved = favouritedIds?.has(pick.id) ?? false
         const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon = CATEGORY_ICONS[pick.category] ?? 'location_on'
         const mood = CATEGORY_MOOD[pick.category] ?? DEFAULT_MOOD
@@ -90,6 +93,14 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
                   {icon}
                 </span>
               </div>
+
+              {isSaved && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3,
+                  fontSize: SAVED_BADGE_SIZE, lineHeight: 1,
+                  color: SAVED_BADGE_COLOR, pointerEvents: 'none', zIndex: 3,
+                }}>❤️</span>
+              )}
 
               {/* label card — fades with zoom */}
               <div style={{

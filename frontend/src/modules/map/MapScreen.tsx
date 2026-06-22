@@ -48,16 +48,12 @@ export function MapScreen() {
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
-  // When coming from saved places, suppress all non-favourited pins for 2s so
-  // the user can spot their saved pin before the full map loads in.
-  const [pinRevealReady, setPinRevealReady] = useState(true)
-  const pinRevealTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
     togglePlace, setFilter, trackViewedCategory, recommendedPlaces,
   } = useMap(activeCategories);
+
 
   const { state, dispatch } = useAppStore();
   const { pendingActivePlace } = state;
@@ -157,10 +153,6 @@ export function MapScreen() {
     () => new Set(favouritedPins.map(f => f.placeId)),
     [favouritedPins],
   );
-  const citySavedCount = useMemo(
-    () => favouritedPins.filter(p => p.city === city).length,
-    [favouritedPins, city],
-  );
   const { details, fetchDetails, clearDetails } = usePlaceDetails();
 
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
@@ -231,23 +223,6 @@ export function MapScreen() {
     }
   }, [city, dispatch]);
 
-  // When filter is set to 'saved' (only happens via navigation from saved places),
-  // hide all non-favourited pin layers for 2 s so the saved pin is clearly visible first.
-  useEffect(() => {
-    if (activeFilter === 'saved') {
-      setPinRevealReady(false);
-      if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current);
-      pinRevealTimer.current = setTimeout(() => {
-        setPinRevealReady(true);
-        setFilter('all');
-      }, 2000);
-    } else {
-      setPinRevealReady(true);
-      if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current);
-    }
-    return () => { if (pinRevealTimer.current) clearTimeout(pinRevealTimer.current); };
-  }, [activeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Trigger initial load when city or cityGeo changes. Tracks last loaded city
   // so that changing the city mid-session always fires a fresh load.
   const lastLoadedCity = useRef<string | null>(null);
@@ -256,11 +231,8 @@ export function MapScreen() {
     if (lastLoadedCity.current === city) return;
     lastLoadedCity.current = city;
     setLastFetch([cityGeo.lat, cityGeo.lon]);
-    // Fly to city — handles the case where MapScreen was already mounted
-    // (initialViewState only applies at mount, so we must flyTo explicitly)
     mapHandleRef.current?.flyTo(cityGeo.lat, cityGeo.lon, 13);
-    // Reset category filters on city change, but preserve 'saved' if coming from saved places
-    if (activeFilter !== 'all' && activeFilter !== 'saved') setFilter('all');
+    if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
   }, [city, cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -526,15 +498,16 @@ export function MapScreen() {
       >
         {/* Famous places — de-dupe against curated picks */}
         <FamousPinsLayer
-          places={pinRevealReady ? filteredPlaces.filter(p =>
+          places={filteredPlaces.filter(p =>
             !selectedIds.has(p.id) &&
             !ourPickIds.has(p.id)
-          ) : []}
+          )}
           activePlaceId={activePinId}
           discoveryMode="anchor"
           isDark={isDark}
           onPinClick={handlePinClick}
           mapZoom={mapZoom}
+          favouritedIds={favouritedIds}
         />
         <ReferencePinsLayer
           pins={state.referencePins}
@@ -549,9 +522,10 @@ export function MapScreen() {
         />
         {/* Reco places — always visible */}
         <RecoPlacesPinsLayer
-          places={pinRevealReady ? (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '')) : []}
+          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? ''))}
           activePinId={activePinId ?? null}
           mapZoom={mapZoom}
+          favouritedIds={favouritedIds}
           onPinClick={(id) => {
             const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
             if (p) {
@@ -566,11 +540,12 @@ export function MapScreen() {
 
         {/* Curated picks — ✦ sparkle distinguishes them visually */}
         <OurPicksPinsLayer
-          picks={pinRevealReady ? ourPicks : []}
+          picks={ourPicks}
           activePinId={activePinId ?? null}
           onPinClick={handlePicksPinClick}
           selectedPlaceIds={selectedIds}
           mapZoom={mapZoom}
+          favouritedIds={favouritedIds}
         />
 
         {/* Live Events */}
