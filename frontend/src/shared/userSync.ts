@@ -41,6 +41,11 @@ export async function syncSavedItinerary(userId: string, item: SavedItinerary) {
     itinerary: item.itinerary,
     persona: item.persona,
     trip_details: item.tripDetails ?? null,
+    travel_date: item.travelDate ?? null,
+    city_lat: item.cityLat ?? null,
+    city_lon: item.cityLon ?? null,
+    selected_places: item.selectedPlaces ?? [],
+    journey_legs: item.journeyLegs ?? null,
   });
 }
 
