@@ -2728,6 +2728,25 @@ def place_details(request: Request, place_id: str):
         if result.get("photos"):
             photo_ref = result["photos"][0]["photo_reference"]
 
+        # Fetch generative summary from Places API (New) — Gemini over thousands of reviews
+        review_summary = None
+        try:
+            new_resp = requests.get(
+                f"https://places.googleapis.com/v1/places/{place_id}",
+                headers={
+                    "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                    "X-Goog-FieldMask": "generativeSummary",
+                },
+                timeout=5,
+            ).json()
+            gen = new_resp.get("generativeSummary", {})
+            review_summary = (
+                gen.get("overview", {}).get("text")
+                or gen.get("description", {}).get("text")
+            )
+        except Exception as e:
+            print(f"PLACE DETAILS generativeSummary error for {place_id}: {e}")
+
         details = {
             "place_id": place_id,
             "name": result.get("name"),
@@ -2743,6 +2762,7 @@ def place_details(request: Request, place_id: str):
             "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
             "photo_ref": photo_ref,
             "types": result.get("types", []),
+            "review_summary": review_summary,
         }
 
         # 3. Write to cache
