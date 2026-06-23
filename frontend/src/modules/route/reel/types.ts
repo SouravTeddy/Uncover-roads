@@ -76,6 +76,8 @@ export interface ReelStopCard {
   stop: EngineItineraryStop;
   stopNumber: number;
   totalStops: number;
+  day: number;       // 1-based day index within this itinerary
+  totalDays: number; // total number of days — badge shown only when > 1
   orderReason: string | null;
   orderConsequence: string | null;
   movedFrom: number | null;

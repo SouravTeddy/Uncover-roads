@@ -803,6 +803,8 @@ export function buildReelCards(
         stop,
         stopNumber: globalStopNumber,
         totalStops: stopCount,
+        day: dayIdx + 1,
+        totalDays: itinerary.days.length,
         orderReason: stop.orderReason ?? null,
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,

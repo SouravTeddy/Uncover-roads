@@ -345,12 +345,21 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
         />
       )}
 
-      {/* TOD badge — top-left, z-index:11 */}
-      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
-          {todLabel(hour)}
-        </span>
+      {/* Top-left: TOD badge + day badge (multi-day only) */}
+      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
+            {todLabel(hour)}
+          </span>
+        </div>
+        {card.totalDays > 1 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>
+              Day {card.day} of {card.totalDays}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Weather chip — top-right, z-index:10 */}
@@ -392,6 +401,9 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           )}
         </div>
       )}
+
+      {/* Content zone backing gradient — extra depth behind cards */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', zIndex: 9, background: 'linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.18) 70%, transparent 100%)', pointerEvents: 'none' }} />
 
       {/* ── stk-body: content zone, z-index:10 ─────────────────── */}
       <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '11px 15px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10 }}>
@@ -508,16 +520,16 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
           </div>
         ) : null}
 
-        {/* Venue description — very muted, plain text */}
+        {/* Venue description */}
         {descriptionText && (
-          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,.42)', lineHeight: 1.5, margin: 0, marginBottom: 8 }}>
+          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.5, margin: 0, marginBottom: 8 }}>
             {descriptionText}
           </p>
         )}
 
         {/* Logistics bar — crowd · transit · hours */}
         {(crowdRow || transitSig || hoursStr) && (
-          <div style={{ borderRadius: 9, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)', backdropFilter: 'blur(12px)', overflow: 'hidden' }}>
+          <div style={{ borderRadius: 9, background: 'rgba(0,0,0,.52)', border: '1px solid rgba(255,255,255,.14)', backdropFilter: 'blur(16px)', overflow: 'hidden' }}>
             {/* Row 1: crowd / timing */}
             {crowdRow && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
