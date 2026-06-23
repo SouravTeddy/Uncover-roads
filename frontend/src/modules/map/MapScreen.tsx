@@ -22,7 +22,6 @@ import { UserPinsLayer } from './UserPinsLayer';
 import { BottomActionTray } from './BottomActionTray';
 import { usePinCityDetector } from './usePinCityDetector';
 import type { DetectedTransit } from './usePinCityDetector';
-import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
 import { OurPicksPinsLayer } from './OurPicksPinsLayer'
 import { selectCuratedPicks } from './curatedPicks'
@@ -70,6 +69,13 @@ export function MapScreen() {
   const cityRef = useRef(city);
   useEffect(() => { selectedPlacesRef.current = selectedPlaces; }, [selectedPlaces]);
   useEffect(() => { cityRef.current = city; }, [city]);
+
+  // Auto-dismiss the "Nearby spots" banner after 4 seconds
+  useEffect(() => {
+    if (recoFocusPlaces.length === 0) return;
+    const t = setTimeout(() => dispatch({ type: 'SET_RECO_FOCUS_PLACES', places: null }), 4000);
+    return () => clearTimeout(t);
+  }, [recoFocusPlaces.length]);
 
   // Guard: if city was lost (fresh tab, cleared session), kick back to destination
   useEffect(() => {
@@ -539,7 +545,7 @@ export function MapScreen() {
         />
         {/* Reco places — always visible */}
         <RecoPlacesPinsLayer
-          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? ''))}
+          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '') && !selectedIds.has(p.id) && !selectedIds.has(p.place_id ?? ''))}
           activePinId={activePinId ?? null}
           mapZoom={mapZoom}
           favouritedIds={favouritedIds}
@@ -707,26 +713,8 @@ export function MapScreen() {
         className="absolute inset-x-0 top-0 flex flex-col gap-2 px-4"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)', paddingBottom: '0.5rem', zIndex: 20, pointerEvents: 'none' }}
       >
-        {/* Row 1: multi-city tab header only; single-city has no back button */}
-        {isMultiCity && (
-          <div style={{ pointerEvents: 'auto' }}>
-            <MultiCityHeader
-              cityFootprints={cityFootprints}
-              activeCityIdx={activeCityIndex}
-              travelStartDate={state.travelStartDate}
-              travelEndDate={state.travelEndDate}
-              onCityTap={(idx) => {
-                dispatch({ type: 'SET_ACTIVE_CITY_INDEX', index: idx })
-                const f = cityFootprints[idx]
-                if (f) mapHandleRef.current?.flyTo(f.lat, f.lon, 12)
-              }}
-              onDateTap={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-            />
-          </div>
-        )}
-
-        {/* Filter bar — in single-city mode push below the city name + date (≈3rem) */}
-        <div style={{ pointerEvents: 'auto', marginTop: isMultiCity ? 0 : '2.75rem' }}>
+        {/* Filter bar */}
+        <div style={{ pointerEvents: 'auto', marginTop: '2.75rem' }}>
           <FilterBar
             active={activeFilter as MapFilter}
             activeCategories={activeCategories}

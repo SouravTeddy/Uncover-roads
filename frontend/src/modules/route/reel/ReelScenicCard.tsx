@@ -264,21 +264,32 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
         {/* Top label — pushes to top, content below */}
         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 'auto', color: isHighWalk ? '#4f8fab' : 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span className="ms" style={{ fontSize: 11, verticalAlign: 'middle' }}>directions_walk</span>
-          {isHighWalk ? `Walking connector · ${distValue}` : 'Optional detour'}
+          {isHighWalk ? 'Walking connector' : 'Optional detour'}
         </div>
 
         {/* Route title + subtitle */}
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 26 : 22, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.15 }}>
-            {card.place}
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
+            {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
           </div>
-          <div style={{ fontSize: 11, color: isHighWalk ? 'rgba(255,255,255,.35)' : 'rgba(255,255,255,.3)', marginTop: 2 }}>
-            {isHighWalk
-              ? `${card.from} → ${card.to} · ${timeValue} on foot`
-              : transitLabel
-                ? `${distValue} on foot · or ${transitLabel} in ~${transitMins} min`
-                : `${distValue} on foot`}
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 28 : 24, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
+            {card.from}
+            <span style={{ fontSize: isHighWalk ? 18 : 16, color: 'rgba(255,255,255,.35)', margin: '0 6px' }}>→</span>
+            {card.to}
           </div>
+          {!isHighWalk && (
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
+              {transitLabel
+                ? `or ${transitLabel} in ~${transitMins} min`
+                : 'on foot'}
+            </div>
+          )}
+          {!isHighWalk && card.detourMin > 0 && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 11px', borderRadius: 99, background: 'rgba(196,181,253,.08)', border: '1px solid rgba(196,181,253,.2)' }}>
+              <span className="ms" style={{ fontSize: 13, color: 'rgba(196,181,253,.7)' }}>add_circle</span>
+              <span style={{ fontSize: 11, color: 'rgba(196,181,253,.75)' }}>+{card.detourMin} min · adds {card.detourKm} km to your day</span>
+            </div>
+          )}
         </div>
 
         {/* Why — persona voice */}

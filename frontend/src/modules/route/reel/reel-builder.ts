@@ -5,6 +5,7 @@ import type {
   EngineWeights,
   JourneyLeg,
   WeatherData,
+  TripDetails,
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
@@ -29,10 +30,107 @@ function isInWindow(time: string, start: string, end: string): boolean {
   return t >= timeToMinutes(start) && t <= timeToMinutes(end);
 }
 
+// ── Timing cascade helpers ─────────────────────────────────────
+
+function fmt12h(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function parseClosingTimeMin(weekdayText: string[] | null | undefined, isoDate: string | null | undefined): number | null {
+  if (!weekdayText?.length || !isoDate) return null;
+  const d = new Date(isoDate + 'T12:00:00');
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+  const entry = weekdayText.find(e => e.startsWith(dayName));
+  if (!entry || entry.includes('Closed') || entry.includes('24 hours')) return null;
+  const match = entry.match(/[–\-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) return null;
+  let h = parseInt(match[1]);
+  const min = parseInt(match[2]);
+  const ampm = match[3]?.toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+function arrivalModeBuffer(mode: string | null): number {
+  if (mode === 'flight') return 90;
+  if (mode === 'train') return 45;
+  if (mode === 'drive' || mode === 'bus') return 30;
+  return 60; // default: unknown or ferry
+}
+
+interface CascadeAdj {
+  stopId: string;
+  originalTime: string;
+  newTime: string;
+  consequenceNote: string | null;
+  isClosingConflict: boolean;
+  departurePressureNote: string | null;
+}
+
+function cascadeDay(stops: EngineItineraryStop[], earliestStartMin: number, dayDate: string): CascadeAdj[] {
+  const sorted = [...stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+  const result: CascadeAdj[] = [];
+  let floorMin = earliestStartMin;
+
+  for (const stop of sorted) {
+    const origMin = timeToMinutes(stop.time);
+    if (origMin >= floorMin) {
+      floorMin = origMin + (stop.durationMin ?? 60) + 15;
+      continue;
+    }
+
+    const newMin = floorMin;
+    const newTime = minutesToTime(newMin);
+    const closingMin = parseClosingTimeMin(stop.weekdayText, dayDate);
+    const stopEndMin = newMin + (stop.durationMin ?? 60);
+
+    let consequenceNote: string | null = null;
+    let isClosingConflict = false;
+
+    if (closingMin !== null) {
+      if (newMin >= closingMin) {
+        isClosingConflict = true;
+        consequenceNote = `Closes at ${fmt12h(minutesToTime(closingMin))} — worth confirming it's still open`;
+      } else if (stopEndMin > closingMin) {
+        const availMin = closingMin - newMin;
+        const h = Math.floor(availMin / 60);
+        const m = availMin % 60;
+        const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+        consequenceNote = `Closes at ${fmt12h(minutesToTime(closingMin))} — about ${dur} inside`;
+      }
+    }
+
+    result.push({ stopId: stop.id, originalTime: stop.time, newTime, consequenceNote, isClosingConflict, departurePressureNote: null });
+    floorMin = newMin + (stop.durationMin ?? 60) + 15;
+  }
+
+  return result;
+}
+
+const WALK_THRESHOLD_KM = 0.8;
+
+function dayDistanceSplit(stops: EngineItineraryStop[]): { walkKm: number; rideKm: number } {
+  let walkTotal = 0, rideTotal = 0;
+  for (let i = 0; i < stops.length - 1; i++) {
+    const d = haversineKm(stops[i].lat, stops[i].lon, stops[i + 1].lat, stops[i + 1].lon);
+    if (d < WALK_THRESHOLD_KM) walkTotal += d;
+    else rideTotal += d;
+  }
+  return { walkKm: Math.round(walkTotal * 10) / 10, rideKm: Math.round(rideTotal * 10) / 10 };
+}
+
 function hasMealInWindow(stops: EngineItineraryStop[], start: string, end: string): boolean {
+  // Widen by 90 min each side so an engine-inserted lunch at e.g. 11:00 or 14:45 isn't missed
+  const startMin = timeToMinutes(start) - 90;
+  const endMin   = timeToMinutes(end)   + 90;
   return stops.some(s => {
-    const isMeal = s.category === 'restaurant' || s.category === 'cafe';
-    return isMeal && isInWindow(s.time, start, end);
+    const isMeal = s.category === 'restaurant' || s.category === 'cafe' || s.category === 'bakery';
+    const t = timeToMinutes(s.time);
+    return isMeal && t >= startMin && t <= endMin;
   });
 }
 
@@ -389,6 +487,8 @@ function buildScenicCards(
       photoUrl: null,
       originPhotoUrl: a.imageUrl ?? (a.photoRef ? getPlacePhotoUrl(a.photoRef, 800, 600) : null),
       destPhotoUrl: b.imageUrl ?? (b.photoRef ? getPlacePhotoUrl(b.photoRef, 800, 600) : null),
+      detourKm: Math.round(distKm * 10) / 10,
+      detourMin: walkMins,
       _afterStopId: a.id,
     });
   }
@@ -473,6 +573,7 @@ export function buildReelCards(
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string | null> = new Map(),
   _cityCountries: Record<string, string> = {},
+  tripDetails?: TripDetails | null,
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
@@ -538,6 +639,7 @@ export function buildReelCards(
   });
 
   let globalStopNumber = 0;
+  const cascadeMap = new Map<string, CascadeAdj>();
 
   for (let dayIdx = 0; dayIdx < itinerary.days.length; dayIdx++) {
     const day = itinerary.days[dayIdx];
@@ -595,6 +697,7 @@ export function buildReelCards(
         }
       }
 
+      const { walkKm: nextDayWalkKm, rideKm: nextDayRideKm } = dayDistanceSplit(day.stops);
       const transitionCard: ReelDayTransitionCard = {
         type: 'day_transition',
         prevDay: prevDay.day,
@@ -608,6 +711,8 @@ export function buildReelCards(
         nextDate: day.date,
         nextStopCount: day.stops.length,
         nextStartTime: thisFirst?.time ?? null,
+        nextDayWalkKm,
+        nextDayRideKm,
         isCityChange,
         transitMode,
         transitDistanceKm,
@@ -618,12 +723,54 @@ export function buildReelCards(
         transitRef,
       };
       cards.push(transitionCard);
+
+      // Inter-city arrival cascade: if the transit leg has an arrival time, shift Day N stops forward
+      if (tripDetails && isCityChange && transitArr) {
+        const buffer = arrivalModeBuffer(transitMode);
+        for (const adj of cascadeDay(day.stops, timeToMinutes(transitArr) + buffer, day.date)) {
+          cascadeMap.set(adj.stopId, adj);
+        }
+      }
     }
 
     // Sort stops chronologically — engine may return them out of order
     const sortedStops = [...day.stops].sort(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
+
+    // Day 0 arrival cascade: user arrives on the first itinerary day.
+    // Allow when dates match OR when day.date is unset (itinerary built without start date).
+    const arrivalDateMatchesDay0 = !day.date || !tripDetails?.arrivalDate || tripDetails.arrivalDate === day.date;
+    if (tripDetails && dayIdx === 0 && arrivalDateMatchesDay0 && tripDetails.arrivalTime) {
+      for (const adj of cascadeDay(day.stops, timeToMinutes(tripDetails.arrivalTime) + 60, day.date ?? tripDetails.arrivalDate ?? '')) {
+        cascadeMap.set(adj.stopId, adj);
+      }
+    }
+
+    // Departure day pressure: flag stops that run into departure prep time.
+    // Allow when dates match OR when day.date is unset (last day).
+    const departureDateMatchesDay = !day.date || !tripDetails?.departureDate || tripDetails.departureDate === day.date;
+    const isLastDay = dayIdx === itinerary.days.length - 1;
+    if (tripDetails?.departureTime && (departureDateMatchesDay || (isLastDay && !day.date))) {
+      const depMin = timeToMinutes(tripDetails.departureTime);
+      const latestLeaveMin = depMin - 90; // 90 min before departure
+      for (let i = sortedStops.length - 1; i >= 0; i--) {
+        const s = sortedStops[i];
+        const existing = cascadeMap.get(s.id);
+        const startMin = existing ? timeToMinutes(existing.newTime) : timeToMinutes(s.time);
+        const endMin = startMin + (s.durationMin ?? 60);
+        if (endMin > latestLeaveMin) {
+          const leaveByMin = Math.max(0, latestLeaveMin);
+          const depNote = leaveByMin <= startMin
+            ? `Your departure is at ${fmt12h(tripDetails.departureTime)} — leave directly from here`
+            : `Your departure is at ${fmt12h(tripDetails.departureTime)} — head out by ${fmt12h(minutesToTime(leaveByMin))}`;
+          cascadeMap.set(s.id, {
+            ...(existing ?? { stopId: s.id, originalTime: s.time, newTime: s.time, consequenceNote: null, isClosingConflict: false }),
+            departurePressureNote: depNote,
+          });
+        }
+      }
+    }
 
     // Build scenic card lookup: stop.id → scenic card placed after that stop
     const dayScenic = buildScenicCards(sortedStops, persona, weights);
@@ -664,16 +811,32 @@ export function buildReelCards(
       return true;
     });
 
-    for (const stop of sortedStops) {
+    for (let si = 0; si < sortedStops.length; si++) {
+      const stop = sortedStops[si];
       globalStopNumber += 1;
 
       // Resolve stop image for intel card background
       const stopImageUrl = stop.imageUrl
         ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 600) : null);
 
+      const adj = cascadeMap.get(stop.id);
+      const effectiveStop = adj && adj.newTime !== adj.originalTime ? { ...stop, time: adj.newTime } : stop;
+
+      // Compute next-leg transit info
+      const nextStop = sortedStops[si + 1] ?? null;
+      let nextLeg: ReelStopCard['nextLeg'] = null;
+      if (nextStop && stop.lat != null && stop.lon != null && nextStop.lat != null && nextStop.lon != null) {
+        const distKm = haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
+        const isWalk = distKm < WALK_THRESHOLD_KM;
+        const durationMin = isWalk
+          ? Math.max(1, Math.round(distKm / 5 * 60))
+          : Math.max(3, Math.round(distKm / 25 * 60));
+        nextLeg = { distKm: Math.round(distKm * 10) / 10, durationMin, mode: isWalk ? 'walk' : 'ride', nextStopTitle: nextStop.title };
+      }
+
       const stopCard: ReelStopCard = {
         type: 'stop',
-        stop,
+        stop: effectiveStop,
         stopNumber: globalStopNumber,
         totalStops: stopCount,
         day: dayIdx + 1,
@@ -682,8 +845,15 @@ export function buildReelCards(
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
         weather: getWeatherForCity(day.city),
+        nextLeg,
         pairWith: findPairWith(stop, sortedStops),
         visitDate: day.date ?? null,
+        timingAdjustment: adj ? {
+          originalTime: adj.originalTime,
+          consequenceNote: adj.consequenceNote,
+          isClosingConflict: adj.isClosingConflict,
+          departurePressureNote: adj.departurePressureNote,
+        } : null,
       };
       cards.push(stopCard);
 

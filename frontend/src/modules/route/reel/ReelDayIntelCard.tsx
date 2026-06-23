@@ -261,9 +261,9 @@ export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onM
   const openCount = card.observations.filter(o => !resolvedSet.has(o.id)).length;
   const resolvedCount = resolvedSet.size;
 
-  const title = openCount === 1 ? 'One thing we noticed'
-    : openCount > 1 ? 'A few things we noticed'
-    : 'All good for this day';
+  const title = openCount === 1 ? 'One thing worth knowing'
+    : openCount > 1 ? 'A few things worth knowing'
+    : "You're all set for this day";
 
   const subtitle = [
     openCount > 0 ? `${openCount} gap${openCount !== 1 ? 's' : ''}` : null,
@@ -310,7 +310,7 @@ export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onM
         {/* Header */}
         <div style={fade('0s')}>
           <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: T.eyebrow, marginBottom: 4 }}>
-            Day intelligence
+            Before you go
           </div>
           <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: T.t1, lineHeight: 1.15 }}>
             {title}

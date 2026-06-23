@@ -230,6 +230,34 @@ export function ReelDayTransitionCard({ card, active }: Props) {
               {card.nextStartTime ? ` · starts ${fmt12h(card.nextStartTime)}` : ''}
             </span>
           </div>
+
+          {/* Day distance bar */}
+          {(card.nextDayWalkKm > 0 || card.nextDayRideKm > 0) && (
+            <div style={{ display: 'flex', marginTop: 14, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,.07)', width: '100%', maxWidth: 280 }}>
+              {card.nextDayWalkKm > 0 && (
+                <div style={{ flex: 1, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(79,143,171,.06)', borderRight: card.nextDayRideKm > 0 ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(79,143,171,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="ms fill" style={{ fontSize: 13, color: T.sky }}>directions_walk</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: T.text3, marginBottom: 1 }}>On foot</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text1 }}>{card.nextDayWalkKm} km</div>
+                  </div>
+                </div>
+              )}
+              {card.nextDayRideKm > 0 && (
+                <div style={{ flex: 1, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.02)' }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(180,180,220,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="ms fill" style={{ fontSize: 13, color: 'rgba(180,180,220,.55)' }}>directions_car</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: T.text3, marginBottom: 1 }}>By ride</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text1 }}>{card.nextDayRideKm} km</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
