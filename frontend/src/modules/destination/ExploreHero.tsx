@@ -98,11 +98,22 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
       )}
 
       {/* Greeting + quote overlay */}
-      <div className="absolute bottom-3 left-4" style={{ maxWidth: '75%' }}>
+      <div
+        className="absolute bottom-3 left-4"
+        style={{
+          maxWidth: '75%',
+          background: 'rgba(0,0,0,0.28)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          borderRadius: 14,
+          border: '1px solid rgba(255,255,255,0.1)',
+          padding: '10px 14px',
+        }}
+      >
         <div style={{ color: 'rgba(255,255,255,.95)', fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>
           The world won't wait, {userName}.
         </div>
-        <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 11, fontWeight: 400, marginTop: 4, fontStyle: 'italic' }}>
+        <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 11, fontWeight: 400, marginTop: 4, fontStyle: 'italic' }}>
           "To travel is to live." — H.C. Andersen
         </div>
       </div>
