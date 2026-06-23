@@ -2454,6 +2454,78 @@ def geocode_place(request: Request, place_id: str, session_id: str):
 
 
 # =========================================
+# REVERSE GEOCODE (city lookup from lat/lon)
+# =========================================
+_reverse_geocode_cache: dict[str, dict] = {}
+
+@app.get("/api/geocode/reverse")
+async def reverse_geocode(lat: float, lon: float):
+    """
+    Returns {city, state, country} for a coordinate pair.
+    Uses Google Geocoding API (same key as Places). Falls back to Nominatim.
+    Results are cached in-process by rounded coordinate (4dp ≈ 11m precision).
+    """
+    cache_key = f"{lat:.4f},{lon:.4f}"
+    if cache_key in _reverse_geocode_cache:
+        return _reverse_geocode_cache[cache_key]
+
+    result = {"city": None, "state": None, "country": None}
+
+    # ── Google Geocoding API (preferred) ──────────────────────────
+    if GOOGLE_PLACES_API_KEY:
+        try:
+            resp = requests.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"latlng": f"{lat},{lon}", "key": GOOGLE_PLACES_API_KEY, "language": "en"},
+                timeout=5,
+            )
+            data = resp.json()
+            if data.get("status") == "OK" and data.get("results"):
+                components = data["results"][0].get("address_components", [])
+                for c in components:
+                    types = c.get("types", [])
+                    if "locality" in types:
+                        result["city"] = c["long_name"]
+                    elif "administrative_area_level_1" in types:
+                        result["state"] = c["long_name"]
+                    elif "country" in types:
+                        result["country"] = c["long_name"]
+                # If locality missing, fall back to administrative_area_level_2 then level_1
+                if not result["city"]:
+                    for c in components:
+                        types = c.get("types", [])
+                        if "administrative_area_level_2" in types:
+                            result["city"] = c["long_name"]
+                            break
+                if not result["city"] and result["state"]:
+                    result["city"] = result["state"]
+        except Exception:
+            pass
+
+    # ── Nominatim fallback ────────────────────────────────────────
+    if not result["city"]:
+        try:
+            resp = requests.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"lat": lat, "lon": lon, "format": "json"},
+                headers={"User-Agent": "UncoverRoads/1.0", "Accept-Language": "en"},
+                timeout=5,
+            )
+            addr = resp.json().get("address", {})
+            result["city"] = (
+                addr.get("city") or addr.get("town") or addr.get("village")
+                or addr.get("county") or addr.get("state")
+            )
+            result["state"] = addr.get("state")
+            result["country"] = addr.get("country")
+        except Exception:
+            pass
+
+    _reverse_geocode_cache[cache_key] = result
+    return result
+
+
+# =========================================
 # FIND PLACE ID
 # =========================================
 @app.get("/find-place-id")
@@ -2973,7 +3045,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
 
         result = data.get("result", {})
         raw_photos = result.get("photos") or []
-        photo_refs = [p["photo_reference"] for p in raw_photos[:4] if p.get("photo_reference")]
+        photo_refs = [p["photo_reference"] for p in raw_photos[:10] if p.get("photo_reference")]
         photo_ref = photo_refs[0] if photo_refs else None
 
         details = {

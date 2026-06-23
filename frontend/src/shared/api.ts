@@ -191,8 +191,7 @@ export async function mapData(
       const limited = data.slice(0, 150);
       console.log(`[mapData] backend returned ${data.length} places (showing ${limited.length})`);
       if (limited.length > 0) {
-        // Stamp _city on backend results (backend doesn't set it)
-        return limited.map(p => ({ ...p, _city: p._city ?? city }));
+        return limited;
       }
     }
   } catch (err) {
@@ -573,6 +572,26 @@ export async function searchNearby(
 export interface InterCityRouteResult {
   duration_min: number;
   distance_km: number;
+}
+
+/**
+ * Resolves the city/state/country for a lat/lon via the backend.
+ * Backend uses Google Geocoding API (authoritative, structured) with
+ * Nominatim as fallback, and caches results server-side.
+ * Returns null if both providers fail.
+ */
+export async function reverseGeocodeCity(
+  lat: number,
+  lon: number,
+): Promise<{ city: string | null; state: string | null; country: string | null } | null> {
+  try {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+    const res = await fetch(`${BASE}/api/geocode/reverse?${params}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 /**

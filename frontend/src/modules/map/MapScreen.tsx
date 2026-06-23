@@ -10,7 +10,7 @@ import { useMapMove } from './useMapMove';
 import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
-import { mapData, api } from '../../shared/api';
+import { mapData, api, reverseGeocodeCity } from '../../shared/api';
 import { useAppStore } from '../../shared/store';
 import { saveSessionMulti } from '../destination/useRecentSessions';
 import { MapLibreMap } from './MapLibreMap';
@@ -20,7 +20,7 @@ import { FamousPinsLayer } from './FamousPinsLayer';
 import { ReferencePinsLayer } from './ReferencePinsLayer';
 import { UserPinsLayer } from './UserPinsLayer';
 import { BottomActionTray } from './BottomActionTray';
-import { usePinCityDetector, findNearestCity } from './usePinCityDetector';
+import { usePinCityDetector } from './usePinCityDetector';
 import type { DetectedTransit } from './usePinCityDetector';
 import { MultiCityHeader } from './MultiCityHeader';
 import { CityArcLayer } from './CityArcLayer';
@@ -398,29 +398,45 @@ export function MapScreen() {
       const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
       const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
 
-      // Re-derive city per place at build time using cityFootprints centroids.
-      // Fixes the case where a place was fetched while the map was still labeled
-      // with the previous city (e.g., Melbourne places with _city="Sydney").
-      const cityLookup = cityFootprints.length > 0
-        ? cityFootprints.map(f => ({ city: f.city, lat: f.lat, lon: f.lon }))
-        : [{ city: city ?? '', lat: cityGeo?.lat ?? 0, lon: cityGeo?.lon ?? 0 }];
-
-      const resolvedPlaces = selectedPlaces.map(p => ({
-        id: p.id,
-        place_id: p.place_id,
-        title: p.title,
-        lat: p.lat,
-        lon: p.lon,
-        category: p.category,
-        rating: p.rating,
-        photo_ref: p.photo_ref,
-        city: findNearestCity(p.lat, p.lon, cityLookup, 80) ?? p._city ?? city ?? '',
+      // Resolve the city for every selected place using _city (stamped at add time
+      // via geocode). For any place still missing _city (geocode was in-flight when
+      // Build was tapped), geocode it now — no fallback to primary city ever.
+      const resolvedPlaces = await Promise.all(selectedPlaces.map(async p => {
+        let cityName = p._city ?? null;
+        if (!cityName) {
+          const geo = await reverseGeocodeCity(p.lat, p.lon);
+          cityName = geo?.city ?? geo?.state ?? null;
+          // Patch the store so future builds don't need to re-geocode
+          if (cityName) dispatch({ type: 'UPDATE_PLACE_CITY', id: p.id, city: cityName });
+        }
+        return {
+          id: p.id,
+          place_id: p.place_id,
+          title: p.title,
+          lat: p.lat,
+          lon: p.lon,
+          category: p.category,
+          rating: p.rating,
+          photo_ref: p.photo_ref,
+          city: cityName ?? '',
+        };
       }));
 
       const uniqueCities = [...new Set(resolvedPlaces.map(p => p.city).filter(Boolean))];
-      const orderedCities = cityFootprints.length > 0
-        ? cityFootprints.map(f => f.city).filter(c => uniqueCities.includes(c))
-        : uniqueCities;
+
+      // Order cities: primary city first, then secondaries in the order they appear
+      // in resolvedPlaces (i.e. the order the user added them).
+      const primaryCity = city ?? '';
+      const secondaryCities = uniqueCities.filter(c => c !== primaryCity);
+      const orderedCities = [
+        ...(uniqueCities.includes(primaryCity) && primaryCity ? [primaryCity] : []),
+        ...secondaryCities,
+      ];
+
+      // Navigate to reel immediately so the loading animation shows while API call runs
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: null })
+      dispatch({ type: 'SET_REEL_SAVED_ID', id: null })
+      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
 
       const result = await api.engineItinerary({
         city: city ?? '',
@@ -436,9 +452,10 @@ export function MapScreen() {
         startType: state.tripContext.startType ?? 'hotel',
       })
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
     } catch (err) {
       console.error('[MapScreen] executeBuild failed:', err)
+      // Navigate back to map and show error
+      dispatch({ type: 'GO_TO', screen: 'map' })
       setBuildError('Could not build itinerary — try again')
       setTimeout(() => setBuildError(null), 4000)
     } finally {
@@ -891,7 +908,23 @@ export function MapScreen() {
           place={activePlace}
           city={city}
           isSelected={selectedIds.has(activePlace.id)}
-          onAdd={() => togglePlace(activePlace)}
+          onAdd={() => {
+            togglePlace(activePlace);
+            // Geocode the place's coordinates right now so _city is always correct.
+            // We dispatch immediately (responsive UX) then patch _city when geocode returns.
+            // isSelected is the PRE-toggle state — if false, the place is being ADDED.
+            const isAdding = !selectedIds.has(activePlace.id);
+            if (isAdding) {
+              const placeId = activePlace.id;
+              const { lat, lon } = activePlace;
+              reverseGeocodeCity(lat, lon).then(result => {
+                const resolvedCity = result?.city ?? result?.state ?? null;
+                if (resolvedCity) {
+                  dispatch({ type: 'UPDATE_PLACE_CITY', id: placeId, city: resolvedCity });
+                }
+              }).catch(() => {/* best-effort */});
+            }
+          }}
           onClose={handlePinCardClose}
           details={details}
           isFavourited={isFavourited}
