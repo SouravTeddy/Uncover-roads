@@ -231,19 +231,18 @@ function buildPersonaRecos(
       s.category === 'museum' || s.category === 'gallery' || s.category === 'historic',
     );
     if (!hasCulture) {
-      const anchorStop = stops[Math.floor(stops.length / 2)] ?? stops[0];
       recos.push({
         type: 'reco',
-        id: `culture-${anchorStop.id}`,
+        id: `culture-${lastStop.id}`,
         trigger: 'culture',
         label: "No cultural stop in today's plan",
-        consequence: `A few options near ${anchorStop.area || 'here'} worth looking at.`,
+        consequence: `A few options near ${lastStop.area || 'here'} worth looking at.`,
         nearbyCity: city,
         persona,
-        afterStopId: anchorStop.id,
+        afterStopId: lastStop.id,
         weightScore: weights.w_culture_depth,
-        stopLat: anchorStop.lat,
-        stopLon: anchorStop.lon,
+        stopLat: lastStop.lat,
+        stopLon: lastStop.lon,
       });
     }
   }
@@ -253,19 +252,18 @@ function buildPersonaRecos(
   if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
     const hasCafeBreak = stops.some(s => s.category === 'cafe');
     if (!hasCafeBreak) {
-      const midStop = stops[1] ?? stops[0];
       recos.push({
         type: 'reco',
-        id: `rest-${midStop.id}`,
+        id: `rest-${lastStop.id}`,
         trigger: 'rest',
         label: `${stops.length} stops, no break scheduled`,
         consequence: 'A cafe or rest spot nearby could fit in here.',
         nearbyCity: city,
         persona,
-        afterStopId: midStop.id,
+        afterStopId: lastStop.id,
         weightScore: weights.w_rest_need,
-        stopLat: midStop.lat,
-        stopLon: midStop.lon,
+        stopLat: lastStop.lat,
+        stopLon: lastStop.lon,
       });
     }
   }
@@ -780,8 +778,8 @@ export function buildReelCards(
       ...engineRecos,
       ...buildMealRecos(sortedStops, persona, day.city),
       ...buildPersonaRecos(sortedStops, persona, day.city, weights),
-      ...(engineTriggers.has('weather') ? [] : buildWeatherReco(sortedStops, getWeatherForCity(day.city), persona, day.city)),
-      ...buildClosingConflictRecos(sortedStops, persona, day.city),
+      // weather and closing_conflict info is already shown on each stop card
+      // (weather chip, conflict banner, logistics bar) — no separate reco card needed
       ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapRecos(sortedStops, persona, day.city, weights)),
       ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryRecos(sortedStops, persona, day.city)),
     ];
