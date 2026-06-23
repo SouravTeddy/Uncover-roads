@@ -219,6 +219,29 @@ export interface ReelDayTransitionCard {
   transitRef?: string | null;
 }
 
+export interface DayIntelObservation {
+  id: string;
+  trigger: RecoTrigger;
+  what: string;        // headline — "No cultural visit today"
+  why: string;         // italic context — "5 stops, no museum or gallery"
+  consequence: string; // actionable — "Tokyo's galleries are walkable from here"
+  ctaLabel: string;    // "Browse culture near Shibuya"
+  stopLat?: number | null;
+  stopLon?: number | null;
+  searchCategory: string; // passed to nearbyPlaces API
+  anchorCity: string;
+}
+
+export interface ReelDayIntelCard {
+  type: 'day_intel';
+  id: string;
+  day: number;
+  totalDays: number;
+  dayCity: string;
+  afterStopId: string; // last stop of the day
+  observations: DayIntelObservation[];
+}
+
 export type ReelCard =
   | ReelIntroCard
   | ReelSummaryCard
@@ -231,4 +254,5 @@ export type ReelCard =
   | ReelBalanceCard
   | ReelScenicCard
   | ReelGroupCard
-  | ReelDayTransitionCard;
+  | ReelDayTransitionCard
+  | ReelDayIntelCard;
