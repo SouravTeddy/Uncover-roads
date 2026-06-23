@@ -63,33 +63,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Returns the earliest closing minute across all weekday entries, or null if unparseable.
-// Regex targets "– 6:00 PM" style (Google Places format).
-function parseEarliestClosingMinute(weekdayText: string[] | null): number | null {
-  if (!weekdayText?.length) return null;
-  let earliest: number | null = null;
-  for (const entry of weekdayText) {
-    const match = entry.match(/–\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (!match) continue;
-    let h = parseInt(match[1], 10);
-    const m = parseInt(match[2], 10);
-    const period = match[3].toUpperCase();
-    if (period === 'PM' && h !== 12) h += 12;
-    if (period === 'AM' && h === 12) h = 0;
-    const totalMin = h * 60 + m;
-    if (earliest === null || totalMin < earliest) earliest = totalMin;
-  }
-  return earliest;
-}
-
-const OUTDOOR_CATEGORIES = new Set([
-  'park', 'viewpoint', 'beach', 'market', 'street_art', 'amusement_park', 'zoo',
-  'garden', 'nature_reserve', 'waterfall',
-]);
-const BAD_WEATHER_CONDITIONS = new Set([
-  'rain', 'drizzle', 'storm', 'thunderstorm', 'snow', 'sleet', 'hail', 'blizzard', 'fog',
-]);
-const HOT_THRESHOLD_C = 32;
 
 // ── Pair-with helper ──────────────────────────────────────────
 
