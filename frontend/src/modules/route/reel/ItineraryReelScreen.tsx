@@ -733,7 +733,7 @@ export function ItineraryReelScreen() {
             card.type === 'transit' ? `transit-${card.from}-${card.to}` :
             card.type === 'day_divider' ? `day-${card.day}` :
             card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
-            card.type === 'scenic' ? `scenic-${card.pos}` :
+            card.type === 'scenic' ? `scenic-${idx}-${card.pos}` :
             card.type === 'group' ? `group-${idx}-${card.fromStop}` :
             `${card.type}-${idx}`;
           return (
