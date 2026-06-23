@@ -613,7 +613,7 @@ export function buildReelCards(
   persona: string,
   recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string | null> = new Map(),
-  cityCountries: Record<string, string> = {},
+  _cityCountries: Record<string, string> = {},
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
