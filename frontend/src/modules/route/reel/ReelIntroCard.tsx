@@ -47,7 +47,8 @@ function tripIdentityLine(persona: string, city: string): string {
   const key = persona.toLowerCase().replace(/[\s_-]/g, '');
   const base = TRIP_IDENTITY[key] ?? 'An exploration';
   const primaryCity = city.includes(' · ') ? city.split(' · ')[0] : city;
-  return `${base} of ${primaryCity}`;
+  const cityStr = /\+\d+$/.test(primaryCity) ? `${primaryCity} cities` : primaryCity;
+  return `${base} of ${cityStr}`;
 }
 
 export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {

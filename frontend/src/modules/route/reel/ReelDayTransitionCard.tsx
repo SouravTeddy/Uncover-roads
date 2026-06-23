@@ -152,24 +152,26 @@ export function ReelDayTransitionCard({ card, active }: Props) {
 
         {/* ── TRANSIT connector ──────────────────────────── */}
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '28px 0', ...fade('.1s') }}>
-          {card.isCityChange && modeIcon ? (
+          {card.isCityChange ? (
             <>
               {/* Line above */}
               <div style={{ width: 1, height: 20, background: T.line, marginBottom: 10 }} />
-              {/* Mode chip */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                padding: '8px 16px', borderRadius: 20,
-                background: T.skyBg, border: `1px solid ${T.skyBdr}`,
-              }}>
-                <span className="ms" style={{ fontSize: 15, color: T.sky }}>{modeIcon}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
-                {(durLabel || distLabel) && (
-                  <span style={{ fontSize: 11, color: T.text3 }}>
-                    {[card.transitIsEstimated ? '~' : '', durLabel, distLabel].filter(Boolean).join(' · ')}
-                  </span>
-                )}
-              </div>
+              {/* Mode chip — only when transit mode is known */}
+              {modeIcon && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  padding: '8px 16px', borderRadius: 20,
+                  background: T.skyBg, border: `1px solid ${T.skyBdr}`,
+                }}>
+                  <span className="ms" style={{ fontSize: 15, color: T.sky }}>{modeIcon}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
+                  {(durLabel || distLabel) && (
+                    <span style={{ fontSize: 11, color: T.text3 }}>
+                      {[card.transitIsEstimated ? '~' : '', durLabel, distLabel].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
+                </div>
+              )}
               {/* Actual times */}
               {hasTimes && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
@@ -185,12 +187,12 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                   <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
                 </div>
               )}
-              {/* Add details CTA (estimated + no times yet) */}
-              {card.transitIsEstimated && !hasTimes && (
+              {/* Add details CTA — shown when no times yet (covers both estimated & unknown mode) */}
+              {!hasTimes && (
                 <button
                   onClick={() => setSheetOpen(true)}
                   style={{
-                    marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 5,
+                    marginTop: modeIcon ? 10 : 0, display: 'inline-flex', alignItems: 'center', gap: 5,
                     padding: '5px 12px', borderRadius: 99, border: `1px solid ${T.line}`,
                     background: 'rgba(0,0,0,.30)', cursor: 'pointer',
                     fontSize: 11, color: T.text3,
