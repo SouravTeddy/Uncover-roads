@@ -734,7 +734,7 @@ export function ItineraryReelScreen() {
             <ReelDayIntelCard
               card={card}
               active={isActive}
-              existingPlaceIds={existingPlaceIds}
+              selectedPlaces={state.selectedPlaces}
               onInteract={(action) => {
                 if (action === 'tapped') dispatch({ type: 'ADD_RECO_INTERACTION', interaction: { cardId: card.id, action: 'tapped', timestamp: Date.now() } as any });
               }}
