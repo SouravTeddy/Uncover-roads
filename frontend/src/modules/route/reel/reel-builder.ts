@@ -9,7 +9,7 @@ import type {
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation, ReelDayIntelCard } from './types';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -105,20 +105,42 @@ function findPairWith(
   };
 }
 
-// ── Meal reco cards (existing logic) ─────────────────────────
+// ── Day-intel observation builders ───────────────────────────
+// Each builder returns DayIntelObservation[] (content for the single Day Intelligence card).
 
-function buildMealRecos(
+const TRIGGER_SEARCH: Record<string, string> = {
+  lunch:    'restaurant',
+  dinner:   'restaurant',
+  evening:  'bar',
+  culture:  'museum',
+  rest:     'cafe',
+  walking_gap: 'cafe',
+  hidden_gem:  '',
+};
+
+function triggerCTA(trigger: string, city: string): string {
+  const label: Record<string, string> = {
+    lunch:       'Browse lunch spots',
+    dinner:      'Browse dinner spots',
+    evening:     'Browse evening options',
+    culture:     'Browse culture nearby',
+    rest:        'Browse cafés nearby',
+    walking_gap: 'Browse spots en route',
+    hidden_gem:  'View on map',
+  };
+  const base = label[trigger] ?? 'Browse nearby';
+  return city ? `${base} in ${city}` : base;
+}
+
+function buildMealObservations(
   stops: EngineItineraryStop[],
-  persona: string,
   city: string,
-): ReelRecoCard[] {
-  const recos: ReelRecoCard[] = [];
+): DayIntelObservation[] {
+  const obs: DayIntelObservation[] = [];
 
   for (const window of REC_RULES.MEAL_WINDOWS) {
     if (hasMealInWindow(stops, window.start, window.end)) continue;
 
-    // For lunch, require there's activity at or after the window (day reaches lunch time)
-    // For dinner, always surface it if day has any stops — dinner is always relevant
     if (window.type === 'lunch') {
       const hasStopAtOrAfterWindow = stops.some(
         s => timeToMinutes(s.time) >= timeToMinutes(window.start),
@@ -126,139 +148,119 @@ function buildMealRecos(
       if (!hasStopAtOrAfterWindow) continue;
     }
 
-    const inWindow = stops
-      .filter(s => timeToMinutes(s.time) >= timeToMinutes(window.start) && timeToMinutes(s.time) <= timeToMinutes(window.end))
-      .at(0);
-    const afterStopAnchor = inWindow ?? stops
-      .filter(s => timeToMinutes(s.time) < timeToMinutes(window.start))
-      .at(-1);
-    if (!afterStopAnchor) continue;
+    const lastStop = stops.at(-1);
+    if (!lastStop) continue;
 
-    const label = window.type === 'lunch'
-      ? "Nothing scheduled for lunch after 14:00"
-      : "No dinner in the plan yet";
-
-    const consequence = window.type === 'lunch'
-      ? "A few well-rated options nearby."
-      : "A few places worth considering for the evening.";
-
-    recos.push({
-      type: 'reco',
-      id: `meal-${window.type}-${afterStopAnchor.id}`,
-      trigger: window.type as 'lunch' | 'dinner',
-      label,
-      consequence,
-      nearbyCity: city,
-      persona,
-      afterStopId: afterStopAnchor.id,
-      stopLat: afterStopAnchor.lat,
-      stopLon: afterStopAnchor.lon,
+    const trigger = window.type as 'lunch' | 'dinner';
+    obs.push({
+      id: `meal-${window.type}-${lastStop.id}`,
+      trigger,
+      what: window.type === 'lunch' ? 'No lunch in the plan' : 'No dinner in the plan',
+      why: window.type === 'lunch'
+        ? 'Day runs through midday with no meal window covered.'
+        : 'Day plan has nothing for the evening meal.',
+      consequence: window.type === 'lunch'
+        ? 'A few well-rated spots are within reach.'
+        : 'Worth one reservation if you plan to eat out.',
+      ctaLabel: triggerCTA(trigger, city),
+      stopLat: lastStop.lat,
+      stopLon: lastStop.lon,
+      searchCategory: TRIGGER_SEARCH[trigger] ?? '',
+      anchorCity: city,
     });
   }
 
-  return recos;
+  return obs;
 }
-
-// ── Persona-weight reco cards (deterministic templates) ───────
 
 // Archetypes that strongly care about each reco type — threshold drops to 0 for these
 const CULTURE_ARCHETYPES  = ['slowscholar', 'aesthete', 'historian'];
 const EVENING_ARCHETYPES  = ['nightcreature', 'pulse'];
 const REST_ARCHETYPES     = ['ritualseeker', 'flaneur'];
 
-function buildPersonaRecos(
+function buildPersonaObservations(
   stops: EngineItineraryStop[],
   persona: string,
   city: string,
   weights: EngineWeights,
-): ReelRecoCard[] {
-  const recos: ReelRecoCard[] = [];
-  if (stops.length === 0) return recos;
+): DayIntelObservation[] {
+  const obs: DayIntelObservation[] = [];
+  if (stops.length === 0) return obs;
 
   const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
   const lastStop = stops.at(-1)!;
   const lastEndMin = timeToMinutes(lastStop.time) + lastStop.durationMin;
 
-  // Evening: nightlife weight > 0.55 (or archetype match), day wraps before 21:00
   const eveningThreshold = EVENING_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
   if (weights.w_nightlife >= eveningThreshold && lastEndMin < 21 * 60) {
-    recos.push({
-      type: 'reco',
+    obs.push({
       id: `evening-${lastStop.id}`,
       trigger: 'evening',
-      label: 'Evening is still open',
-      consequence: `Day ends at ${minutesToTime(lastEndMin)}. The evening is unscheduled.`,
-      nearbyCity: city,
-      persona,
-      afterStopId: lastStop.id,
-      weightScore: weights.w_nightlife,
+      what: 'Evening is completely free',
+      why: `Day wraps at ${minutesToTime(lastEndMin)} with nothing after.`,
+      consequence: `${Math.round((21 * 60 - lastEndMin) / 60)}+ hours in ${city || 'the city'} with no plan — worth one intentional pick.`,
+      ctaLabel: triggerCTA('evening', city),
       stopLat: lastStop.lat,
       stopLon: lastStop.lon,
+      searchCategory: TRIGGER_SEARCH.evening,
+      anchorCity: city,
     });
   }
 
-  // Culture: culture depth > 0.55 (or archetype match), no museum/gallery/historic in day
   const cultureThreshold = CULTURE_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
   if (weights.w_culture_depth >= cultureThreshold) {
     const hasCulture = stops.some(s =>
       s.category === 'museum' || s.category === 'gallery' || s.category === 'historic',
     );
     if (!hasCulture) {
-      recos.push({
-        type: 'reco',
+      const cats = [...new Set(stops.map(s => s.category).filter(Boolean))].slice(0, 3).join(', ');
+      obs.push({
         id: `culture-${lastStop.id}`,
         trigger: 'culture',
-        label: "No cultural stop in today's plan",
-        consequence: `A few options near ${lastStop.area || 'here'} worth looking at.`,
-        nearbyCity: city,
-        persona,
-        afterStopId: lastStop.id,
-        weightScore: weights.w_culture_depth,
+        what: 'No cultural visit today',
+        why: `${stops.length} stops${cats ? ` — ${cats}` : ''}. No museum, gallery, or historic interior.`,
+        consequence: `Most likely gap to leave the day feeling thin for your style. ${city ? `${city}'s` : 'Local'} galleries are worth a look.`,
+        ctaLabel: triggerCTA('culture', lastStop.area || city),
         stopLat: lastStop.lat,
         stopLon: lastStop.lon,
+        searchCategory: TRIGGER_SEARCH.culture,
+        anchorCity: lastStop.area || city,
       });
     }
   }
 
-  // Rest: rest need > 0.55 (or archetype match), 3+ stops with no cafe break
   const restThreshold = REST_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
   if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
     const hasCafeBreak = stops.some(s => s.category === 'cafe');
     if (!hasCafeBreak) {
-      recos.push({
-        type: 'reco',
+      obs.push({
         id: `rest-${lastStop.id}`,
         trigger: 'rest',
-        label: `${stops.length} stops, no break scheduled`,
-        consequence: 'A cafe or rest spot nearby could fit in here.',
-        nearbyCity: city,
-        persona,
-        afterStopId: lastStop.id,
-        weightScore: weights.w_rest_need,
+        what: `${stops.length} stops, no break`,
+        why: 'Back-to-back with no café or sit-down rest window.',
+        consequence: 'A 20-minute sit-down mid-day could reduce fatigue on a full schedule.',
+        ctaLabel: triggerCTA('rest', city),
         stopLat: lastStop.lat,
         stopLon: lastStop.lon,
+        searchCategory: TRIGGER_SEARCH.rest,
+        anchorCity: city,
       });
     }
   }
 
-  // TODO (crowd_peak): when Popular Times data is available on EngineItineraryStop,
-  // add a trigger here: if stop.popularTimes shows a peak hour overlapping stop.time,
-  // and w_crowd_aversion > 0.55, push a 'crowd_peak' reco suggesting an off-peak visit.
-
-  return recos;
+  return obs;
 }
 
 // ── Weather + closing-conflict info is shown on each ReelStopCard ────────────
 // (weather chip, conflict banner, logistics bar) — no separate reco cards needed
 
-// ── Walking-gap reco cards ────────────────────────────────────
+// ── Walking-gap observation ───────────────────────────────────
 
-function buildWalkingGapRecos(
+function buildWalkingGapObservations(
   stops: EngineItineraryStop[],
-  persona: string,
   city: string,
   weights: EngineWeights,
-): ReelRecoCard[] {
+): DayIntelObservation[] {
   if (weights.w_walk_affinity >= 0.45) return [];
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
@@ -266,46 +268,45 @@ function buildWalkingGapRecos(
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
     if (distKm > 2.0) {
       return [{
-        type: 'reco',
         id: `walking-${a.id}-${b.id}`,
         trigger: 'walking_gap',
-        label: `${distKm.toFixed(1)} km walk to next stop`,
-        consequence: `That's a long stretch on foot. A rest spot or transit option could help.`,
-        nearbyCity: city,
-        persona,
-        afterStopId: a.id,
+        what: `${distKm.toFixed(1)} km gap between stops`,
+        why: `${a.title} → ${b.title} is a long stretch on foot.`,
+        consequence: 'A rest spot or café midway could break it up without losing time.',
+        ctaLabel: triggerCTA('walking_gap', city),
         stopLat: a.lat,
         stopLon: a.lon,
+        searchCategory: TRIGGER_SEARCH.walking_gap,
+        anchorCity: city,
       }];
     }
   }
   return [];
 }
 
-// ── Discovery reco cards ─────────────────────────────────────
-function buildDiscoveryRecos(
+// ── Discovery observations ────────────────────────────────────
+function buildDiscoveryObservations(
   stops: EngineItineraryStop[],
-  persona: string,
   city: string,
-): ReelRecoCard[] {
-  const recos: ReelRecoCard[] = [];
+): DayIntelObservation[] {
+  const obs: DayIntelObservation[] = [];
   for (const stop of stops) {
     if (stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0) {
-      recos.push({
-        type: 'reco',
+      obs.push({
         id: `trending-${stop.id}`,
         trigger: 'hidden_gem',
-        label: `${stop.title} is trending`,
-        consequence: `This place is gaining momentum fast — catch it before the crowds arrive.`,
-        nearbyCity: city,
-        persona,
-        afterStopId: stop.id,
+        what: `${stop.title} is trending`,
+        why: `Gaining traction ${Math.round(stop.velocityRatio ?? 2)}× faster than similar places.`,
+        consequence: 'Catch it before the crowds arrive — it may be harder to visit a year from now.',
+        ctaLabel: 'View on map',
         stopLat: stop.lat,
         stopLon: stop.lon,
+        searchCategory: '',
+        anchorCity: city,
       });
     }
   }
-  return recos;
+  return obs;
 }
 
 // ── Intel cards from engine messages ─────────────────────────
@@ -630,26 +631,38 @@ export function buildReelCards(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
 
-    // Collect engine recos and their triggers so local builders can be skipped for covered triggers
+    // Build day intel observations — one card per day, placed after the last stop
     const engineRecos = recosByDayIdx.get(dayIdx) ?? [];
     const engineTriggers = new Set(engineRecos.map(r => r.trigger));
 
-    const allRecos: ReelRecoCard[] = [
-      ...engineRecos,
-      ...buildMealRecos(sortedStops, persona, day.city),
-      ...buildPersonaRecos(sortedStops, persona, day.city, weights),
-      // weather and closing_conflict info is already shown on each stop card
-      // (weather chip, conflict banner, logistics bar) — no separate reco card needed
-      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapRecos(sortedStops, persona, day.city, weights)),
-      ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryRecos(sortedStops, persona, day.city)),
-    ];
+    // Convert engine recos (ReelRecoCard) to DayIntelObservation
+    const engineObservations: DayIntelObservation[] = engineRecos.map(r => ({
+      id: r.id,
+      trigger: r.trigger,
+      what: r.label,
+      why: r.consequence,
+      consequence: '',
+      ctaLabel: triggerCTA(r.trigger, r.nearbyCity),
+      stopLat: r.stopLat ?? null,
+      stopLon: r.stopLon ?? null,
+      searchCategory: TRIGGER_SEARCH[r.trigger] ?? '',
+      anchorCity: r.nearbyCity,
+    }));
 
-    const recosByStop = new Map<string, ReelRecoCard[]>();
-    for (const reco of allRecos) {
-      const existing = recosByStop.get(reco.afterStopId) ?? [];
-      if (!existing.some(r => r.trigger === reco.trigger)) existing.push(reco);
-      recosByStop.set(reco.afterStopId, existing);
-    }
+    const allObservations: DayIntelObservation[] = [
+      ...engineObservations,
+      ...buildMealObservations(sortedStops, day.city),
+      ...buildPersonaObservations(sortedStops, persona, day.city, weights),
+      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights)),
+      ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryObservations(sortedStops, day.city)),
+    ];
+    // Deduplicate by trigger
+    const seenTriggers = new Set<string>();
+    const dedupedObservations = allObservations.filter(o => {
+      if (seenTriggers.has(o.trigger)) return false;
+      seenTriggers.add(o.trigger);
+      return true;
+    });
 
     for (const stop of sortedStops) {
       globalStopNumber += 1;
@@ -674,19 +687,6 @@ export function buildReelCards(
       };
       cards.push(stopCard);
 
-      const recos = recosByStop.get(stop.id);
-      if (recos) {
-        const ADVISORY_TRIGGERS = new Set([
-          'density_excess', 'density_sparse', 'geo_efficiency',
-          'time_balance', 'category_diversity', 'social_gap',
-          'budget_mismatch', 'walking_gap', 'crowd_peak',
-        ]);
-        cards.push(...recos.map(r => ({
-          ...r,
-          anchorPhotoUrl: ADVISORY_TRIGGERS.has(r.trigger) ? null : stopImageUrl,
-        })));
-      }
-
       // Intel cards that reference this stop (by placeId match)
       // Suppress 'insert' type — the stop card's orderReason already covers it
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
@@ -697,6 +697,21 @@ export function buildReelCards(
       // Scenic walk card after this stop (if the next stop is within walking distance)
       const scenicCard = scenicByStopId.get(stop.id);
       if (scenicCard) cards.push(scenicCard);
+    }
+
+    // Single Day Intelligence card after the last stop of this day
+    const lastStopForIntel = sortedStops.at(-1);
+    if (lastStopForIntel && dedupedObservations.length > 0) {
+      const dayIntelCard: ReelDayIntelCard = {
+        type: 'day_intel',
+        id: `day-intel-${dayIdx}`,
+        day: dayIdx + 1,
+        totalDays: itinerary.days.length,
+        dayCity: day.city || primaryCity,
+        afterStopId: lastStopForIntel.id,
+        observations: dedupedObservations,
+      };
+      cards.push(dayIntelCard);
     }
 
     // Remaining intel cards not matched to a specific stop — push after all stops

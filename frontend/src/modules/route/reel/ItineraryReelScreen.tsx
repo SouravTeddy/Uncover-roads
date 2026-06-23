@@ -16,6 +16,7 @@ import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
 import { ReelGroupCard } from './ReelGroupCard';
+import { ReelDayIntelCard } from './ReelDayIntelCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
@@ -729,6 +730,22 @@ export function ItineraryReelScreen() {
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
           else if (card.type === 'day_transition') child = <ReelDayTransitionCard card={card} active={isActive} />;
+          else if (card.type === 'day_intel') child = (
+            <ReelDayIntelCard
+              card={card}
+              active={isActive}
+              existingPlaceIds={existingPlaceIds}
+              onInteract={(action) => {
+                if (action === 'tapped') dispatch({ type: 'ADD_RECO_INTERACTION', interaction: { cardId: card.id, action: 'tapped', timestamp: Date.now() } as any });
+              }}
+              onMapNavigate={(lat, lon, places) => {
+                if (places.length > 0) dispatch({ type: 'SET_RECO_FOCUS_PLACES', places });
+                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
+                dispatch({ type: 'SET_FILTER', filter: 'curated' });
+                dispatch({ type: 'GO_TO', screen: 'map' });
+              }}
+            />
+          );
           if (!child) return null;
           const cardKey =
             card.type === 'stop' ? card.stop.id :
@@ -737,6 +754,7 @@ export function ItineraryReelScreen() {
             card.type === 'transit' ? `transit-${card.from}-${card.to}` :
             card.type === 'day_divider' ? `day-${card.day}` :
             card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
+            card.type === 'day_intel' ? card.id :
             card.type === 'scenic' ? `scenic-${idx}-${card.pos}` :
             card.type === 'group' ? `group-${idx}-${card.fromStop}` :
             `${card.type}-${idx}`;
