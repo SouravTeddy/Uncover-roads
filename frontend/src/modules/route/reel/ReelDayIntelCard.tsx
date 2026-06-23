@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAppStore } from '../../../shared/store';
 import type { ReelDayIntelCard as ReelDayIntelCardType, DayIntelObservation } from './types';
-import type { Place } from '../../../shared/types';
+import type { Place, Category } from '../../../shared/types';
 import { api } from '../../../shared/api';
 
 interface Props {
   card: ReelDayIntelCardType;
   active: boolean;
-  existingPlaceIds: string[];
+  selectedPlaces: Place[];
   onInteract?: (action: 'viewed' | 'tapped' | 'lingered') => void;
   onMapNavigate?: (lat: number, lon: number, places: Place[]) => void;
 }
@@ -74,25 +74,19 @@ const OBS_STYLE: Record<string, { icon: string; bg: string; bdr: string; color: 
 };
 const DEFAULT_OBS_STYLE = { icon: 'info', bg: T.obsBg, bdr: T.obsBdr, color: T.t3 };
 
-// Categories that can be "resolved" by adding a place of that type
-const TRIGGER_CATEGORIES: Record<string, string[]> = {
-  lunch:   ['restaurant', 'food'],
-  dinner:  ['restaurant', 'food'],
-  evening: ['bar', 'nightlife', 'entertainment'],
+// Categories that resolve each trigger type
+const TRIGGER_RESOLVE_CATEGORIES: Record<string, Category[]> = {
+  lunch:   ['restaurant', 'cafe', 'bakery'],
+  dinner:  ['restaurant', 'bar'],
+  evening: ['bar', 'nightlife'],
   culture: ['museum', 'gallery', 'historic'],
-  rest:    ['cafe'],
+  rest:    ['cafe', 'spa'],
 };
 
-function isResolved(obs: DayIntelObservation, existingPlaceIds: string[], allExistingIds: string[]): boolean {
-  // If the observation has a specific place ID that's now in the plan, it's resolved
-  if (allExistingIds.includes(obs.id)) return false; // id-based check doesn't apply
-  // Check if a place of the matching category was added (category-based)
-  const cats = TRIGGER_CATEGORIES[obs.trigger];
+function isResolved(obs: DayIntelObservation, selectedPlaces: Place[]): boolean {
+  const cats = TRIGGER_RESOLVE_CATEGORIES[obs.trigger];
   if (!cats) return false;
-  // We don't have category info on place IDs alone — resolved state is passed via existingPlaceIds
-  // The parent passes ALL selectedPlaces ids; we rely on a prefix convention if any
-  void existingPlaceIds;
-  return false; // real resolution requires selectedPlaces with category info — handled via resolvedTriggers prop
+  return selectedPlaces.some(p => cats.includes(p.category as Category));
 }
 
 // ── Individual observation row ─────────────────────────────────
@@ -212,7 +206,7 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
 }
 
 // ── Main component ─────────────────────────────────────────────
-export function ReelDayIntelCard({ card, active, existingPlaceIds, onInteract, onMapNavigate }: Props) {
+export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onMapNavigate }: Props) {
   const { dispatch } = useAppStore();
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onInteractRef = useRef(onInteract);
@@ -259,11 +253,9 @@ export function ReelDayIntelCard({ card, active, existingPlaceIds, onInteract, o
     return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
   }, [active]);
 
-  // Check which observations are resolved based on existingPlaceIds categories
-  // (simplified: treat obs as dismissed if trigger matches a category in existingPlaceIds)
   const resolvedSet = new Set<string>();
   for (const obs of card.observations) {
-    if (isResolved(obs, existingPlaceIds, existingPlaceIds)) resolvedSet.add(obs.id);
+    if (isResolved(obs, selectedPlaces)) resolvedSet.add(obs.id);
   }
 
   const openCount = card.observations.filter(o => !resolvedSet.has(o.id)).length;
