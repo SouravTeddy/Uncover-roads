@@ -25,11 +25,6 @@ function minutesToTime(m: number): string {
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-function isInWindow(time: string, start: string, end: string): boolean {
-  const t = timeToMinutes(time);
-  return t >= timeToMinutes(start) && t <= timeToMinutes(end);
-}
-
 // ── Timing cascade helpers ─────────────────────────────────────
 
 function fmt12h(time: string): string {
