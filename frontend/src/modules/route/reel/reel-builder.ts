@@ -7,6 +7,7 @@ import type {
   WeatherData,
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
+import { formatCityLabel } from '../../../shared/cityPhoto';
 import { REC_RULES } from '../rec-rules';
 import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard } from './types';
 
@@ -627,19 +628,9 @@ export function buildReelCards(
   const fromDays = [...new Set(itinerary.days.map(d => d.city).filter(Boolean))];
   const fromList = itinerary.cities?.filter(Boolean) ?? [];
   const uniqueCities = fromList.length > fromDays.length ? fromList : fromDays.length > 1 ? fromDays : fromList.length > 0 ? fromList : [itinerary.city ?? ''];
-  // City label: single city → show city name; multi-city → try to resolve a country label,
-  // fall back to the user's requested city (itinerary.city) to avoid dumping suburb names.
-  const cityLabel = uniqueCities.length === 1
-    ? (itinerary.city ?? uniqueCities[0] ?? '')
-    : (() => {
-        const uniqueCountries = [...new Set(
-          uniqueCities.map(c => cityCountries[c] ?? cityCountries[c.toLowerCase()] ?? null).filter(Boolean)
-        )] as string[];
-        if (uniqueCountries.length > 1) return `${uniqueCountries[0]} +${uniqueCountries.length - 1}`;
-        if (uniqueCountries.length === 1) return uniqueCountries[0];
-        // No country found — fall back to the user's requested city rather than joining suburb names
-        return itinerary.city ?? uniqueCities[0] ?? '';
-      })();
+  const cityLabel = formatCityLabel(
+    uniqueCities.length > 0 ? uniqueCities : [itinerary.city ?? '']
+  );
 
   // Totals for intro card
   const totalDurationMin = allStops.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);

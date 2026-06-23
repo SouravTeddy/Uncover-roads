@@ -146,14 +146,14 @@ export function ItineraryReelScreen() {
       const allCities = [
         ...new Set([
           ...(activeItinerary.cities ?? []),
-          ...activeItinerary.days.map(d => d.city),
+          ...(activeItinerary.days ?? []).map(d => d.city),
           primaryCity,
         ].filter(Boolean) as string[]),
       ];
 
       // Collect all stops that have no image yet
-      const stopsNeedingImages = activeItinerary.days.flatMap(d =>
-        d.stops
+      const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
+        (d.stops ?? [])
           .filter(s => !s.imageUrl)
           .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
       );
@@ -363,8 +363,8 @@ export function ItineraryReelScreen() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!activeItinerary || !imagesReady || !state.persona) {
-    const stopCount = activeItinerary?.days.flatMap(d => d.stops).length ?? 0;
-    const days = activeItinerary?.days.length ?? 0;
+    const stopCount = activeItinerary?.days?.flatMap(d => d.stops ?? []).length ?? 0;
+    const days = activeItinerary?.days?.length ?? 0;
     const cityName = activeItinerary?.city ?? activeItinerary?.cities?.[0] ?? '';
 
     const STEPS: { label: string; done: boolean }[] = [
@@ -636,6 +636,29 @@ export function ItineraryReelScreen() {
     return result;
   })();
 
+  // Old-format saved trips (flat itinerary, no days) produce zero cards
+  if (displayCards.length === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center' }}>
+        <span style={{ fontSize: 44, lineHeight: 1 }}>🗺️</span>
+        <div>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,.85)', margin: '0 0 8px', lineHeight: 1.2 }}>
+            Reel not available
+          </p>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.38)', lineHeight: 1.5, margin: 0 }}>
+            This trip was saved in an older format and can't be replayed as a reel.
+          </p>
+        </div>
+        <button
+          onClick={() => dispatch({ type: 'GO_TO', screen: 'trips' })}
+          style={{ marginTop: 8, padding: '12px 28px', borderRadius: 12, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Back to trips
+        </button>
+      </div>
+    );
+  }
+
   const dotCards = displayCards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'scenic' && c.type !== 'group' && c.type !== 'day_transition');
   const activeDotIdx = (() => {
     let last = -1;
@@ -784,7 +807,7 @@ export function ItineraryReelScreen() {
           cities={activeItinerary.cities ?? [activeItinerary.city ?? '']}
           journeyLegs={savedItem?.journeyLegs ?? journey ?? null}
           existingDetails={savedItem?.tripDetails ?? state.pendingTripDetails ?? null}
-          firstDayDate={activeItinerary.days[0]?.date ?? null}
+          firstDayDate={activeItinerary.days?.[0]?.date ?? null}
           onSave={(details) => {
             dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
             setShowTripDetails(false);

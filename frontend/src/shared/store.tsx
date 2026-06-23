@@ -409,7 +409,8 @@ export type Action =
   | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null }
   | { type: 'DISMISS_PIN'; pinId: string }
   | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] }
-  | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null };
+  | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null }
+  | { type: 'UPDATE_PLACE_CITY'; id: string; city: string };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -496,6 +497,14 @@ export function reducer(state: AppState, action: Action): AppState {
       const updated = exists
         ? state.selectedPlaces.filter(p => p.id !== action.place.id)
         : [...state.selectedPlaces, action.place];
+      ssSave('ur_ss_sel', updated);
+      return { ...state, selectedPlaces: updated };
+    }
+
+    case 'UPDATE_PLACE_CITY': {
+      const updated = state.selectedPlaces.map(p =>
+        p.id === action.id ? { ...p, _city: action.city } : p
+      );
       ssSave('ur_ss_sel', updated);
       return { ...state, selectedPlaces: updated };
     }

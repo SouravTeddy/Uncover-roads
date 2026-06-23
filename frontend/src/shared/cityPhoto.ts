@@ -44,3 +44,15 @@ export function getCityPhotoUrl(cityName: string): string {
 /** Gradient shown when image fails to load — matches the app's dark theme. */
 export const CITY_PHOTO_FALLBACK_GRADIENT =
   'linear-gradient(135deg, #1a1f2e 0%, #0f141e 100%)';
+
+/**
+ * Consistent city label for both reel intro and trip cards.
+ *   1 city  → "Paris"
+ *   2 cities → "Paris +1"
+ *   3 cities → "Paris +2"
+ */
+export function formatCityLabel(cities: string[]): string {
+  const unique = [...new Set(cities.filter(Boolean))];
+  if (unique.length <= 1) return unique[0] ?? '';
+  return `${unique[0]} +${unique.length - 1}`;
+}

@@ -25,11 +25,6 @@ const FALLBACK_PHOTO = 'https://images.unsplash.com/photo-1488646953014-85cb44e2
 export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreHeroProps) {
   const [imgFailed, setImgFailed] = useState(false);
 
-  const hour = new Date().getHours();
-  const greeting = hour >= 5 && hour < 12 ? 'Good morning'
-    : hour >= 12 && hour < 17 ? 'Good afternoon'
-    : hour >= 17 && hour < 21 ? 'Good evening'
-    : 'Good night';
 
   // DB-backed photo for the active or last-visited city
   const primaryCity = city ?? savedTripCity ?? null;
@@ -58,7 +53,7 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
     }
   };
 
-  const watermarkLabel = city ? city.toUpperCase() : 'EXPLORE';
+  const watermarkLabel = city ? city.toUpperCase() : null;
 
   return (
     <div
@@ -89,28 +84,27 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
         }}
       />
 
-      {/* Watermark text */}
-      <div
-        className="absolute bottom-0 left-0 font-[family-name:var(--font-heading)] select-none pointer-events-none leading-none"
-        style={{
-          fontSize: 96,
-          color: 'rgba(255,255,255,.04)',
-        }}
-      >
-        {watermarkLabel}
-      </div>
+      {/* Watermark text — only when a city is set */}
+      {watermarkLabel && (
+        <div
+          className="absolute bottom-0 left-0 font-[family-name:var(--font-heading)] select-none pointer-events-none leading-none"
+          style={{
+            fontSize: 96,
+            color: 'rgba(255,255,255,.04)',
+          }}
+        >
+          {watermarkLabel}
+        </div>
+      )}
 
-      {/* Greeting + name overlay */}
-      <div
-        className="absolute bottom-3 left-4"
-        style={{
-          color: 'rgba(255,255,255,.9)',
-          fontSize: 18,
-          fontWeight: 600,
-          lineHeight: 1.2,
-        }}
-      >
-        {greeting}, {userName}
+      {/* Greeting + quote overlay */}
+      <div className="absolute bottom-3 left-4" style={{ maxWidth: '75%' }}>
+        <div style={{ color: 'rgba(255,255,255,.95)', fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>
+          The world won't wait, {userName}.
+        </div>
+        <div style={{ color: 'rgba(255,255,255,.55)', fontSize: 11, fontWeight: 400, marginTop: 4, fontStyle: 'italic' }}>
+          "To travel is to live." — H.C. Andersen
+        </div>
       </div>
 
       {/* App icon tile */}

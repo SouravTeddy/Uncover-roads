@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { TripsScreen } from './TripsScreen';
+import { TripsList } from './TripsScreen';
 import { SavedPlacesTab } from './SavedPlacesTab';
 
 type SubTab = 'itineraries' | 'saved';
@@ -95,7 +95,7 @@ export function SavedScreen() {
             onRemoveEvent={handleRemoveEvent}
           />
         )}
-        {activeTab === 'itineraries' && <TripsScreen />}
+        {activeTab === 'itineraries' && <TripsList />}
       </div>
     </div>
   );
