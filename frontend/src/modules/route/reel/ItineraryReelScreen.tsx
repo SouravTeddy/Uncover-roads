@@ -9,8 +9,8 @@ import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
-import type { ReelCard, ReelRecoCard as ReelRecoCardType } from './types';
-import type { WeatherData } from '../../../shared/types';
+import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType } from './types';
+import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { ReelBalanceCard } from './ReelBalanceCard';
@@ -82,15 +82,21 @@ export function ItineraryReelScreen() {
   const [resolvedStopImages, setResolvedStopImages] = useState<Map<string, string>>(new Map());
   const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
+  const [tripDetailsSavedToast, setTripDetailsSavedToast] = useState(false);
+  // Session-scoped strikeout: stops that were just adjusted by a trip-details save this session
+  const [recentlyAdjustedIds, setRecentlyAdjustedIds] = useState<Set<string>>(new Set());
+  const [rebuildingReel, setRebuildingReel] = useState(false);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
+  const tripDetailsRef = useRef<TripDetails | null>(savedItem?.tripDetails ?? state.pendingTripDetails ?? null);
 
   useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
+  useEffect(() => { tripDetailsRef.current = savedItem?.tripDetails ?? state.pendingTripDetails ?? null; }, [savedItem?.tripDetails, state.pendingTripDetails]);
 
   function buildFiltered(
     itinerary: typeof activeItinerary,
@@ -116,7 +122,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current);
 
     // Inject pre-fetched images for stops that had no photoRef at build time
     for (const card of built) {
@@ -676,6 +682,30 @@ export function ItineraryReelScreen() {
 
   return (
     <>
+      {/* Reel rebuild overlay — shown for ~600ms after trip details saved */}
+      {rebuildingReel && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 60,
+          background: 'rgba(10,10,12,0.82)', backdropFilter: 'blur(12px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+          animation: 'fadeIn .2s ease both',
+        }}>
+          <style>{`
+            @keyframes reelSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          `}</style>
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%',
+            border: '3px solid rgba(212,168,83,0.18)',
+            borderTopColor: '#d4a853',
+            animation: 'reelSpin .9s linear infinite',
+          }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,235,180,.75)', fontFamily: 'var(--font-sans)', letterSpacing: '.02em' }}>
+            Updating your reel…
+          </span>
+        </div>
+      )}
+
       {/* Snap-scroll container — position:fixed so nothing clips its scroll events */}
       <div
         ref={scrollRef}
@@ -691,8 +721,41 @@ export function ItineraryReelScreen() {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
           let child: ReactNode = null;
-          if (card.type === 'intro')       child = <ReelIntroCard    card={card} active={isActive} onShowTripDetails={() => setShowTripDetails(true)} />;
-          else if (card.type === 'stop')    child = <ReelStopCard     card={card} active={isActive} weather={weather} primaryCity={city || activeItinerary?.city || ''} />;
+          if (card.type === 'intro') {
+            const tripDets = savedItem?.tripDetails ?? state.pendingTripDetails;
+            const tripStart = tripDets?.arrivalDate ?? state.travelStartDate ?? null;
+            const tripEnd   = tripDets?.departureDate ?? state.travelEndDate ?? null;
+            const firstDay = activeItinerary?.days?.[0]?.date ?? null;
+            const lastDay  = activeItinerary?.days?.at(-1)?.date ?? null;
+            let tripTimingNote: string | null = null;
+            if (tripDets?.arrivalDate && firstDay) {
+              if (tripDets.arrivalDate < firstDay) {
+                const d = new Date(tripDets.arrivalDate + 'T12:00:00');
+                const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                tripTimingNote = `Arriving ${label} — a day ahead of the plan. Time to find your footing.`;
+              } else if (tripDets.arrivalDate > firstDay) {
+                const d = new Date(tripDets.arrivalDate + 'T12:00:00');
+                const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                tripTimingNote = `Arriving ${label} — some of Day 1 runs before you get in.`;
+              }
+            }
+            if (!tripTimingNote && tripDets?.departureDate && lastDay) {
+              if (tripDets.departureDate > lastDay) {
+                const d = new Date(tripDets.departureDate + 'T12:00:00');
+                const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                tripTimingNote = `Departing ${label} — a day after the plan ends. Extra time to linger.`;
+              } else if (tripDets.departureDate < lastDay) {
+                const d = new Date(tripDets.departureDate + 'T12:00:00');
+                const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                tripTimingNote = `Leaving ${label} — before the last day of the plan.`;
+              }
+            }
+            child = <ReelIntroCard card={card} active={isActive} onShowTripDetails={() => setShowTripDetails(true)} tripStartDate={tripStart} tripEndDate={tripEnd} tripTimingNote={tripTimingNote} />;
+          }
+          else if (card.type === 'stop') {
+            const isJustAdjusted = recentlyAdjustedIds.has((card as ReelStopCardType).stop.id);
+            child = <ReelStopCard card={card} active={isActive} weather={weather} primaryCity={city || activeItinerary?.city || ''} isJustAdjusted={isJustAdjusted} />;
+          }
           else if (card.type === 'reco')    child = (
             <ReelRecoCard
               card={card} active={isActive}
@@ -830,12 +893,51 @@ export function ItineraryReelScreen() {
           journeyLegs={savedItem?.journeyLegs ?? journey ?? null}
           existingDetails={savedItem?.tripDetails ?? state.pendingTripDetails ?? null}
           firstDayDate={activeItinerary.days?.[0]?.date ?? null}
+          lastDayDate={activeItinerary.days?.at(-1)?.date ?? null}
           onSave={(details) => {
             dispatch({ type: 'SET_PENDING_TRIP_DETAILS', details });
+            if (details.arrivalDate && details.departureDate) {
+              dispatch({ type: 'SET_TRAVEL_DATES', startDate: details.arrivalDate, endDate: details.departureDate });
+            }
             setShowTripDetails(false);
+            setTripDetailsSavedToast(true);
+            setTimeout(() => setTripDetailsSavedToast(false), 3000);
+            // Rebuild reel with new trip details and reveal after brief loading animation
+            if (activeItinerary) {
+              setRebuildingReel(true);
+              tripDetailsRef.current = details;
+              setTimeout(() => {
+                const freshCards = buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current);
+                setCards(freshCards);
+                const adjusted = new Set<string>(
+                  freshCards
+                    .filter((c): c is ReelStopCardType => c.type === 'stop' && !!c.timingAdjustment)
+                    .map(c => c.stop.id)
+                );
+                setRecentlyAdjustedIds(adjusted);
+                setRebuildingReel(false);
+              }, 600);
+            }
           }}
           onClose={handleCloseTripDetails}
         />
+      )}
+
+      {/* Trip details saved toast */}
+      {tripDetailsSavedToast && (
+        <div style={{
+          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'var(--color-sage-bg)', backdropFilter: 'blur(16px)',
+          border: '1px solid var(--color-sage-bdr)',
+          padding: '10px 16px', borderRadius: 999,
+          boxShadow: '0 8px 32px rgba(0,0,0,.4)',
+          zIndex: 40, whiteSpace: 'nowrap',
+          animation: 'fadeUp .3s ease both',
+        }}>
+          <span className="ms fill" style={{ fontSize: 16, color: 'var(--color-sage)' }}>check_circle</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-sage)' }}>Trip details saved</span>
+        </div>
       )}
 
       {/* Undo toast */}

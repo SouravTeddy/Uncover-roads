@@ -33,7 +33,7 @@ const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; bor
   hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Hidden gem',      searchCategory: '' },
 };
 
-export function ReelRecoCard({ card, active, archetype: _archetype, existingPlaceIds: _existing, onInteract, onMapNavigate }: Props) {
+export function ReelRecoCard({ card, active, archetype: _archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onInteractRef = useRef(onInteract);
@@ -141,7 +141,9 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
         <button
           onClick={() => {
             onInteract?.('tapped');
-            onMapNavigate(card.stopLat!, card.stopLon!, nearbyPlaces);
+            const existingSet = new Set(existingPlaceIds ?? []);
+            const filteredPlaces = nearbyPlaces.filter(p => !existingSet.has(p.id) && !existingSet.has(p.place_id ?? ''));
+            onMapNavigate(card.stopLat!, card.stopLon!, filteredPlaces);
           }}
           style={{
             width: '100%', maxWidth: 320,

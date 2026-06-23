@@ -4,6 +4,7 @@ import type { TripDetails, JourneyLeg, AutocompleteResult } from '../../../share
 import { useSheetDismiss } from '../../../shared/useSheetDismiss';
 import { DateRangeCalendar } from '../../destination/DateRangeCalendar';
 import { placesAutocomplete } from '../../../shared/api';
+import { formatCityLabel } from '../../../shared/cityPhoto';
 
 interface Props {
   cities: string[];
@@ -12,6 +13,7 @@ interface Props {
   onSave: (details: TripDetails) => void;
   onClose: () => void;
   firstDayDate?: string | null;
+  lastDayDate?: string | null;
 }
 
 function displayDate(iso: string | null): string {
@@ -71,24 +73,65 @@ function ProgressStrip({
   );
 }
 
-function TimeInput({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
+function TimeStepper({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
+  const raw = value ?? '09:00';
+  const rawH = parseInt(raw.split(':')[0]);
+  const rawM = Math.round(parseInt(raw.split(':')[1]) / 15) * 15 % 60;
+  const [hour12, setHour12] = useState(rawH % 12 || 12);
+  const [minute, setMinute]  = useState(rawM);
+  const [isPM, setIsPM]      = useState(rawH >= 12);
+
+  function emit(h12: number, m: number, pm: boolean) {
+    const h24 = pm ? (h12 % 12) + 12 : h12 % 12;
+    onChange(`${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
+  function incH() { const h = (hour12 % 12) + 1; setHour12(h); emit(h, minute, isPM); }
+  function decH() { const h = hour12 === 1 ? 12 : hour12 - 1; setHour12(h); emit(h, minute, isPM); }
+  function incM() { const m = (minute + 15) % 60; setMinute(m); emit(hour12, m, isPM); }
+  function decM() { const m = (minute - 15 + 60) % 60; setMinute(m); emit(hour12, m, isPM); }
+  function togglePM() { const pm = !isPM; setIsPM(pm); emit(hour12, minute, pm); }
+
+  const col = (label: string, onUp: () => void, onDown: () => void) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+      <button onClick={onUp} style={{ width: 40, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8 }}>
+        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)' }}>expand_less</span>
+      </button>
+      <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1, minWidth: 36, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+        {label}
+      </span>
+      <button onClick={onDown} style={{ width: 40, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8 }}>
+        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)' }}>expand_more</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: 6 }}>
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: 8 }}>
         Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
       </div>
-      <input
-        type="time"
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '10px 12px', borderRadius: 10,
-          background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
-          color: value ? 'var(--color-text-1)' : 'var(--color-text-4)',
-          fontSize: 14, fontFamily: 'var(--font-sans)', outline: 'none',
-          appearance: 'none', WebkitAppearance: 'none',
-        }}
-      />
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+        padding: '4px 12px', borderRadius: 14,
+        background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+      }}>
+        {col(String(hour12), incH, decH)}
+        <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-3)', marginBottom: 2, lineHeight: 1 }}>:</span>
+        {col(String(minute).padStart(2, '0'), incM, decM)}
+        <button
+          onClick={togglePM}
+          style={{
+            marginLeft: 8, padding: '5px 10px', borderRadius: 8,
+            background: isPM ? 'var(--color-primary)' : 'var(--color-surface)',
+            border: `1px solid ${isPM ? 'var(--color-primary)' : 'var(--color-border)'}`,
+            color: isPM ? '#fff' : 'var(--color-text-2)',
+            fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'center',
+            fontFamily: 'inherit', transition: 'background .15s, color .15s',
+          }}
+        >
+          {isPM ? 'PM' : 'AM'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -97,7 +140,7 @@ function DateTimeCard({
   label, icon, city, date, time,
   expanded, phase,
   onExpand, onDateSelect, onTimeChange,
-  minDate, maxDate,
+  minDate, maxDate, tripStart, tripEnd, calInitialMonth,
 }: {
   label: string; icon: string; city: string;
   date: string | null; time: string | null;
@@ -106,6 +149,8 @@ function DateTimeCard({
   onDateSelect: (iso: string) => void;
   onTimeChange: (hhmm: string) => void;
   minDate?: string; maxDate?: string;
+  tripStart?: string | null; tripEnd?: string | null;
+  calInitialMonth?: string | null;
 }) {
   const filled = !!date;
 
@@ -130,7 +175,9 @@ function DateTimeCard({
             singleDate
             minDate={minDate}
             maxDate={maxDate}
-            // singleDate: start === end, only need start
+            initialMonth={calInitialMonth ?? date ?? tripStart ?? undefined}
+            tripStart={tripStart}
+            tripEnd={tripEnd}
             onSelect={(iso) => onDateSelect(iso)}
           />
         </div>
@@ -152,7 +199,7 @@ function DateTimeCard({
         <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 2 }}>
           {displayDate(date!)}
         </div>
-        <TimeInput value={time} onChange={onTimeChange} />
+        <TimeStepper value={time} onChange={onTimeChange} />
       </div>
     );
   }
@@ -273,8 +320,15 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
           padding: '12px 13px', borderRadius: suggestions.length > 0 ? '13px 13px 0 0' : 13,
           cursor: 'text',
           background: name && !editing ? 'var(--color-sage-bg)' : 'var(--color-surface)',
-          border: `1px solid ${name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
-          borderBottom: suggestions.length > 0 ? 'none' : undefined,
+          borderTopWidth: 1, borderTopStyle: 'solid',
+          borderRightWidth: 1, borderRightStyle: 'solid',
+          borderLeftWidth: 1, borderLeftStyle: 'solid',
+          borderBottomWidth: suggestions.length > 0 ? 0 : 1,
+          borderBottomStyle: 'solid',
+          borderTopColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
+          borderRightColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
+          borderLeftColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
+          borderBottomColor: suggestions.length > 0 ? 'transparent' : (name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)'),
         }}
       >
         <span className="ms fill" style={{ fontSize: 15, color: name && !editing ? 'var(--color-sage)' : 'var(--color-primary)', flexShrink: 0 }}>
@@ -327,7 +381,9 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
       {suggestions.length > 0 && (
         <div style={{
           borderRadius: '0 0 13px 13px',
-          border: '1px solid var(--color-amber-bdr)', borderTop: 'none',
+          borderTopWidth: 0, borderRightWidth: 1, borderBottomWidth: 1, borderLeftWidth: 1,
+          borderTopStyle: 'solid', borderRightStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid',
+          borderTopColor: 'transparent', borderRightColor: 'var(--color-amber-bdr)', borderBottomColor: 'var(--color-amber-bdr)', borderLeftColor: 'var(--color-amber-bdr)',
           background: 'var(--color-surface2)', overflow: 'hidden',
         }}>
           {suggestions.map((s, i) => (
@@ -353,7 +409,7 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
   );
 }
 
-export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose, firstDayDate = null }: Props) {
+export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose, firstDayDate = null, lastDayDate = null }: Props) {
   const isMultiCity = cities.length > 1;
 
   const [arrivalDate, setArrivalDate] = useState<string | null>(existingDetails?.arrivalDate ?? null);
@@ -398,9 +454,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
 
   const firstCity = cities[0] ?? '';
   const lastCity = cities[cities.length - 1] ?? '';
-  const titleCities = isMultiCity
-    ? cities.slice(0, 3).join(' · ').toUpperCase()
-    : firstCity.toUpperCase();
+  const titleCities = formatCityLabel(cities).toUpperCase();
 
   const datesSet = !!arrivalDate && !!departureDate;
   const timesSet = !!arrivalTime || !!departureTime;
@@ -475,6 +529,8 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
             onDateSelect={handleArrivalDateSelect}
             onTimeChange={setArrivalTime}
             maxDate={[departureDate, firstDayDate].filter(Boolean).sort()[0] ?? undefined}
+            tripStart={firstDayDate}
+            tripEnd={lastDayDate}
           />
 
           {/* Departure */}
@@ -487,6 +543,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
             onDateSelect={handleDepartureDateSelect}
             onTimeChange={setDepartureTime}
             minDate={arrivalDate ?? undefined}
+            calInitialMonth={lastDayDate}
           />
 
           {/* Hotel rows */}

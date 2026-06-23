@@ -3,7 +3,7 @@ import type { ReelIntroCard as ReelIntroCardType } from './types';
 import { ReelImg } from './ReelImg';
 import {
   REEL_SCRIM, REEL_CONTENT_PADDING_INTRO,
-  INTRO_CITY_FS, INTRO_CITY_MB, INTRO_PILL_GAP, INTRO_PILL_MB,
+  INTRO_CITY_FS, INTRO_CITY_MB,
   INTRO_TEXT_SHADOW,
   WEATHER_ICON,
 } from './reel-constants';
@@ -13,8 +13,10 @@ interface Props {
   active: boolean;
   onShowTripDetails?: () => void;
   onInteract?: (action: 'viewed' | 'lingered') => void;
+  tripStartDate?: string | null;
+  tripEndDate?: string | null;
+  tripTimingNote?: string | null;
 }
-
 
 const STYLE_TAG: Record<string, string> = {
   gastronaut:          'Food & local flavour',
@@ -43,6 +45,16 @@ const TRIP_IDENTITY: Record<string, string> = {
   ritualseeker:        'A slow, intentional stay',
 };
 
+// Emoji → Material Symbol mapping for engine intel items
+const INTEL_ICON: Record<string, string> = {
+  '📍': 'reorder',
+  '✨': 'add_circle',
+  '🔄': 'swap_horiz',
+  '⛅': 'wb_cloudy',
+  '🗺️': 'route',
+  '⏱️': 'schedule',
+};
+
 function tripIdentityLine(persona: string, city: string): string {
   const key = persona.toLowerCase().replace(/[\s_-]/g, '');
   const base = TRIP_IDENTITY[key] ?? 'An exploration';
@@ -51,7 +63,37 @@ function tripIdentityLine(persona: string, city: string): string {
   return `${base} of ${cityStr}`;
 }
 
-export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: Props) {
+function formatDateRange(start: string, end: string): string {
+  const s = new Date(start + 'T12:00:00');
+  const e = new Date(end + 'T12:00:00');
+  const sameYear = s.getFullYear() === e.getFullYear();
+  const sameMonth = sameYear && s.getMonth() === e.getMonth();
+  if (start === end) return s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (sameMonth) return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.getDate()}`;
+  return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${e.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(!sameYear ? { year: 'numeric' } : {}) })}`;
+}
+
+// Shared chip style — all metadata chips use this base
+const CHIP: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  padding: '4px 9px', borderRadius: 999,
+  background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  fontSize: 11, fontWeight: 600,
+  color: 'rgba(255,255,255,0.72)',
+  fontFamily: 'var(--font-sans)',
+  lineHeight: 1,
+};
+
+const DATE_CHIP: React.CSSProperties = {
+  ...CHIP,
+  background: 'rgba(212,168,83,0.14)',
+  border: '1px solid rgba(212,168,83,0.28)',
+  color: '#d4a853',
+};
+
+export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tripStartDate, tripEndDate, tripTimingNote }: Props) {
+  const dateRange = tripStartDate && tripEndDate ? formatDateRange(tripStartDate, tripEndDate) : null;
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
@@ -67,35 +109,36 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: '#0c0c0e' }}>
 
-      {/* City photo — shimmer while city photo API is in-flight, fades in when resolved */}
       <ReelImg
         src={card.imageUrl}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, filter: 'contrast(1.12) saturate(1.2)' }}
       />
 
-      {/* Weather pill — only render when temp is actually available */}
+      {/* Weather pill */}
       {card.weather?.temp != null && (
-        <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(9,12,22,.82)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.1)' }}>
+        <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, ...CHIP, background: 'rgba(9,12,22,.82)' }}>
           <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{card.weather.temp}°</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.55)' }}>{card.weather.condition ?? ''}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontFamily: 'var(--font-sans)' }}>{card.weather.condition ?? ''}</span>
         </div>
       )}
 
-      {/* Trip details button z-index:10 — top:48px right:13px per mock */}
+      {/* Trip details button */}
       <button
         onClick={onShowTripDetails}
-        style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 999, background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,.18)', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,.82)', cursor: 'pointer', fontFamily: 'inherit' }}
+        style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, ...CHIP, padding: '7px 11px', cursor: 'pointer', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.18)', color: 'rgba(255,255,255,.82)' }}
       >
         <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
         Add trip details
       </button>
 
-      {/* GRADIENT scrim — dark bottom for text, clear top for photo */}
+      {/* Gradient scrim */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
 
-      {/* Content z-index:10 */}
+      {/* Content */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>
+
+        {/* City heading */}
         {(() => {
           const cities = card.city.split(' · ');
           if (cities.length > 1) {
@@ -111,7 +154,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
                     </span>
                   ))}
                 </div>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-sans)', fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {card.totalDays}-day multi-city trip
                 </span>
               </div>
@@ -126,51 +169,60 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
 
         {/* Trip identity */}
         <p style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: 'var(--font-heading)',
           fontStyle: 'italic',
-          fontSize: 17,
+          fontSize: 16,
           fontWeight: 400,
-          color: 'rgba(255,255,255,0.72)',
+          color: 'rgba(255,255,255,0.62)',
           lineHeight: 1.35,
-          marginBottom: 10,
+          marginBottom: 12,
           textShadow: '0 1px 6px rgba(0,0,0,0.6)',
         }}>
           {tripIdentityLine(card.persona, card.city)}
         </p>
 
-        {/* Info pills */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: INTRO_PILL_GAP, marginBottom: INTRO_PILL_MB }}>
-          <span className="pill pg">
+        {/* Trip timing note — arrival/departure context (Scenario B/C) */}
+        {tripTimingNote && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9, padding: '6px 10px', borderRadius: 8, background: 'rgba(212,168,83,.10)', border: '1px solid rgba(212,168,83,.22)' }}>
+            <span className="ms fill" style={{ fontSize: 12, color: 'rgba(212,168,83,.8)', flexShrink: 0 }}>info</span>
+            <span style={{ fontSize: 11.5, color: 'rgba(255,235,180,.82)', lineHeight: 1.35, fontFamily: 'var(--font-sans)' }}>{tripTimingNote}</span>
+          </div>
+        )}
+
+        {/* Metadata chips — all same base style */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          {dateRange && (
+            <span style={DATE_CHIP}>
+              <span className="ms fill" style={{ fontSize: 11 }}>calendar_month</span>
+              {dateRange}
+            </span>
+          )}
+          <span style={CHIP}>
             <span className="ms fill" style={{ fontSize: 11 }}>place</span>
             {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}
           </span>
           {card.totalDistanceKm > 0 && (
-            <span className="pill pg">
+            <span style={CHIP}>
               <span className="ms fill" style={{ fontSize: 11 }}>directions_transit</span>
               {card.totalDistanceKm} km
             </span>
           )}
-        </div>
-
-        {/* Travel style tag */}
-        <div style={{ marginBottom: 10 }}>
-          <span style={{
-            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 999,
-            background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(212,168,83,0.4)',
-            color: '#d4a853', backdropFilter: 'blur(8px)',
-          }}>
-            Optimised for · {travelStyleTag(card.persona)}
+          <span style={{ ...CHIP, background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)', color: '#c9a14a' }}>
+            <span className="ms fill" style={{ fontSize: 11 }}>auto_awesome</span>
+            {travelStyleTag(card.persona)}
           </span>
         </div>
 
-        {/* Intel items */}
+        {/* Engine intel items — compact, Material Symbols, DM Sans */}
         {card.intelItems.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
             {card.intelItems.slice(0, 3).map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 10, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.09)' }}>
-                <span style={{ fontSize: 15, lineHeight: 1 }}>{item.icon}</span>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.4 }}>
-                  <span style={{ color: '#d4a853', fontWeight: 700 }}>{item.count} {item.label}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span className="ms fill" style={{ fontSize: 13, color: 'rgba(212,168,83,0.7)', flexShrink: 0 }}>
+                  {INTEL_ICON[item.icon] ?? 'info'}
+                </span>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-sans)', color: 'rgba(255,255,255,0.55)', lineHeight: 1.35 }}>
+                  <strong style={{ color: 'rgba(255,255,255,0.82)', fontWeight: 600 }}>{item.count} {item.label}</strong>
                   {' '}{item.detail}
                 </span>
               </div>
@@ -178,21 +230,9 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract }: P
           </div>
         )}
 
-        {/* Neighborhood pills */}
-        {card.neighborhoods?.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            {card.neighborhoods.slice(0, 4).map((n, i) => (
-              <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)' }}>
-                {n}
-              </span>
-            ))}
-          </div>
-        )}
-
-
         {/* Swipe hint */}
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.2)' }}>swipe_up</span>
+        <div style={{ textAlign: 'center', marginTop: 6 }}>
+          <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.18)' }}>swipe_up</span>
         </div>
       </div>
     </div>

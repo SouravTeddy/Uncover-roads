@@ -130,7 +130,13 @@ export function gapToCard(
       label: gap.direction === 'missing' ? 'No outdoor stops today' : 'Heavy outdoor schedule',
       consequence: gap.direction === 'missing'
         ? `It's a good day for it — a few options near ${area}.`
-        : `${signal.weather?.condition ?? 'Weather'} may make some of these tough.`,
+        : (() => {
+            const cond = (signal.weather?.condition ?? '').toLowerCase();
+            const isBadWeather = cond.includes('rain') || cond.includes('storm') || cond.includes('snow') || cond.includes('extreme') || cond.includes('heat') || cond.includes('fog');
+            return isBadWeather
+              ? `${signal.weather?.condition} may make some of these tough — worth checking the forecast.`
+              : `Lots of outdoor stops today — good for keeping the energy up.`;
+          })(),
     },
     hasRest: {
       trigger: 'rest',
@@ -175,7 +181,7 @@ export function gapToCard(
       trigger: 'walking_gap',
       label: gap.direction === 'excess' ? 'High walking day' : 'Minimal walking today',
       consequence: gap.direction === 'excess'
-        ? `More walking than your profile suggests. Consider a transit option between some stops.`
+        ? `Your steps will add up today — a mid-day sit-down or cafe break helps pace it well.`
         : `Most stops are compact — room for a walk if you want one.`,
     },
     hasHiddenGem: {

@@ -19,6 +19,7 @@ interface Props {
   weather?: { condition: string; temp: number } | null;
   primaryCity?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
+  isJustAdjusted?: boolean;
 }
 
 // ── Design tokens ─────────────────────────────────────────────
@@ -241,7 +242,7 @@ function SunRays() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export function ReelStopCard({ card, active, onInteract }: Props) {
+export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
@@ -454,7 +455,14 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
         {/* Time row */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
           <span className="ms" style={{ fontSize: 11, color: T.text3 }}>schedule</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>{fmt12h(stop.time)}</span>
+          {isJustAdjusted && card.timingAdjustment ? (
+            <>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>{fmt12h(card.timingAdjustment.originalTime)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4a853' }}>{fmt12h(stop.time)}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>{fmt12h(stop.time)}</span>
+          )}
           <span style={{ fontSize: 12, color: T.text3 }}>→ leave {addMinutes(stop.time, stop.durationMin)}</span>
         </div>
 
@@ -571,6 +579,50 @@ export function ReelStopCard({ card, active, onInteract }: Props) {
             )}
           </div>
         )}
+
+        {/* Timing adjustment notes — closing conflict or departure pressure */}
+        {card.timingAdjustment?.isClosingConflict && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(212,100,50,.10)', border: '1px solid rgba(212,100,50,.22)' }}>
+            <span className="ms fill" style={{ fontSize: 13, color: '#e07050', flexShrink: 0 }}>warning</span>
+            <span style={{ fontSize: 11.5, color: 'rgba(255,220,200,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
+          </div>
+        )}
+        {card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.20)' }}>
+            <span className="ms" style={{ fontSize: 13, color: 'rgba(212,168,83,.7)', flexShrink: 0 }}>schedule</span>
+            <span style={{ fontSize: 11.5, color: 'rgba(255,235,180,.75)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
+          </div>
+        )}
+        {card.timingAdjustment?.departurePressureNote && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(79,143,171,.10)', border: '1px solid rgba(79,143,171,.22)' }}>
+            <span className="ms fill" style={{ fontSize: 13, color: '#5d9bc9', flexShrink: 0 }}>flight_takeoff</span>
+            <span style={{ fontSize: 11.5, color: 'rgba(180,215,240,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.departurePressureNote}</span>
+          </div>
+        )}
+
+        {/* Next-leg transit row */}
+        {card.nextLeg && (() => {
+          const leg = card.nextLeg!;
+          const isWalk = leg.mode === 'walk';
+          const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
+          return (
+            <div style={{
+              marginTop: 7, display: 'flex', alignItems: 'center', gap: 7,
+              padding: '6px 11px', borderRadius: 8,
+              background: isWalk ? 'rgba(79,143,171,.07)' : 'rgba(0,0,0,.35)',
+              border: `1px solid ${isWalk ? 'rgba(79,143,171,.2)' : 'rgba(255,255,255,.07)'}`,
+            }}>
+              <span className="ms fill" style={{ fontSize: 13, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>
+                {isWalk ? 'directions_walk' : 'directions_car'}
+              </span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
+                {distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to{' '}
+                <span style={{ color: 'rgba(255,255,255,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</span>
+              </span>
+              <span style={{ fontSize: 9.5, fontWeight: 600, color: 'rgba(255,255,255,.2)', flexShrink: 0 }}>Next →</span>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -5,6 +5,9 @@ interface Props {
   singleDate?: boolean;
   minDate?: string;
   maxDate?: string;
+  initialMonth?: string; // ISO date — calendar opens at this month
+  tripStart?: string | null; // existing trip start to highlight on calendar
+  tripEnd?: string | null;   // existing trip end to highlight on calendar
   onSelect: (startDate: string, endDate: string) => void;
 }
 
@@ -23,10 +26,11 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ city, singleDate, minDate, maxDate, onSelect }: Props) {
+export function DateRangeCalendar({ city, singleDate, minDate, maxDate, initialMonth, tripStart, tripEnd, onSelect }: Props) {
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const initDate = initialMonth ? new Date(initialMonth + 'T12:00:00') : today;
+  const [viewYear, setViewYear] = useState(initDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(initDate.getMonth());
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [hoverDate, setHoverDate] = useState<string | null>(null);
@@ -147,6 +151,10 @@ export function DateRangeCalendar({ city, singleDate, minDate, maxDate, onSelect
           const isStart = iso === startDate;
           const isEnd = iso === endDate;
           const inRange = isInRange(iso);
+          // Trip date markers — dots below the day number
+          const isTripStart = !!tripStart && iso === tripStart;
+          const isTripEnd = !!tripEnd && iso === tripEnd;
+          const inTripRange = !!tripStart && !!tripEnd && iso > tripStart && iso < tripEnd;
           return (
             <button
               key={iso}
@@ -154,12 +162,16 @@ export function DateRangeCalendar({ city, singleDate, minDate, maxDate, onSelect
               onMouseEnter={() => setHoverDate(iso)}
               onMouseLeave={() => setHoverDate(null)}
               disabled={isDisabled}
-              className="h-9 flex items-center justify-center text-sm font-medium rounded-full transition-colors"
+              className="h-9 flex flex-col items-center justify-center text-sm font-medium rounded-full transition-colors relative"
               style={{
                 background: (isStart || isEnd)
                   ? 'var(--color-primary)'
                   : inRange
                   ? 'var(--color-primary-bg)'
+                  : (isTripStart || isTripEnd)
+                  ? 'rgba(107,148,112,0.15)'
+                  : inTripRange
+                  ? 'rgba(107,148,112,0.07)'
                   : 'transparent',
                 color: (isStart || isEnd)
                   ? '#fff'
@@ -169,7 +181,10 @@ export function DateRangeCalendar({ city, singleDate, minDate, maxDate, onSelect
                 opacity: isDisabled ? 0.4 : 1,
               }}
             >
-              {day}
+              <span style={{ lineHeight: 1 }}>{day}</span>
+              {(isTripStart || isTripEnd) && (
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-sage)', marginTop: 1, flexShrink: 0 }} />
+              )}
             </button>
           );
         })}

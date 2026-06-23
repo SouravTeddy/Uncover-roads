@@ -42,6 +42,8 @@ export interface ReelScenicCard {
   originPhotoUrl?: string | null; // origin stop photo for dual-photo walk card
   destPhotoUrl?: string | null;   // destination stop photo for dual-photo walk card
   transitInfo?: TransitInfo | null;
+  detourKm: number;
+  detourMin: number;
 }
 
 export interface ReelIntroCard {
@@ -84,6 +86,13 @@ export interface ReelStopCard {
   weather: WeatherData | null;
   pairWith?: { title: string; category: string; time: string } | null;
   visitDate: string | null;  // ISO "YYYY-MM-DD" — the actual date the user visits this stop
+  nextLeg?: { distKm: number; durationMin: number; mode: 'walk' | 'ride'; nextStopTitle: string } | null;
+  timingAdjustment?: {
+    originalTime: string;          // engine time before cascade
+    consequenceNote: string | null; // e.g., "Closes at 5 PM — about 1h inside"
+    isClosingConflict: boolean;    // arrives after closing time
+    departurePressureNote: string | null; // e.g., "Your flight is at 8 AM — leave by 6 AM"
+  } | null;
 }
 
 export type RecoTrigger =
@@ -208,6 +217,8 @@ export interface ReelDayTransitionCard {
   nextDate: string;
   nextStopCount: number;
   nextStartTime: string | null;
+  nextDayWalkKm: number;
+  nextDayRideKm: number;
   // Inter-city transit (null when same city)
   isCityChange: boolean;
   transitMode: 'flight' | 'drive' | 'train' | 'bus' | 'ferry' | null;
