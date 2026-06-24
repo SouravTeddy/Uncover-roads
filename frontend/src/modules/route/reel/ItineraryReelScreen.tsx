@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useAppStore } from '../../../shared/store';
 import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
@@ -479,8 +479,7 @@ export function ItineraryReelScreen() {
   const travelGroup = state.rawOBAnswers?.group ?? 'solo';
 
   // Build displayCards: collect scenic/reco/intel cards between stops into group trays
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const displayCards = useMemo<ReelCard[]>(() => {
+  const displayCards: ReelCard[] = (() => {
     const TRIGGER_META: Record<string, { label: string; icon: string; color: string }> = {
       lunch:             { label: 'Lunch window',    icon: 'restaurant',      color: '#c27c4a' },
       dinner:            { label: 'Dinner window',   icon: 'dinner_dining',   color: '#7c6f9f' },
@@ -661,7 +660,7 @@ export function ItineraryReelScreen() {
     }
     flushGroup();
     return result;
-  }, [cards, travelGroup]);
+  })();
 
   // Old-format saved trips (flat itinerary, no days) produce zero cards
   if (displayCards.length === 0) {
