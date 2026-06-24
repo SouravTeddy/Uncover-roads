@@ -260,7 +260,7 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
   name: string | null;
   placeId?: string | null;
   checkInTime?: string | null;
-  onChange: (v: { name: string; placeId: string | null; lat: number | null; lon: number | null; checkInTime?: string | null }) => void;
+  onChange: (v: { name: string; placeId: string | null; lat?: number | null; lon?: number | null; checkInTime?: string | null }) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(name ?? '');
@@ -333,7 +333,7 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
     setTimeout(() => {
       setSuggestions([]);
       setEditing(false);
-      onChange({ name: val, placeId: placeId ?? null, lat: null, lon: null, checkInTime: checkInTime ?? null });
+      onChange({ name: val, placeId: placeId ?? null, checkInTime: checkInTime ?? null });
     }, 150);
   }
 
@@ -459,7 +459,7 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
       {name && !editing && showCheckIn && (
         <TimeStepper value={checkInTime ?? '15:00'} onChange={t => {
           setShowCheckIn(false);
-          onChange({ name: name!, placeId: placeId ?? null, lat: null, lon: null, checkInTime: t });
+          onChange({ name: name!, placeId: placeId ?? null, checkInTime: t });
         }} />
       )}
 
@@ -548,10 +548,18 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
     );
   }
 
-  function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat: number | null; lon: number | null; checkInTime?: string | null }) {
+  function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat?: number | null; lon?: number | null; checkInTime?: string | null }) {
     setHotels(prev => prev.map(h =>
       h.city === city
-        ? { ...h, name: v.name || null, placeId: v.placeId, lat: v.lat, lon: v.lon, checkInTime: v.checkInTime ?? h.checkInTime }
+        ? {
+            ...h,
+            name: v.name || null,
+            placeId: v.placeId,
+            // Preserve existing coords if v.lat/v.lon are undefined (caller didn't touch them)
+            lat: v.lat !== undefined ? v.lat : h.lat,
+            lon: v.lon !== undefined ? v.lon : h.lon,
+            checkInTime: v.checkInTime ?? h.checkInTime,
+          }
         : h
     ));
   }

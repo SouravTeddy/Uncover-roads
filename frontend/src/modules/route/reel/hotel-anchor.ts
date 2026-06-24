@@ -38,8 +38,9 @@ function timeToMinutes(hhmm: string): number {
 }
 
 function minutesToTime12(minutes: number): string {
-  const h = Math.floor(minutes / 60) % 24;
-  const m = minutes % 60;
+  const clamped = Math.max(0, minutes);
+  const h = Math.floor(clamped / 60) % 24;
+  const m = clamped % 60;
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;

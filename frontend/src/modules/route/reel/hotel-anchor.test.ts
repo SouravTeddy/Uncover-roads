@@ -126,4 +126,16 @@ describe('computeHotelAnchorRow', () => {
     expect(row!.text).toContain('Leave by');
     expect(row!.text).toContain('back to hotel by 9 PM');
   });
+
+  it('first stop before 1 AM with distant hotel: clamps negative leave-by to 12:00 AM', () => {
+    // Stop at 00:20 (20 min), hotel ~25 km away → ~50 min drive → leaveByMin = 20 - 50 = -30
+    // Without clamping this would produce "-1:-30 AM"; with clamping it should be "12:00 AM"
+    const row = computeHotelAnchorRow({
+      ...params(),
+      stopTime: '00:20',
+    });
+    expect(row).not.toBeNull();
+    expect(row!.text).toContain('12:00 AM');
+    expect(row!.text).not.toMatch(/-\d+:-\d+/);
+  });
 });
