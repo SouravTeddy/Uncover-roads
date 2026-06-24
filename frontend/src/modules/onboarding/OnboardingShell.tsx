@@ -158,7 +158,15 @@ export function OnboardingShell({ step, canAdvance, children, title, subtitle, h
         {/* Question content — anchored at bottom on dark gradient */}
         <div
           className="flex-shrink-0 overflow-y-auto px-5"
-          style={{ paddingBottom: '0.5rem', maxHeight: '62vh' }}
+          style={{
+            paddingBottom: '0.5rem', maxHeight: '62vh',
+            background: 'rgba(12,12,14,.72)',
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            borderRadius: '20px 20px 0 0',
+            paddingTop: '1rem',
+            marginTop: 4,
+          }}
         >
           <span
             className="block font-semibold tracking-widest uppercase mb-2"

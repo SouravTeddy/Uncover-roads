@@ -90,9 +90,6 @@ export function PhotoGrid2x2({ options, selected, multi = false, onSelect }: Pro
                 fontSize: 18, fontWeight: 700,
                 color: '#fff', lineHeight: 1.1,
               }}>{opt.label}</div>
-              {opt.sublabel && (
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>{opt.sublabel}</div>
-              )}
             </div>
 
             {/* Check badge — top-right */}

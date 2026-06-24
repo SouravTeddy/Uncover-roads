@@ -85,9 +85,9 @@ export function PersonaScreen() {
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setBeat(2), 1500);
-    const t2 = setTimeout(() => setBeat(3), 4000);
-    const t3 = setTimeout(() => { setBeat(4); setShowConfetti(true); }, 6500);
+    const t1 = setTimeout(() => setBeat(2), 2500);
+    const t2 = setTimeout(() => setBeat(3), 6500);
+    const t3 = setTimeout(() => { setBeat(4); setShowConfetti(true); }, 11000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 

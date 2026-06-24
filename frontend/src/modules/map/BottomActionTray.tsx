@@ -4,12 +4,14 @@ interface Props {
   itineraryPlaces: Place[]
   days: number
   buildLoading: boolean
+  fromReel?: boolean
   onBuild: () => void
+  onBackToReel?: () => void
 }
 
 const MIN_PLACES = 2
 
-export function BottomActionTray({ itineraryPlaces, days, buildLoading, onBuild }: Props) {
+export function BottomActionTray({ itineraryPlaces, days, buildLoading, fromReel, onBuild, onBackToReel }: Props) {
   const count = itineraryPlaces.length
   const canBuild = count >= MIN_PLACES
   const hasItinerary = count > 0
@@ -30,7 +32,24 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, onBuild 
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'stretch', pointerEvents: 'auto' }}>
-        {hasItinerary && (
+        {fromReel && onBackToReel && (
+          <button
+            onClick={onBackToReel}
+            style={{
+              width: '100%', padding: '13px 0', borderRadius: 14,
+              border: '1px solid rgba(212,168,83,.35)', cursor: 'pointer',
+              fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.01em',
+              background: 'rgba(212,168,83,.1)',
+              color: 'var(--color-primary)',
+              boxShadow: 'none',
+              backdropFilter: 'blur(16px)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            ← Back to your plan
+          </button>
+        )}
+        {hasItinerary && !fromReel && (
           <>
             <button
               disabled={!canBuild || buildLoading}
