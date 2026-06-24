@@ -1,0 +1,290 @@
+<style>
+  :root {
+    --gold: #d4a853; --text1: #f0eee8; --text2: rgba(240,238,232,.6);
+    --text3: rgba(240,238,232,.35); --amber: #e8a030; --red: #e05a40;
+    --green: #4caf84; --blue: #5b9bd5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f12; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
+
+  h2 { color: var(--text1) !important; font-size: 18px !important; font-weight: 700 !important; padding: 24px 16px 4px !important; letter-spacing: -.02em !important; }
+  .subtitle { color: rgba(240,238,232,.5) !important; font-size: 13px !important; padding: 0 16px 20px !important; line-height: 1.5 !important; }
+
+  .scenario-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: rgba(240,238,232,.3); padding: 0 16px 8px;
+  }
+  .scenario-context {
+    font-size: 11.5px; color: rgba(240,238,232,.45); padding: 0 16px 12px; line-height: 1.5;
+  }
+  .scenario-context strong { color: rgba(240,238,232,.7); }
+
+  .phone-row { display: flex; gap: 12px; padding: 0 16px 12px; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .phone { flex-shrink: 0; width: 210px; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); scroll-snap-align: start; position: relative; }
+
+  .card-img { width: 100%; height: 320px; position: relative; overflow: hidden; }
+  .img-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.2) 0%, rgba(0,0,0,.05) 35%, rgba(0,0,0,.4) 60%, rgba(0,0,0,.85) 100%); }
+
+  .chips { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 3px 7px; border-radius: 20px; background: rgba(0,0,0,.5); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.15); color: var(--text1); }
+  .chip.day { color: var(--gold); border-color: rgba(212,168,83,.3); }
+  .chip.city2 { color: var(--blue); border-color: rgba(91,155,213,.3); }
+
+  .place-info { position: absolute; bottom: 88px; left: 12px; right: 12px; }
+  .place-name { font-size: 16px; font-weight: 800; color: var(--text1); letter-spacing: -.02em; line-height: 1.2; margin-bottom: 3px; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+  .place-loc { font-size: 10px; color: var(--text2); }
+
+  .transit-bar { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(10,10,14,.9); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,.08); padding: 7px 10px 9px; }
+  .t-row { display: flex; align-items: center; gap: 5px; padding: 3px 0; }
+  .t-row + .t-row { border-top: 1px solid rgba(255,255,255,.06); margin-top: 2px; padding-top: 4px; }
+  .t-icon { font-size: 10px; width: 13px; text-align: center; flex-shrink: 0; opacity: .7; }
+  .t-text { font-size: 10.5px; color: var(--text2); flex: 1; line-height: 1.35; }
+  .t-text strong { color: var(--text1); font-weight: 600; }
+  .t-badge { font-size: 8.5px; font-weight: 700; padding: 2px 5px; border-radius: 8px; flex-shrink: 0; }
+  .t-badge.ok { background: rgba(76,175,132,.18); color: var(--green); }
+  .t-badge.warn { background: rgba(232,160,48,.18); color: var(--amber); }
+  .t-badge.blue { background: rgba(91,155,213,.18); color: var(--blue); }
+  .t-badge.dim { background: rgba(255,255,255,.08); color: var(--text3); }
+
+  .hr { background: rgba(212,168,83,.08); border: 1px solid rgba(212,168,83,.14); border-radius: 7px; margin: 3px -3px 0; padding: 4px 3px; border-top: none !important; }
+  .hr .t-text { color: rgba(212,168,83,.8); }
+  .hr .t-text strong { color: var(--gold); }
+  .hr.warn { background: rgba(232,160,48,.09); border-color: rgba(232,160,48,.18); }
+  .hr.warn .t-text { color: rgba(232,160,48,.8); }
+  .hr.warn .t-text strong { color: var(--amber); }
+  .hr.blue-r { background: rgba(91,155,213,.09); border-color: rgba(91,155,213,.18); }
+  .hr.blue-r .t-text { color: rgba(91,155,213,.8); }
+  .hr.blue-r .t-text strong { color: var(--blue); }
+  .hr.dim-r { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+  .hr.dim-r .t-text { color: var(--text3); font-style: italic; }
+
+  /* scene backgrounds */
+  .s1 { background: linear-gradient(160deg,#1a2e20 0%,#0d1e14 60%,#071209 100%); }
+  .s2 { background: linear-gradient(160deg,#1e2a1a 0%,#121e0f 60%,#0a1308 100%); }
+  .s3 { background: linear-gradient(160deg,#2a1a10 0%,#1a0f08 60%,#110a05 100%); }
+  .s4 { background: linear-gradient(160deg,#101828 0%,#0a1020 60%,#060c18 100%); }
+  .s5 { background: linear-gradient(160deg,#1a1030 0%,#100a20 60%,#080614 100%); }
+  .scene-detail { position: absolute; inset: 0; opacity: .2; background: radial-gradient(circle at 30% 40%,rgba(255,255,255,.1) 0%,transparent 50%); }
+
+  .caption-row { display: flex; gap: 12px; padding: 0 16px 8px; overflow-x: auto; }
+  .caption { font-size: 10.5px; color: rgba(240,238,232,.4); line-height: 1.5; padding: 6px 0 0; width: 210px; flex-shrink: 0; }
+
+  .sep { height: 1px; background: rgba(255,255,255,.06); margin: 4px 16px 20px; }
+
+  .logic-box {
+    margin: 6px 16px 0; padding: 10px 12px;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
+    font-size: 11px; color: rgba(240,238,232,.5); line-height: 1.6;
+  }
+  .logic-box strong { color: rgba(240,238,232,.75); }
+  .logic-box .rule { color: var(--gold); font-weight: 600; }
+</style>
+
+<h2>Multi-city — conflict scenarios</h2>
+<p class="subtitle">Edge cases where the simple "hotel row" logic breaks. Each scenario shows what the card should display and why.</p>
+
+<!-- CONFLICT 1 -->
+<div class="scenario-label">Conflict 1 — Arrival day, before hotel check-in</div>
+<div class="scenario-context">User arrives <strong>Mumbai at 10 AM</strong>. Hotel check-in is <strong>3 PM</strong>. First stop is at 11 AM — they haven't checked in yet. Hotel is 35 min from the airport.</div>
+<div class="phone-row">
+  <div class="phone">
+    <div class="card-img s4">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip city2">Mumbai · Day 1</span><span class="chip">Stop 1</span></div>
+      <div class="place-info">
+        <div class="place-name">Gateway of India</div>
+        <div class="place-loc">🏛 Colaba, Mumbai</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row hr blue-r">
+          <span class="t-icon">✈️</span>
+          <span class="t-text">From <strong>Chhatrapati Shivaji Airport</strong> · 32 min</span>
+          <span class="t-badge blue">Arrival</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">→</span>
+          <span class="t-text">To <strong>Elephanta Caves</strong> · 45 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">⛅</span>
+          <span class="t-text"><strong>30°</strong> · Humid</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone">
+    <div class="card-img s5">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip city2">Mumbai · Day 1</span><span class="chip">Stop 3 · After 3PM</span></div>
+      <div class="place-info">
+        <div class="place-name">Colaba Causeway</div>
+        <div class="place-loc">🛍 Colaba, Mumbai</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row">
+          <span class="t-icon">←</span>
+          <span class="t-text">From <strong>Marine Drive</strong> · 10 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">→</span>
+          <span class="t-text">To <strong>Leopold Cafe</strong> · 5 min</span>
+        </div>
+        <div class="t-row hr">
+          <span class="t-icon">🏨</span>
+          <span class="t-text">Back to <strong>Taj Lands End</strong> · 18 min</span>
+          <span class="t-badge ok">Fine</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="caption-row">
+  <div class="caption">Before check-in: airport is the anchor, shown in blue.</div>
+  <div class="caption">After check-in: hotel takes over as anchor, shown in gold.</div>
+</div>
+<div class="logic-box">
+  <span class="rule">Rule:</span> If <strong>stop time &lt; check-in time</strong> → anchor = arrival terminal. If <strong>stop time ≥ check-in time</strong> → anchor = hotel. If no check-in time set → default to <strong>2 PM</strong>.
+</div>
+
+<div class="sep"></div>
+
+<!-- CONFLICT 2 -->
+<div class="scenario-label">Conflict 2 — Departure day, last stop</div>
+<div class="scenario-context">Last day in Goa. Flight departs <strong>7 AM</strong>. Last stop the night before. User is heading to airport next morning — not back to hotel.</div>
+<div class="phone-row">
+  <div class="phone">
+    <div class="card-img s3">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip day">Goa · Last Evening</span><span class="chip">Last stop</span></div>
+      <div class="place-info">
+        <div class="place-name">Tito's Lane</div>
+        <div class="place-loc">🎶 Baga, North Goa</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row">
+          <span class="t-icon">←</span>
+          <span class="t-text">From <strong>Baga Beach</strong> · 5 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">⛅</span>
+          <span class="t-text"><strong>26°</strong> · Clear night</span>
+        </div>
+        <div class="t-row hr warn">
+          <span class="t-icon">✈️</span>
+          <span class="t-text">Airport by <strong>5:30 AM</strong> · 42 min from here</span>
+          <span class="t-badge warn">Early start</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="phone">
+    <div class="card-img s1">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip day">Goa · Last Day</span><span class="chip">Morning stop</span></div>
+      <div class="place-info">
+        <div class="place-name">Calangute Beach</div>
+        <div class="place-loc">🏖 North Goa</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row hr blue-r">
+          <span class="t-icon">🏨</span>
+          <span class="t-text">From <strong>The Leela</strong> · 28 min</span>
+          <span class="t-badge blue">Last day</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">→</span>
+          <span class="t-text">To <strong>Anjuna Flea Market</strong> · 15 min</span>
+        </div>
+        <div class="t-row hr warn">
+          <span class="t-icon">✈️</span>
+          <span class="t-text">Flight at <strong>6 PM</strong> · wrap up by 3 PM</span>
+          <span class="t-badge warn">Afternoon flight</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="caption-row">
+  <div class="caption">Early morning flight: last stop warns about airport timing, not hotel return.</div>
+  <div class="caption">Afternoon flight: hotel shown as morning start, flight as end-of-day anchor.</div>
+</div>
+<div class="logic-box">
+  <span class="rule">Rule:</span> On departure day, the <strong>last stop of the day</strong> shows departure terminal as the closing anchor instead of hotel. If departure is in the morning (before noon), ALL stops that day show the flight time as a countdown.
+</div>
+
+<div class="sep"></div>
+
+<!-- CONFLICT 3 -->
+<div class="scenario-label">Conflict 3 — No hotel for city 2</div>
+<div class="scenario-context">Hotel entered for Goa only. Mumbai and Pune hotel fields left blank. Days in city 2 and 3 simply get no hotel row.</div>
+<div class="phone-row">
+  <div class="phone">
+    <div class="card-img s4">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip city2">Mumbai · Day 1</span><span class="chip">Stop 2</span></div>
+      <div class="place-info">
+        <div class="place-name">Dharavi</div>
+        <div class="place-loc">🏙 Central Mumbai</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row">
+          <span class="t-icon">←</span>
+          <span class="t-text">From <strong>Crawford Market</strong> · 18 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">→</span>
+          <span class="t-text">To <strong>Bandra Bandstand</strong> · 22 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">⛅</span>
+          <span class="t-text"><strong>31°</strong> · Partly cloudy</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="caption-row">
+  <div class="caption">No hotel entered = no hotel row. Transit bar stays at 3 rows. No broken state, no placeholder.</div>
+</div>
+<div class="logic-box">
+  <span class="rule">Rule:</span> Hotel row is entirely absent when hotel name or location is unknown. No "Add hotel" prompt inside the reel card — that belongs in Trip Details only.
+</div>
+
+<div class="sep"></div>
+
+<!-- CONFLICT 4 — family + departure -->
+<div class="scenario-label">Conflict 4 — Family trip, departure morning</div>
+<div class="scenario-context">Family group, last day in Mumbai. Train departs at <strong>9 AM</strong>. Wrap-up nudge must reference the train, not hotel return.</div>
+<div class="phone-row">
+  <div class="phone">
+    <div class="card-img s2">
+      <div class="scene-detail"></div><div class="img-overlay"></div>
+      <div class="chips"><span class="chip city2">Mumbai · Last Evening</span><span class="chip">Stop 3 of 3</span></div>
+      <div class="place-info">
+        <div class="place-name">Marine Drive</div>
+        <div class="place-loc">🌅 Nariman Point</div>
+      </div>
+      <div class="transit-bar">
+        <div class="t-row">
+          <span class="t-icon">←</span>
+          <span class="t-text">From <strong>Chowpatty Beach</strong> · 8 min</span>
+        </div>
+        <div class="t-row">
+          <span class="t-icon">⛅</span>
+          <span class="t-text"><strong>27°</strong> · Clear</span>
+        </div>
+        <div class="t-row hr warn">
+          <span class="t-icon">🌙</span>
+          <span class="t-text">Wrap up by <strong>9 PM</strong> · train at 9 AM, back to hotel by 10 PM</span>
+          <span class="t-badge warn">Family</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="caption-row">
+  <div class="caption">Family mode + departure day: nudge combines hotel return time with next-morning departure, both in one line.</div>
+</div>
+<div class="logic-box">
+  <span class="rule">Rule:</span> Family wrap-up = <strong>last stop end time + hotel return + departure buffer</strong>. If departure is next morning, add a "need to be up by X" clause. Single row, not two separate rows.
+</div>
