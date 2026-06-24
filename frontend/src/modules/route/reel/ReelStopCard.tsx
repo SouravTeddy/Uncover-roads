@@ -642,6 +642,45 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
           );
         })()}
+
+        {/* Hotel anchor row */}
+        {card.hotelAnchor && (() => {
+          const anchor = card.hotelAnchor!;
+          const bg = anchor.isBlue
+            ? 'rgba(91,155,213,.09)'
+            : anchor.isWarning
+              ? 'rgba(232,160,48,.09)'
+              : 'rgba(212,168,83,.08)';
+          const border = anchor.isBlue
+            ? 'rgba(91,155,213,.2)'
+            : anchor.isWarning
+              ? 'rgba(232,160,48,.2)'
+              : 'rgba(212,168,83,.2)';
+          const textColor = anchor.isBlue
+            ? 'rgba(91,155,213,.85)'
+            : anchor.isWarning
+              ? 'rgba(232,160,48,.85)'
+              : 'rgba(212,168,83,.85)';
+          const iconColor = anchor.isBlue
+            ? '#5b9bd5'
+            : anchor.isWarning
+              ? '#e8a030'
+              : T.gold;
+          return (
+            <div style={{
+              marginTop: 7, display: 'flex', alignItems: 'center', gap: 7,
+              padding: '6px 11px', borderRadius: 8,
+              background: bg, border: `1px solid ${border}`,
+            }}>
+              <span className="ms fill" style={{ fontSize: 13, color: iconColor, flexShrink: 0 }}>
+                {anchor.icon}
+              </span>
+              <span style={{ fontSize: 11, color: textColor, flex: 1, lineHeight: 1.3 }}>
+                {anchor.text}
+              </span>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
