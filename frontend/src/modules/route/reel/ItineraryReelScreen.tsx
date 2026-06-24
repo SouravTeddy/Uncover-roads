@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { useAppStore } from '../../../shared/store';
 import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
@@ -86,6 +86,8 @@ export function ItineraryReelScreen() {
   // Session-scoped strikeout: stops that were just adjusted by a trip-details save this session
   const [recentlyAdjustedIds, setRecentlyAdjustedIds] = useState<Set<string>>(new Set());
   const [rebuildingReel, setRebuildingReel] = useState(false);
+  const [arrowVisible, setArrowVisible] = useState(false);
+  const arrowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -318,15 +320,32 @@ export function ItineraryReelScreen() {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || cards.length === 0) return;
-    const handleScroll = () => {
+    const update = () => {
       const idx = Math.round(el.scrollTop / el.clientHeight);
       setActiveIdx(Math.min(Math.max(idx, 0), cards.length - 1));
     };
+    // scrollend fires once after snap completes — no mid-scroll re-renders
+    if ('onscrollend' in el) {
+      el.addEventListener('scrollend', update, { passive: true });
+      return () => el.removeEventListener('scrollend', update);
+    }
+    // Fallback: RAF-debounced scroll for older browsers
+    let rafId = 0;
+    const handleScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
     el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
+    return () => { el.removeEventListener('scroll', handleScroll); cancelAnimationFrame(rafId); };
   }, [cards.length, imagesReady]);
 
 
+
+  // Show the scroll-to-top arrow for 1 s whenever the active card changes, then fade it out
+  useEffect(() => {
+    if (activeIdx === 0) { setArrowVisible(false); return; }
+    setArrowVisible(true);
+    if (arrowTimer.current) clearTimeout(arrowTimer.current);
+    arrowTimer.current = setTimeout(() => setArrowVisible(false), 1000);
+    return () => { if (arrowTimer.current) clearTimeout(arrowTimer.current); };
+  }, [activeIdx]);
 
   const handleCloseTripDetails = useCallback(() => setShowTripDetails(false), []);
 
@@ -464,7 +483,8 @@ export function ItineraryReelScreen() {
   const travelGroup = state.rawOBAnswers?.group ?? 'solo';
 
   // Build displayCards: collect scenic/reco/intel cards between stops into group trays
-  const displayCards: ReelCard[] = (() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const displayCards = useMemo<ReelCard[]>(() => {
     const TRIGGER_META: Record<string, { label: string; icon: string; color: string }> = {
       lunch:             { label: 'Lunch window',    icon: 'restaurant',      color: '#c27c4a' },
       dinner:            { label: 'Dinner window',   icon: 'dinner_dining',   color: '#7c6f9f' },
@@ -645,7 +665,7 @@ export function ItineraryReelScreen() {
     }
     flushGroup();
     return result;
-  })();
+  }, [cards, travelGroup]);
 
   // Old-format saved trips (flat itinerary, no days) produce zero cards
   if (displayCards.length === 0) {
@@ -864,7 +884,7 @@ export function ItineraryReelScreen() {
         ))}
       </div>
 
-      {/* Scroll-to-top button — appears after first card */}
+      {/* Scroll-to-top button — flashes for 1 s after each card change, then fades */}
       {activeIdx > 0 && (
         <button
           onClick={() => {
@@ -878,7 +898,9 @@ export function ItineraryReelScreen() {
             border: '1px solid rgba(255,255,255,.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
-            animation: 'fadeUp .3s ease both',
+            opacity: arrowVisible ? 1 : 0,
+            transition: 'opacity .4s ease',
+            pointerEvents: arrowVisible ? 'auto' : 'none',
           }}
           aria-label="Back to top"
         >

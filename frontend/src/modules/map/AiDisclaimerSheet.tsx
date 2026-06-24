@@ -44,26 +44,10 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           A heads up
         </h2>
 
-        <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.65, marginBottom: 14 }}>
-          Some suggestions in your trip are AI-generated.{' '}
-          Verify times and prices before heading out.
+        <p style={{ fontSize: 13, color: 'var(--color-text-2)', lineHeight: 1.65, marginBottom: 20 }}>
+          Some information in your itinerary — like venue descriptions and visit tips — may be
+          AI-generated. Always verify opening hours and prices before heading out.
         </p>
-
-        {/* gold tint — var(--color-primary) is #d4a853 = rgb(212 168 83) */}
-        <div style={{
-          background: 'rgba(212,168,83,.06)', border: '1px solid rgba(212,168,83,.15)',
-          borderRadius: 10, padding: '10px 12px', marginBottom: 16,
-        }}>
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 8 }}>
-            AI content is marked like this
-          </p>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-            <span style={{ fontSize: 13, color: 'var(--color-primary)', flexShrink: 0, lineHeight: 1.6 }}>✦</span>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,.55)', lineHeight: 1.6, fontStyle: 'italic', margin: 0 }}>
-              Picked for your love of slow mornings and local markets.
-            </p>
-          </div>
-        </div>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
           <input

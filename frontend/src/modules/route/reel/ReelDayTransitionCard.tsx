@@ -145,7 +145,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
           <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
             {card.prevCity}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: 'italic', fontSize: 15, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
+          <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
             {dayNarrative(card.prevCity, card.prevStopCount, card.prevStartTime, card.prevEndTime)}
           </p>
         </div>
