@@ -535,7 +535,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   const titleCities = formatCityLabel(cities).toUpperCase();
 
   const datesSet = !!arrivalDate && !!departureDate;
-  const timesSet = !!arrivalTime || !!departureTime;
+  const timesSet = !!arrivalTime || !!departureTime || (isMultiCity && cityArrivals.some(c => !!c.arrivalTime || !!c.departureTime));
   const hotelSet = hotels.some(h => !!h.name);
 
   function handleCityArrivalChange(city: string, field: 'arrivalTime' | 'arrivalVia' | 'departureTime', value: string | null) {
