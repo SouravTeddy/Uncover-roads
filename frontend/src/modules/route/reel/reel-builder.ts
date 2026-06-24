@@ -123,7 +123,8 @@ function hasMealInWindow(stops: EngineItineraryStop[], start: string, end: strin
   const startMin = timeToMinutes(start) - 90;
   const endMin   = timeToMinutes(end)   + 90;
   return stops.some(s => {
-    const isMeal = s.category === 'restaurant' || s.category === 'cafe' || s.category === 'bakery';
+    const isMeal = s.category === 'restaurant' || s.category === 'cafe' || s.category === 'bakery'
+      || s.category === 'fast_food' || s.category === 'food' || s.category === 'meal_takeaway';
     const t = timeToMinutes(s.time);
     return isMeal && t >= startMin && t <= endMin;
   });
@@ -313,11 +314,11 @@ function buildPersonaObservations(
         what: 'No cultural visit today',
         why: `${stops.length} stops${cats ? ` — ${cats}` : ''}. No museum, gallery, or historic interior.`,
         consequence: `Most likely gap to leave the day feeling thin for your style. ${city ? `${city}'s` : 'Local'} galleries are worth a look.`,
-        ctaLabel: triggerCTA('culture', lastStop.area || city),
+        ctaLabel: triggerCTA('culture', city),
         stopLat: lastStop.lat,
         stopLon: lastStop.lon,
         searchCategory: TRIGGER_SEARCH.culture,
-        anchorCity: lastStop.area || city,
+        anchorCity: city,
       });
     }
   }

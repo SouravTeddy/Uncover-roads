@@ -1,7 +1,7 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, memo } from 'react';
 import type { ReelStopCard as ReelStopCardType } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl } from '../../../shared/api';
+import { getPlacePhotoUrl, fetchPlaceDetails } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -242,7 +242,7 @@ function SunRays() {
 }
 
 // ── Main component ────────────────────────────────────────────
-export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
@@ -266,8 +266,22 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
-  const photoUrl = stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null);
+  const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
+  const photoFetchAttempted = useRef(false);
+  const photoUrl = stop.imageUrl
+    ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null)
+    ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null);
   const [imgFailed, setImgFailed] = useState(false);
+
+  // Lazily fetch photo_ref from Google when none is baked into the itinerary stop
+  useEffect(() => {
+    if (!active || stop.imageUrl || stop.photoRef || !stop.placeId) return;
+    if (photoFetchAttempted.current) return;
+    photoFetchAttempted.current = true;
+    fetchPlaceDetails(stop.placeId).then(details => {
+      if (details?.photo_ref) setFallbackPhotoRef(details.photo_ref);
+    }).catch(() => {});
+  }, [active, stop.imageUrl, stop.photoRef, stop.placeId]);
 
   // Category-based gradient fallback when no photo available or image failed to load
   const noPhotoGradient = (!photoUrl || imgFailed) ? (() => {
@@ -417,27 +431,27 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
             </span>
           </div>
           {stageLabel && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}`, backdropFilter: 'blur(8px)' }}>
               <span className="ms" style={{ fontSize: 10, color: stageLabel.color }}>{stageLabel.icon}</span>
               <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: stageLabel.color }}>{stageLabel.text}</span>
             </div>
           )}
           {stop.isUserAdded && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(212,168,83,.14)', border: '1px solid rgba(212,168,83,.25)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)', backdropFilter: 'blur(8px)' }}>
               <span className="ms" style={{ fontSize: 10, color: '#d4a853' }}>bookmark</span>
               <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#d4a853' }}>Your pick</span>
             </div>
           )}
           {stop.isEngineAdded && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(150,100,210,.12)', border: '1px solid rgba(150,100,210,.25)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(150,100,210,.20)', border: '1px solid rgba(150,100,210,.35)', backdropFilter: 'blur(8px)' }}>
               <span className="ms" style={{ fontSize: 10, color: '#a87fd4' }}>auto_awesome</span>
               <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#a87fd4' }}>We added this</span>
             </div>
           )}
           {card.movedFrom != null && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)' }}>
-              <span className="ms" style={{ fontSize: 10, color: 'rgba(255,255,255,.5)' }}>swap_vert</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,.5)' }}>Moved</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)', backdropFilter: 'blur(8px)' }}>
+              <span className="ms" style={{ fontSize: 10, color: 'rgba(255,255,255,.7)' }}>swap_vert</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,.7)' }}>Moved</span>
             </div>
           )}
         </div>
@@ -470,14 +484,19 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
         <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 2, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
           {stop.title}
         </h2>
-        {(stop.area || stop.city) ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-            <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>location_on</span>
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>
-              {stop.area && stop.city ? `${stop.area} · ${stop.city}` : (stop.area || stop.city)}
-            </span>
-          </div>
-        ) : <div style={{ marginBottom: 6 }} />}
+        {(() => {
+          // Strip malformed geocoding strings (e.g. "Dubai center, utorda") — commas indicate
+          // a compound address rather than a neighbourhood name
+          const areaLabel = stop.area?.includes(',') ? null : stop.area;
+          return (areaLabel || stop.city) ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+              <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>location_on</span>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>
+                {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
+              </span>
+            </div>
+          ) : <div style={{ marginBottom: 6 }} />;
+        })()}
 
         {/* Meta row: rating + price + tags (emoji→muted, text→dark) + website — gap:4px matches proto */}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 7, alignItems: 'center' }}>
@@ -523,14 +542,14 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
             </span>
           </div>
         ) : reasonText ? (
-          <div style={{ marginBottom: 7, padding: '7px 11px', borderRadius: 8, background: 'rgba(212,168,83,0.08)', borderLeft: `2px solid ${T.gold}` }}>
-            <span style={{ fontSize: 12, color: T.text1, lineHeight: 1.5, fontStyle: 'italic' }}>{reasonText}</span>
+          <div style={{ marginBottom: 7, padding: '9px 12px', borderRadius: 8, background: 'rgba(212,168,83,0.14)', borderLeft: `2px solid ${T.gold}`, backdropFilter: 'blur(8px)' }}>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,.88)', lineHeight: 1.55 }}>{reasonText}</span>
           </div>
         ) : null}
 
         {/* Venue description */}
         {descriptionText && (
-          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,.65)', lineHeight: 1.5, margin: 0, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 8 }}>
             {descriptionText}
           </p>
         )}
@@ -542,7 +561,7 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
             {crowdRow && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
                 <span className="ms" style={{ fontSize: 13, color: crowdRow.isBusy ? '#e07050' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{crowdRow.icon}</span>
-                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
                 <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: crowdRow.isBusy ? 'rgba(212,100,50,0.12)' : 'rgba(107,148,112,.15)', color: crowdRow.isBusy ? '#e07050' : T.sage, flexShrink: 0 }}>
                   {crowdRow.isBusy ? 'Busy period' : 'Good window'}
                 </span>
@@ -552,7 +571,7 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
             {transitSig && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: hoursStr ? '1px solid rgba(255,255,255,.06)' : 'none', background: hasConflict ? 'rgba(79,120,171,.08)' : 'transparent' }}>
                 <span className="ms" style={{ fontSize: 13, color: hasConflict ? 'rgba(79,143,171,.7)' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{hasConflict ? 'directions_bus' : (transitSig.icon ?? 'directions_walk')}</span>
-                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', lineHeight: 1.3, flex: 1 }}>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>
                   {hasConflict ? (
                     <>
                       <s style={{ color: 'rgba(255,255,255,.28)' }}>{transitSig.text}</s><br />
@@ -569,7 +588,7 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
             {hoursStr && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px' }}>
                 <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.32)', flexShrink: 0 }}>door_open</span>
-                <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,.7)', flex: 1 }}>{hoursStr}</span>
+                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', flex: 1 }}>{hoursStr}</span>
                 {visitDateLabel && (
                   <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.45)', flexShrink: 0 }}>
                     {visitDateLabel}
@@ -626,4 +645,4 @@ export function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props
       </div>
     </div>
   );
-}
+});
