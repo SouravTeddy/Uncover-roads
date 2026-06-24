@@ -487,8 +487,19 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
     if (existingDetails?.hotels?.length) return existingDetails.hotels;
     return cities.map(c => ({ city: c, name: null }));
   });
+  const [cityArrivals, setCityArrivals] = useState<{
+    city: string;
+    arrivalTime: string | null;
+    arrivalVia: string | null;
+    departureTime: string | null;
+  }[]>(() => {
+    if (existingDetails?.cityArrivals?.length) return existingDetails.cityArrivals;
+    return cities.map(c => ({ city: c, arrivalTime: null, arrivalVia: null, departureTime: null }));
+  });
+
   const [expanded, setExpanded] = useState<'arrival' | 'departure' | null>(null);
   const [expandedPhase, setExpandedPhase] = useState<'cal' | 'time'>('cal');
+  const [expandedCityField, setExpandedCityField] = useState<{ city: string; field: 'arrival' | 'departure' } | null>(null);
 
   // Swipe-to-close
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -527,6 +538,16 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   const timesSet = !!arrivalTime || !!departureTime;
   const hotelSet = hotels.some(h => !!h.name);
 
+  function handleCityArrivalChange(city: string, field: 'arrivalTime' | 'arrivalVia' | 'departureTime', value: string | null) {
+    setCityArrivals(prev => prev.map(c => c.city === city ? { ...c, [field]: value } : c));
+  }
+
+  function handleCityTimeFieldToggle(city: string, field: 'arrival' | 'departure') {
+    setExpandedCityField(prev =>
+      prev?.city === city && prev?.field === field ? null : { city, field }
+    );
+  }
+
   function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat: number | null; lon: number | null; checkInTime?: string | null }) {
     setHotels(prev => prev.map(h =>
       h.city === city
@@ -551,7 +572,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   }
 
   function handleSave() {
-    onSave({ arrivalDate, arrivalTime, departureDate, departureTime, hotels, cityArrivals: existingDetails?.cityArrivals });
+    onSave({ arrivalDate, arrivalTime, departureDate, departureTime, hotels, cityArrivals });
     onClose();
   }
 
@@ -590,57 +611,171 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
 
           <ProgressStrip datesSet={datesSet} timesSet={timesSet} hotelSet={hotelSet} />
 
-          {/* Arrival */}
-          <DateTimeCard
-            label="Arrival" icon="flight_land" city={firstCity}
-            date={arrivalDate} time={arrivalTime}
-            expanded={expanded === 'arrival'}
-            phase={expandedPhase}
-            onExpand={() => handleExpand('arrival')}
-            onDateSelect={handleArrivalDateSelect}
-            onTimeChange={setArrivalTime}
-            maxDate={[departureDate, firstDayDate].filter(Boolean).sort()[0] ?? undefined}
-            tripStart={firstDayDate}
-            tripEnd={lastDayDate}
-          />
+          {/* Arrival / Departure DateTimeCards — single-city only */}
+          {!isMultiCity && (
+            <>
+              {/* Arrival */}
+              <DateTimeCard
+                label="Arrival" icon="flight_land" city={firstCity}
+                date={arrivalDate} time={arrivalTime}
+                expanded={expanded === 'arrival'}
+                phase={expandedPhase}
+                onExpand={() => handleExpand('arrival')}
+                onDateSelect={handleArrivalDateSelect}
+                onTimeChange={setArrivalTime}
+                maxDate={[departureDate, firstDayDate].filter(Boolean).sort()[0] ?? undefined}
+                tripStart={firstDayDate}
+                tripEnd={lastDayDate}
+              />
 
-          {/* Departure */}
-          <DateTimeCard
-            label="Departure" icon="flight_takeoff" city={lastCity}
-            date={departureDate} time={departureTime}
-            expanded={expanded === 'departure'}
-            phase={expandedPhase}
-            onExpand={() => handleExpand('departure')}
-            onDateSelect={handleDepartureDateSelect}
-            onTimeChange={setDepartureTime}
-            minDate={arrivalDate ?? undefined}
-            calInitialMonth={lastDayDate}
-          />
+              {/* Departure */}
+              <DateTimeCard
+                label="Departure" icon="flight_takeoff" city={lastCity}
+                date={departureDate} time={departureTime}
+                expanded={expanded === 'departure'}
+                phase={expandedPhase}
+                onExpand={() => handleExpand('departure')}
+                onDateSelect={handleDepartureDateSelect}
+                onTimeChange={setDepartureTime}
+                minDate={arrivalDate ?? undefined}
+                calInitialMonth={lastDayDate}
+              />
+            </>
+          )}
 
-          {/* Hotel rows */}
-          {isMultiCity ? (
-            hotels.map((hotel, i) => (
-              <div key={hotel.city}>
-                {i > 0 && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 7, margin: '6px 0',
-                    padding: '7px 10px', borderRadius: 9,
-                    background: 'var(--color-primary-bg)', border: '1px solid var(--color-amber-bdr)',
-                  }}>
-                    <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>train</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>
-                        {transitLabel(journeyLegs, hotels[i - 1].city, hotel.city) ?? `${hotels[i - 1].city} → ${hotel.city}`}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <HotelRow city={hotel.city} name={hotel.name} placeId={hotel.placeId} checkInTime={hotel.checkInTime} onChange={v => handleHotelChange(hotel.city, v)} />
-              </div>
-            ))
-          ) : (
+          {/* Hotel rows — single-city */}
+          {!isMultiCity && (
             <HotelRow city={firstCity} name={hotels[0]?.name ?? null} placeId={hotels[0]?.placeId} checkInTime={hotels[0]?.checkInTime} onChange={v => handleHotelChange(firstCity, v)} />
           )}
+
+          {/* Per-city blocks — multi-city */}
+          {isMultiCity && cities.map((city, i) => {
+            const hotelEntry = hotels.find(h => h.city === city);
+            const arrivalEntry = cityArrivals.find(c => c.city === city);
+            const prevCity = i > 0 ? cities[i - 1] : null;
+            const isArrivalOpen = expandedCityField?.city === city && expandedCityField?.field === 'arrival';
+            const isDepartureOpen = expandedCityField?.city === city && expandedCityField?.field === 'departure';
+
+            return (
+              <div key={city} style={{ marginBottom: 10 }}>
+                {/* City header */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
+                  padding: '8px 12px', borderRadius: 10,
+                  background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--color-primary-bg)', border: '1px solid var(--color-amber-bdr)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: 'var(--color-primary)',
+                  }}>{i + 1}</div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-1)' }}>{city}</span>
+                </div>
+
+                {/* Arriving section */}
+                <div style={{
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  borderRadius: 13, overflow: 'hidden', marginBottom: 6,
+                }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)' }}>
+                      {prevCity ? `Arriving from ${prevCity}` : 'Arrival'}{' '}
+                      <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+                    </span>
+                  </div>
+                  <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Arrival time */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>schedule</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Arriving at</span>
+                      <div
+                        onClick={() => handleCityTimeFieldToggle(city, 'arrival')}
+                        style={{
+                          flex: 1, fontSize: 13,
+                          color: arrivalEntry?.arrivalTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                          fontStyle: arrivalEntry?.arrivalTime ? 'normal' : 'italic',
+                          background: isArrivalOpen ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
+                          border: `1px solid ${isArrivalOpen ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
+                          borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                        }}
+                      >
+                        {arrivalEntry?.arrivalTime ? displayTime12(arrivalEntry.arrivalTime) : 'Add time'}
+                      </div>
+                    </div>
+                    {isArrivalOpen && (
+                      <TimeStepper
+                        value={arrivalEntry?.arrivalTime ?? null}
+                        onChange={t => handleCityArrivalChange(city, 'arrivalTime', t)}
+                      />
+                    )}
+                    {/* Via */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>place</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Via</span>
+                      <input
+                        value={arrivalEntry?.arrivalVia ?? ''}
+                        onChange={e => handleCityArrivalChange(city, 'arrivalVia', e.target.value || null)}
+                        placeholder="Airport / Station / —"
+                        style={{
+                          flex: 1, fontSize: 13, color: 'var(--color-text-1)',
+                          background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                          borderRadius: 8, padding: '6px 10px',
+                          fontFamily: 'var(--font-sans)', outline: 'none',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hotel */}
+                <HotelRow
+                  city={city}
+                  name={hotelEntry?.name ?? null}
+                  placeId={hotelEntry?.placeId ?? null}
+                  checkInTime={hotelEntry?.checkInTime ?? null}
+                  onChange={v => handleHotelChange(city, v)}
+                />
+
+                {/* Departure */}
+                <div style={{
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  borderRadius: 13, overflow: 'hidden', marginTop: 6,
+                }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)' }}>
+                      Departure <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+                    </span>
+                  </div>
+                  <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>schedule</span>
+                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Leaving by</span>
+                      <div
+                        onClick={() => handleCityTimeFieldToggle(city, 'departure')}
+                        style={{
+                          flex: 1, fontSize: 13,
+                          color: arrivalEntry?.departureTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                          fontStyle: arrivalEntry?.departureTime ? 'normal' : 'italic',
+                          background: isDepartureOpen ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
+                          border: `1px solid ${isDepartureOpen ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
+                          borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                        }}
+                      >
+                        {arrivalEntry?.departureTime ? displayTime12(arrivalEntry.departureTime) : 'Add time'}
+                      </div>
+                    </div>
+                    {isDepartureOpen && (
+                      <TimeStepper
+                        value={arrivalEntry?.departureTime ?? null}
+                        onChange={t => handleCityArrivalChange(city, 'departureTime', t)}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
           {/* Save */}
           <button
