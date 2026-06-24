@@ -59,7 +59,7 @@ export function computeHotelAnchorRow(p: HotelAnchorParams): HotelAnchorRow | nu
     const leaveByMin = depMin - bufferMin - travelMin;
     const terminalName = p.cityArrivalVia ?? 'airport';
     return {
-      text: `Airport by ${minutesToTime12(depMin - bufferMin)} · ${travelMin} min from here`,
+      text: `Leave by ${minutesToTime12(leaveByMin)} · ${terminalName} by ${minutesToTime12(depMin - bufferMin)}`,
       isWarning: true,
       isBlue: false,
       icon: 'flight_takeoff',
