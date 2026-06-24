@@ -29,19 +29,6 @@ function displayTime12(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-function transitLabel(legs: JourneyLeg[] | null | undefined, from: string, to: string): string | null {
-  if (!legs) return null;
-  const leg = legs.find(l => l.type === 'transit' && l.from === from && l.to === to);
-  if (!leg || leg.type !== 'transit') return null;
-  const mode = leg.mode.charAt(0).toUpperCase() + leg.mode.slice(1);
-  if (leg.durationMinutes) {
-    const h = Math.floor(leg.durationMinutes / 60);
-    const m = leg.durationMinutes % 60;
-    const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-    return `${from} → ${to} · ${mode} · ~${dur}`;
-  }
-  return `${from} → ${to} · ${mode}`;
-}
 
 function ProgressStrip({
   datesSet, timesSet, hotelSet,
@@ -469,7 +456,7 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
   );
 }
 
-export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave, onClose, firstDayDate = null, lastDayDate = null }: Props) {
+export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, firstDayDate = null, lastDayDate = null }: Props) {
   const isMultiCity = cities.length > 1;
 
   const [arrivalDate, setArrivalDate] = useState<string | null>(existingDetails?.arrivalDate ?? null);
