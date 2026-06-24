@@ -11,6 +11,7 @@ import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
 import { REC_RULES } from '../rec-rules';
 import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation, ReelDayIntelCard } from './types';
+import { computeHotelAnchorRow } from './hotel-anchor';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -851,6 +852,31 @@ export function buildReelCards(
           departurePressureNote: adj.departurePressureNote,
         } : null,
       };
+      // Hotel anchor row
+      const cityName = day.city || (itinerary.cities?.[dayIdx] ?? '');
+      const hotelEntry = tripDetails?.hotels?.find(h => h.city === cityName) ?? null;
+      const cityArrivalEntry = tripDetails?.cityArrivals?.find(c => c.city === cityName) ?? null;
+      const isLastDayInCity = dayIdx < itinerary.days.length - 1
+        ? (itinerary.days[dayIdx + 1].city || itinerary.cities?.[dayIdx + 1]) !== cityName
+        : true;
+      const isFirstOfDay = si === 0;
+      const isLastOfDay = si === sortedStops.length - 1;
+      stopCard.hotelAnchor = computeHotelAnchorRow({
+        stopTime: effectiveStop.time ?? null,
+        stopLat: stop.lat ?? null,
+        stopLon: stop.lon ?? null,
+        isFirstOfDay,
+        isLastOfDay,
+        isLastDayInCity,
+        travelGroup: persona,
+        hotel: hotelEntry && hotelEntry.lat != null && hotelEntry.lon != null
+          ? { name: hotelEntry.name ?? cityName, lat: hotelEntry.lat, lon: hotelEntry.lon, checkInTime: hotelEntry.checkInTime ?? null }
+          : null,
+        cityArrivalTime: cityArrivalEntry?.arrivalTime ?? (dayIdx === 0 ? (tripDetails?.arrivalTime ?? null) : null),
+        cityArrivalVia: cityArrivalEntry?.arrivalVia ?? null,
+        cityDepartureTime: cityArrivalEntry?.departureTime ?? (isLastDayInCity && dayIdx === itinerary.days.length - 1 ? (tripDetails?.departureTime ?? null) : null),
+      });
+
       cards.push(stopCard);
 
       // Intel cards that reference this stop (by placeId match)
