@@ -26,7 +26,7 @@ import { InstallPrompt } from './modules/pwa/InstallPrompt';
 
 function ScreenRouter() {
   const { state, dispatch } = useAppStore();
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   const stackRef = React.useRef(state.screenStack);
   stackRef.current = state.screenStack;
@@ -35,7 +35,7 @@ function ScreenRouter() {
   });
 
   useEffect(() => {
-    const handler = () => setIsDesktop(window.innerWidth >= 768);
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);
