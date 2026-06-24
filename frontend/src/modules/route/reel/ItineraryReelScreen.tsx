@@ -324,12 +324,8 @@ export function ItineraryReelScreen() {
       const idx = Math.round(el.scrollTop / el.clientHeight);
       setActiveIdx(Math.min(Math.max(idx, 0), cards.length - 1));
     };
-    // scrollend fires once after snap completes — no mid-scroll re-renders
-    if ('onscrollend' in el) {
-      el.addEventListener('scrollend', update, { passive: true });
-      return () => el.removeEventListener('scrollend', update);
-    }
-    // Fallback: RAF-debounced scroll for older browsers
+    // RAF-debounce collapses many scroll events per frame into one update,
+    // preventing mid-snap re-renders that can cause iOS scroll-snap to get stuck
     let rafId = 0;
     const handleScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
     el.addEventListener('scroll', handleScroll, { passive: true });

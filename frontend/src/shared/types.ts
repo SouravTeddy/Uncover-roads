@@ -177,7 +177,7 @@ export type Category =
   | 'place' | 'event' | 'bar' | 'nightlife' | 'gallery' | 'bakery'
   | 'spa' | 'spiritual' | 'stadium' | 'zoo' | 'aquarium' | 'library'
   | 'cinema' | 'amusement_park' | 'viewpoint' | 'beach' | 'market'
-  | 'street_art';
+  | 'street_art' | 'fast_food' | 'food' | 'meal_takeaway';
 export type MapFilter = 'all' | 'curated' | 'saved';
 
 export interface Place {
