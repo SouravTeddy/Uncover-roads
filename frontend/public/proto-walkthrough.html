@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Walkthrough Proto</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #080808; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  @keyframes heroKenBurns {
+    from { transform: scale(1.0); }
+    to   { transform: scale(1.07); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .5; }
+  }
+
+  .screen { position: fixed; inset: 0; overflow: hidden; display: none; }
+  .screen.active { display: block; }
+
+  .hero-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: center;
+    animation: heroKenBurns 12s ease-out forwards;
+  }
+  .overlay {
+    position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(to bottom,
+      rgba(0,0,0,.38) 0%,
+      transparent 28%,
+      rgba(0,0,0,.48) 55%,
+      rgba(0,0,0,.93) 100%
+    );
+  }
+
+  .skip-btn {
+    position: absolute; z-index: 10;
+    top: calc(env(safe-area-inset-top, 0px) + 52px);
+    right: 20px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 999px; padding: 6px 14px;
+    font-size: 12px; font-weight: 700;
+    color: rgba(255,255,255,.7); cursor: pointer;
+    font-family: inherit;
+  }
+  .skip-btn:hover { background: rgba(255,255,255,.2); }
+
+  .step-badge {
+    position: absolute; z-index: 10;
+    top: calc(env(safe-area-inset-top, 0px) + 52px);
+    left: 20px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: .08em;
+    color: rgba(255,255,255,.3);
+  }
+
+  .text-block {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 0 28px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 44px);
+    z-index: 5;
+    animation: fadeUp .5s ease both .12s;
+  }
+
+  .label-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 13px; border-radius: 999px; margin-bottom: 15px;
+    border: 1px solid;
+  }
+  .label-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    animation: glowPulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .label-text { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+
+  h1 {
+    font-size: 40px; font-weight: 700; color: #fff;
+    line-height: 1.02; letter-spacing: -.02em; margin: 0 0 13px;
+  }
+  .desc {
+    font-size: 14px; color: rgba(255,255,255,.52);
+    line-height: 1.68; margin: 0 0 28px;
+    max-width: 310px; font-weight: 400;
+  }
+  .desc strong { color: rgba(255,255,255,.8); font-weight: 600; }
+
+  .dots { display: flex; gap: 6px; margin-bottom: 22px; align-items: center; }
+  .dot {
+    height: 3px; border-radius: 2px; border: none; cursor: pointer; padding: 0;
+    transition: all .35s cubic-bezier(.25,0,0,1);
+    background: rgba(255,255,255,.25); width: 8px;
+  }
+  .dot.active { width: 28px; }
+
+  .cta-btn {
+    width: 100%; height: 56px; border-radius: 16px; border: none; cursor: pointer;
+    font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: inherit; transition: opacity .15s;
+  }
+  .cta-btn:hover { opacity: .9; }
+  .cta-next { background: rgba(255,255,255,.95); color: #0c0c0e; box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+  .arrow { font-family: 'Material Symbols Rounded', sans-serif; font-variation-settings: 'FILL' 1; font-size: 18px; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+
+<!-- ─── S0: Search + Browse ────────────────────────────────────────── -->
+<div class="screen active" id="s0">
+  <img class="hero-img" src="https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=900&q=85" alt="" />
+  <div class="overlay"></div>
+  <div class="step-badge">01 of 04</div>
+  <button class="skip-btn" onclick="goTo(3)">Skip</button>
+  <div class="text-block">
+    <div class="label-pill" style="border-color:rgba(74,127,160,.45);background:rgba(74,127,160,.1)">
+      <div class="label-dot" style="background:#4a7fa0"></div>
+      <span class="label-text" style="color:#4a7fa0">Explore</span>
+    </div>
+    <h1>Search a city, find your places</h1>
+    <p class="desc">A live map opens — <strong>curated pins already plotted.</strong> Tap any one, read the details, add it to your shortlist.</p>
+    <div class="dots">
+      <button class="dot active" style="background:#4a7fa0" onclick="goTo(0)"></button>
+      <button class="dot" onclick="goTo(1)"></button>
+      <button class="dot" onclick="goTo(2)"></button>
+      <button class="dot" onclick="goTo(3)"></button>
+    </div>
+    <button class="cta-btn cta-next" onclick="goTo(1)">Next <span class="arrow">arrow_forward</span></button>
+  </div>
+</div>
+
+<!-- ─── S1: Build + Travel details ────────────────────────────────── -->
+<div class="screen" id="s1">
+  <img class="hero-img" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=900&q=85" alt="" />
+  <div class="overlay"></div>
+  <div class="step-badge">02 of 04</div>
+  <button class="skip-btn" onclick="goTo(3)">Skip</button>
+  <div class="text-block">
+    <div class="label-pill" style="border-color:rgba(90,138,96,.45);background:rgba(90,138,96,.1)">
+      <div class="label-dot" style="background:#5a8a60"></div>
+      <span class="label-text" style="color:#5a8a60">Build</span>
+    </div>
+    <h1>Build your day in one tap</h1>
+    <p class="desc">The engine sequences your stops — <strong>opening hours, walk distance, crowd timing.</strong> Add your flight times and the plan reshapes around them.</p>
+    <div class="dots">
+      <button class="dot" style="background:#5a8a60" onclick="goTo(0)"></button>
+      <button class="dot active" style="background:#5a8a60" onclick="goTo(1)"></button>
+      <button class="dot" onclick="goTo(2)"></button>
+      <button class="dot" onclick="goTo(3)"></button>
+    </div>
+    <button class="cta-btn cta-next" onclick="goTo(2)">Next <span class="arrow">arrow_forward</span></button>
+  </div>
+</div>
+
+<!-- ─── S2: Multi-city ─────────────────────────────────────────────── -->
+<div class="screen" id="s2">
+  <img class="hero-img" src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=85" alt="" />
+  <div class="overlay"></div>
+  <div class="step-badge">03 of 04</div>
+  <button class="skip-btn" onclick="goTo(3)">Skip</button>
+  <div class="text-block">
+    <div class="label-pill" style="border-color:rgba(136,120,184,.45);background:rgba(136,120,184,.1)">
+      <div class="label-dot" style="background:#8878b8"></div>
+      <span class="label-text" style="color:#8878b8">Multi-city</span>
+    </div>
+    <h1>Plan the whole trip, not just one day</h1>
+    <p class="desc">Add more cities — <strong>each gets its own day plan,</strong> all in one trip. Tokyo Monday, Kyoto Tuesday, Osaka Wednesday.</p>
+    <div class="dots">
+      <button class="dot" style="background:#8878b8" onclick="goTo(0)"></button>
+      <button class="dot" style="background:#8878b8" onclick="goTo(1)"></button>
+      <button class="dot active" style="background:#8878b8" onclick="goTo(2)"></button>
+      <button class="dot" onclick="goTo(3)"></button>
+    </div>
+    <button class="cta-btn cta-next" onclick="goTo(3)">Next <span class="arrow">arrow_forward</span></button>
+  </div>
+</div>
+
+<!-- ─── S3: Saved trips + auto-update (last) ──────────────────────── -->
+<div class="screen" id="s3">
+  <img class="hero-img" src="https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&q=85" alt="" />
+  <div class="overlay"></div>
+  <div class="step-badge">04 of 04</div>
+  <div class="text-block">
+    <div class="label-pill" style="border-color:rgba(192,122,74,.45);background:rgba(192,122,74,.1)">
+      <div class="label-dot" style="background:#c07a4a"></div>
+      <span class="label-text" style="color:#c07a4a">Saved trips</span>
+    </div>
+    <h1>All your trips, always there</h1>
+    <p class="desc">Every trip saves to your account. Open any of them, pick up where you left off. <strong>If a place closes or changes, your itinerary updates automatically.</strong></p>
+    <div class="dots">
+      <button class="dot" style="background:#c07a4a" onclick="goTo(0)"></button>
+      <button class="dot" style="background:#c07a4a" onclick="goTo(1)"></button>
+      <button class="dot" style="background:#c07a4a" onclick="goTo(2)"></button>
+      <button class="dot active" style="background:#c07a4a" onclick="goTo(3)"></button>
+    </div>
+    <button class="cta-btn" style="background:linear-gradient(135deg,#c07a4a,#7a4820);color:#fff;box-shadow:0 8px 28px rgba(192,122,74,.4)" onclick="alert('→ Onboarding starts')">
+      Get started <span class="arrow">arrow_forward</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  let current = 0;
+  const total = 4;
+  let tx = null;
+
+  function goTo(idx) {
+    if (idx < 0 || idx >= total) return;
+    document.getElementById('s' + current).classList.remove('active');
+    current = idx;
+    const el = document.getElementById('s' + current);
+    el.classList.add('active');
+    const img = el.querySelector('.hero-img');
+    img.style.animation = 'none'; void img.offsetWidth; img.style.animation = '';
+    const tb = el.querySelector('.text-block');
+    tb.style.animation = 'none'; void tb.offsetWidth; tb.style.animation = '';
+  }
+
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (tx === null) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (dx < -40) goTo(current + 1);
+    else if (dx > 40) goTo(current - 1);
+    tx = null;
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') goTo(current + 1);
+    if (e.key === 'ArrowLeft')  goTo(current - 1);
+  });
+</script>
+</body>
+</html>
