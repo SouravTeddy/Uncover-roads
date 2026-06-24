@@ -109,7 +109,8 @@ describe('computeHotelAnchorRow', () => {
       cityDepartureTime: '07:00',
       cityArrivalVia: 'Goa Airport (GOI)',
     });
-    expect(row!.text).toContain('Airport by');
+    expect(row!.text).toContain('Leave by');
+    expect(row!.text).toContain('Goa Airport (GOI) by');
     expect(row!.isWarning).toBe(true);
   });
 
