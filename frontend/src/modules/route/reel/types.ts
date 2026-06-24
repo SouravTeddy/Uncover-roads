@@ -93,6 +93,12 @@ export interface ReelStopCard {
     isClosingConflict: boolean;    // arrives after closing time
     departurePressureNote: string | null; // e.g., "Your flight is at 8 AM — leave by 6 AM"
   } | null;
+  hotelAnchor?: {
+    text: string;
+    isWarning: boolean;
+    isBlue: boolean;
+    icon: string;
+  } | null;
 }
 
 export type RecoTrigger =
