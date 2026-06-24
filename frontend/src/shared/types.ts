@@ -267,10 +267,23 @@ export interface RouteData {
 // ── Saved itineraries ─────────────────────────────────────────
 export interface TripDetails {
   arrivalDate: string | null;    // YYYY-MM-DD
-  arrivalTime: string | null;    // HH:MM (24h)
+  arrivalTime: string | null;    // HH:MM (24h) — city 1 arrival, still used by cascade
   departureDate: string | null;  // YYYY-MM-DD
-  departureTime: string | null;  // HH:MM (24h)
-  hotels: { city: string; name: string | null }[];
+  departureTime: string | null;  // HH:MM (24h) — last city departure, still used by departure pressure
+  hotels: {
+    city: string;
+    name: string | null;
+    placeId?: string | null;     // Google place_id — for anchor computation
+    lat?: number | null;         // fetched at selection time
+    lon?: number | null;
+    checkInTime?: string | null; // HH:MM — splits arrival-day anchor
+  }[];
+  cityArrivals?: {               // per-city arrival/departure — optional, city 1 falls back to arrivalTime above
+    city: string;
+    arrivalTime: string | null;  // HH:MM
+    arrivalVia: string | null;   // terminal/station name e.g. "Goa Airport (GOI)"
+    departureTime: string | null;// HH:MM — when leaving this city
+  }[];
 }
 
 export interface SavedItinerary {
