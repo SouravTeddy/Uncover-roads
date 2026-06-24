@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { TripDetails, JourneyLeg, AutocompleteResult } from '../../../shared/types';
 import { useSheetDismiss } from '../../../shared/useSheetDismiss';
 import { DateRangeCalendar } from '../../destination/DateRangeCalendar';
-import { placesAutocomplete } from '../../../shared/api';
+import { placesAutocomplete, fetchPlaceDetails } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
 
 interface Props {
@@ -255,18 +255,33 @@ function DateTimeCard({
   );
 }
 
-function HotelRow({ city, name, onChange }: { city: string; name: string | null; onChange: (v: string) => void }) {
+function HotelRow({ city, name, placeId, checkInTime, onChange }: {
+  city: string;
+  name: string | null;
+  placeId?: string | null;
+  checkInTime?: string | null;
+  onChange: (v: { name: string; placeId: string | null; lat: number | null; lon: number | null; checkInTime?: string | null }) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(name ?? '');
   const [suggestions, setSuggestions] = useState<AutocompleteResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [inputRect, setInputRect] = useState<DOMRect | null>(null);
+  const [showCheckIn, setShowCheckIn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionRef = useRef(Math.random().toString(36).slice(2));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setVal(name ?? ''); }, [name]);
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  // Capture input rect when suggestions open (for portal positioning)
+  useEffect(() => {
+    if (suggestions.length > 0 && inputRef.current) {
+      setInputRect(inputRef.current.getBoundingClientRect());
+    }
+  }, [suggestions.length]);
 
   function handleInput(q: string) {
     setVal(q);
@@ -298,8 +313,19 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
     setVal(selected);
     setSuggestions([]);
     setEditing(false);
-    onChange(selected);
     sessionRef.current = Math.random().toString(36).slice(2);
+    // Fetch coords in background
+    fetchPlaceDetails(result.place_id).then(details => {
+      onChange({
+        name: selected,
+        placeId: result.place_id,
+        lat: details?.lat ?? null,
+        lon: details?.lon ?? null,
+        checkInTime: checkInTime ?? null,
+      });
+    }).catch(() => {
+      onChange({ name: selected, placeId: result.place_id, lat: null, lon: null, checkInTime: checkInTime ?? null });
+    });
   }
 
   function handleBlur() {
@@ -307,9 +333,44 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
     setTimeout(() => {
       setSuggestions([]);
       setEditing(false);
-      onChange(val);
+      onChange({ name: val, placeId: placeId ?? null, lat: null, lon: null, checkInTime: checkInTime ?? null });
     }, 150);
   }
+
+  // Portal for suggestions — escapes the sheet's overflow:auto container
+  const suggestionsPortal = suggestions.length > 0 && inputRect ? createPortal(
+    <div style={{
+      position: 'fixed',
+      top: inputRect.bottom,
+      left: inputRect.left,
+      width: inputRect.width,
+      zIndex: 999,
+      borderRadius: '0 0 13px 13px',
+      border: '1px solid var(--color-amber-bdr)',
+      borderTop: 'none',
+      background: 'var(--color-surface2)',
+      overflow: 'hidden',
+    }}>
+      {suggestions.map((s, i) => (
+        <div
+          key={s.place_id}
+          onMouseDown={() => handleSelect(s)}
+          onTouchStart={() => handleSelect(s)}
+          style={{
+            padding: '10px 13px',
+            borderTop: i > 0 ? '1px solid var(--color-divider)' : 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>{s.main_text}</div>
+          {s.secondary_text && (
+            <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 1 }}>{s.secondary_text}</div>
+          )}
+        </div>
+      ))}
+    </div>,
+    document.body
+  ) : null;
 
   return (
     <div style={{ marginBottom: 8 }}>
@@ -323,12 +384,12 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
           borderTopWidth: 1, borderTopStyle: 'solid',
           borderRightWidth: 1, borderRightStyle: 'solid',
           borderLeftWidth: 1, borderLeftStyle: 'solid',
-          borderBottomWidth: suggestions.length > 0 ? 0 : 1,
+          borderBottomWidth: 1,
           borderBottomStyle: 'solid',
           borderTopColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
           borderRightColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
           borderLeftColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
-          borderBottomColor: suggestions.length > 0 ? 'transparent' : (name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)'),
+          borderBottomColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
         }}
       >
         <span className="ms fill" style={{ fontSize: 15, color: name && !editing ? 'var(--color-sage)' : 'var(--color-primary)', flexShrink: 0 }}>
@@ -377,34 +438,33 @@ function HotelRow({ city, name, onChange }: { city: string; name: string | null;
         </div>
       )}
 
-      {/* Autocomplete suggestions */}
-      {suggestions.length > 0 && (
-        <div style={{
-          borderRadius: '0 0 13px 13px',
-          borderTopWidth: 0, borderRightWidth: 1, borderBottomWidth: 1, borderLeftWidth: 1,
-          borderTopStyle: 'solid', borderRightStyle: 'solid', borderBottomStyle: 'solid', borderLeftStyle: 'solid',
-          borderTopColor: 'transparent', borderRightColor: 'var(--color-amber-bdr)', borderBottomColor: 'var(--color-amber-bdr)', borderLeftColor: 'var(--color-amber-bdr)',
-          background: 'var(--color-surface2)', overflow: 'hidden',
-        }}>
-          {suggestions.map((s, i) => (
-            <div
-              key={s.place_id}
-              onMouseDown={() => handleSelect(s)}
-              onTouchStart={() => handleSelect(s)}
-              style={{
-                padding: '10px 13px',
-                borderTop: i > 0 ? '1px solid var(--color-divider)' : 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>{s.main_text}</div>
-              {s.secondary_text && (
-                <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 1 }}>{s.secondary_text}</div>
-              )}
-            </div>
-          ))}
+      {/* Check-in time row — shown when a hotel name is set */}
+      {name && !editing && (
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)' }}>key</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>Check-in from</span>
+          <div
+            onClick={() => setShowCheckIn(v => !v)}
+            style={{
+              marginLeft: 'auto', fontSize: 12, color: checkInTime ? 'var(--color-text-2)' : 'var(--color-text-4)',
+              fontStyle: checkInTime ? 'normal' : 'italic', cursor: 'pointer',
+              padding: '3px 8px', borderRadius: 7,
+              background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+            }}
+          >
+            {checkInTime ? displayTime12(checkInTime) : 'Add time'}
+          </div>
         </div>
       )}
+      {name && !editing && showCheckIn && (
+        <TimeStepper value={checkInTime ?? '15:00'} onChange={t => {
+          setShowCheckIn(false);
+          onChange({ name: name!, placeId: placeId ?? null, lat: null, lon: null, checkInTime: t });
+        }} />
+      )}
+
+      {/* Suggestions rendered via portal to escape sheet overflow:auto */}
+      {suggestionsPortal}
     </div>
   );
 }
@@ -416,7 +476,14 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   const [arrivalTime, setArrivalTime] = useState<string | null>(existingDetails?.arrivalTime ?? null);
   const [departureDate, setDepartureDate] = useState<string | null>(existingDetails?.departureDate ?? null);
   const [departureTime, setDepartureTime] = useState<string | null>(existingDetails?.departureTime ?? null);
-  const [hotels, setHotels] = useState<{ city: string; name: string | null }[]>(() => {
+  const [hotels, setHotels] = useState<{
+    city: string;
+    name: string | null;
+    placeId?: string | null;
+    lat?: number | null;
+    lon?: number | null;
+    checkInTime?: string | null;
+  }[]>(() => {
     if (existingDetails?.hotels?.length) return existingDetails.hotels;
     return cities.map(c => ({ city: c, name: null }));
   });
@@ -460,8 +527,12 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   const timesSet = !!arrivalTime || !!departureTime;
   const hotelSet = hotels.some(h => !!h.name);
 
-  function handleHotelChange(city: string, name: string) {
-    setHotels(prev => prev.map(h => h.city === city ? { ...h, name: name || null } : h));
+  function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat: number | null; lon: number | null; checkInTime?: string | null }) {
+    setHotels(prev => prev.map(h =>
+      h.city === city
+        ? { ...h, name: v.name || null, placeId: v.placeId, lat: v.lat, lon: v.lon, checkInTime: v.checkInTime ?? h.checkInTime }
+        : h
+    ));
   }
 
   function handleArrivalDateSelect(iso: string) {
@@ -480,7 +551,7 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
   }
 
   function handleSave() {
-    onSave({ arrivalDate, arrivalTime, departureDate, departureTime, hotels });
+    onSave({ arrivalDate, arrivalTime, departureDate, departureTime, hotels, cityArrivals: existingDetails?.cityArrivals });
     onClose();
   }
 
@@ -564,11 +635,11 @@ export function TripDetailsSheet({ cities, journeyLegs, existingDetails, onSave,
                     </div>
                   </div>
                 )}
-                <HotelRow city={hotel.city} name={hotel.name} onChange={n => handleHotelChange(hotel.city, n)} />
+                <HotelRow city={hotel.city} name={hotel.name} placeId={hotel.placeId} checkInTime={hotel.checkInTime} onChange={v => handleHotelChange(hotel.city, v)} />
               </div>
             ))
           ) : (
-            <HotelRow city={firstCity} name={hotels[0]?.name ?? null} onChange={n => handleHotelChange(firstCity, n)} />
+            <HotelRow city={firstCity} name={hotels[0]?.name ?? null} placeId={hotels[0]?.placeId} checkInTime={hotels[0]?.checkInTime} onChange={v => handleHotelChange(firstCity, v)} />
           )}
 
           {/* Save */}
