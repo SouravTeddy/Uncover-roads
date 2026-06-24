@@ -261,11 +261,8 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
       <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 280px 350px at 50% 35%,${isHighWalk ? 'rgba(79,143,171,.12)' : 'rgba(150,100,210,.08)'},transparent)`, pointerEvents: 'none', zIndex: 2 }} />
 
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 20px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 5 }}>
-        {/* Top label — pushes to top, content below */}
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 'auto', color: isHighWalk ? '#4f8fab' : 'rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span className="ms" style={{ fontSize: 11, verticalAlign: 'middle' }}>directions_walk</span>
-          {isHighWalk ? 'Walking connector' : 'Optional detour'}
-        </div>
+        {/* Spacer — pushes content to bottom */}
+        <div style={{ flex: 1 }} />
 
         {/* Route title + subtitle */}
         <div style={{ marginBottom: 8 }}>
@@ -292,8 +289,16 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           )}
         </div>
 
+        {/* Badge — just above description */}
+        {!isHighWalk && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(196,181,253,.1)', border: '1px solid rgba(196,181,253,.25)' }}>
+            <span className="ms" style={{ fontSize: 13, color: 'rgba(196,181,253,.8)' }}>directions_walk</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(196,181,253,.8)' }}>Optional detour</span>
+          </div>
+        )}
+
         {/* Why — persona voice */}
-        <div style={{ fontSize: isHighWalk ? 13 : 12, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.5)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
+        <div style={{ fontSize: isHighWalk ? 13 : 13, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.6)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
           {card.why}
         </div>
 
@@ -330,8 +335,8 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: transitLabel ? 1 : 2 }}>
                 <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{timeValue} walk</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>on foot</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.8)' }}>{timeValue} walk</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>on foot</div>
                 </div>
               </div>
               {/* Transit chip — only shown when city has real transit */}

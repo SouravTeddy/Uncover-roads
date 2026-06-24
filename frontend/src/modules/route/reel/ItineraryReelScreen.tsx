@@ -69,7 +69,10 @@ export function ItineraryReelScreen() {
     : [];
   const cityPhotoMap = useCityPhotoBatch(itineraryCities as string[]);
 
-  const existingPlaceIds = state.selectedPlaces.map(p => p.place_id ?? p.id);
+  const existingPlaceIds = [
+    ...state.selectedPlaces.map(p => p.place_id ?? p.id),
+    ...(activeItinerary?.days?.flatMap(d => d.stops.map(s => s.placeId).filter(Boolean)) ?? []),
+  ];
 
   const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);

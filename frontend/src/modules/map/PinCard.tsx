@@ -105,6 +105,7 @@ export function PinCard({
   const heroTouchStartX = useRef(0)
   const heroTouchStartY = useRef(0)
   const heroWasSwiped = useRef(false)
+  const galleryTouchStartX = useRef(0)
   const insightCache = useRef(new Map<string, string>())
 
   useEffect(() => {
@@ -207,6 +208,20 @@ export function PinCard({
       )
     } else {
       heroWasSwiped.current = false
+    }
+  }, [imgSrcs.length])
+
+  const handleGalleryTouchStart = useCallback((e: React.TouchEvent) => {
+    galleryTouchStartX.current = e.touches[0].clientX
+  }, [])
+  const handleGalleryTouchEnd = useCallback((e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - galleryTouchStartX.current
+    if (Math.abs(dx) > 40) {
+      setGalleryIdx(i =>
+        dx < 0
+          ? Math.min(i + 1, imgSrcs.length - 1)
+          : Math.max(i - 1, 0)
+      )
     }
   }, [imgSrcs.length])
 
@@ -1038,37 +1053,17 @@ export function PinCard({
               <div style={{ width: 30 }} />
             </div>
 
-            {/* Main image */}
-            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Main image — swipe left/right to navigate */}
+            <div
+              style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              onTouchStart={handleGalleryTouchStart}
+              onTouchEnd={handleGalleryTouchEnd}
+            >
               <img
                 src={imgSrcs[galleryIdx]}
                 alt={place.title}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', userSelect: 'none' }}
               />
-              {galleryIdx > 0 && (
-                <button
-                  onClick={() => setGalleryIdx(i => i - 1)}
-                  style={{
-                    position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(6px)',
-                    border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >‹</button>
-              )}
-              {galleryIdx < imgSrcs.length - 1 && (
-                <button
-                  onClick={() => setGalleryIdx(i => i + 1)}
-                  style={{
-                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(6px)',
-                    border: 'none', color: '#fff', fontSize: 18, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >›</button>
-              )}
             </div>
 
             {/* Dots */}

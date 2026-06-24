@@ -1,6 +1,6 @@
 // modules/map/MapLibreMap.tsx
 import { useRef, useCallback, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
-import Map, { Marker } from 'react-map-gl/maplibre';
+import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import type { MapRef as LibreMapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Place } from '../../shared/types';
@@ -104,6 +104,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       onMoveEnd={handleMoveEnd}
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
     >
+      <NavigationControl position="bottom-right" showCompass={true} showZoom={false} visualizePitch={false} />
       <MapLibreRoute geojson={routeGeojson ?? null} />
       <MapLibreMarkers
         places={places}

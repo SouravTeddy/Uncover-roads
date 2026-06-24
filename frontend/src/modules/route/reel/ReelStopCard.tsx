@@ -443,9 +443,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
           )}
           {stop.isEngineAdded && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(150,100,210,.20)', border: '1px solid rgba(150,100,210,.35)', backdropFilter: 'blur(8px)' }}>
-              <span className="ms" style={{ fontSize: 10, color: '#a87fd4' }}>auto_awesome</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#a87fd4' }}>We added this</span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)', backdropFilter: 'blur(8px)' }}>
+              <span className="ms" style={{ fontSize: 10, color: '#6ab4f5' }}>auto_awesome</span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#6ab4f5' }}>We added this</span>
             </div>
           )}
           {card.movedFrom != null && (
@@ -459,8 +459,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         {/* Engine-added reason line — connects the badge to the why */}
         {stop.isEngineAdded && card.orderReason && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-            <span className="ms" style={{ fontSize: 10, color: 'rgba(168,127,212,.5)' }}>subdirectory_arrow_right</span>
-            <span style={{ fontSize: 11, color: 'rgba(168,127,212,.7)', fontStyle: 'italic' }}>
+            <span className="ms" style={{ fontSize: 10, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
+            <span style={{ fontSize: 11, color: 'rgba(106,180,245,.75)', fontStyle: 'italic' }}>
               We thought: {card.orderReason}
             </span>
           </div>

@@ -987,7 +987,9 @@ export function MapScreen() {
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
+          fromReel={recoFocusPlaces.length > 0}
           onBuild={handleBuild}
+          onBackToReel={() => dispatch({ type: 'GO_BACK' })}
         />
       )}
 

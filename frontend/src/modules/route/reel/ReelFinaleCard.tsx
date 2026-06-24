@@ -57,27 +57,39 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         {card.totalStops} stops, all yours
       </p>
 
-      <button
-        onClick={onSave}
-        style={{
-          width: '100%', height: 54, borderRadius: 16, border: 'none', cursor: 'pointer',
-          background: saved ? '#16a34a' : 'linear-gradient(135deg, #d4a853, #b8893a)',
-          color: '#fff',
-          fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: saved ? '0 4px 20px rgba(22,163,74,.3)' : '0 6px 28px rgba(212,168,83,.25)',
-          transition: 'background .3s ease, box-shadow .3s ease',
-          marginBottom: 12,
-          animation: active ? 'fadeUp .5s .35s both' : 'none',
-        }}
-      >
-        <span className="ms fill" style={{ fontSize: 18 }}>{saved ? 'check_circle' : 'bookmark_add'}</span>
-        {saved ? 'Saved to trips' : 'Save trip'}
-      </button>
-
-      <p style={{ fontSize: 12, color: 'var(--color-text-3)', textAlign: 'center' }}>
-        Saved. Come back to it any time.
-      </p>
+      {saved ? (
+        <div
+          style={{
+            width: '100%', padding: '16px 20px', borderRadius: 16,
+            background: 'rgba(22,163,74,.1)', border: '1px solid rgba(22,163,74,.3)',
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12,
+            animation: active ? 'fadeUp .5s .35s both' : 'none',
+          }}
+        >
+          <span className="ms fill" style={{ fontSize: 26, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', margin: 0, marginBottom: 2 }}>Saved to trips</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', margin: 0 }}>Come back to it any time</p>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={onSave}
+          style={{
+            width: '100%', height: 54, borderRadius: 16, border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #d4a853, #b8893a)',
+            color: '#fff',
+            fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: '0 6px 28px rgba(212,168,83,.25)',
+            marginBottom: 12,
+            animation: active ? 'fadeUp .5s .35s both' : 'none',
+          }}
+        >
+          <span className="ms fill" style={{ fontSize: 18 }}>bookmark_add</span>
+          Save trip
+        </button>
+      )}
     </div>
   );
 }
