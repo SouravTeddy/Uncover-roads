@@ -161,7 +161,21 @@ function NudgeSheet({
 
 // ── Trip Card ────────────────────────────────────────────────
 
-function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: number; onDelete: (id: string) => void }) {
+function buildMonthGroups(items: SavedItinerary[]): { label: string; items: SavedItinerary[] }[] {
+  const map = new Map<string, { label: string; items: SavedItinerary[] }>();
+  for (const item of items) {
+    const d = new Date(item.travelDate ?? item.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!map.has(key)) map.set(key, { label, items: [] });
+    map.get(key)!.items.push(item);
+  }
+  return Array.from(map.values());
+}
+
+const GROUP_THRESHOLD = 5;
+
+function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const { dispatch } = useAppStore();
   const [nudgeOpen, setNudgeOpen] = useState(false);
 
@@ -206,11 +220,6 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
     setNudgeOpen(false);
     dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
     dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
-  }
-
-  function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    onDelete(item.id);
   }
 
   const isPast = status === 'past';
@@ -296,20 +305,6 @@ function TripCard({ item, index, onDelete }: { item: SavedItinerary; index: numb
               </div>
             )}
           </div>
-
-          {/* Delete button */}
-          <button
-            onClick={handleDelete}
-            aria-label="Delete trip"
-            style={{
-              position: 'absolute', top: 44, right: 14,
-              width: 28, height: 28, borderRadius: '50%', border: 'none',
-              background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(6px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-            }}
-          >
-            <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.6)' }}>delete</span>
-          </button>
 
           {/* Bottom: city + stats + arrow */}
           <div style={{
@@ -536,10 +531,6 @@ export function TripsScreen() {
     return new Date(bDate).getTime() - new Date(aDate).getTime();
   });
 
-  function handleDelete(id: string) {
-    dispatch({ type: 'REMOVE_ITINERARY', id });
-  }
-
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   }, []);
@@ -619,10 +610,23 @@ export function TripsScreen() {
                 Start exploring
               </button>
             </div>
-          ) : (
+          ) : sorted.length <= GROUP_THRESHOLD ? (
             <div style={{ padding: '16px 16px 112px' }}>
               {sorted.map((item, idx) => (
-                <TripCard key={item.id} item={item} index={idx} onDelete={handleDelete} />
+                <TripCard key={item.id} item={item} index={idx} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '16px 16px 112px' }}>
+              {buildMonthGroups(sorted).map(group => (
+                <div key={group.label}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
+                    {group.label}
+                  </div>
+                  {group.items.map((item, idx) => (
+                    <TripCard key={item.id} item={item} index={idx} />
+                  ))}
+                </div>
               ))}
             </div>
           )
@@ -644,10 +648,6 @@ export function TripsList() {
     return new Date(bDate).getTime() - new Date(aDate).getTime();
   });
 
-  function handleDelete(id: string) {
-    dispatch({ type: 'REMOVE_ITINERARY', id });
-  }
-
   if (sorted.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', gap: 16 }}>
@@ -666,10 +666,27 @@ export function TripsList() {
     );
   }
 
+  if (sorted.length <= GROUP_THRESHOLD) {
+    return (
+      <div style={{ padding: '8px 16px 16px' }}>
+        {sorted.map((item, idx) => (
+          <TripCard key={item.id} item={item} index={idx} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '8px 16px 16px' }}>
-      {sorted.map((item, idx) => (
-        <TripCard key={item.id} item={item} index={idx} onDelete={handleDelete} />
+      {buildMonthGroups(sorted).map(group => (
+        <div key={group.label}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
+            {group.label}
+          </div>
+          {group.items.map((item, idx) => (
+            <TripCard key={item.id} item={item} index={idx} />
+          ))}
+        </div>
       ))}
     </div>
   );
