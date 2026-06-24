@@ -124,7 +124,7 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current);
+    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current, state.rawOBAnswers?.group ?? 'solo');
 
     // Inject pre-fetched images for stops that had no photoRef at build time
     for (const card of built) {

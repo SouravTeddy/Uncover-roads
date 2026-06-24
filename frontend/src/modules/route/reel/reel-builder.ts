@@ -571,6 +571,7 @@ export function buildReelCards(
   cityPhotoMap: Map<string, string | null> = new Map(),
   _cityCountries: Record<string, string> = {},
   tripDetails?: TripDetails | null,
+  travelGroup?: string,
 ): ReelCard[] {
   if (!itinerary?.days?.length) return [];
 
@@ -868,7 +869,7 @@ export function buildReelCards(
         isFirstOfDay,
         isLastOfDay,
         isLastDayInCity,
-        travelGroup: persona,
+        travelGroup: travelGroup ?? 'solo',
         hotel: hotelEntry && hotelEntry.lat != null && hotelEntry.lon != null
           ? { name: hotelEntry.name ?? cityName, lat: hotelEntry.lat, lon: hotelEntry.lon, checkInTime: hotelEntry.checkInTime ?? null }
           : null,
