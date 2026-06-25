@@ -41,6 +41,11 @@ const T = {
   pillBdr:  'rgba(255,255,255,0.18)',
   pillClr:  'rgba(255,255,255,0.90)',
   ctrBg:    'rgba(0,0,0,0.68)',
+  // Type scale — optimised for real-phone legibility
+  fsXs:    11,   // chip labels, footnotes
+  fsSm:    13,   // location, meta, secondary text
+  fsMd:    15,   // body copy, logistics rows
+  fsTitle: 36,   // stop name (Cormorant Garamond)
 };
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -227,11 +232,8 @@ function SkyTintLayers({ condition }: { condition: string }) {
 function SunRays() {
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 4, overflow: 'hidden', pointerEvents: 'none' }}>
-      {/* Primary glow — top-right corner */}
       <div style={{ position: 'absolute', right: '-15%', top: '-25%', width: '80%', height: '75%', background: 'radial-gradient(ellipse at top right,rgba(255,210,120,.72),rgba(255,210,120,0) 58%)', filter: 'blur(4px)', animation: 'sunGlow 6s ease-in-out infinite' }} />
-      {/* Secondary haze — fills more of the upper card */}
       <div style={{ position: 'absolute', right: 0, top: 0, width: '100%', height: '55%', background: 'radial-gradient(ellipse at 75% 0%,rgba(255,220,140,.28),rgba(255,220,140,0) 65%)', filter: 'blur(2px)' }} />
-      {/* Rotating rays */}
       <div style={{ position: 'absolute', top: '-40%', right: '-10%', width: '90%', height: '180%', transformOrigin: 'top right', animation: 'rayRotate 80s linear infinite' }}>
         <div style={{ position: 'absolute', top: 0, left: '40%', width: 90, height: '100%', background: 'linear-gradient(180deg,rgba(255,225,160,.42),rgba(255,225,160,0) 60%)', transform: 'rotate(18deg)', transformOrigin: 'top center', filter: 'blur(10px)' }} />
         <div style={{ position: 'absolute', top: 0, left: '56%', width: 50, height: '100%', background: 'linear-gradient(180deg,rgba(255,235,180,.52),rgba(255,235,180,0) 55%)', transform: 'rotate(13deg)', transformOrigin: 'top center', filter: 'blur(6px)' }} />
@@ -241,13 +243,22 @@ function SunRays() {
   );
 }
 
+// ── Shared chip style ─────────────────────────────────────────
+// All stk-body badge chips use this base — override color/bg/border per variant
+const chipBase: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  padding: '5px 10px', borderRadius: 6,
+  fontSize: T.fsXs, fontWeight: 700,
+  letterSpacing: '.07em', textTransform: 'uppercase',
+  backdropFilter: 'blur(8px)',
+};
+
 // ── Main component ────────────────────────────────────────────
 export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor  = todDotColor(hour);
-  // localStorage.setItem('wxOverride', 'rain') — dev override to test weather effects
   const wxOverride = import.meta.env.DEV
     ? (localStorage.getItem('wxOverride') ?? null)
     : null;
@@ -272,7 +283,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null)
     ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null);
 
-  // Lazily fetch photo_ref from Google when none is baked into the itinerary stop
   useEffect(() => {
     if (!active || stop.imageUrl || stop.photoRef || !stop.placeId) return;
     if (photoFetchAttempted.current) return;
@@ -296,7 +306,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const hasServerSignals = serverSignals.length > 0;
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const hoursStr       = visitHours(stop.weekdayText, card.visitDate);
-  // When isEngineAdded, orderReason is already shown inline below the badge — don't repeat it in the narrative block
   const reasonText     = (stop.isEngineAdded && card.orderReason)
     ? (card.orderConsequence ?? (stop.whyForYou || null))
     : (card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null));
@@ -305,17 +314,13 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
-  // localTip = atmospheric venue description; fall back to whyForYou when no orderReason fills the narrative
-  // Guard: suppress descriptionText if it's identical to reasonText (same string from both localTip and orderReason)
   const rawDescriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
   const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
-  // Conflict: rain/bad weather vs a walking transit suggestion
   const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;
   const walkSig = transitSig?.text?.toLowerCase().includes('walk') ? transitSig : null;
   const hasConflict = isRaining && !!walkSig;
 
-  // Identity label from discovery stage
   const stageLabel = stop.stage === 'hidden_gem'
     ? { text: 'Hidden gem',   icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
     : stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0
@@ -326,7 +331,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     ? { text: 'Popular here', icon: 'groups',       color: 'rgba(255,255,255,.5)', bg: 'rgba(255,255,255,.06)',     bdr: 'rgba(255,255,255,.10)' }
     : null;
 
-  // Unified crowd/timing row — server signal preferred, fallback to static note
   const crowdRow: { text: string; icon: string; isBusy: boolean } | null =
     crowdSig ? { text: crowdSig.text, icon: crowdSig.icon ?? 'groups', isBusy: crowdSig.text.toLowerCase().includes('peak') || crowdSig.text.toLowerCase().includes('busy') || crowdSig.text.toLowerCase().includes('rush') }
     : timingSig ? { text: timingSig.text, icon: timingSig.icon ?? 'schedule', isBusy: false }
@@ -338,30 +342,30 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
 
-      {/* Photo z-index:0 — shimmer while loading, retries on error */}
+      {/* Photo */}
       <ReelImg
         src={photoUrl}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
       />
 
-      {/* Top-left: TOD badge + day badge (multi-day only) */}
-      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
+      {/* Top-left: TOD badge + day badge */}
+      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
+          <span style={{ fontSize: T.fsXs, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
             {todLabel(hour)}
           </span>
         </div>
         {card.totalDays > 1 && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
+            <span style={{ fontSize: T.fsXs, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>
               Day {card.day} of {card.totalDays}
             </span>
           </div>
         )}
       </div>
 
-      {/* Weather chip — top-right, z-index:10 */}
+      {/* Weather chip — top-right */}
       {card.weather && (() => {
         const wxCond = (card.weather!.condition ?? '').toLowerCase();
         const wxIsRain = wxCond.includes('rain') || wxCond.includes('drizzle') || wxCond.includes('thunder');
@@ -369,26 +373,24 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         const wxBdr   = wxIsRain ? 'rgba(79,120,171,.3)' : 'rgba(245,166,35,.2)';
         const wxClr   = wxIsRain ? '#5d9bc9' : '#f5a623';
         return (
-          <div style={{ position: 'absolute', top: 44, right: 14, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: wxBg, border: `1px solid ${wxBdr}`, borderRadius: 20, padding: '3px 10px' }}>
-            <span className="ms" style={{ fontSize: 12, color: wxClr }}>{wxIcon(card.weather!.condition ?? '')}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
-            <span style={{ fontSize: 10, color: T.text3 }}>{(card.weather!.condition ?? '').split(' ').slice(0, 2).join(' ')}</span>
+          <div style={{ position: 'absolute', top: 44, right: 14, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: wxBg, border: `1px solid ${wxBdr}`, borderRadius: 20, padding: '5px 11px' }}>
+            <span className="ms" style={{ fontSize: T.fsSm, color: wxClr }}>{wxIcon(card.weather!.condition ?? '')}</span>
+            <span style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
+            <span style={{ fontSize: T.fsXs, color: T.text3 }}>{(card.weather!.condition ?? '').split(' ').slice(0, 2).join(' ')}</span>
           </div>
         );
       })()}
 
-      {/* Sky tint z-index:2 */}
+      {/* Sky tint */}
       <SkyTintLayers condition={condition} />
 
-      {/* Scrim z-index:3 */}
+      {/* Scrim */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
 
-      {/* ToD gradient removed */}
-
-      {/* Sun rays z-index:4 */}
+      {/* Sun rays */}
       {isSunny && <SunRays />}
 
-      {/* Weather particles z-index:5 */}
+      {/* Weather particles */}
       {hasParticles && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 5, overflow: 'hidden', pointerEvents: 'none' }}>
           {isSnow
@@ -401,122 +403,119 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         </div>
       )}
 
-      {/* ── stk-body: frosted content panel, z-index:10 ─────────── */}
-      <div className="stk-body no-scrollbar" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', padding: '16px 16px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10, background: 'rgba(10,10,14,0.52)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px 20px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* ── stk-body: frosted content panel ─────────────────────── */}
+      <div className="stk-body no-scrollbar" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', padding: '18px 16px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10, background: 'rgba(10,10,14,0.52)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px 20px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
 
-        {/* Row 1: counter pill + identity chips — gap:5px matches proto */}
-        <div style={{ display: 'flex', gap: 5, marginBottom: 5, flexWrap: 'wrap' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: T.ctrBg, backdropFilter: 'blur(10px)' }}>
-            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: T.pillClr }}>
-              Stop {card.stopNumber} of {card.totalStops}
-            </span>
+        {/* Row 1: counter pill + identity chips */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <div style={{ ...chipBase, background: T.ctrBg }}>
+            <span style={{ color: T.pillClr }}>Stop {card.stopNumber} of {card.totalStops}</span>
           </div>
           {stageLabel && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}`, backdropFilter: 'blur(8px)' }}>
-              <span className="ms" style={{ fontSize: 10, color: stageLabel.color }}>{stageLabel.icon}</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: stageLabel.color }}>{stageLabel.text}</span>
+            <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
+              <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
+              <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
             </div>
           )}
           {stop.isUserAdded && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)', backdropFilter: 'blur(8px)' }}>
-              <span className="ms" style={{ fontSize: 10, color: '#d4a853' }}>bookmark</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#d4a853' }}>Your pick</span>
+            <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
+              <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
+              <span style={{ color: '#d4a853' }}>Your pick</span>
             </div>
           )}
           {stop.isEngineAdded && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)', backdropFilter: 'blur(8px)' }}>
-              <span className="ms" style={{ fontSize: 10, color: '#6ab4f5' }}>auto_awesome</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#6ab4f5' }}>We added this</span>
+            <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
+              <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
+              <span style={{ color: '#6ab4f5' }}>We added this</span>
             </div>
           )}
           {card.movedFrom != null && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)', backdropFilter: 'blur(8px)' }}>
-              <span className="ms" style={{ fontSize: 10, color: 'rgba(255,255,255,.7)' }}>swap_vert</span>
-              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'rgba(255,255,255,.7)' }}>Moved</span>
+            <div style={{ ...chipBase, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)' }}>
+              <span className="ms" style={{ fontSize: T.fsXs, color: 'rgba(255,255,255,.7)' }}>swap_vert</span>
+              <span style={{ color: 'rgba(255,255,255,.7)' }}>Moved</span>
             </div>
           )}
         </div>
 
-        {/* Engine-added reason line — connects the badge to the why */}
+        {/* Engine-added reason line */}
         {stop.isEngineAdded && card.orderReason && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-            <span className="ms" style={{ fontSize: 10, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
-            <span style={{ fontSize: 11, color: 'rgba(106,180,245,.75)', fontStyle: 'italic' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            <span className="ms" style={{ fontSize: T.fsXs, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
+            <span style={{ fontSize: T.fsSm, color: 'rgba(106,180,245,.75)', fontStyle: 'italic' }}>
               We thought: {card.orderReason}
             </span>
           </div>
         )}
 
-        {/* Arrival context — Day 1 first stop */}
+        {/* Arrival context */}
         {card.arrivalNote && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
-            <span className="ms fill" style={{ fontSize: 11, color: T.sky }}>flight_land</span>
-            <span style={{ fontSize: 11, color: T.sky, fontWeight: 600 }}>{card.arrivalNote}</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
+            <span className="ms fill" style={{ fontSize: T.fsSm, color: T.sky }}>flight_land</span>
+            <span style={{ fontSize: T.fsSm, color: T.sky, fontWeight: 600 }}>{card.arrivalNote}</span>
           </div>
         )}
 
-        {/* Departure context — last day stops */}
+        {/* Departure context */}
         {card.departureNote && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-            <span className="ms fill" style={{ fontSize: 11, color: T.gold }}>flight_takeoff</span>
-            <span style={{ fontSize: 11, color: T.gold, fontWeight: 600 }}>{card.departureNote}</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
+            <span className="ms fill" style={{ fontSize: T.fsSm, color: T.gold }}>flight_takeoff</span>
+            <span style={{ fontSize: T.fsSm, color: T.gold, fontWeight: 600 }}>{card.departureNote}</span>
           </div>
         )}
 
-        {/* Time row — ~ prefix signals these are suggested times */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
-          <span className="ms" style={{ fontSize: 11, color: T.text3 }}>schedule</span>
+        {/* Time row */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: '4px 10px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
+          <span className="ms" style={{ fontSize: T.fsSm, color: T.text3 }}>schedule</span>
           {isJustAdjusted && card.timingAdjustment ? (
             <>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4a853' }}>~{fmt12h(stop.time)}</span>
+              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
+              <span style={{ fontSize: T.fsMd, fontWeight: 700, color: '#d4a853' }}>~{fmt12h(stop.time)}</span>
             </>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
+            <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
           )}
-          <span style={{ fontSize: 12, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
-          <span style={{ fontSize: 9, color: T.text3, letterSpacing: '.04em', opacity: 0.7 }}>suggested</span>
+          <span style={{ fontSize: T.fsSm, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
+          <span style={{ fontSize: T.fsXs, color: T.text3, letterSpacing: '.04em', opacity: 0.7 }}>suggested</span>
         </div>
 
-        {/* Title + area */}
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 2, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
+        {/* Title */}
+        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 3, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
           {stop.title}
         </h2>
+
+        {/* Area / city */}
         {(() => {
-          // Strip malformed geocoding strings (e.g. "Dubai center, utorda") — commas indicate
-          // a compound address rather than a neighbourhood name
           const areaLabel = stop.area?.includes(',') ? null : stop.area;
           return (areaLabel || stop.city) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-              <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>location_on</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+              <span className="ms" style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.35)' }}>location_on</span>
+              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.35)' }}>
                 {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
               </span>
             </div>
-          ) : <div style={{ marginBottom: 6 }} />;
+          ) : <div style={{ marginBottom: 8 }} />;
         })()}
 
-        {/* Meta row: rating + price + tags (emoji→muted, text→dark) + website — gap:4px matches proto */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 7, alignItems: 'center' }}>
+        {/* Meta row: rating + price + tags + website */}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 9, alignItems: 'center' }}>
           {stop.rating != null && stop.rating > 0 && (
-            <span style={{ padding: '2px 7px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
+            <span style={{ padding: '3px 9px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: T.fsXs, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
               {stop.rating} ★
             </span>
           )}
           {priceLabel(stop.priceLevel) != null && (
-            <span style={{ padding: '2px 7px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, fontSize: 10, color: T.sage }}>
+            <span style={{ padding: '3px 9px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, fontSize: T.fsXs, color: T.sage }}>
               {priceLabel(stop.priceLevel)}
             </span>
           )}
-          {/* Tags: emoji tags → muted pill, plain text tags → dark pill */}
           {(stop.tags?.length ? stop.tags : [categoryLabel(stop.category)]).map((tag, i) => {
             const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(tag);
             return hasEmoji ? (
-              <span key={i} style={{ padding: '2px 7px', borderRadius: 99, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)', fontSize: 9.5, color: 'rgba(255,255,255,.45)' }}>
+              <span key={i} style={{ padding: '3px 9px', borderRadius: 99, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)', fontSize: T.fsXs, color: 'rgba(255,255,255,.45)' }}>
                 {tag}
               </span>
             ) : (
-              <span key={i} style={{ padding: '2px 7px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: 10, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
+              <span key={i} style={{ padding: '3px 9px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: T.fsXs, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
                 {tag}
               </span>
             );
@@ -524,52 +523,50 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           {stop.website && (() => {
             const domain = extractDomain(stop.website);
             return domain ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 7px', borderRadius: 99, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 9.5, color: T.sky }}>
-                <span className="ms" style={{ fontSize: 9 }}>language</span>{domain}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '3px 9px', borderRadius: 99, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: T.fsXs, color: T.sky }}>
+                <span className="ms" style={{ fontSize: T.fsXs }}>language</span>{domain}
               </span>
             ) : null;
           })()}
         </div>
 
-        {/* Narrative — gold block for normal, blue conflict banner when weather overrides transport */}
+        {/* Narrative */}
         {hasConflict ? (
-          <div style={{ marginBottom: 7, padding: '7px 11px', borderRadius: 8, background: 'rgba(79,120,171,.12)', borderLeft: '2px solid rgba(79,120,171,.5)', display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-            <span className="ms" style={{ fontSize: 14, color: '#5d9bc9', flexShrink: 0, marginTop: 1 }}>rainy</span>
-            <span style={{ fontSize: 12, color: 'rgba(200,220,255,.85)', lineHeight: 1.5, fontStyle: 'italic' }}>
+          <div style={{ marginBottom: 9, padding: '9px 12px', borderRadius: 8, background: 'rgba(79,120,171,.12)', borderLeft: '2px solid rgba(79,120,171,.5)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <span className="ms" style={{ fontSize: T.fsMd, color: '#5d9bc9', flexShrink: 0, marginTop: 1 }}>rainy</span>
+            <span style={{ fontSize: T.fsMd, color: 'rgba(200,220,255,.85)', lineHeight: 1.5, fontStyle: 'italic' }}>
               {reasonText ?? "We'd skip the walk today — rain all morning. The stop itself is still worth it; the weather actually keeps the crowds away."}
             </span>
           </div>
         ) : reasonText ? (
-          <div style={{ marginBottom: 7, padding: '9px 12px', borderRadius: 8, background: 'rgba(212,168,83,0.14)', borderLeft: `2px solid ${T.gold}`, backdropFilter: 'blur(8px)' }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,.88)', lineHeight: 1.55 }}>{reasonText}</span>
+          <div style={{ marginBottom: 9, padding: '10px 13px', borderRadius: 8, background: 'rgba(212,168,83,0.14)', borderLeft: `2px solid ${T.gold}`, backdropFilter: 'blur(8px)' }}>
+            <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.88)', lineHeight: 1.55 }}>{reasonText}</span>
           </div>
         ) : null}
 
         {/* Venue description */}
         {descriptionText && (
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <p style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {descriptionText}
           </p>
         )}
 
-        {/* Logistics bar — crowd · transit · hours */}
+        {/* Logistics bar */}
         {(crowdRow || transitSig || hoursStr) && (
           <div style={{ borderRadius: 9, background: 'rgba(0,0,0,.52)', border: '1px solid rgba(255,255,255,.14)', backdropFilter: 'blur(16px)', overflow: 'hidden' }}>
-            {/* Row 1: crowd / timing */}
             {crowdRow && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
-                <span className="ms" style={{ fontSize: 13, color: crowdRow.isBusy ? '#e07050' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{crowdRow.icon}</span>
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: crowdRow.isBusy ? 'rgba(212,100,50,0.12)' : 'rgba(107,148,112,.15)', color: crowdRow.isBusy ? '#e07050' : T.sage, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
+                <span className="ms" style={{ fontSize: T.fsMd, color: crowdRow.isBusy ? '#e07050' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{crowdRow.icon}</span>
+                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
+                <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: crowdRow.isBusy ? 'rgba(212,100,50,0.12)' : 'rgba(107,148,112,.15)', color: crowdRow.isBusy ? '#e07050' : T.sage, flexShrink: 0 }}>
                   {crowdRow.isBusy ? 'Busy period' : 'Good window'}
                 </span>
               </div>
             )}
-            {/* Row 2: transit — conflict row shows strikethrough walk + tram alternative */}
             {transitSig && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: hoursStr ? '1px solid rgba(255,255,255,.06)' : 'none', background: hasConflict ? 'rgba(79,120,171,.08)' : 'transparent' }}>
-                <span className="ms" style={{ fontSize: 13, color: hasConflict ? 'rgba(79,143,171,.7)' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{hasConflict ? 'directions_bus' : (transitSig.icon ?? 'directions_walk')}</span>
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px', borderBottom: hoursStr ? '1px solid rgba(255,255,255,.06)' : 'none', background: hasConflict ? 'rgba(79,120,171,.08)' : 'transparent' }}>
+                <span className="ms" style={{ fontSize: T.fsMd, color: hasConflict ? 'rgba(79,143,171,.7)' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{hasConflict ? 'directions_bus' : (transitSig.icon ?? 'directions_walk')}</span>
+                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>
                   {hasConflict ? (
                     <>
                       <s style={{ color: 'rgba(255,255,255,.28)' }}>{transitSig.text}</s><br />
@@ -577,18 +574,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                     </>
                   ) : transitSig.text}
                 </span>
-                <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: hasConflict ? 'rgba(79,120,171,.15)' : 'rgba(255,255,255,.08)', color: hasConflict ? '#5d9bc9' : 'rgba(255,255,255,.45)', flexShrink: 0 }}>
+                <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: hasConflict ? 'rgba(79,120,171,.15)' : 'rgba(255,255,255,.08)', color: hasConflict ? '#5d9bc9' : 'rgba(255,255,255,.45)', flexShrink: 0 }}>
                   {hasConflict ? 'Rain detour' : visitDateLabel}
                 </span>
               </div>
             )}
-            {/* Row 3: opening hours + visit date */}
             {hoursStr && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.32)', flexShrink: 0 }}>door_open</span>
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', flex: 1 }}>{hoursStr}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px' }}>
+                <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.32)', flexShrink: 0 }}>door_open</span>
+                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', flex: 1 }}>{hoursStr}</span>
                 {visitDateLabel && (
-                  <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.45)', flexShrink: 0 }}>
+                  <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.45)', flexShrink: 0 }}>
                     {visitDateLabel}
                   </span>
                 )}
@@ -597,19 +593,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           </div>
         )}
 
-        {/* Timing adjustment notes — closing conflict or departure pressure */}
+        {/* Timing adjustment notes */}
         {card.timingAdjustment?.isClosingConflict && (
-          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(212,100,50,.10)', border: '1px solid rgba(212,100,50,.22)' }}>
-            <span className="ms fill" style={{ fontSize: 13, color: '#e07050', flexShrink: 0 }}>warning</span>
-            <span style={{ fontSize: 11.5, color: 'rgba(255,220,200,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: 'rgba(212,100,50,.10)', border: '1px solid rgba(212,100,50,.22)' }}>
+            <span className="ms fill" style={{ fontSize: T.fsMd, color: '#e07050', flexShrink: 0 }}>warning</span>
+            <span style={{ fontSize: T.fsSm, color: 'rgba(255,220,200,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
           </div>
         )}
         {card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict && (
-          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.20)' }}>
-            <span className="ms" style={{ fontSize: 13, color: 'rgba(212,168,83,.7)', flexShrink: 0 }}>schedule</span>
-            <span style={{ fontSize: 11.5, color: 'rgba(255,235,180,.75)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.20)' }}>
+            <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(212,168,83,.7)', flexShrink: 0 }}>schedule</span>
+            <span style={{ fontSize: T.fsSm, color: 'rgba(255,235,180,.75)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
           </div>
         )}
+
         {/* Next-leg transit row */}
         {card.nextLeg && (() => {
           const leg = card.nextLeg!;
@@ -617,19 +614,19 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
           return (
             <div style={{
-              marginTop: 7, display: 'flex', alignItems: 'center', gap: 7,
-              padding: '6px 11px', borderRadius: 8,
+              marginTop: 8, display: 'flex', alignItems: 'center', gap: 7,
+              padding: '7px 12px', borderRadius: 8,
               background: isWalk ? 'rgba(79,143,171,.07)' : 'rgba(0,0,0,.35)',
               border: `1px solid ${isWalk ? 'rgba(79,143,171,.2)' : 'rgba(255,255,255,.07)'}`,
             }}>
-              <span className="ms fill" style={{ fontSize: 13, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>
+              <span className="ms fill" style={{ fontSize: T.fsMd, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>
                 {isWalk ? 'directions_walk' : 'directions_car'}
               </span>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
+              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
                 {distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to{' '}
                 <span style={{ color: 'rgba(255,255,255,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</span>
               </span>
-              <span style={{ fontSize: 9.5, fontWeight: 600, color: 'rgba(255,255,255,.2)', flexShrink: 0 }}>Next →</span>
+              <span style={{ fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.2)', flexShrink: 0 }}>Next →</span>
             </div>
           );
         })()}
@@ -659,14 +656,14 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               : T.gold;
           return (
             <div style={{
-              marginTop: 7, display: 'flex', alignItems: 'center', gap: 7,
-              padding: '6px 11px', borderRadius: 8,
+              marginTop: 8, display: 'flex', alignItems: 'center', gap: 7,
+              padding: '7px 12px', borderRadius: 8,
               background: bg, border: `1px solid ${border}`,
             }}>
-              <span className="ms fill" style={{ fontSize: 13, color: iconColor, flexShrink: 0 }}>
+              <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>
                 {anchor.icon}
               </span>
-              <span style={{ fontSize: 11, color: textColor, flex: 1, lineHeight: 1.3 }}>
+              <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>
                 {anchor.text}
               </span>
             </div>
