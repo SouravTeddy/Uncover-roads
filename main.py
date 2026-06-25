@@ -85,6 +85,9 @@ _EVENTS_CACHE_TTL = 3600  # seconds
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 
+ORS_API_KEY = os.getenv("ORS_API_KEY", "")
+ORS_DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
+
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
@@ -826,35 +829,76 @@ def city_search(q: str = Query(...)):
 # =========================================
 @app.post("/route")
 def route(body: dict):
+    points = body.get("points", [])
+    if len(points) < 2:
+        return {"error": "Need at least 2 points"}
+
+    # Primary: OpenRouteService
+    if ORS_API_KEY:
+        try:
+            coordinates = [[p["lon"], p["lat"]] for p in points]
+            ors_resp = requests.post(
+                ORS_DIRECTIONS_URL,
+                headers={"Authorization": ORS_API_KEY, "Content-Type": "application/json"},
+                json={"coordinates": coordinates, "format": "geojson", "instructions": True},
+                timeout=15,
+            ).json()
+            if ors_resp.get("features"):
+                feat    = ors_resp["features"][0]
+                props   = feat["properties"]
+                summary = props.get("summary", {})
+                steps_text = [
+                    f"{s.get('instruction', '')} onto {s.get('name', '')}"
+                    for seg in props.get("segments", [])
+                    for s in seg.get("steps", [])
+                    if s.get("name")
+                ]
+                # Normalise to OSRM-compatible shape so callers work unchanged
+                return {
+                    "routes": [{
+                        "geometry": feat["geometry"],
+                        "distance": summary.get("distance", 0),
+                        "duration": summary.get("duration", 0),
+                        "legs": [{"steps": [
+                            {"name": s.get("name", ""), "maneuver": {"type": s.get("type", "")}}
+                            for seg in props.get("segments", [])
+                            for s in seg.get("steps", [])
+                        ]}],
+                    }],
+                    "summary": {
+                        "distance_km":  round(summary.get("distance", 0) / 1000, 2),
+                        "duration_min": round(summary.get("duration", 0) / 60, 2),
+                        "steps": steps_text,
+                    },
+                }
+        except Exception as e:
+            print(f"ROUTE ORS: {e}")
+
+    # Fallback: OSRM public demo
     try:
-        points = body.get("points", [])
-        if len(points) < 2:
-            return {"error": "Need at least 2 points"}
-        coords  = ";".join([f"{p['lon']},{p['lat']}" for p in points])
-        url     = f"http://router.project-osrm.org/route/v1/driving/{coords}"
-        params  = {"overview": "full", "geometries": "geojson", "steps": "true"}
-        res     = requests.get(url, params=params, timeout=15)
-        data    = res.json()
+        coords = ";".join([f"{p['lon']},{p['lat']}" for p in points])
+        data = requests.get(
+            f"http://router.project-osrm.org/route/v1/driving/{coords}",
+            params={"overview": "full", "geometries": "geojson", "steps": "true"},
+            timeout=15,
+        ).json()
         if data.get("code") != "Ok":
-            return {"error": "OSRM routing failed", "detail": data}
+            return {"error": "routing failed"}
         r = data["routes"][0]
-        steps_text = []
-        for leg in r.get("legs", []):
-            for step in leg.get("steps", []):
-                t = step.get("maneuver", {}).get("type", "")
-                n = step.get("name", "")
-                if n:
-                    steps_text.append(f"{t} onto {n}")
+        steps_text = [
+            f"{s.get('maneuver', {}).get('type', '')} onto {s.get('name', '')}"
+            for leg in r.get("legs", []) for s in leg.get("steps", []) if s.get("name")
+        ]
         return {
             "routes": data["routes"],
             "summary": {
                 "distance_km":  round(r["distance"] / 1000, 2),
                 "duration_min": round(r["duration"] / 60, 2),
-                "steps": steps_text
-            }
+                "steps": steps_text,
+            },
         }
     except Exception as e:
-        print("ROUTE ERROR:", e)
+        print(f"ROUTE OSRM fallback: {e}")
         return {"error": str(e)}
 
 
@@ -875,19 +919,34 @@ def _sample_linestring(coords: list[list[float]], n: int = 20) -> list[tuple[flo
 
 
 def _fetch_elevations(points: list[tuple[float, float]]) -> list[int | None]:
-    """Batch-query Open-Elevation for a list of (lat, lon) pairs."""
+    """Batch-query Open-Meteo for elevation at a list of (lat, lon) pairs."""
+    if not points:
+        return []
     try:
-        payload = {"locations": [{"latitude": lat, "longitude": lon} for lat, lon in points]}
-        res = requests.post(
-            "https://api.open-elevation.com/api/v1/lookup",
-            json=payload,
+        lats = ",".join(str(round(p[0], 6)) for p in points)
+        lons = ",".join(str(round(p[1], 6)) for p in points)
+        res = requests.get(
+            "https://api.open-meteo.com/v1/elevation",
+            params={"latitude": lats, "longitude": lons},
             timeout=10,
         )
-        results = res.json().get("results", [])
-        return [int(r["elevation"]) if r.get("elevation") is not None else None for r in results]
+        elevs = res.json().get("elevation", [])
+        return [int(e) if e is not None else None for e in elevs]
     except Exception as e:
-        print(f"OPEN-ELEVATION: {e}")
-        return [None] * len(points)
+        print(f"ELEVATION (open-meteo): {e}")
+        # Fallback: opentopodata
+        try:
+            latlons = "|".join(f"{p[0]},{p[1]}" for p in points)
+            res2 = requests.get(
+                "https://api.opentopodata.org/v1/srtm90m",
+                params={"locations": latlons},
+                timeout=10,
+            )
+            results = res2.json().get("results", [])
+            return [int(r["elevation"]) if r.get("elevation") is not None else None for r in results]
+        except Exception as e2:
+            print(f"ELEVATION (opentopodata fallback): {e2}")
+            return [None] * len(points)
 
 
 def _compute_elevation_stats(elevations: list[int | None]) -> dict:
@@ -942,26 +1001,66 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         "sample_elevations": None,
     }
 
+    route_json = None
+
+    # Primary: OpenRouteService (SLA-backed, rate-limited to 2000/day free)
+    if ORS_API_KEY:
+        try:
+            ors_resp = requests.post(
+                ORS_DIRECTIONS_URL,
+                headers={"Authorization": ORS_API_KEY, "Content-Type": "application/json"},
+                json={
+                    "coordinates": [[olon, olat], [dlon, dlat]],
+                    "format": "geojson",
+                    "instructions": True,
+                },
+                timeout=15,
+            ).json()
+            if ors_resp.get("features"):
+                feat    = ors_resp["features"][0]
+                props   = feat["properties"]
+                summary = props.get("summary", {})
+                route_json = {
+                    "distance_km":  round(summary.get("distance", 0) / 1000, 1),
+                    "duration_min": max(1, round(summary.get("duration", 0) / 60)),
+                    "geom_coords":  feat["geometry"]["coordinates"],
+                    "steps": [
+                        s for seg in props.get("segments", [])
+                        for s in seg.get("steps", [])
+                    ],
+                }
+        except Exception as e:
+            print(f"ROUTE PROFILE ORS: {e}")
+
+    # Fallback: OSRM public demo
+    if not route_json:
+        try:
+            coords = f"{olon},{olat};{dlon},{dlat}"
+            osrm = requests.get(
+                f"http://router.project-osrm.org/route/v1/driving/{coords}",
+                params={"overview": "full", "geometries": "geojson", "steps": "true"},
+                timeout=15,
+            ).json()
+            if osrm.get("code") == "Ok":
+                r = osrm["routes"][0]
+                route_json = {
+                    "distance_km":  round(r["distance"] / 1000, 1),
+                    "duration_min": max(1, round(r["duration"] / 60)),
+                    "geom_coords":  r["geometry"]["coordinates"],
+                    "steps": [s for leg in r.get("legs", []) for s in leg.get("steps", [])],
+                }
+        except Exception as e:
+            print(f"ROUTE PROFILE OSRM fallback: {e}")
+
+    if not route_json:
+        return result
+
     try:
-        coords = f"{olon},{olat};{dlon},{dlat}"
-        osrm = requests.get(
-            f"http://router.project-osrm.org/route/v1/driving/{coords}",
-            params={"overview": "full", "geometries": "geojson", "steps": "true"},
-            timeout=15,
-        ).json()
-        if osrm.get("code") != "Ok":
-            return result
-        route = osrm["routes"][0]
-        result["distance_km"]  = round(route["distance"] / 1000, 1)
-        result["duration_min"] = max(1, round(route["duration"] / 60))
+        result["distance_km"]  = route_json["distance_km"]
+        result["duration_min"] = route_json["duration_min"]
+        result["road_character"] = _road_character_score(route_json["steps"])
 
-        # Road character from steps
-        all_steps = [step for leg in route.get("legs", []) for step in leg.get("steps", [])]
-        result["road_character"] = _road_character_score(all_steps)
-
-        # Elevation: sample polyline → Open-Elevation batch query
-        geom_coords = route["geometry"]["coordinates"]  # [[lon, lat], ...]
-        sample_pts = _sample_linestring(geom_coords, n=20)
+        sample_pts = _sample_linestring(route_json["geom_coords"], n=20)
         elevations = _fetch_elevations(sample_pts)
         stats = _compute_elevation_stats(elevations)
         result["elevation_gain_m"] = stats["gain"]
@@ -969,7 +1068,6 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         result["peak_elevation_m"] = stats["peak"]
         clean_elev = [e for e in elevations if e is not None]
         result["sample_elevations"] = clean_elev if clean_elev else None
-
     except Exception as e:
         print(f"ROUTE PROFILE BUILD: {e}")
 
