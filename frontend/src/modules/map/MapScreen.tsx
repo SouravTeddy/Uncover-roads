@@ -555,6 +555,7 @@ export function MapScreen() {
           activePinId={activePinId ?? null}
           mapZoom={mapZoom}
           favouritedIds={favouritedIds}
+          isDark={isDark}
           onPinClick={(id) => {
             const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
             if (p) {
@@ -575,6 +576,7 @@ export function MapScreen() {
           selectedPlaceIds={selectedIds}
           mapZoom={mapZoom}
           favouritedIds={favouritedIds}
+          isDark={isDark}
         />
 
         {/* Live Events */}

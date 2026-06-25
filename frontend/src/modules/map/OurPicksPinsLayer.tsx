@@ -15,12 +15,13 @@ interface Props {
   selectedPlaceIds?: Set<string>
   mapZoom?: number
   favouritedIds?: Set<string>
+  isDark?: boolean
 }
 
 const CURATED_CIRCLE_BORDER        = '1px solid rgba(212,168,83,0.35)'
 const CURATED_CIRCLE_BORDER_ACTIVE = '1.5px solid rgba(212,168,83,0.65)'
 
-export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds, mapZoom = 13, favouritedIds }: Props) {
+export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlaceIds, mapZoom = 13, favouritedIds, isDark = true }: Props) {
   const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
 
   return (
@@ -31,6 +32,8 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
         const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon = CATEGORY_ICONS[pick.category] ?? 'location_on'
         const mood = CATEGORY_MOOD[pick.category] ?? DEFAULT_MOOD
+        const pinBg = isDark ? 'rgba(18,19,24,0.94)' : 'rgba(255,255,255,0.96)'
+        const iconCol = isDark ? '#e8e2d8' : '#6b5e57'
 
         return (
           <Marker
@@ -78,7 +81,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
               {/* pin circle — gold border marks curated picks */}
               <div style={{
                 width: size, height: size, borderRadius: '50%',
-                background: UNIFIED_PIN_BG,
+                background: pinBg,
                 backdropFilter: 'blur(10px)',
                 border: isActive ? CURATED_CIRCLE_BORDER_ACTIVE : CURATED_CIRCLE_BORDER,
                 boxShadow: isActive
@@ -89,7 +92,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
                 transform: isActive ? 'scale(1.12)' : 'scale(1)',
                 position: 'relative', zIndex: 2,
               }}>
-                <span className="ms fill" style={{ fontSize: UNIFIED_ICON_SIZE, color: UNIFIED_ICON_COLOR, lineHeight: 1 }}>
+                <span className="ms fill" style={{ fontSize: UNIFIED_ICON_SIZE, color: iconCol, lineHeight: 1 }}>
                   {icon}
                 </span>
               </div>
@@ -107,12 +110,15 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
                 position: 'absolute', top: 'calc(100% + 7px)',
                 left: '50%', transform: 'translateX(-50%)',
                 padding: '6px 11px', borderRadius: 13,
-                background: 'rgba(9,10,14,0.96)', backdropFilter: 'blur(14px)',
+                background: isDark ? 'rgba(9,10,14,0.96)' : 'rgba(255,255,255,0.96)',
+                backdropFilter: 'blur(14px)',
                 border: '1px solid rgba(212,168,83,0.18)',
-                boxShadow: '0 5px 16px rgba(0,0,0,0.6)',
+                boxShadow: isDark ? '0 5px 16px rgba(0,0,0,0.6)' : '0 2px 12px rgba(0,0,0,0.12)',
                 whiteSpace: 'nowrap', maxWidth: 130,
                 overflow: 'hidden', textOverflow: 'ellipsis',
-                fontSize: 12.5, fontWeight: 600, color: '#f2ede6', letterSpacing: '0.01em',
+                fontSize: 12.5, fontWeight: 600,
+                color: isDark ? '#f2ede6' : '#2c2420',
+                letterSpacing: '0.01em',
                 pointerEvents: 'none',
                 opacity: labelOpacity,
                 transition: 'opacity 0.25s ease',

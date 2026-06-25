@@ -636,11 +636,47 @@ export function buildReelCards(
     neighborhoods: [],
   });
 
+  // Pre-pass: detect days that are same-day city continuations (short morning in city 1, then hop to city 2)
+  // Condition: prev day ends before 13:00 AND city changes AND transit ≤ 3h (or distance ≤ 300km)
+  const sameDayMergeSet = new Set<number>();
+  for (let di = 1; di < itinerary.days.length; di++) {
+    const prevD = itinerary.days[di - 1];
+    const currD = itinerary.days[di];
+    const prevCityRaw = prevD.city || (itinerary.cities?.[di - 1] ?? '');
+    const currCityRaw = currD.city || (itinerary.cities?.[di] ?? '');
+    const prevCityKey = prevCityRaw.toLowerCase();
+    const currCityKey = currCityRaw.toLowerCase();
+    if (!prevCityKey || !currCityKey || prevCityKey === currCityKey) continue;
+    const prevSortedPre = [...prevD.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    const prevLastPre = prevSortedPre.at(-1);
+    if (!prevLastPre) continue;
+    const prevEndMinPre = timeToMinutes(prevLastPre.time) + (prevLastPre.durationMin ?? 60);
+    if (prevEndMinPre >= 13 * 60) continue; // prev day runs past 1 PM — not a morning-only city
+    const transitLegPre = journeyLegs
+      ? (journeyLegs.find(
+          l => l.type === 'transit' &&
+            (l as Extract<JourneyLeg, { type: 'transit' }>).from === prevCityRaw &&
+            (l as Extract<JourneyLeg, { type: 'transit' }>).to === currCityRaw,
+        ) as Extract<JourneyLeg, { type: 'transit' }> | undefined)
+      : undefined;
+    if (transitLegPre?.durationMinutes !== undefined && transitLegPre.durationMinutes > 180) continue;
+    if (!transitLegPre) {
+      const currSortedPre = [...currD.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      const currFirstPre = currSortedPre[0];
+      if (currFirstPre && haversineKm(prevLastPre.lat, prevLastPre.lon, currFirstPre.lat, currFirstPre.lon) > 300) continue;
+    }
+    sameDayMergeSet.add(di);
+  }
+  const logicalTotalDays = itinerary.days.length - sameDayMergeSet.size;
+  let logicalDayNum = 0;
+
   let globalStopNumber = 0;
   const cascadeMap = new Map<string, CascadeAdj>();
 
   for (let dayIdx = 0; dayIdx < itinerary.days.length; dayIdx++) {
     const day = itinerary.days[dayIdx];
+    const isMergedWithPrev = sameDayMergeSet.has(dayIdx);
+    if (!isMergedWithPrev) logicalDayNum++;
 
     // Single day-transition card between consecutive days — replaces wrap + transit + day-intro
     if (dayIdx > 0) {
@@ -719,6 +755,7 @@ export function buildReelCards(
         transitDepartureTime: transitDep,
         transitArrivalTime: transitArr,
         transitRef,
+        sameDay: isMergedWithPrev,
       };
       cards.push(transitionCard);
 
@@ -794,9 +831,12 @@ export function buildReelCards(
       anchorCity: r.nearbyCity,
     }));
 
+    // If the NEXT day is merged with this one (same calendar day, city hop), skip meal gap observations —
+    // the user will be eating in the next city that same day, so "no lunch" here is a false alarm.
+    const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
     const allObservations: DayIntelObservation[] = [
       ...engineObservations,
-      ...buildMealObservations(sortedStops, day.city),
+      ...(nextDayMergesIn ? [] : buildMealObservations(sortedStops, day.city)),
       ...buildPersonaObservations(sortedStops, persona, day.city, weights),
       ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights)),
       ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryObservations(sortedStops, day.city)),
@@ -837,8 +877,8 @@ export function buildReelCards(
         stop: effectiveStop,
         stopNumber: globalStopNumber,
         totalStops: stopCount,
-        day: dayIdx + 1,
-        totalDays: itinerary.days.length,
+        day: logicalDayNum,
+        totalDays: logicalTotalDays,
         orderReason: stop.orderReason ?? null,
         orderConsequence: stop.orderConsequence ?? null,
         movedFrom: stop.movedFrom ?? null,
@@ -898,8 +938,8 @@ export function buildReelCards(
       const dayIntelCard: ReelDayIntelCard = {
         type: 'day_intel',
         id: `day-intel-${dayIdx}`,
-        day: dayIdx + 1,
-        totalDays: itinerary.days.length,
+        day: logicalDayNum,
+        totalDays: logicalTotalDays,
         dayCity: day.city || primaryCity,
         afterStopId: lastStopForIntel.id,
         observations: dedupedObservations,
@@ -933,11 +973,27 @@ export function buildReelCards(
     });
   }
 
+  const orderedStops = itinerary.days.flatMap(d =>
+    [...d.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+  );
+  const pts = orderedStops.filter(s => typeof s.lat === 'number' && typeof s.lon === 'number');
+  let finaleGoogleMapsUrl: string | null = null;
+  if (pts.length >= 2) {
+    const origin = `${pts[0].lat},${pts[0].lon}`;
+    const dest = `${pts[pts.length - 1].lat},${pts[pts.length - 1].lon}`;
+    const middle = pts.slice(1, -1).slice(0, 8);
+    const base = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=walking`;
+    finaleGoogleMapsUrl = middle.length > 0
+      ? `${base}&waypoints=${middle.map(p => encodeURIComponent(`${p.lat},${p.lon}`)).join('%7C')}`
+      : base;
+  }
+
   cards.push({
     type: 'finale',
     city: cityLabel,
     totalStops: stopCount,
     persona,
+    googleMapsUrl: finaleGoogleMapsUrl,
   });
 
   return cards;

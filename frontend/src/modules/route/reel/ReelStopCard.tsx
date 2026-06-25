@@ -546,7 +546,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
         {/* Venue description */}
         {descriptionText && (
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 8 }}>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 8, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {descriptionText}
           </p>
         )}

@@ -400,23 +400,23 @@ export function ItineraryReelScreen() {
     const activeStep = STEPS.findIndex(s => !s.done);
 
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {/* Background layers */}
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 55% at 50% 30%, rgba(212,168,83,.13) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,143,171,.07) 0%, transparent 60%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 40% 30% at 15% 70%, rgba(212,168,83,.05) 0%, transparent 55%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 55% at 50% 30%, rgba(212,168,83,.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,143,171,.06) 0%, transparent 60%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 40% 30% at 15% 70%, rgba(212,168,83,.04) 0%, transparent 55%)', pointerEvents: 'none' }} />
         {/* Subtle grid texture */}
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px)', backgroundSize: '48px 48px', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)', backgroundSize: '48px 48px', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, padding: '0 40px', width: '100%', maxWidth: 340 }}>
 
           {/* Heading */}
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: 'rgba(255,255,255,.92)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: 'var(--color-text-1)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
               Your itinerary<br />is almost ready
             </p>
             {cityName && days > 0 && (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,.32)', margin: '10px 0 0', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-4)', margin: '10px 0 0', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 {cityName} · {days} day{days !== 1 ? 's' : ''} · {stopCount} stop{stopCount !== 1 ? 's' : ''}
               </p>
             )}
@@ -433,21 +433,21 @@ export function ItineraryReelScreen() {
                   <div style={{
                     width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: isDone ? 'rgba(212,168,83,.18)' : isActive ? 'rgba(255,255,255,.07)' : 'transparent',
-                    border: isDone ? '1px solid rgba(212,168,83,.35)' : isActive ? '1px solid rgba(255,255,255,.2)' : '1px solid rgba(255,255,255,.1)',
+                    background: isDone ? 'var(--color-primary-bg)' : isActive ? 'var(--color-surface)' : 'transparent',
+                    border: isDone ? '1px solid var(--color-primary-glow)' : isActive ? '1px solid var(--color-border-m)' : '1px solid var(--color-border)',
                     transition: 'all .4s ease',
                   }}>
                     {isDone
-                      ? <span className="ms" style={{ fontSize: 13, color: 'rgba(212,168,83,.9)' }}>check</span>
+                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>check</span>
                       : isActive
-                      ? <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.5)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', animation: 'spin 1s linear infinite' }}>autorenew</span>
                       : null
                     }
                   </div>
                   {/* Label */}
                   <span style={{
                     fontSize: 14,
-                    color: isDone ? 'rgba(255,255,255,.55)' : isActive ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.22)',
+                    color: isDone ? 'var(--color-text-3)' : isActive ? 'var(--color-text-1)' : 'var(--color-text-4)',
                     fontWeight: isActive ? 500 : 400,
                     transition: 'color .4s ease',
                   }}>
@@ -733,7 +733,7 @@ export function ItineraryReelScreen() {
           scrollSnapType: 'y mandatory',
           touchAction: 'pan-y',
           overscrollBehavior: 'none',
-          background: '#0f0d0c',
+          background: 'var(--color-bg)',
         }}
         className="no-scrollbar"
       >
