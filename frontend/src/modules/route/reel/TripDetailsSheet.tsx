@@ -388,7 +388,6 @@ function CityRow({
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   const arrivalSlot = timeToArrivalSlot(arrivalEntry.arrivalTime)
-  const departureSlot = timeToDepartureSlot(arrivalEntry.departureTime)
 
   // Status tags for the collapsed header
   const tags: { label: string; type: 'warn' | 'ok' | 'neutral' }[] = []

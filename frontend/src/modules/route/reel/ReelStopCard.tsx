@@ -271,7 +271,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const photoUrl = stop.imageUrl
     ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null)
     ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null);
-  const [imgFailed, setImgFailed] = useState(false);
 
   // Lazily fetch photo_ref from Google when none is baked into the itinerary stop
   useEffect(() => {
@@ -282,20 +281,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
       if (details?.photo_ref) setFallbackPhotoRef(details.photo_ref);
     }).catch(() => {});
   }, [active, stop.imageUrl, stop.photoRef, stop.placeId]);
-
-  // Category-based gradient fallback when no photo available or image failed to load
-  const noPhotoGradient = (!photoUrl || imgFailed) ? (() => {
-    const cat = stop.category ?? '';
-    if (cat.includes('cafe') || cat.includes('coffee') || cat.includes('restaurant') || cat.includes('bar'))
-      return 'linear-gradient(160deg, #1a120a 0%, #2c1c0f 40%, #0f0d0c 100%)';
-    if (cat.includes('museum') || cat.includes('gallery') || cat.includes('heritage'))
-      return 'linear-gradient(160deg, #0d1520 0%, #1a2535 40%, #0f0d0c 100%)';
-    if (cat.includes('park') || cat.includes('garden') || cat.includes('nature'))
-      return 'linear-gradient(160deg, #0a1510 0%, #132112 40%, #0f0d0c 100%)';
-    if (cat.includes('temple') || cat.includes('monument') || cat.includes('palace'))
-      return 'linear-gradient(160deg, #180e1a 0%, #2a1830 40%, #0f0d0c 100%)';
-    return 'linear-gradient(160deg, #141018 0%, #1e1a28 40%, #0f0d0c 100%)';
-  })() : null;
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -351,16 +336,13 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const visitDateLabel = fmtVisitDate(card.visitDate);
 
   return (
-    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: noPhotoGradient ?? T.bg }}>
+    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
 
-      {/* Photo z-index:0 — shimmer while loading, retry once on error */}
-      {!imgFailed && (
-        <ReelImg
-          src={photoUrl}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
-          onFallback={() => setImgFailed(true)}
-        />
-      )}
+      {/* Photo z-index:0 — shimmer while loading, retries on error */}
+      <ReelImg
+        src={photoUrl}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
+      />
 
       {/* Top-left: TOD badge + day badge (multi-day only) */}
       <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
