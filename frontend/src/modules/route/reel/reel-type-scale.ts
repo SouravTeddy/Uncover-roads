@@ -4,6 +4,6 @@ export const FS = {
   xs:     12,   // chip/badge text, icon detail labels
   sm:     15,   // secondary/meta text, transit details, location
   md:     17,   // body copy, primary info rows, timing
-  title:  40,   // stop/city name (Cormorant Garamond)
+  title:  40,   // stop/city name (Playfair Display)
   hero:   46,   // day-transition big city names
 } as const;

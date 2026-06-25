@@ -144,7 +144,7 @@ function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) 
         {/* City name */}
         <div
           style={{
-            fontFamily: '"Cormorant Garamond", serif',
+            fontFamily: '"Playfair Display", serif',
             color: '#ffffff',
             fontSize: 18,
             lineHeight: 1.15,

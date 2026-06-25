@@ -45,7 +45,7 @@ const T = {
   fsXs:    12,   // chip labels, footnotes
   fsSm:    15,   // location, meta, secondary text
   fsMd:    17,   // body copy, logistics rows
-  fsTitle: 40,   // stop name (Cormorant Garamond)
+  fsTitle: 40,   // stop name (Playfair Display)
 };
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -479,7 +479,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         </div>
 
         {/* Title */}
-        <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 3, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
+        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 3, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
           {stop.title}
         </h2>
 

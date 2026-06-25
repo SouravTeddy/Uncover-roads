@@ -278,7 +278,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
             {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
           </div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
             {card.from}
             <span style={{ fontSize: isHighWalk ? 22 : 18, color: 'rgba(255,255,255,.35)', margin: '0 6px' }}>→</span>
             {card.to}
@@ -445,12 +445,12 @@ export default function ReelScenicCard({ card }: Props) {
 
         {/* Headline + route */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 34, fontWeight: 700,
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 34, fontWeight: 700,
             lineHeight: 1.08, margin: 0, color: '#f2ede6', letterSpacing: '-.005em' }}>{card.place}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="ms fill" style={{ fontSize: 15, color: a, lineHeight: 1 }}>{msName(card.modeIcon)}</span>
             <span style={{ ...LF, fontSize: 13, color: 'rgba(242,237,230,.7)' }}>{card.from}</span>
-            <span style={{ color: a, fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: 16 }}>→</span>
+            <span style={{ color: a, fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: 16 }}>→</span>
             <span style={{ ...LF, fontSize: 13, color: 'rgba(242,237,230,.7)' }}>{card.to}</span>
             <span style={{ ...LF, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
               color: a, border: `1px solid ${a}40`, marginLeft: 2 }}>{card.tag}</span>

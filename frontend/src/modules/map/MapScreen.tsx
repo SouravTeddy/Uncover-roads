@@ -677,7 +677,7 @@ export function MapScreen() {
             }}
           >
             <span className="ms fill" style={{ fontSize: 16, color: selArea.park ? '#5fa570' : '#d6aa56' }}>place</span>
-            <span style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 17, color: '#f2ede6' }}>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 17, color: '#f2ede6' }}>
               {selArea.name}
             </span>
             <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#6b6a72', flexShrink: 0 }} />

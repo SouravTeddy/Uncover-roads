@@ -451,7 +451,7 @@ export function ItineraryReelScreen() {
 
           {/* Heading */}
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: 'var(--color-text-1)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 34, fontWeight: 600, color: 'var(--color-text-1)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
               Your itinerary<br />is almost ready
             </p>
             {cityName && days > 0 && (
@@ -710,7 +710,7 @@ export function ItineraryReelScreen() {
       <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center' }}>
         <span style={{ fontSize: 44, lineHeight: 1 }}>🗺️</span>
         <div>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,.85)', margin: '0 0 8px', lineHeight: 1.2 }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,.85)', margin: '0 0 8px', lineHeight: 1.2 }}>
             Reel not available
           </p>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,.38)', lineHeight: 1.5, margin: 0 }}>

@@ -161,7 +161,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
           <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>Nearby</div>
           <div style={{
             color: '#f5f0ea', fontSize: 22,
-            fontFamily: "'Cormorant Garamond', serif", fontWeight: 600,
+            fontFamily: "'Playfair Display', serif", fontWeight: 600,
             opacity: active ? 1 : 0,
             transform: active ? 'translateY(0)' : 'translateY(8px)',
             transition: 'opacity .45s .17s ease, transform .45s .17s ease',
