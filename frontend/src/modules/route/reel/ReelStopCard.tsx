@@ -402,7 +402,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
       )}
 
       {/* ── stk-body: frosted content panel, z-index:10 ─────────── */}
-      <div className="stk-body" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 16px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10, background: 'rgba(10,10,14,0.52)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px 20px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="stk-body no-scrollbar" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', padding: '16px 16px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10, background: 'rgba(10,10,14,0.52)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px 20px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
 
         {/* Row 1: counter pill + identity chips — gap:5px matches proto */}
         <div style={{ display: 'flex', gap: 5, marginBottom: 5, flexWrap: 'wrap' }}>
