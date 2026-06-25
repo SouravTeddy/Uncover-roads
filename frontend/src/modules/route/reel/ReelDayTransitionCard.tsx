@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useAppStore } from '../../../shared/store';
+import { useEffect, useState } from 'react';
 import type { ReelDayTransitionCard as ReelDayTransitionCardType } from './types';
 
 interface Props {
@@ -75,22 +74,9 @@ function fmtDur(m: number): string {
   return `${h}h ${min}m`;
 }
 
-function parseDepArr(dep: string, arr: string): number | null {
-  const [dh, dm] = dep.split(':').map(Number);
-  const [ah, am] = arr.split(':').map(Number);
-  if ([dh, dm, ah, am].some(isNaN)) return null;
-  let diff = (ah * 60 + am) - (dh * 60 + dm);
-  if (diff < 0) diff += 24 * 60;
-  return diff;
-}
 
 export function ReelDayTransitionCard({ card, active }: Props) {
-  const { dispatch } = useAppStore();
-  const [on, setOn]             = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [dep, setDep]           = useState('');
-  const [arr, setArr]           = useState('');
-  const [ref, setRef]           = useState('');
+  const [on, setOn] = useState(false);
 
   useEffect(() => {
     if (active) {
@@ -100,21 +86,6 @@ export function ReelDayTransitionCard({ card, active }: Props) {
       setOn(false);
     }
   }, [active]);
-
-  const handleSaveDetails = useCallback(() => {
-    const dur = parseDepArr(dep, arr);
-    if (!dur || !card.isCityChange) return;
-    dispatch({
-      type: 'SET_TRANSIT_DETAILS',
-      from: card.prevCity,
-      to: card.nextCity,
-      departureTime: dep,
-      arrivalTime: arr,
-      durationMinutes: dur,
-      transitRef: ref || undefined,
-    });
-    setSheetOpen(false);
-  }, [dep, arr, ref, card, dispatch]);
 
   const fade = (delay: string): React.CSSProperties => ({
     opacity: on ? 1 : 0,
@@ -187,21 +158,6 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                   <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
                 </div>
               )}
-              {/* Add details CTA — shown when no times yet (covers both estimated & unknown mode) */}
-              {!hasTimes && (
-                <button
-                  onClick={() => setSheetOpen(true)}
-                  style={{
-                    marginTop: modeIcon ? 10 : 0, display: 'inline-flex', alignItems: 'center', gap: 5,
-                    padding: '5px 12px', borderRadius: 99, border: `1px solid ${T.line}`,
-                    background: 'rgba(0,0,0,.30)', cursor: 'pointer',
-                    fontSize: 11, color: T.text3,
-                  }}
-                >
-                  <span className="ms" style={{ fontSize: 12 }}>add</span>
-                  Add journey details
-                </button>
-              )}
               {/* Line below */}
               <div style={{ width: 1, height: 20, background: T.line, marginTop: 10 }} />
             </>
@@ -267,52 +223,6 @@ export function ReelDayTransitionCard({ card, active }: Props) {
         <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
       </div>
 
-      {/* Journey details sheet */}
-      {sheetOpen && card.isCityChange && (
-        <div
-          onClick={() => setSheetOpen(false)}
-          style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ width: '100%', borderRadius: '20px 20px 0 0', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderBottom: 'none', padding: '20px 20px 40px' }}
-          >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--color-border-m)', margin: '0 auto 20px' }} />
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: 'var(--color-text-1)', marginBottom: 4 }}>
-              {card.prevCity} → {card.nextCity}
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--color-text-3)', marginBottom: 20 }}>
-              Add your {modeLabel?.toLowerCase() ?? 'travel'} details
-            </p>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              {(['Departure', 'Arrival'] as const).map((label, i) => (
-                <div key={label} style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 6 }}>{label}</label>
-                  <input type="time" value={i === 0 ? dep : arr} onChange={e => i === 0 ? setDep(e.target.value) : setArr(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border-m)', color: 'var(--color-text-1)', fontSize: 15, fontFamily: 'var(--font-sans)', outline: 'none' }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-text-3)', marginBottom: 6 }}>
-                {card.transitMode === 'flight' ? 'Flight number' : card.transitMode === 'train' ? 'Train / service' : 'Reference'} (optional)
-              </label>
-              <input type="text" value={ref} onChange={e => setRef(e.target.value)}
-                placeholder={card.transitMode === 'flight' ? 'e.g. BA2551' : card.transitMode === 'train' ? 'e.g. Eurostar' : 'e.g. Reference'}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border-m)', color: 'var(--color-text-1)', fontSize: 14, fontFamily: 'var(--font-sans)', outline: 'none' }}
-              />
-            </div>
-            <button
-              onClick={handleSaveDetails}
-              disabled={!dep || !arr}
-              style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: dep && arr ? 'var(--color-primary)' : 'var(--color-surface2)', color: dep && arr ? '#0f0d0c' : 'var(--color-text-4)', fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 700, cursor: dep && arr ? 'pointer' : 'default', transition: 'background .2s ease, color .2s ease' }}
-            >
-              Save details
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

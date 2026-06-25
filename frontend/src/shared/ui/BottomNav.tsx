@@ -9,7 +9,9 @@ const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
 
 const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'ob6', 'ob7', 'ob8', 'ob9', 'persona', 'route', 'nav']);
 
-const EXPLORE_SCREENS = new Set<Screen>(['destination', 'map']);
+const EXPLORE_SCREENS    = new Set<Screen>(['destination', 'map']);
+const ITINERARY_SCREENS  = new Set<Screen>(['trips', 'itinerary-reel']);
+
 export function BottomNav() {
   const { state, dispatch } = useAppStore();
   const { currentScreen } = state;
@@ -17,6 +19,7 @@ export function BottomNav() {
 
   function isActive(screen: Screen): boolean {
     if (screen === 'destination') return EXPLORE_SCREENS.has(currentScreen);
+    if (screen === 'trips')       return ITINERARY_SCREENS.has(currentScreen);
     return currentScreen === screen;
   }
 

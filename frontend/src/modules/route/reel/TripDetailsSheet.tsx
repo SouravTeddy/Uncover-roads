@@ -17,121 +17,22 @@ interface Props {
 }
 
 function displayDate(iso: string | null): string {
-  if (!iso) return '--';
+  if (!iso) return '—';
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-function displayTime12(hhmm: string): string {
-  const [h, m] = hhmm.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
-
-
-function ProgressStrip({
-  datesSet, timesSet, hotelSet,
-}: { datesSet: boolean; timesSet: boolean; hotelSet: boolean }) {
-  const dots = [
-    { filled: datesSet, label: 'dates' },
-    { filled: timesSet, label: 'times' },
-    { filled: hotelSet, label: 'base' },
-  ];
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-        {dots.map(({ filled, label }) => (
-          <div
-            key={label}
-            title={`${label}: ${filled ? 'complete' : 'incomplete'}`}
-            style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: filled ? 'var(--color-primary)' : 'var(--color-border-m)',
-              transition: 'background .25s',
-            }}
-          />
-        ))}
-      </div>
-      <span style={{ fontSize: 11, color: 'var(--color-text-3)', lineHeight: 1.4 }}>
-        Fill in what you have — we'll build with whatever you add
-      </span>
-    </div>
-  );
-}
-
-function TimeStepper({ value, onChange }: { value: string | null; onChange: (v: string) => void }) {
-  const raw = value ?? '09:00';
-  const rawH = parseInt(raw.split(':')[0]);
-  const rawM = Math.round(parseInt(raw.split(':')[1]) / 15) * 15 % 60;
-  const [hour12, setHour12] = useState(rawH % 12 || 12);
-  const [minute, setMinute]  = useState(rawM);
-  const [isPM, setIsPM]      = useState(rawH >= 12);
-
-  function emit(h12: number, m: number, pm: boolean) {
-    const h24 = pm ? (h12 % 12) + 12 : h12 % 12;
-    onChange(`${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-  }
-  function incH() { const h = (hour12 % 12) + 1; setHour12(h); emit(h, minute, isPM); }
-  function decH() { const h = hour12 === 1 ? 12 : hour12 - 1; setHour12(h); emit(h, minute, isPM); }
-  function incM() { const m = (minute + 15) % 60; setMinute(m); emit(hour12, m, isPM); }
-  function decM() { const m = (minute - 15 + 60) % 60; setMinute(m); emit(hour12, m, isPM); }
-  function togglePM() { const pm = !isPM; setIsPM(pm); emit(hour12, minute, pm); }
-
-  const col = (label: string, onUp: () => void, onDown: () => void) => (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-      <button onClick={onUp} style={{ width: 40, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8 }}>
-        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)' }}>expand_less</span>
-      </button>
-      <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1, minWidth: 36, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
-        {label}
-      </span>
-      <button onClick={onDown} style={{ width: 40, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 8 }}>
-        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)' }}>expand_more</span>
-      </button>
-    </div>
-  );
-
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: 8 }}>
-        Time <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
-      </div>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-        padding: '4px 12px', borderRadius: 14,
-        background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
-      }}>
-        {col(String(hour12), incH, decH)}
-        <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-3)', marginBottom: 2, lineHeight: 1 }}>:</span>
-        {col(String(minute).padStart(2, '0'), incM, decM)}
-        <button
-          onClick={togglePM}
-          style={{
-            marginLeft: 8, padding: '5px 10px', borderRadius: 8,
-            background: isPM ? 'var(--color-primary)' : 'var(--color-surface)',
-            border: `1px solid ${isPM ? 'var(--color-primary)' : 'var(--color-border)'}`,
-            color: isPM ? '#fff' : 'var(--color-text-2)',
-            fontSize: 12, fontWeight: 700, cursor: 'pointer', alignSelf: 'center',
-            fontFamily: 'inherit', transition: 'background .15s, color .15s',
-          }}
-        >
-          {isPM ? 'PM' : 'AM'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DateTimeCard({
-  label, icon, city, date, time,
-  expanded, phase,
+// ── Date + time card (compact) ──────────────────────────────
+function DateCard({
+  label, icon,
+  date, time,
+  expanded,
   onExpand, onDateSelect, onTimeChange,
   minDate, maxDate, tripStart, tripEnd, calInitialMonth,
 }: {
-  label: string; icon: string; city: string;
+  label: string; icon: string;
   date: string | null; time: string | null;
-  expanded: boolean; phase: 'cal' | 'time';
+  expanded: boolean;
   onExpand: () => void;
   onDateSelect: (iso: string) => void;
   onTimeChange: (hhmm: string) => void;
@@ -139,10 +40,7 @@ function DateTimeCard({
   tripStart?: string | null; tripEnd?: string | null;
   calInitialMonth?: string | null;
 }) {
-  const filled = !!date;
-
-  // Expanded — calendar phase
-  if (expanded && phase === 'cal') {
+  if (expanded) {
     return (
       <div style={{
         borderRadius: 13, overflow: 'hidden',
@@ -155,7 +53,7 @@ function DateTimeCard({
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>{label} · {city}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>{label}</span>
         </div>
         <div style={{ background: 'var(--color-surface)' }}>
           <DateRangeCalendar
@@ -165,70 +63,61 @@ function DateTimeCard({
             initialMonth={calInitialMonth ?? date ?? tripStart ?? undefined}
             tripStart={tripStart}
             tripEnd={tripEnd}
-            onSelect={(iso) => onDateSelect(iso)}
+            onSelect={onDateSelect}
           />
         </div>
       </div>
     );
   }
 
-  // Expanded — time phase
-  if (expanded && phase === 'time') {
+  if (date) {
     return (
       <div style={{
-        padding: '12px 13px', borderRadius: 13, marginBottom: 8,
-        background: 'var(--color-primary-bg)', border: '1.5px solid var(--color-amber-bdr)',
+        marginBottom: 8, padding: '10px 13px', borderRadius: 13,
+        background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-primary)' }}>{label} · {city}</span>
+          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sage)' }}>{icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sage)' }}>{label}</span>
+          <button
+            onClick={onExpand}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              fontSize: 10, color: 'var(--color-text-4)' }}
+          >
+            {displayDate(date)}
+          </button>
         </div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 2 }}>
-          {displayDate(date!)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)' }}>schedule</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>Time (optional)</span>
+          <input
+            type="time"
+            value={time ?? ''}
+            onChange={e => onTimeChange(e.target.value)}
+            style={{
+              marginLeft: 'auto',
+              background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+              borderRadius: 8, padding: '5px 9px',
+              fontSize: 13, color: 'var(--color-text-1)',
+              fontFamily: 'var(--font-sans)', outline: 'none',
+              colorScheme: 'dark',
+            }}
+          />
         </div>
-        <TimeStepper value={time} onChange={onTimeChange} />
       </div>
     );
   }
 
-  // Collapsed — filled
-  if (filled) {
-    return (
-      <button
-        onClick={onExpand}
-        style={{
-          width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8,
-          padding: '12px 13px', borderRadius: 13,
-          background: 'var(--color-sage-bg)', border: '1px solid var(--color-sage-bdr)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-          <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-sage)' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-sage)' }}>{label}</span>
-        </div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--color-text-1)' }}>
-          {displayDate(date)}
-        </div>
-        {time && (
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-2)', marginTop: 2 }}>
-            {displayTime12(time)}
-          </div>
-        )}
-      </button>
-    );
-  }
-
-  // Collapsed — unfilled
   return (
     <button
       onClick={onExpand}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 8,
-        padding: '12px 13px', borderRadius: 13,
+        padding: '10px 13px', borderRadius: 13,
         background: 'var(--color-surface)', border: '1px solid var(--color-border)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span className="ms fill" style={{ fontSize: 13, color: 'var(--color-primary)' }}>{icon}</span>
         <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)' }}>{label}</span>
         <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
@@ -237,11 +126,11 @@ function DateTimeCard({
           optional
         </span>
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-border-m)' }}>—</div>
     </button>
   );
 }
 
+// ── Hotel row ───────────────────────────────────────────────
 function HotelRow({ city, name, placeId, checkInTime, onChange }: {
   city: string;
   name: string | null;
@@ -255,7 +144,6 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [inputRect, setInputRect] = useState<DOMRect | null>(null);
-  const [showCheckIn, setShowCheckIn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionRef = useRef(Math.random().toString(36).slice(2));
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -263,7 +151,6 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
   useEffect(() => { setVal(name ?? ''); }, [name]);
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
 
-  // Capture input rect when suggestions open (for portal positioning)
   useEffect(() => {
     if (suggestions.length > 0 && inputRef.current) {
       setInputRect(inputRef.current.getBoundingClientRect());
@@ -281,7 +168,6 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
       try {
         const results = await placesAutocomplete(q + ' ' + city, sessionRef.current, 'lodging');
         if (results.length === 0) {
-          // Retry without type restriction — hotel may be listed under a different category
           const fallback = await placesAutocomplete(q + ' ' + city, sessionRef.current, '');
           setSuggestions(fallback.slice(0, 5));
         } else {
@@ -301,22 +187,14 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
     setSuggestions([]);
     setEditing(false);
     sessionRef.current = Math.random().toString(36).slice(2);
-    // Fetch coords in background
     fetchPlaceDetails(result.place_id).then(details => {
-      onChange({
-        name: selected,
-        placeId: result.place_id,
-        lat: details?.lat ?? null,
-        lon: details?.lon ?? null,
-        checkInTime: checkInTime ?? null,
-      });
+      onChange({ name: selected, placeId: result.place_id, lat: details?.lat ?? null, lon: details?.lon ?? null, checkInTime: checkInTime ?? null });
     }).catch(() => {
       onChange({ name: selected, placeId: result.place_id, lat: null, lon: null, checkInTime: checkInTime ?? null });
     });
   }
 
   function handleBlur() {
-    // Delay so a tap on a suggestion row fires before blur clears it
     setTimeout(() => {
       setSuggestions([]);
       setEditing(false);
@@ -324,35 +202,19 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
     }, 150);
   }
 
-  // Portal for suggestions — escapes the sheet's overflow:auto container
   const suggestionsPortal = suggestions.length > 0 && inputRect ? createPortal(
     <div style={{
-      position: 'fixed',
-      top: inputRect.bottom,
-      left: inputRect.left,
-      width: inputRect.width,
-      zIndex: 999,
-      borderRadius: '0 0 13px 13px',
-      border: '1px solid var(--color-amber-bdr)',
-      borderTop: 'none',
-      background: 'var(--color-surface2)',
-      overflow: 'hidden',
+      position: 'fixed', top: inputRect.bottom, left: inputRect.left, width: inputRect.width,
+      zIndex: 999, borderRadius: '0 0 13px 13px',
+      border: '1px solid var(--color-amber-bdr)', borderTop: 'none',
+      background: 'var(--color-surface2)', overflow: 'hidden',
     }}>
       {suggestions.map((s, i) => (
-        <div
-          key={s.place_id}
-          onMouseDown={() => handleSelect(s)}
-          onTouchStart={() => handleSelect(s)}
-          style={{
-            padding: '10px 13px',
-            borderTop: i > 0 ? '1px solid var(--color-divider)' : 'none',
-            cursor: 'pointer',
-          }}
+        <div key={s.place_id} onMouseDown={() => handleSelect(s)} onTouchStart={() => handleSelect(s)}
+          style={{ padding: '10px 13px', borderTop: i > 0 ? '1px solid var(--color-divider)' : 'none', cursor: 'pointer' }}
         >
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-1)' }}>{s.main_text}</div>
-          {s.secondary_text && (
-            <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 1 }}>{s.secondary_text}</div>
-          )}
+          {s.secondary_text && <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 1 }}>{s.secondary_text}</div>}
         </div>
       ))}
     </div>,
@@ -365,25 +227,17 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
         onClick={() => setEditing(true)}
         style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '12px 13px', borderRadius: suggestions.length > 0 ? '13px 13px 0 0' : 13,
+          padding: '10px 13px', borderRadius: suggestions.length > 0 ? '13px 13px 0 0' : 13,
           cursor: 'text',
           background: name && !editing ? 'var(--color-sage-bg)' : 'var(--color-surface)',
-          borderTopWidth: 1, borderTopStyle: 'solid',
-          borderRightWidth: 1, borderRightStyle: 'solid',
-          borderLeftWidth: 1, borderLeftStyle: 'solid',
-          borderBottomWidth: 1,
-          borderBottomStyle: 'solid',
-          borderTopColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
-          borderRightColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
-          borderLeftColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
-          borderBottomColor: name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)',
+          border: `1px solid ${name && !editing ? 'var(--color-sage-bdr)' : editing ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
         }}
       >
         <span className="ms fill" style={{ fontSize: 15, color: name && !editing ? 'var(--color-sage)' : 'var(--color-primary)', flexShrink: 0 }}>
           hotel
         </span>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: name && !editing ? 'var(--color-sage)' : 'var(--color-text-4)' }}>
               Your base · {city}
             </span>
@@ -403,10 +257,7 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
               onFocus={() => setEditing(true)}
               onBlur={handleBlur}
               placeholder="Where are you staying?"
-              style={{
-                width: '100%', background: 'none', border: 'none', outline: 'none',
-                fontSize: 13, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)',
-              }}
+              style={{ width: '100%', background: 'none', border: 'none', outline: 'none', fontSize: 13, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)' }}
             />
           ) : (
             <div style={{ fontSize: 13, color: name ? 'var(--color-text-1)' : 'var(--color-text-4)', fontWeight: name ? 600 : 400 }}>
@@ -418,40 +269,75 @@ function HotelRow({ city, name, placeId, checkInTime, onChange }: {
         {name && !editing && <span className="ms fill" style={{ fontSize: 15, color: 'var(--color-sage)' }}>check_circle</span>}
       </div>
 
-      {/* Autocomplete error fallback */}
       {fetchError && editing && (
         <div style={{ padding: '8px 13px', fontSize: 12, color: 'var(--color-text-4)' }}>
           Can't load suggestions — type the name and tap away to save
         </div>
       )}
 
-      {/* Check-in time row — shown when a hotel name is set */}
+      {/* Check-in time row */}
       {name && !editing && (
-        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)' }}>key</span>
+        <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px' }}>
+          <span className="ms" style={{ fontSize: 12, color: 'var(--color-text-4)' }}>key</span>
           <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>Check-in from</span>
-          <div
-            onClick={() => setShowCheckIn(v => !v)}
-            style={{
-              marginLeft: 'auto', fontSize: 12, color: checkInTime ? 'var(--color-text-2)' : 'var(--color-text-4)',
-              fontStyle: checkInTime ? 'normal' : 'italic', cursor: 'pointer',
-              padding: '3px 8px', borderRadius: 7,
-              background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
-            }}
-          >
-            {checkInTime ? displayTime12(checkInTime) : 'Add time'}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {checkInTime && (
+              <button
+                onClick={() => onChange({ name: name!, placeId: placeId ?? null, checkInTime: null })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}
+              >×</button>
+            )}
+            <input
+              type="time"
+              value={checkInTime ?? ''}
+              onChange={e => onChange({ name: name!, placeId: placeId ?? null, checkInTime: e.target.value || null })}
+              style={{
+                background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                borderRadius: 8, padding: '4px 8px',
+                fontSize: 12, color: checkInTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                fontFamily: 'var(--font-sans)', outline: 'none',
+                colorScheme: 'dark',
+              }}
+            />
           </div>
         </div>
       )}
-      {name && !editing && showCheckIn && (
-        <TimeStepper value={checkInTime ?? '15:00'} onChange={t => {
-          setShowCheckIn(false);
-          onChange({ name: name!, placeId: placeId ?? null, checkInTime: t });
-        }} />
-      )}
 
-      {/* Suggestions rendered via portal to escape sheet overflow:auto */}
       {suggestionsPortal}
+    </div>
+  );
+}
+
+// ── Compact city time row ───────────────────────────────────
+function CityTimeRow({ icon, label, value, onChange }: {
+  icon: string; label: string;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+      <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-4)', width: 16 }}>{icon}</span>
+      <span style={{ fontSize: 12, color: 'var(--color-text-3)', flex: 1 }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {value && (
+          <button
+            onClick={() => onChange(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 3px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}
+          >×</button>
+        )}
+        <input
+          type="time"
+          value={value ?? ''}
+          onChange={e => onChange(e.target.value || null)}
+          style={{
+            background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+            borderRadius: 8, padding: '5px 9px',
+            fontSize: 12, color: value ? 'var(--color-text-1)' : 'var(--color-text-4)',
+            fontFamily: 'var(--font-sans)', outline: 'none',
+            colorScheme: 'dark',
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -485,10 +371,7 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
   });
 
   const [expanded, setExpanded] = useState<'arrival' | 'departure' | null>(null);
-  const [expandedPhase, setExpandedPhase] = useState<'cal' | 'time'>('cal');
-  const [expandedCityField, setExpandedCityField] = useState<{ city: string; field: 'arrival' | 'departure' } | null>(null);
 
-  // Swipe-to-close
   const sheetRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
   useEffect(() => {
@@ -514,56 +397,22 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
     };
   }, [onClose]);
 
-  // Hardware back button
   useSheetDismiss(onClose, true);
 
   const firstCity = cities[0] ?? '';
   const lastCity = cities[cities.length - 1] ?? '';
   const titleCities = formatCityLabel(cities).toUpperCase();
 
-  const datesSet = !!arrivalDate && !!departureDate;
-  const timesSet = !!arrivalTime || !!departureTime || (isMultiCity && cityArrivals.some(c => !!c.arrivalTime || !!c.departureTime));
-  const hotelSet = hotels.some(h => !!h.name);
-
-  function handleCityArrivalChange(city: string, field: 'arrivalTime' | 'arrivalVia' | 'departureTime', value: string | null) {
-    setCityArrivals(prev => prev.map(c => c.city === city ? { ...c, [field]: value } : c));
-  }
-
-  function handleCityTimeFieldToggle(city: string, field: 'arrival' | 'departure') {
-    setExpandedCityField(prev =>
-      prev?.city === city && prev?.field === field ? null : { city, field }
-    );
-  }
-
   function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat?: number | null; lon?: number | null; checkInTime?: string | null }) {
     setHotels(prev => prev.map(h =>
       h.city === city
-        ? {
-            ...h,
-            name: v.name || null,
-            placeId: v.placeId,
-            // Preserve existing coords if v.lat/v.lon are undefined (caller didn't touch them)
-            lat: v.lat !== undefined ? v.lat : h.lat,
-            lon: v.lon !== undefined ? v.lon : h.lon,
-            checkInTime: v.checkInTime ?? h.checkInTime,
-          }
+        ? { ...h, name: v.name || null, placeId: v.placeId, lat: v.lat !== undefined ? v.lat : h.lat, lon: v.lon !== undefined ? v.lon : h.lon, checkInTime: v.checkInTime ?? h.checkInTime }
         : h
     ));
   }
 
-  function handleArrivalDateSelect(iso: string) {
-    setArrivalDate(iso);
-    setExpandedPhase('time');
-  }
-
-  function handleDepartureDateSelect(iso: string) {
-    setDepartureDate(iso);
-    setExpandedPhase('time');
-  }
-
-  function handleExpand(field: 'arrival' | 'departure') {
-    setExpanded(field);
-    setExpandedPhase('cal');
+  function handleCityArrivalChange(city: string, field: 'arrivalTime' | 'departureTime', value: string | null) {
+    setCityArrivals(prev => prev.map(c => c.city === city ? { ...c, [field]: value } : c));
   }
 
   function handleSave() {
@@ -584,143 +433,83 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           background: 'var(--color-bg)', borderRadius: '24px 24px 0 0',
-          borderTop: '1px solid var(--color-border-m)', backdropFilter: 'blur(20px)',
+          borderTop: '1px solid var(--color-border-m)',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
           animation: 'sheet-in .35s cubic-bezier(.25,0,0,1) both',
           maxHeight: '92dvh', overflowY: 'auto',
         }}
         className="no-scrollbar"
       >
-        {/* Drag handle */}
-        <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--color-border-m)', margin: '11px auto 18px' }} />
+        <div style={{ width: 32, height: 4, borderRadius: 2, background: 'var(--color-border-m)', margin: '11px auto 16px' }} />
 
         <div style={{ padding: '0 16px' }}>
-          {/* Title */}
           <p style={{
             fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase',
-            color: datesSet ? 'var(--color-sage)' : 'var(--color-primary)',
-            marginBottom: 10,
+            color: 'var(--color-primary)', marginBottom: 16,
           }}>
             TRIP DETAILS · {titleCities}
           </p>
 
-          <ProgressStrip datesSet={datesSet} timesSet={timesSet} hotelSet={hotelSet} />
-
-          {/* Arrival / Departure DateTimeCards — single-city only */}
+          {/* Single-city: arrival + departure date/time cards + hotel */}
           {!isMultiCity && (
             <>
-              {/* Arrival */}
-              <DateTimeCard
-                label="Arrival" icon="flight_land" city={firstCity}
+              <DateCard
+                label="Arrival" icon="flight_land"
                 date={arrivalDate} time={arrivalTime}
                 expanded={expanded === 'arrival'}
-                phase={expandedPhase}
-                onExpand={() => handleExpand('arrival')}
-                onDateSelect={handleArrivalDateSelect}
+                onExpand={() => setExpanded(expanded === 'arrival' ? null : 'arrival')}
+                onDateSelect={iso => { setArrivalDate(iso); setExpanded(null); }}
                 onTimeChange={setArrivalTime}
                 maxDate={[departureDate, firstDayDate].filter(Boolean).sort()[0] ?? undefined}
-                tripStart={firstDayDate}
-                tripEnd={lastDayDate}
+                tripStart={firstDayDate} tripEnd={lastDayDate}
               />
 
-              {/* Departure */}
-              <DateTimeCard
-                label="Departure" icon="flight_takeoff" city={lastCity}
+              <DateCard
+                label="Departure" icon="flight_takeoff"
                 date={departureDate} time={departureTime}
                 expanded={expanded === 'departure'}
-                phase={expandedPhase}
-                onExpand={() => handleExpand('departure')}
-                onDateSelect={handleDepartureDateSelect}
+                onExpand={() => setExpanded(expanded === 'departure' ? null : 'departure')}
+                onDateSelect={iso => { setDepartureDate(iso); setExpanded(null); }}
                 onTimeChange={setDepartureTime}
                 minDate={arrivalDate ?? undefined}
                 calInitialMonth={lastDayDate}
               />
+
+              <HotelRow city={firstCity} name={hotels[0]?.name ?? null} placeId={hotels[0]?.placeId} checkInTime={hotels[0]?.checkInTime} onChange={v => handleHotelChange(firstCity, v)} />
             </>
           )}
 
-          {/* Hotel rows — single-city */}
-          {!isMultiCity && (
-            <HotelRow city={firstCity} name={hotels[0]?.name ?? null} placeId={hotels[0]?.placeId} checkInTime={hotels[0]?.checkInTime} onChange={v => handleHotelChange(firstCity, v)} />
-          )}
-
-          {/* Per-city blocks — multi-city */}
+          {/* Multi-city: per-city compact blocks */}
           {isMultiCity && cities.map((city, i) => {
             const hotelEntry = hotels.find(h => h.city === city);
             const arrivalEntry = cityArrivals.find(c => c.city === city);
             const prevCity = i > 0 ? cities[i - 1] : null;
-            const isArrivalOpen = expandedCityField?.city === city && expandedCityField?.field === 'arrival';
-            const isDepartureOpen = expandedCityField?.city === city && expandedCityField?.field === 'departure';
 
             return (
               <div key={city} style={{ marginBottom: 10 }}>
                 {/* City header */}
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
-                  padding: '8px 12px', borderRadius: 10,
+                  display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
+                  padding: '7px 12px', borderRadius: 10,
                   background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
                 }}>
                   <div style={{
-                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                     background: 'var(--color-primary-bg)', border: '1px solid var(--color-amber-bdr)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700, color: 'var(--color-primary)',
+                    fontSize: 10, fontWeight: 700, color: 'var(--color-primary)',
                   }}>{i + 1}</div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-1)' }}>{city}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text-1)' }}>{city}</span>
                 </div>
 
-                {/* Arriving section */}
-                <div style={{
-                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                  borderRadius: 13, overflow: 'hidden', marginBottom: 6,
-                }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)' }}>
-                      {prevCity ? `Arriving from ${prevCity}` : 'Arrival'}{' '}
-                      <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
-                    </span>
-                  </div>
-                  <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {/* Arrival time */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>schedule</span>
-                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Arriving at</span>
-                      <div
-                        onClick={() => handleCityTimeFieldToggle(city, 'arrival')}
-                        style={{
-                          flex: 1, fontSize: 13,
-                          color: arrivalEntry?.arrivalTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
-                          fontStyle: arrivalEntry?.arrivalTime ? 'normal' : 'italic',
-                          background: isArrivalOpen ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
-                          border: `1px solid ${isArrivalOpen ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
-                          borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
-                        }}
-                      >
-                        {arrivalEntry?.arrivalTime ? displayTime12(arrivalEntry.arrivalTime) : 'Add time'}
-                      </div>
-                    </div>
-                    {isArrivalOpen && (
-                      <TimeStepper
-                        value={arrivalEntry?.arrivalTime ?? null}
-                        onChange={t => handleCityArrivalChange(city, 'arrivalTime', t)}
-                      />
-                    )}
-                    {/* Via */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>place</span>
-                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Via</span>
-                      <input
-                        value={arrivalEntry?.arrivalVia ?? ''}
-                        onChange={e => handleCityArrivalChange(city, 'arrivalVia', e.target.value || null)}
-                        placeholder="Airport / Station / —"
-                        style={{
-                          flex: 1, fontSize: 13, color: 'var(--color-text-1)',
-                          background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
-                          borderRadius: 8, padding: '6px 10px',
-                          fontFamily: 'var(--font-sans)', outline: 'none',
-                        }}
-                      />
-                    </div>
-                  </div>
+                {/* Arriving time */}
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 11, marginBottom: 6 }}>
+                  <CityTimeRow
+                    icon="flight_land"
+                    label={prevCity ? `Arriving from ${prevCity}` : 'Arriving at'}
+                    value={arrivalEntry?.arrivalTime ?? null}
+                    onChange={v => handleCityArrivalChange(city, 'arrivalTime', v)}
+                  />
                 </div>
 
                 {/* Hotel */}
@@ -732,51 +521,62 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
                   onChange={v => handleHotelChange(city, v)}
                 />
 
-                {/* Departure */}
-                <div style={{
-                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                  borderRadius: 13, overflow: 'hidden', marginTop: 6,
-                }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)' }}>
-                      Departure <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
-                    </span>
-                  </div>
-                  <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-4)', width: 18 }}>schedule</span>
-                      <span style={{ fontSize: 12, color: 'var(--color-text-3)', width: 80, flexShrink: 0 }}>Leaving by</span>
-                      <div
-                        onClick={() => handleCityTimeFieldToggle(city, 'departure')}
-                        style={{
-                          flex: 1, fontSize: 13,
-                          color: arrivalEntry?.departureTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
-                          fontStyle: arrivalEntry?.departureTime ? 'normal' : 'italic',
-                          background: isDepartureOpen ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
-                          border: `1px solid ${isDepartureOpen ? 'var(--color-amber-bdr)' : 'var(--color-border)'}`,
-                          borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
-                        }}
-                      >
-                        {arrivalEntry?.departureTime ? displayTime12(arrivalEntry.departureTime) : 'Add time'}
-                      </div>
-                    </div>
-                    {isDepartureOpen && (
-                      <TimeStepper
-                        value={arrivalEntry?.departureTime ?? null}
-                        onChange={t => handleCityArrivalChange(city, 'departureTime', t)}
-                      />
-                    )}
-                  </div>
+                {/* Departure time */}
+                <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 11, marginTop: 6 }}>
+                  <CityTimeRow
+                    icon="flight_takeoff"
+                    label="Leaving by"
+                    value={arrivalEntry?.departureTime ?? null}
+                    onChange={v => handleCityArrivalChange(city, 'departureTime', v)}
+                  />
                 </div>
               </div>
             );
           })}
 
-          {/* Save */}
+          {/* For multi-city: overall arrival + departure times for first/last city */}
+          {isMultiCity && (
+            <div style={{ marginTop: 6, marginBottom: 8, padding: '10px 12px', borderRadius: 11, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', marginBottom: 8 }}>
+                Trip dates (optional)
+              </p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 10, color: 'var(--color-text-4)', marginBottom: 4 }}>Arrival</p>
+                  <input
+                    type="date"
+                    value={arrivalDate ?? ''}
+                    onChange={e => setArrivalDate(e.target.value || null)}
+                    style={{
+                      width: '100%', background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                      borderRadius: 8, padding: '6px 8px', fontSize: 12, color: 'var(--color-text-1)',
+                      fontFamily: 'var(--font-sans)', outline: 'none', boxSizing: 'border-box',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 10, color: 'var(--color-text-4)', marginBottom: 4 }}>Departure</p>
+                  <input
+                    type="date"
+                    value={departureDate ?? ''}
+                    onChange={e => setDepartureDate(e.target.value || null)}
+                    style={{
+                      width: '100%', background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                      borderRadius: 8, padding: '6px 8px', fontSize: 12, color: 'var(--color-text-1)',
+                      fontFamily: 'var(--font-sans)', outline: 'none', boxSizing: 'border-box',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleSave}
             style={{
-              width: '100%', padding: '14px', borderRadius: 14, marginTop: 8,
+              width: '100%', padding: '14px', borderRadius: 14, marginTop: 4,
               background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
               border: 'none', cursor: 'pointer',
               fontSize: 14, fontWeight: 700, color: 'var(--color-bg)',

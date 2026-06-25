@@ -8,7 +8,7 @@ export const REEL_CONTENT_PADDING_RECO  = '0 18px calc(88px + env(safe-area-inse
 
 // ── Shared scrim (identical on all photo cards) ───────────────
 export const REEL_SCRIM =
-  'linear-gradient(180deg,transparent 0%,transparent 30%,rgba(0,0,0,.30) 55%,rgba(0,0,0,.80) 82%,rgba(10,10,13,.95) 100%)'
+  'linear-gradient(180deg,transparent 0%,transparent 25%,rgba(0,0,0,.22) 50%,rgba(0,0,0,.50) 72%,rgba(10,10,13,.65) 100%)'
 
 // ── Sky tints ─────────────────────────────────────────────────
 export const SKY_TINT_SUNNY    = 'linear-gradient(180deg,rgba(255,200,100,.38),rgba(255,210,140,.12) 40%,transparent 70%)'

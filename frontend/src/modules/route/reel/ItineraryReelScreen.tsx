@@ -731,6 +731,8 @@ export function ItineraryReelScreen() {
           position: 'fixed', inset: 0,
           overflowY: 'scroll', overflowX: 'hidden',
           scrollSnapType: 'y mandatory',
+          touchAction: 'pan-y',
+          overscrollBehavior: 'none',
           background: '#0f0d0c',
         }}
         className="no-scrollbar"

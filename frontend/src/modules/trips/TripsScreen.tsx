@@ -52,6 +52,20 @@ function getTripStatus(item: SavedItinerary): { status: TripStatus; daysUntil: n
   return { status: 'past', daysUntil: null };
 }
 
+function buildGoogleMapsUrl(stops: any[]): string | null {
+  const pts = stops
+    .filter((s: any) => typeof s.lat === 'number' && typeof s.lon === 'number')
+    .map((s: any) => ({ lat: s.lat as number, lon: s.lon as number }));
+  if (pts.length < 2) return null;
+  const origin = `${pts[0].lat},${pts[0].lon}`;
+  const dest = `${pts[pts.length - 1].lat},${pts[pts.length - 1].lon}`;
+  const middle = pts.slice(1, -1).slice(0, 8);
+  const base = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=walking`;
+  return middle.length > 0
+    ? `${base}&waypoints=${middle.map(p => `${p.lat},${p.lon}`).join('|')}`
+    : base;
+}
+
 // ── Nudge Sheet ──────────────────────────────────────────────
 
 function NudgeSheet({
@@ -129,30 +143,53 @@ function NudgeSheet({
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '8px 18px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', display: 'flex', gap: 9 }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '12px 16px', borderRadius: 12,
-              border: '1px solid var(--color-border)', background: 'none',
-              fontSize: 13, fontWeight: 600, color: 'var(--color-text-4)', cursor: 'pointer',
-            }}
-          >
-            Later
-          </button>
-          <button
-            onClick={onPlay}
-            style={{
-              flex: 1, padding: 12, borderRadius: 12,
-              border: '1px solid rgba(212,168,83,.4)',
-              background: 'rgba(212,168,83,.15)',
-              fontSize: 13, fontWeight: 600, color: '#d4a853',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
-          >
-            <span className="ms fill" style={{ fontSize: 15 }}>play_circle</span>
-            Open plan
-          </button>
+        <div style={{ padding: '8px 18px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {(() => {
+            const mapsUrl = buildGoogleMapsUrl(allStops);
+            return mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%', padding: '11px 0', borderRadius: 12,
+                  border: '1px solid rgba(66,133,244,.35)',
+                  background: 'rgba(66,133,244,.1)',
+                  fontSize: 13, fontWeight: 600, color: '#7aabf7',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  textDecoration: 'none',
+                }}
+              >
+                <span className="ms" style={{ fontSize: 15 }}>map</span>
+                Open all stops in Google Maps
+              </a>
+            ) : null;
+          })()}
+          <div style={{ display: 'flex', gap: 9 }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '12px 16px', borderRadius: 12,
+                border: '1px solid var(--color-border)', background: 'none',
+                fontSize: 13, fontWeight: 600, color: 'var(--color-text-4)', cursor: 'pointer',
+              }}
+            >
+              Later
+            </button>
+            <button
+              onClick={onPlay}
+              style={{
+                flex: 1, padding: 12, borderRadius: 12,
+                border: '1px solid rgba(212,168,83,.4)',
+                background: 'rgba(212,168,83,.15)',
+                fontSize: 13, fontWeight: 600, color: '#d4a853',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              <span className="ms fill" style={{ fontSize: 15 }}>play_circle</span>
+              Open plan
+            </button>
+          </div>
         </div>
       </div>
     </>
