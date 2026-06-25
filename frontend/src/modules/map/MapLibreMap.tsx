@@ -1,7 +1,7 @@
 // modules/map/MapLibreMap.tsx
 import { useRef, useCallback, useImperativeHandle, forwardRef, useEffect, useState } from 'react';
-import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
-import type { MapRef as LibreMapRef, ViewStateChangeEvent, MapMouseEvent } from 'react-map-gl/maplibre';
+import Map, { Marker } from 'react-map-gl/maplibre';
+import type { MapRef as LibreMapRef, ViewStateChangeEvent, MapMouseEvent, MapEvent } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { Place } from '../../shared/types';
 import { MapLibreMarkers } from './MapLibreMarkers';
@@ -37,6 +37,7 @@ async function fetchMapStyle(url: string): Promise<StyleSpecification> {
 
 export interface MapHandle {
   flyTo: (lat: number, lon: number, zoom?: number) => void;
+  resetNorth: () => void;
 }
 
 interface Props {
@@ -49,6 +50,7 @@ interface Props {
   onPlaceClick: (place: Place) => void;
   /** Called on every map move end. bbox = [south, north, west, east] */
   onMoveEnd: (center: [number, number], zoom: number, bbox: [number, number, number, number]) => void;
+  onBearingChange?: (bearing: number) => void;
   onClick?: (lngLat: { lat: number; lng: number }) => void;
   routeGeojson?: GeoJSON.Feature<GeoJSON.LineString> | null;
   pinDropResult?: { lat: number; lon: number } | null;
@@ -56,7 +58,7 @@ interface Props {
 }
 
 export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
-  { center, zoom = 13, places, selectedPlace, selectedPlaces, highlightIds, onPlaceClick, onMoveEnd, onClick, routeGeojson, pinDropResult, children },
+  { center, zoom = 13, places, selectedPlace, selectedPlaces, highlightIds, onPlaceClick, onMoveEnd, onBearingChange, onClick, routeGeojson, pinDropResult, children },
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
@@ -69,6 +71,9 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   useImperativeHandle(ref, () => ({
     flyTo(lat: number, lon: number, targetZoom = 15) {
       mapRef.current?.flyTo({ center: [lon, lat], zoom: targetZoom, duration: 800 });
+    },
+    resetNorth() {
+      mapRef.current?.rotateTo(0, { duration: 400 });
     },
   }));
 
@@ -83,6 +88,13 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       );
     },
     [onMoveEnd],
+  );
+
+  const handleMove = useCallback(
+    (e: MapEvent) => {
+      onBearingChange?.((e.target as any).getBearing() as number);
+    },
+    [onBearingChange],
   );
 
   useEffect(() => {
@@ -102,9 +114,9 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       style={{ width: '100%', height: '100%' }}
       mapStyle={mapStyle}
       onMoveEnd={handleMoveEnd}
+      onMove={onBearingChange ? handleMove : undefined}
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
     >
-      <NavigationControl position="bottom-right" showCompass={true} showZoom={false} visualizePitch={false} />
       <MapLibreRoute geojson={routeGeojson ?? null} />
       <MapLibreMarkers
         places={places}

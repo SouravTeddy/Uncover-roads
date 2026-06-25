@@ -914,7 +914,7 @@ export function buildReelCards(
       : null;
     const allIntelIds = new Set(cards.filter(c => c.type === 'intel').map(c => (c as ReelIntelCard).id));
     const unplacedIntel = buildIntelCards(day, lastStopImage).filter(
-      ic => !allIntelIds.has(ic.id),
+      ic => !allIntelIds.has(ic.id) && ic.messageType !== 'insert',
     );
     cards.push(...unplacedIntel);
 

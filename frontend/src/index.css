@@ -313,8 +313,8 @@ html, body {
 
 /* ── Reel snap alignment ──────────────────────────────── */
 .reel-card {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  overflow: hidden;
+  touch-action: pan-y;
 }
 
 /* ── Reel text legibility (text on photos) ────────────── */

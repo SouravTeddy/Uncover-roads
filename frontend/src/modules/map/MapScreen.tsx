@@ -44,6 +44,7 @@ export function MapScreen() {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [activeQuickPickLabel, setActiveQuickPickLabel] = useState<string | null>(null)
   const [mapZoom, setMapZoom] = useState(13)
+  const [mapBearing, setMapBearing] = useState(0)
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
@@ -59,10 +60,14 @@ export function MapScreen() {
   const personaProfile = state.personaProfile ?? null;
 
   // New store state for phase 4
-  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme } = state;
+  const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme, screenStack } = state;
   const recoFocusPlaces = state.recoFocusPlaces ?? [];
   const isDark = theme !== 'light'
   const activeCityDays = cityContexts[activeCityIndex]?.days ?? 0;
+
+  // True when the user navigated here from the itinerary — use stack not recoFocusPlaces
+  // so the back button persists for the whole map visit, not just until the 4-sec timer fires
+  const fromItinerary = (screenStack ?? []).at(-2) === 'itinerary-reel' || (screenStack ?? []).at(-2) === 'trips';
 
   // Keep refs current so the unmount cleanup can read latest values
   const selectedPlacesRef = useRef(selectedPlaces);
@@ -517,6 +522,7 @@ export function MapScreen() {
         selectedPlaces={selectedPlaces}
         onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
+        onBearingChange={setMapBearing}
         routeGeojson={routeGeojson}
       >
         {/* Famous places — de-dupe against curated picks */}
@@ -607,6 +613,40 @@ export function MapScreen() {
           activeFilter={activeFilter}
         />
       </MapLibreMap>
+
+      {/* Compass — top-right, below filter bar */}
+      <button
+        onClick={() => mapHandleRef.current?.resetNorth()}
+        aria-label="Reset north"
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 110px)',
+          right: 12,
+          zIndex: 20,
+          width: 40, height: 40, borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,.12)',
+          background: 'rgba(12,13,17,.82)',
+          backdropFilter: 'blur(14px)',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0,
+          boxShadow: '0 2px 12px rgba(0,0,0,.4)',
+        }}
+      >
+        <svg
+          width="28" height="28" viewBox="0 0 28 28" fill="none"
+          style={{ transform: `rotate(${-mapBearing}deg)`, transition: 'transform 0.1s linear' }}
+        >
+          {/* North needle — gold */}
+          <polygon points="14,4 11,14 14,12.5 17,14" fill="#d4a853" />
+          {/* South needle — muted */}
+          <polygon points="14,24 17,14 14,15.5 11,14" fill="rgba(255,255,255,.25)" />
+          {/* Center dot */}
+          <circle cx="14" cy="14" r="1.8" fill="rgba(255,255,255,.5)" />
+          {/* N label */}
+          <text x="14" y="3" textAnchor="middle" fontSize="5.5" fontWeight="700" fontFamily="sans-serif" fill="#d4a853" letterSpacing="0.04em">N</text>
+        </svg>
+      </button>
 
       {/* Area result strip — screen-level so position: absolute works correctly */}
       {(() => {
@@ -987,7 +1027,7 @@ export function MapScreen() {
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
-          fromReel={recoFocusPlaces.length > 0}
+          fromReel={fromItinerary}
           onBuild={handleBuild}
           onBackToReel={() => dispatch({ type: 'GO_BACK' })}
         />

@@ -195,7 +195,12 @@ function ScreenRouter() {
           {currentScreen === 'map'         && <MapScreen />}
           {currentScreen === 'journey'     && <JourneyScreen />}
           {currentScreen === 'route'          && <RouteScreen />}
-          {currentScreen === 'itinerary-reel' && <ItineraryReelScreen />}
+          {/* Keep reel mounted while on map so back-navigation is instant (no rebuild) */}
+          {(currentScreen === 'itinerary-reel' || currentScreen === 'map') && (
+            <div style={currentScreen !== 'itinerary-reel' ? { display: 'none' } : undefined}>
+              <ItineraryReelScreen />
+            </div>
+          )}
           {currentScreen === 'trips'       && <TripsScreen />}
           {currentScreen === 'saved'       && <SavedScreen />}
           {currentScreen === 'nav'         && <NavScreen />}
