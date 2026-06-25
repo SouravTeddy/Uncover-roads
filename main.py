@@ -72,6 +72,18 @@ app.add_middleware(
     allow_credentials=False,
 )
 
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
@@ -297,7 +309,14 @@ _SESSION_TOKEN_MAX = 10000  # max concurrent sessions to prevent unbounded growt
 # Rate limiting for Google Places API calls per IP per hour
 _rate_limit: dict[str, list[float]] = defaultdict(list)
 RATE_LIMIT_WINDOW = 3600
-RATE_LIMIT_MAX = 500
+RATE_LIMIT_MAX = 100
+
+def _validate_coords(*pairs: tuple[float, float]) -> None:
+    """Raise 422 if any lat/lon pair is out of valid range."""
+    for lat, lon in pairs:
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise HTTPException(status_code=422, detail=f"invalid_coordinates: lat={lat}, lon={lon}")
+
 
 def _check_rate_limit(ip: str) -> bool:
     now = _time()
@@ -1097,6 +1116,7 @@ def route_profile(
     Backed by OSRM routing + Open-Elevation sampling (free, no key required).
     Cached 30 days in route_profile_cache.
     """
+    _validate_coords((origin_lat, origin_lon), (dest_lat, dest_lon))
     return _fetch_route_profile(origin_lat, origin_lon, dest_lat, dest_lon)
 
 
@@ -4153,9 +4173,13 @@ def _why_for_you(
 
 
 @app.post("/engine-itinerary")
-async def engine_itinerary(body: EngineItineraryPayload):
+async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=Depends(get_current_user)):
     """Build an itinerary from user-selected places. Called from MapScreen Build button."""
     from datetime import date as _date, timedelta as _td
+
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="rate_limit_exceeded")
 
     if _is_restricted_city(body.city):
         raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")

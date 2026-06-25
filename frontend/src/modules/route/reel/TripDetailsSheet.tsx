@@ -16,23 +16,9 @@ interface Props {
   lastDayDate?: string | null;
 }
 
-// ── Slot definitions ─────────────────────────────────────────
+// ── Slot helpers ─────────────────────────────────────────────
 
 type ArrivalSlot = 'morning' | 'afternoon' | 'evening' | 'night'
-type DepartureSlot = 'morning' | 'midday' | 'afternoon'
-
-const ARRIVAL_SLOTS: { value: ArrivalSlot; label: string; time: string; note: string }[] = [
-  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Suggested start: ~9 AM on arrival day.' },
-  { value: 'afternoon', label: 'Afternoon', time: '14:00', note: 'Suggested start: ~2 PM on arrival day.' },
-  { value: 'evening',   label: 'Evening',   time: '19:00', note: 'Suggested start: ~7 PM on arrival day.' },
-  { value: 'night',     label: 'Night',     time: '22:00', note: 'Suggested start: ~10 PM on arrival day.' },
-]
-
-const DEPARTURE_SLOTS: { value: DepartureSlot; label: string; time: string; note: string }[] = [
-  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Suggested: plan winds down around 9 AM.' },
-  { value: 'midday',    label: 'Midday',    time: '12:00', note: 'Suggested: plan winds down around noon.' },
-  { value: 'afternoon', label: 'Afternoon', time: '15:00', note: 'Suggested: plan winds down around 3 PM.' },
-]
 
 function timeToArrivalSlot(t: string | null): ArrivalSlot | null {
   if (!t) return null
@@ -41,64 +27,6 @@ function timeToArrivalSlot(t: string | null): ArrivalSlot | null {
   if (h < 17) return 'afternoon'
   if (h < 21) return 'evening'
   return 'night'
-}
-
-function timeToDepartureSlot(t: string | null): DepartureSlot | null {
-  if (!t) return null
-  const h = parseInt(t.split(':')[0], 10)
-  if (h < 11) return 'morning'
-  if (h < 14) return 'midday'
-  return 'afternoon'
-}
-
-// ── Slot chips ───────────────────────────────────────────────
-
-function SlotChips<T extends string>({
-  label, slots, value, onChange,
-}: {
-  label: string
-  slots: { value: T; label: string; time: string; note: string }[]
-  value: T | null
-  onChange: (v: { slot: T; time: string } | null) => void
-}) {
-  const selected = slots.find(s => s.value === value)
-  return (
-    <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 7 }}>
-        {label}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {slots.map(s => {
-          const isActive = s.value === value
-          return (
-            <button
-              key={s.value}
-              onClick={() => onChange(isActive ? null : { slot: s.value, time: s.time })}
-              style={{
-                padding: '5px 13px', borderRadius: 999,
-                fontSize: 12, fontWeight: 600,
-                border: isActive ? '1px solid var(--color-amber-bdr)' : '1px solid var(--color-border-m)',
-                background: isActive ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
-                color: isActive ? 'var(--color-primary)' : 'var(--color-text-3)',
-                cursor: 'pointer', transition: 'all .15s ease',
-              }}
-            >
-              {s.label}
-            </button>
-          )
-        })}
-      </div>
-      {selected && (
-        <div style={{
-          marginTop: 7, fontSize: 11, color: 'var(--color-text-4)', lineHeight: 1.45,
-          padding: '6px 10px', borderRadius: 8,
-          background: 'rgba(255,255,255,.03)', borderLeft: '2px solid var(--color-border-m)',
-        }}>
-          {selected.note}
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ── Hotel row ────────────────────────────────────────────────
@@ -658,12 +586,20 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
                 tripStart={firstDayDate} tripEnd={lastDayDate}
               />
               {arrivalDate && (
-                <SlotChips
-                  label="Arriving"
-                  slots={ARRIVAL_SLOTS}
-                  value={timeToArrivalSlot(arrivalTime)}
-                  onChange={v => setArrivalTime(v?.time ?? null)}
-                />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 7 }}>Arriving</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {arrivalTime && (
+                      <button onClick={() => setArrivalTime(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}>×</button>
+                    )}
+                    <input
+                      type="time"
+                      value={arrivalTime ?? ''}
+                      onChange={e => setArrivalTime(e.target.value || null)}
+                      style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: arrivalTime ? 'var(--color-text-1)' : 'var(--color-text-4)', fontFamily: 'var(--font-sans)', outline: 'none', colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
               )}
 
               <DateCard
@@ -676,12 +612,20 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
                 calInitialMonth={lastDayDate}
               />
               {departureDate && (
-                <SlotChips
-                  label="Departing"
-                  slots={DEPARTURE_SLOTS}
-                  value={timeToDepartureSlot(departureTime)}
-                  onChange={v => setDepartureTime(v?.time ?? null)}
-                />
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 7 }}>Departing</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {departureTime && (
+                      <button onClick={() => setDepartureTime(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}>×</button>
+                    )}
+                    <input
+                      type="time"
+                      value={departureTime ?? ''}
+                      onChange={e => setDepartureTime(e.target.value || null)}
+                      style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', borderRadius: 8, padding: '4px 8px', fontSize: 12, color: departureTime ? 'var(--color-text-1)' : 'var(--color-text-4)', fontFamily: 'var(--font-sans)', outline: 'none', colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
               )}
 
               <HotelRow
