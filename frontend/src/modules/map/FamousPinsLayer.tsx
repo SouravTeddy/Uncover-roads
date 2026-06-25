@@ -2,8 +2,8 @@ import { Marker } from 'react-map-gl/maplibre'
 import type { Place } from '../../shared/types'
 import type { DiscoveryMode } from '../../shared/types'
 import {
-  UNIFIED_PIN_BG, UNIFIED_PIN_BORDER, UNIFIED_PIN_SHADOW,
-  UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  UNIFIED_PIN_SHADOW,
+  UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE,
   SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
   getFamousLayerOpacity,
 } from './pin-visual'
@@ -19,7 +19,7 @@ interface Props {
   favouritedIds?: Set<string>
 }
 
-export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinClick, mapZoom = 13, favouritedIds }: Props) {
+export function FamousPinsLayer({ places, activePlaceId, discoveryMode, isDark, onPinClick, mapZoom = 13, favouritedIds }: Props) {
   const layerOpacity = getFamousLayerOpacity(discoveryMode)
   const labelOpacity = Math.max(0, Math.min(1, mapZoom - 13))
 
@@ -30,6 +30,11 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
         const isSaved = favouritedIds?.has(place.id) ?? false
         const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon = CATEGORY_ICONS[place.category] ?? 'location_on'
+        const pinBg = isDark ? 'rgba(18,19,24,0.94)' : 'rgba(255,255,255,0.96)'
+        const pinBorder = isDark
+          ? (isActive ? '1.5px solid rgba(242,237,230,0.45)' : '1px solid rgba(242,237,230,0.16)')
+          : (isActive ? '1.5px solid rgba(44,36,32,0.45)' : '1px solid rgba(44,36,32,0.14)')
+        const iconColor = isDark ? '#e8e2d8' : '#6b5e57'
 
         return (
           <Marker
@@ -49,9 +54,9 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
               {/* pin circle */}
               <div style={{
                 width: size, height: size, borderRadius: '50%',
-                background: UNIFIED_PIN_BG,
+                background: pinBg,
                 backdropFilter: 'blur(10px)',
-                border: isActive ? '1.5px solid rgba(242,237,230,0.45)' : UNIFIED_PIN_BORDER,
+                border: pinBorder,
                 boxShadow: isActive
                   ? `0 0 0 3px rgba(212,168,83,0.22), ${UNIFIED_PIN_SHADOW}`
                   : UNIFIED_PIN_SHADOW,
@@ -59,7 +64,7 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
                 transition: 'transform 0.24s cubic-bezier(.34,1.56,.64,1)',
                 transform: isActive ? 'scale(1.12)' : 'scale(1)',
               }}>
-                <span className="ms fill" style={{ fontSize: UNIFIED_ICON_SIZE, color: UNIFIED_ICON_COLOR, lineHeight: 1 }}>
+                <span className="ms fill" style={{ fontSize: UNIFIED_ICON_SIZE, color: iconColor, lineHeight: 1 }}>
                   {icon}
                 </span>
               </div>
@@ -77,12 +82,15 @@ export function FamousPinsLayer({ places, activePlaceId, discoveryMode, onPinCli
                 position: 'absolute', top: 'calc(100% + 7px)',
                 left: '50%', transform: 'translateX(-50%)',
                 padding: '6px 11px', borderRadius: 13,
-                background: 'rgba(9,10,14,0.96)', backdropFilter: 'blur(14px)',
-                border: '1px solid rgba(242,237,230,0.1)',
-                boxShadow: '0 5px 16px rgba(0,0,0,0.6)',
+                background: isDark ? 'rgba(9,10,14,0.96)' : 'rgba(255,255,255,0.96)',
+                backdropFilter: 'blur(14px)',
+                border: isDark ? '1px solid rgba(242,237,230,0.1)' : '1px solid rgba(44,36,32,0.1)',
+                boxShadow: isDark ? '0 5px 16px rgba(0,0,0,0.6)' : '0 2px 12px rgba(0,0,0,0.12)',
                 whiteSpace: 'nowrap', maxWidth: 130,
                 overflow: 'hidden', textOverflow: 'ellipsis',
-                fontSize: 12.5, fontWeight: 600, color: '#f2ede6', letterSpacing: '0.01em',
+                fontSize: 12.5, fontWeight: 600,
+                color: isDark ? '#f2ede6' : '#2c2420',
+                letterSpacing: '0.01em',
                 pointerEvents: 'none',
                 opacity: labelOpacity,
                 transition: 'opacity 0.25s ease',

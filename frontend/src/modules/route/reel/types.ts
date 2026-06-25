@@ -161,6 +161,7 @@ export interface ReelFinaleCard {
   city: string;
   totalStops: number;
   persona: string;
+  googleMapsUrl?: string | null;
 }
 
 export interface ReelDayDividerCard {
@@ -234,6 +235,8 @@ export interface ReelDayTransitionCard {
   transitDepartureTime?: string | null;
   transitArrivalTime?: string | null;
   transitRef?: string | null;
+  /** When true, this city change happens within the same calendar day — render as a compact en-route marker */
+  sameDay?: boolean;
 }
 
 export interface DayIntelObservation {

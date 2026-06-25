@@ -143,51 +143,53 @@ function NudgeSheet({
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '8px 18px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {(() => {
-            const mapsUrl = buildGoogleMapsUrl(allStops);
-            return mapsUrl ? (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  width: '100%', padding: '11px 0', borderRadius: 12,
-                  border: '1px solid rgba(66,133,244,.35)',
-                  background: 'rgba(66,133,244,.1)',
-                  fontSize: 13, fontWeight: 600, color: '#7aabf7',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                  textDecoration: 'none',
-                }}
-              >
-                <span className="ms" style={{ fontSize: 15 }}>map</span>
-                Open all stops in Google Maps
-              </a>
-            ) : null;
-          })()}
-          <div style={{ display: 'flex', gap: 9 }}>
+        <div style={{ padding: '8px 18px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Primary CTA */}
+          <button
+            onClick={onPlay}
+            style={{
+              width: '100%', padding: '14px 0', borderRadius: 14,
+              border: '1px solid rgba(212,168,83,.4)',
+              background: 'rgba(212,168,83,.15)',
+              fontSize: 14, fontWeight: 700, color: 'var(--color-primary)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}
+          >
+            <span className="ms fill" style={{ fontSize: 16 }}>play_circle</span>
+            Open plan
+          </button>
+          {/* Secondary row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {(() => {
+              const mapsUrl = buildGoogleMapsUrl(allStops);
+              return mapsUrl ? (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 11,
+                    border: '1px solid var(--color-border-m)',
+                    background: 'var(--color-surface)',
+                    fontSize: 12, fontWeight: 600, color: 'var(--color-text-2)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    textDecoration: 'none',
+                  }}
+                >
+                  <span className="ms" style={{ fontSize: 14, color: '#4285f4' }}>map</span>
+                  Google Maps
+                </a>
+              ) : null;
+            })()}
             <button
               onClick={onClose}
               style={{
-                padding: '12px 16px', borderRadius: 12,
+                padding: '10px 18px', borderRadius: 11,
                 border: '1px solid var(--color-border)', background: 'none',
-                fontSize: 13, fontWeight: 600, color: 'var(--color-text-4)', cursor: 'pointer',
+                fontSize: 12, fontWeight: 600, color: 'var(--color-text-4)', cursor: 'pointer',
               }}
             >
               Later
-            </button>
-            <button
-              onClick={onPlay}
-              style={{
-                flex: 1, padding: 12, borderRadius: 12,
-                border: '1px solid rgba(212,168,83,.4)',
-                background: 'rgba(212,168,83,.15)',
-                fontSize: 13, fontWeight: 600, color: '#d4a853',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <span className="ms fill" style={{ fontSize: 15 }}>play_circle</span>
-              Open plan
             </button>
           </div>
         </div>

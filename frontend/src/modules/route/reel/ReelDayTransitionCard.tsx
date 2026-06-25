@@ -8,17 +8,17 @@ interface Props {
 
 // ── Tokens ────────────────────────────────────────────────────
 const T = {
-  bg:       '#0f0d0c',
-  gold:     '#d4a853',
-  goldBg:   'rgba(212,168,83,0.10)',
-  goldBdr:  'rgba(212,168,83,0.22)',
+  bg:       'var(--color-bg)',
+  gold:     'var(--color-primary)',
+  goldBg:   'var(--color-primary-bg)',
+  goldBdr:  'var(--color-primary-glow)',
   sky:      '#4f8fab',
   skyBg:    'rgba(79,143,171,0.10)',
   skyBdr:   'rgba(79,143,171,0.22)',
-  text1:    '#f5f0ea',
-  text2:    'rgba(255,255,255,0.68)',
-  text3:    'rgba(255,255,255,0.40)',
-  line:     'rgba(255,255,255,0.10)',
+  text1:    'var(--color-text-1)',
+  text2:    'var(--color-text-2)',
+  text3:    'var(--color-text-3)',
+  line:     'var(--color-border)',
 };
 
 const MODE_ICON: Record<string, string> = {
@@ -98,6 +98,72 @@ export function ReelDayTransitionCard({ card, active }: Props) {
   const hasTimes  = !!(card.transitDepartureTime && card.transitArrivalTime);
   const durLabel  = card.transitDurationMin ? fmtDur(card.transitDurationMin) : null;
   const distLabel = card.transitDistanceKm  ? `${card.transitDistanceKm} km` : null;
+
+  // Compact same-day city hop card — no full-screen day recap
+  if (card.sameDay) {
+    return (
+      <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 300px 400px at 50% 50%, rgba(79,143,171,.06), transparent)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', gap: 0 }}>
+
+          <div style={{ ...fade('0s'), textAlign: 'center', marginBottom: 28 }}>
+            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 4 }}>
+              Continuing today →
+            </p>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
+              {card.nextCity}
+            </p>
+          </div>
+
+          {/* Transit pill */}
+          <div style={{ ...fade('.1s'), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            {modeIcon && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '10px 20px', borderRadius: 24,
+                background: T.skyBg, border: `1px solid ${T.skyBdr}`,
+              }}>
+                <span className="ms" style={{ fontSize: 16, color: T.sky }}>{modeIcon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
+                {(durLabel || distLabel) && (
+                  <span style={{ fontSize: 12, color: T.text3 }}>
+                    {[card.transitIsEstimated ? '~' : '', durLabel, distLabel].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+            )}
+            {hasTimes && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: T.sky }}>{fmt12h(card.transitDepartureTime!)}</span>
+                <span className="ms" style={{ fontSize: 12, color: T.text3 }}>arrow_forward</span>
+                <span style={{ fontSize: 13, color: T.sky }}>{fmt12h(card.transitArrivalTime!)}</span>
+              </div>
+            )}
+            {card.transitRef && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 8, background: 'rgba(0,0,0,.35)', border: `1px solid ${T.line}` }}>
+                <span className="ms" style={{ fontSize: 11, color: T.text3 }}>confirmation_number</span>
+                <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ ...fade('.2s'), marginTop: 28, textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
+              <span className="ms" style={{ fontSize: 12, color: T.gold }}>schedule</span>
+              <span style={{ fontSize: 11, color: T.gold }}>
+                {card.nextStopCount} stop{card.nextStopCount !== 1 ? 's' : ''}
+                {card.nextStartTime ? ` · arrives ${fmt12h(card.nextStartTime)}` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center', zIndex: 8 }}>
+          <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>

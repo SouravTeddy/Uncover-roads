@@ -63,25 +63,25 @@ export function MapLibreMarkers({
                 cursor: 'pointer',
               }}
             >
-              {/* Pin circle — persona-chip style for default, vivid for selected */}
+              {/* Pin circle */}
               <div style={{
                 width: PIN_SIZE, height: PIN_SIZE,
                 borderRadius: '50%',
                 backgroundColor: isInItinerary
                   ? color
                   : isCardOpen
-                  ? '#2a2a2a'
-                  : '#1c1c1c',
+                  ? `${color}30`
+                  : `${color}18`,
                 border: isCardOpen
                   ? `2px solid ${color}`
                   : isInItinerary
                   ? `2px solid ${color}`
-                  : '1.5px solid rgba(255,255,255,0.13)',
+                  : `1.5px solid ${color}60`,
                 boxShadow: isCardOpen
-                  ? `0 0 0 2px ${color}50, 0 3px 12px rgba(0,0,0,.5)`
+                  ? `0 0 0 2px ${color}50, 0 3px 12px rgba(0,0,0,.6)`
                   : isInItinerary
                   ? `0 3px 10px ${color}40`
-                  : '0 2px 8px rgba(0,0,0,0.45)',
+                  : `0 2px 8px rgba(0,0,0,.5), 0 0 0 1px ${color}20`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s ease',
               }}>
@@ -89,9 +89,11 @@ export function MapLibreMarkers({
                   className="ms"
                   style={{
                     fontSize: 15,
-                    color: isInItinerary ? '#0c0c0e' : isCardOpen ? color : '#a08d80',
+                    color: isInItinerary ? '#0c0c0e' : color,
                     lineHeight: 1,
                     fontVariationSettings: isInItinerary
+                      ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                      : isCardOpen
                       ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
                       : "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",
                   }}

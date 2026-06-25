@@ -40,16 +40,18 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
   useEffect(() => { onInteractRef.current = onInteract; });
 
   const [nearbyPlaces, setNearbyPlaces] = useState<Place[]>([]);
+  const [fetchError, setFetchError] = useState(false);
+  const [fetchKey, setFetchKey] = useState(0);
 
   // Pre-fetch nearby places when card becomes active so Browse on Map is instant
   useEffect(() => {
     if (!active || !cfg.searchCategory || card.stopLat == null || card.stopLon == null) return;
-    if (nearbyPlaces.length > 0) return;
+    setFetchError(false);
     (api as unknown as Record<string, (opts: { lat: number; lon: number; category: string; limit: number }) => Promise<Place[]>>).nearbyPlaces?.({ lat: card.stopLat, lon: card.stopLon, category: cfg.searchCategory, limit: 8 })
-      ?.then(places => { if (places?.length) setNearbyPlaces(places); })
-      ?.catch(() => {});
+      ?.then(places => { if (places?.length) setNearbyPlaces(places); else setFetchError(true); })
+      ?.catch(() => setFetchError(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, fetchKey]);
 
   useEffect(() => { if (active) onInteractRef.current?.('viewed'); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
       className="reel-card"
       style={{
         width: '100%', height: '100dvh',
-        background: '#0f0d0c',
+        background: 'var(--color-bg)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         padding: '0 24px',
@@ -125,7 +127,7 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
       {/* Consequence */}
       <p
         style={{
-          fontSize: 13, color: 'var(--color-text-3)',
+          fontSize: 13, color: 'var(--color-text-2)',
           lineHeight: 1.55, textAlign: 'center',
           margin: 0, marginBottom: 36,
           maxWidth: 280,
@@ -162,6 +164,31 @@ export function ReelRecoCard({ card, active, archetype: _archetype, existingPlac
         >
           Browse nearby on map →
         </button>
+      )}
+
+      {fetchError && canBrowse && (
+        <div
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            marginTop: 10,
+            padding: '5px 12px', borderRadius: 999,
+            background: 'rgba(180,60,60,0.1)',
+            border: '1px solid rgba(180,60,60,0.25)',
+            opacity: active ? 1 : 0,
+            transition: 'opacity .45s .32s ease',
+          }}
+        >
+          <span style={{ fontSize: 11, color: '#c97070' }}>Could not load nearby places</span>
+          <button
+            onClick={() => { setNearbyPlaces([]); setFetchKey(k => k + 1); }}
+            style={{
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, color: '#c97070', letterSpacing: '.04em',
+            }}
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {card.nearbyCity && (

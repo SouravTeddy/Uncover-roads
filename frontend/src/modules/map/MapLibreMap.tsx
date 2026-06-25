@@ -29,10 +29,36 @@ function forceEnglishLabels(style: any): any {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function inject3DBuildings(style: any): any {
+  const isDark = document.documentElement.dataset.theme !== 'light'
+  // Find the first symbol layer (labels) to insert buildings below it
+  const firstSymbol = style.layers.findIndex((l: any) => l.type === 'symbol')
+  const insertAt = firstSymbol >= 0 ? firstSymbol : style.layers.length
+
+  const buildingLayer = {
+    id: 'ur-3d-buildings',
+    type: 'fill-extrusion',
+    source: 'carto',
+    'source-layer': 'building',
+    minzoom: 14,
+    paint: {
+      'fill-extrusion-color': isDark ? '#1e1c1a' : '#d8d0c8',
+      'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 6],
+      'fill-extrusion-base':   ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+      'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, isDark ? 0.82 : 0.72],
+    },
+  }
+
+  const layers = [...style.layers]
+  layers.splice(insertAt, 0, buildingLayer)
+  return { ...style, layers }
+}
+
 async function fetchMapStyle(url: string): Promise<StyleSpecification> {
   const res = await fetch(url)
   const style = await res.json()
-  return forceEnglishLabels(style)
+  return inject3DBuildings(forceEnglishLabels(style))
 }
 
 export interface MapHandle {
@@ -110,9 +136,10 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   return (
     <Map
       ref={mapRef}
-      initialViewState={{ latitude: center[0], longitude: center[1], zoom }}
+      initialViewState={{ latitude: center[0], longitude: center[1], zoom, pitch: 35, bearing: 0 }}
       style={{ width: '100%', height: '100%' }}
       mapStyle={mapStyle}
+      maxPitch={60}
       onMoveEnd={handleMoveEnd}
       onMove={onBearingChange ? handleMove : undefined}
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}

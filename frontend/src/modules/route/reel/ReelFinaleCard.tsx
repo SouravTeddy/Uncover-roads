@@ -62,14 +62,14 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
           style={{
             width: '100%', padding: '16px 20px', borderRadius: 16,
             background: 'rgba(22,163,74,.1)', border: '1px solid rgba(22,163,74,.3)',
-            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
             animation: active ? 'fadeUp .5s .35s both' : 'none',
           }}
         >
           <span className="ms fill" style={{ fontSize: 26, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', margin: 0, marginBottom: 2 }}>Saved to trips</p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', margin: 0 }}>Come back to it any time</p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-3)', margin: 0 }}>Come back to it any time</p>
           </div>
         </div>
       ) : (
@@ -82,13 +82,33 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
             fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             boxShadow: '0 6px 28px rgba(212,168,83,.25)',
-            marginBottom: 12,
+            marginBottom: 16,
             animation: active ? 'fadeUp .5s .35s both' : 'none',
           }}
         >
           <span className="ms fill" style={{ fontSize: 18 }}>bookmark_add</span>
           Save trip
         </button>
+      )}
+
+      {card.googleMapsUrl && (
+        <a
+          href={card.googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            width: '100%', padding: '12px 0', borderRadius: 14,
+            border: '1px solid var(--color-border-m)',
+            background: 'var(--color-surface)',
+            fontSize: 13, fontWeight: 600, color: 'var(--color-text-2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            textDecoration: 'none',
+            animation: active ? 'fadeUp .5s .45s both' : 'none',
+          }}
+        >
+          <span className="ms" style={{ fontSize: 15, color: '#4285f4' }}>map</span>
+          Open all stops in Google Maps
+        </a>
       )}
     </div>
   );
