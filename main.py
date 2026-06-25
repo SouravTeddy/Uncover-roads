@@ -391,7 +391,35 @@ def geocode(city: str = Query(...)):
 # =========================================
 # OVERPASS
 # =========================================
+OVERPASS_CACHE_TTL_HOURS = int(os.getenv("OVERPASS_CACHE_TTL_HOURS", "24"))
+
+
+def _overpass_query_hash(query: str) -> str:
+    import hashlib
+    return hashlib.sha256(query.encode()).hexdigest()[:32]
+
+
 def fetch_overpass(query: str) -> dict:
+    query_hash = _overpass_query_hash(query)
+
+    if _supabase:
+        try:
+            cached = (
+                _supabase.table("overpass_cache")
+                .select("result,fetched_at")
+                .eq("query_hash", query_hash)
+                .maybe_single()
+                .execute()
+            )
+            row = _maybe_single_data(cached)
+            if row:
+                age = datetime.now(timezone.utc) - datetime.fromisoformat(row["fetched_at"])
+                if age < timedelta(hours=OVERPASS_CACHE_TTL_HOURS):
+                    print(f"[Overpass] cache hit {query_hash}")
+                    return row["result"]
+        except Exception as e:
+            print(f"[Overpass] cache read failed: {e}")
+
     headers = {
         "User-Agent": "UncoverRoads/1.0",
         "Content-Type": "application/x-www-form-urlencoded"
@@ -415,7 +443,17 @@ def fetch_overpass(query: str) -> dict:
             if res.status_code == 200:
                 text = res.text.strip()
                 if text.startswith("{"):
-                    return res.json()
+                    data = res.json()
+                    if _supabase and data.get("elements"):
+                        try:
+                            _supabase.table("overpass_cache").upsert({
+                                "query_hash": query_hash,
+                                "result":     data,
+                                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                            }).execute()
+                        except Exception as e:
+                            print(f"[Overpass] cache write failed: {e}")
+                    return data
                 if "<html" in text[:200].lower():
                     print("  HTML error page returned — skipping endpoint")
                     continue

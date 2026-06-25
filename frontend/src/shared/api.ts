@@ -74,103 +74,6 @@ export interface PersonaResponse {
   city_profile: Record<string, unknown>;
 }
 
-// ── Client-side Overpass fallback ────────────────────────────────────────────
-// Used when backend /map-data returns empty (e.g. no Google API key on server)
-
-// openstreetmap.fr excluded — no CORS header on responses
-// osm.ch returns 0 elements with GET (URL-decoding issue with regex ~)
-// POST with application/x-www-form-urlencoded is a CORS simple request — no preflight needed
-const OVERPASS_MIRRORS = [
-  'https://overpass-api.de/api/interpreter',       // main; CORS OK; slow from Asia but reliable
-  'https://overpass.private.coffee/api/interpreter', // community mirror; CORS OK
-  'https://overpass.osm.ch/api/interpreter',        // Swiss mirror; works with POST
-];
-
-function _overpassCategory(tags: Record<string, string>): string {
-  const amenity = tags.amenity ?? '';
-  const tourism = tags.tourism ?? '';
-  const leisure = tags.leisure ?? '';
-  const historic = tags.historic ?? '';
-  if (amenity === 'restaurant' || amenity === 'bar' || amenity === 'food_court' || tags.cuisine) return 'restaurant';
-  if (amenity === 'cafe') return 'cafe';
-  if (amenity === 'museum' || tourism === 'museum') return 'museum';
-  if (leisure === 'park' || leisure === 'garden' || leisure === 'nature_reserve') return 'park';
-  if (historic) return 'historic';
-  if (tourism === 'attraction' || tourism === 'artwork' || tourism === 'viewpoint' || tourism === 'gallery') return 'tourism';
-  return 'place';
-}
-
-async function _fetchOverpassMapData(
-  lat: number,
-  lon: number,
-  radiusM: number,
-  city = '',
-): Promise<Place[]> {
-  const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|food_court"]["name"](around:${radiusM},${lat},${lon});node["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});way["amenity"="museum"]["name"](around:${radiusM},${lat},${lon});node["tourism"~"attraction|museum|artwork|viewpoint|gallery"]["name"](around:${radiusM},${lat},${lon});node["leisure"~"park|garden|nature_reserve"]["name"](around:${radiusM},${lat},${lon});node["historic"]["name"](around:${radiusM},${lat},${lon}););out center 200;`;
-
-  for (const endpoint of OVERPASS_MIRRORS) {
-    try {
-      console.log(`[Overpass] trying ${endpoint}`);
-      // POST with application/x-www-form-urlencoded = CORS simple request (no preflight)
-      // Also avoids GET URL-length/decoding issues with regex ~ operator
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(25_000),
-      });
-      console.log(`[Overpass] ${endpoint} → ${res.status}`);
-      if (!res.ok) continue;
-      const text = await res.text();
-      if (!text.startsWith('{')) {
-        console.warn(`[Overpass] ${endpoint} returned non-JSON`);
-        continue;
-      }
-      const data = JSON.parse(text);
-      if (data.remark) console.warn(`[Overpass] remark: ${data.remark}`);
-      const elements: unknown[] = Array.isArray(data.elements) ? data.elements : [];
-      console.log(`[Overpass] ${endpoint} → ${elements.length} elements`);
-
-      const seen = new Set<string>();
-      const places: Place[] = [];
-      for (const el of elements) {
-        const e = el as Record<string, unknown>;
-        const tags = (e.tags ?? {}) as Record<string, string>;
-        const name = (
-          tags['name:en'] || tags['int_name'] || tags['name:ja_rm'] || tags['name:ko_rm'] || tags['name'] || ''
-        ).trim();
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
-
-        const elLat = (e.lat ?? (e.center as Record<string, number> | undefined)?.lat) as number | undefined;
-        const elLon = (e.lon ?? (e.center as Record<string, number> | undefined)?.lon) as number | undefined;
-        if (elLat == null || elLon == null) continue;
-
-        places.push({
-          id: `osm-${e.type ?? 'n'}-${e.id ?? name}`,
-          title: name,
-          lat: elLat,
-          lon: elLon,
-          category: _overpassCategory(tags) as Place['category'],
-          _city: city,
-          tags: {
-            opening_hours: tags.opening_hours ?? '',
-            website: tags.website ?? '',
-            cuisine: tags.cuisine ?? '',
-            description: tags.description ?? '',
-          },
-        });
-      }
-      console.log(`[Overpass] parsed ${places.length} places`);
-      if (places.length > 0) return places;
-    } catch (err) {
-      console.error(`[Overpass] ${endpoint} failed:`, err);
-    }
-  }
-  console.error('[Overpass] all mirrors failed or returned 0 results');
-  return [];
-}
-
 export async function mapData(
   city: string,
   centerLat: number,
@@ -185,21 +88,16 @@ export async function mapData(
   });
   try {
     const res = await fetch(`${BASE}/map-data?${params}`);
-    console.log(`[mapData] backend → ${res.status}`);
     if (res.ok) {
       const data: Place[] = await res.json();
       const limited = data.slice(0, 150);
-      console.log(`[mapData] backend returned ${data.length} places (showing ${limited.length})`);
-      if (limited.length > 0) {
-        return limited;
-      }
+      console.log(`[mapData] ${limited.length} places for ${city}`);
+      return limited;
     }
   } catch (err) {
-    console.error('[mapData] backend fetch failed:', err);
+    console.error('[mapData] fetch failed:', err);
   }
-  // Backend returned empty or failed — call Overpass directly from browser
-  console.log('[mapData] falling back to client-side Overpass');
-  return _fetchOverpassMapData(centerLat, centerLon, radiusM, city);
+  return [];
 }
 
 export const api = {
