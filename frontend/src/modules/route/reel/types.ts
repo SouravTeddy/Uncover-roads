@@ -282,6 +282,13 @@ export interface ReelDayIntelCard {
   observations: DayIntelObservation[];
 }
 
+export interface ReelGrowthCard {
+  type: 'growth';
+  lastCity: string;
+  lastLat: number;
+  lastLon: number;
+}
+
 export type ReelCard =
   | ReelIntroCard
   | ReelSummaryCard
@@ -295,4 +302,5 @@ export type ReelCard =
   | ReelScenicCard
   | ReelGroupCard
   | ReelDayTransitionCard
-  | ReelDayIntelCard;
+  | ReelDayIntelCard
+  | ReelGrowthCard;

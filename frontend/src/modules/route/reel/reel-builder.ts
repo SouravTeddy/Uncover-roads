@@ -10,7 +10,7 @@ import type {
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation, ReelDayIntelCard } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation } from './types';
 import { computeHotelAnchorRow } from './hotel-anchor';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -628,6 +628,12 @@ export function buildReelCards(
   const getWeatherForCity = (cityName: string): WeatherData | null =>
     weatherByCity.get(cityName.toLowerCase()) ?? null;
 
+  // Trip-level growth card tracking
+  let totalObsCount = 0;
+  let lastCityName = '';
+  let lastCityLat: number | null = null;
+  let lastCityLon: number | null = null;
+
   const weights: EngineWeights = itinerary.personaSnapshot ?? DEFAULT_WEIGHTS;
   const cards: ReelCard[] = [];
   const allStops = itinerary.days.flatMap(d => d.stops);
@@ -978,25 +984,19 @@ export function buildReelCards(
       if (scenicCard) cards.push(scenicCard);
     }
 
-    // Single Day Intelligence card after the last stop of this day
-    const lastStopForIntel = sortedStops.at(-1);
-    if (lastStopForIntel && dedupedObservations.length > 0) {
-      const dayIntelCard: ReelDayIntelCard = {
-        type: 'day_intel',
-        id: `day-intel-${dayIdx}`,
-        day: logicalDayNum,
-        totalDays: logicalTotalDays,
-        dayCity: day.city || primaryCity,
-        afterStopId: lastStopForIntel.id,
-        observations: dedupedObservations,
-      };
-      cards.push(dayIntelCard);
+    // Accumulate observations for trip-level growth card (no per-day intel cards)
+    totalObsCount += dedupedObservations.length;
+    const dayLastStop = sortedStops.at(-1);
+    if (dayLastStop) {
+      lastCityName = day.city || primaryCity;
+      lastCityLat  = dayLastStop.lat;
+      lastCityLon  = dayLastStop.lon;
     }
 
     // Remaining intel cards not matched to a specific stop — push after all stops
-    const lastStop = sortedStops.at(-1);
-    const lastStopImage = lastStop
-      ? (lastStop.imageUrl ?? (lastStop.photoRef ? getPlacePhotoUrl(lastStop.photoRef, 600) : null))
+    const intelAnchorStop = sortedStops.at(-1);
+    const lastStopImage = intelAnchorStop
+      ? (intelAnchorStop.imageUrl ?? (intelAnchorStop.photoRef ? getPlacePhotoUrl(intelAnchorStop.photoRef, 600) : null))
       : null;
     const allIntelIds = new Set(cards.filter(c => c.type === 'intel').map(c => (c as ReelIntelCard).id));
     const unplacedIntel = buildIntelCards(day, lastStopImage).filter(
@@ -1008,9 +1008,19 @@ export function buildReelCards(
     // No separate wrap-up card needed.
   }
 
-  // Balance card: when engine ran but found zero recos for all days — surface a positive message
+  // Trip-level growth card: show once if ≥2 observations fired across the whole trip
+  if (totalObsCount >= 2 && lastCityLat != null && lastCityLon != null) {
+    cards.push({
+      type: 'growth',
+      lastCity: lastCityName,
+      lastLat:  lastCityLat,
+      lastLon:  lastCityLon,
+    });
+  }
+
+  // Balance card: engine ran, zero recos, and no observations — plan is genuinely well-balanced
   const allRecosCount = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
-  if (recosByDayIdx.size > 0 && allRecosCount === 0) {
+  if (recosByDayIdx.size > 0 && allRecosCount === 0 && totalObsCount < 2) {
     const allCategories = new Set(allStops.map(s => s.category));
     cards.push({
       type: 'balance',

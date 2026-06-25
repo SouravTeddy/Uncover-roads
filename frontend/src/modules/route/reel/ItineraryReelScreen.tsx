@@ -17,6 +17,7 @@ import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
 import { ReelGroupCard } from './ReelGroupCard';
 import { ReelDayIntelCard } from './ReelDayIntelCard';
+import { ReelGrowthCard } from './ReelGrowthCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
@@ -837,6 +838,16 @@ export function ItineraryReelScreen() {
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
           else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
+          else if (card.type === 'growth') child = (
+            <ReelGrowthCard
+              card={card}
+              active={isActive}
+              onBrowse={() => {
+                dispatch({ type: 'SET_CITY_GEO', geo: { lat: card.lastLat, lon: card.lastLon, bbox: [card.lastLat - 0.05, card.lastLat + 0.05, card.lastLon - 0.05, card.lastLon + 0.05] } });
+                dispatch({ type: 'GO_TO', screen: 'map' });
+              }}
+            />
+          );
           else if (card.type === 'group')   child = (
             <ReelGroupCard
               card={card}
@@ -878,6 +889,7 @@ export function ItineraryReelScreen() {
             card.type === 'day_intel' ? card.id :
             card.type === 'scenic' ? `scenic-${idx}-${card.pos}` :
             card.type === 'group' ? `group-${idx}-${card.fromStop}` :
+            card.type === 'growth' ? 'growth-card' :
             `${card.type}-${idx}`;
           return (
             <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always', scrollSnapAlign: 'start' }}>
