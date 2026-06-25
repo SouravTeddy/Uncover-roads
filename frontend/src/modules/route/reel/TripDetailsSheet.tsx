@@ -477,12 +477,30 @@ function CityRow({
             display: 'flex', flexDirection: 'column', gap: 14,
           }}
         >
-          <SlotChips
-            label={prevCity ? `Arriving from ${prevCity}` : 'Arriving'}
-            slots={ARRIVAL_SLOTS}
-            value={arrivalSlot}
-            onChange={v => onArrivalChange(v?.time ?? null)}
-          />
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 7 }}>
+              {prevCity ? `Arriving from ${prevCity}` : 'Arriving'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {arrivalEntry.arrivalTime && (
+                <button
+                  onClick={() => onArrivalChange(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}
+                >×</button>
+              )}
+              <input
+                type="time"
+                value={arrivalEntry.arrivalTime ?? ''}
+                onChange={e => onArrivalChange(e.target.value || null)}
+                style={{
+                  background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                  borderRadius: 8, padding: '4px 8px',
+                  fontSize: 12, color: arrivalEntry.arrivalTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                  fontFamily: 'var(--font-sans)', outline: 'none', colorScheme: 'dark',
+                }}
+              />
+            </div>
+          </div>
 
           <HotelRow
             city={city}
@@ -492,12 +510,30 @@ function CityRow({
             onChange={onHotelChange}
           />
 
-          <SlotChips
-            label={isLast ? 'Departing (heading home)' : 'Departing'}
-            slots={DEPARTURE_SLOTS}
-            value={departureSlot}
-            onChange={v => onDepartureChange(v?.time ?? null)}
-          />
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-4)', letterSpacing: '.07em', textTransform: 'uppercase', marginBottom: 7 }}>
+              {isLast ? 'Departing (heading home)' : 'Departing'}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {arrivalEntry.departureTime && (
+                <button
+                  onClick={() => onDepartureChange(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--color-text-4)', fontSize: 13, lineHeight: 1 }}
+                >×</button>
+              )}
+              <input
+                type="time"
+                value={arrivalEntry.departureTime ?? ''}
+                onChange={e => onDepartureChange(e.target.value || null)}
+                style={{
+                  background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
+                  borderRadius: 8, padding: '4px 8px',
+                  fontSize: 12, color: arrivalEntry.departureTime ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                  fontFamily: 'var(--font-sans)', outline: 'none', colorScheme: 'dark',
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
