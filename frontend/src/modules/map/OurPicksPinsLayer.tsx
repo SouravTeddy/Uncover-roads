@@ -1,8 +1,8 @@
 import { Marker } from 'react-map-gl/maplibre'
 import type { Place } from '../../shared/types'
 import {
-  UNIFIED_PIN_BG, UNIFIED_PIN_SHADOW,
-  UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE, UNIFIED_ICON_COLOR,
+  UNIFIED_PIN_SHADOW,
+  UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE,
   SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
   CATEGORY_MOOD, DEFAULT_MOOD,
 } from './pin-visual'
