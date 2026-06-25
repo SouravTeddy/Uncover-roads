@@ -79,7 +79,7 @@ const CHIP: React.CSSProperties = {
   padding: '4px 9px', borderRadius: 999,
   background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(12px)',
   border: '1px solid rgba(255,255,255,0.1)',
-  fontSize: 11, fontWeight: 600,
+  fontSize: 13, fontWeight: 600,
   color: 'rgba(255,255,255,0.72)',
   fontFamily: 'var(--font-sans)',
   lineHeight: 1,
@@ -117,9 +117,9 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
       {/* Weather pill */}
       {card.weather?.temp != null && (
         <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, ...CHIP, background: 'rgba(9,12,22,.82)' }}>
-          <span className="ms fill" style={{ fontSize: 12, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°</span>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.5)', fontFamily: 'var(--font-sans)' }}>{card.weather.condition ?? ''}</span>
+          <span className="ms fill" style={{ fontSize: 13, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', fontFamily: 'var(--font-sans)' }}>{card.weather.condition ?? ''}</span>
         </div>
       )}
 
@@ -128,7 +128,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         onClick={onShowTripDetails}
         style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, ...CHIP, padding: '7px 11px', cursor: 'pointer', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.18)', color: 'rgba(255,255,255,.82)' }}
       >
-        <span className="ms" style={{ fontSize: 13 }}>edit_calendar</span>
+        <span className="ms" style={{ fontSize: 15 }}>edit_calendar</span>
         Add trip details
       </button>
 
@@ -147,14 +147,14 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   {cities.map((c, i) => (
                     <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontFamily: 'var(--font-heading)', fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1, textShadow: INTRO_TEXT_SHADOW }}>{c}</span>
+                      <span style={{ fontFamily: 'var(--font-heading)', fontSize: 34, fontWeight: 700, color: '#fff', lineHeight: 1, textShadow: INTRO_TEXT_SHADOW }}>{c}</span>
                       {i < cities.length - 1 && (
-                        <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,0.4)' }}>arrow_forward</span>
+                        <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)' }}>arrow_forward</span>
                       )}
                     </span>
                   ))}
                 </div>
-                <span style={{ fontSize: 11, fontFamily: 'var(--font-sans)', fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 13, fontFamily: 'var(--font-sans)', fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {card.totalDays}-day multi-city trip
                 </span>
               </div>
@@ -171,7 +171,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         <p style={{
           fontFamily: 'var(--font-heading)',
           fontStyle: 'italic',
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: 400,
           color: 'rgba(255,255,255,0.62)',
           lineHeight: 1.35,
@@ -184,8 +184,8 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         {/* Trip timing note — arrival/departure context (Scenario B/C) */}
         {tripTimingNote && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 9, padding: '6px 10px', borderRadius: 8, background: 'rgba(212,168,83,.10)', border: '1px solid rgba(212,168,83,.22)' }}>
-            <span className="ms fill" style={{ fontSize: 12, color: 'rgba(212,168,83,.8)', flexShrink: 0 }}>info</span>
-            <span style={{ fontSize: 11.5, color: 'rgba(255,235,180,.82)', lineHeight: 1.35, fontFamily: 'var(--font-sans)' }}>{tripTimingNote}</span>
+            <span className="ms fill" style={{ fontSize: 13, color: 'rgba(212,168,83,.8)', flexShrink: 0 }}>info</span>
+            <span style={{ fontSize: 13, color: 'rgba(255,235,180,.82)', lineHeight: 1.35, fontFamily: 'var(--font-sans)' }}>{tripTimingNote}</span>
           </div>
         )}
 
@@ -193,22 +193,22 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
           {dateRange && (
             <span style={DATE_CHIP}>
-              <span className="ms fill" style={{ fontSize: 11 }}>calendar_month</span>
+              <span className="ms fill" style={{ fontSize: 15 }}>calendar_month</span>
               {dateRange}
             </span>
           )}
           <span style={CHIP}>
-            <span className="ms fill" style={{ fontSize: 11 }}>place</span>
+            <span className="ms fill" style={{ fontSize: 15 }}>place</span>
             {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}
           </span>
           {card.totalDistanceKm > 0 && (
             <span style={CHIP}>
-              <span className="ms fill" style={{ fontSize: 11 }}>directions_transit</span>
+              <span className="ms fill" style={{ fontSize: 15 }}>directions_transit</span>
               {card.totalDistanceKm} km
             </span>
           )}
           <span style={{ ...CHIP, background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)', color: '#c9a14a' }}>
-            <span className="ms fill" style={{ fontSize: 11 }}>auto_awesome</span>
+            <span className="ms fill" style={{ fontSize: 15 }}>auto_awesome</span>
             {travelStyleTag(card.persona)}
           </span>
         </div>
@@ -218,10 +218,10 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
             {card.intelItems.slice(0, 3).map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span className="ms fill" style={{ fontSize: 13, color: 'rgba(212,168,83,0.7)', flexShrink: 0 }}>
+                <span className="ms fill" style={{ fontSize: 15, color: 'rgba(212,168,83,0.7)', flexShrink: 0 }}>
                   {INTEL_ICON[item.icon] ?? 'info'}
                 </span>
-                <span style={{ fontSize: 12, fontFamily: 'var(--font-sans)', color: 'rgba(255,255,255,0.55)', lineHeight: 1.35 }}>
+                <span style={{ fontSize: 13, fontFamily: 'var(--font-sans)', color: 'rgba(255,255,255,0.55)', lineHeight: 1.35 }}>
                   <strong style={{ color: 'rgba(255,255,255,0.82)', fontWeight: 600 }}>{item.count} {item.label}</strong>
                   {' '}{item.detail}
                 </span>
@@ -232,7 +232,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
 
         {/* Swipe hint */}
         <div style={{ textAlign: 'center', marginTop: 6 }}>
-          <span className="ms" style={{ fontSize: 17, color: 'rgba(255,255,255,.18)' }}>swipe_up</span>
+          <span className="ms" style={{ fontSize: 19, color: 'rgba(255,255,255,.18)' }}>swipe_up</span>
         </div>
       </div>
     </div>

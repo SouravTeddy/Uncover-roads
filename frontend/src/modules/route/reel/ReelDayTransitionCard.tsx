@@ -20,6 +20,13 @@ const T = {
   text2:    'var(--color-text-2)',
   text3:    'var(--color-text-3)',
   line:     'var(--color-border)',
+  // Font scale
+  fsMicro:  10,   // "DAY 2", "NEXT" uppercase eyebrow labels
+  fsXs:     12,   // detail labels, icon text
+  fsSm:     15,   // secondary info, transit details
+  fsMd:     17,   // primary text, mode labels
+  fsTitle:  40,   // prev-day city name
+  fsHero:   46,   // next-day city name
 };
 
 const MODE_ICON: Record<string, string> = {
@@ -125,10 +132,10 @@ export function ReelDayTransitionCard({ card, active }: Props) {
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 28px', gap: 0 }}>
 
           <div style={{ ...fade('0s'), textAlign: 'center', marginBottom: 28 }}>
-            <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 4 }}>
+            <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 4 }}>
               Continuing today →
             </p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
+            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsHero, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
               {card.nextCity}
             </p>
           </div>
@@ -141,10 +148,10 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                 padding: '10px 20px', borderRadius: 24,
                 background: T.skyBg, border: `1px solid ${T.skyBdr}`,
               }}>
-                <span className="ms" style={{ fontSize: 16, color: T.sky }}>{modeIcon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
+                <span className="ms" style={{ fontSize: T.fsMd, color: T.sky }}>{modeIcon}</span>
+                <span style={{ fontSize: T.fsMd, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
                 {(durLabel || distLabel) && (
-                  <span style={{ fontSize: 12, color: T.text3 }}>
+                  <span style={{ fontSize: T.fsXs, color: T.text3 }}>
                     {[card.transitIsEstimated ? '~' : '', durLabel, distLabel].filter(Boolean).join(' · ')}
                   </span>
                 )}
@@ -152,23 +159,23 @@ export function ReelDayTransitionCard({ card, active }: Props) {
             )}
             {hasTimes && (
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: T.sky }}>{fmt12h(card.transitDepartureTime!)}</span>
-                <span className="ms" style={{ fontSize: 12, color: T.text3 }}>arrow_forward</span>
-                <span style={{ fontSize: 13, color: T.sky }}>{fmt12h(card.transitArrivalTime!)}</span>
+                <span style={{ fontSize: T.fsSm, color: T.sky }}>{fmt12h(card.transitDepartureTime!)}</span>
+                <span className="ms" style={{ fontSize: T.fsXs, color: T.text3 }}>arrow_forward</span>
+                <span style={{ fontSize: T.fsSm, color: T.sky }}>{fmt12h(card.transitArrivalTime!)}</span>
               </div>
             )}
             {card.transitRef && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 8, background: 'rgba(0,0,0,.35)', border: `1px solid ${T.line}` }}>
-                <span className="ms" style={{ fontSize: 11, color: T.text3 }}>confirmation_number</span>
-                <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
+                <span className="ms" style={{ fontSize: T.fsXs, color: T.text3 }}>confirmation_number</span>
+                <span style={{ fontSize: T.fsXs, color: T.text2 }}>{card.transitRef}</span>
               </div>
             )}
           </div>
 
           <div style={{ ...fade('.2s'), marginTop: 28, textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-              <span className="ms" style={{ fontSize: 12, color: T.gold }}>schedule</span>
-              <span style={{ fontSize: 11, color: T.gold }}>
+              <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>schedule</span>
+              <span style={{ fontSize: T.fsXs, color: T.gold }}>
                 {card.nextStopCount} stop{card.nextStopCount !== 1 ? 's' : ''}
                 {card.nextStartTime ? ` · arrives ${fmt12h(card.nextStartTime)}` : ''}
               </span>
@@ -177,7 +184,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
         </div>
 
         <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center', zIndex: 8 }}>
-          <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
+          <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
         </div>
       </div>
     );
@@ -194,13 +201,13 @@ export function ReelDayTransitionCard({ card, active }: Props) {
 
         {/* ── PREVIOUS DAY recap ─────────────────────────── */}
         <div style={{ width: '100%', textAlign: 'center', ...fade('0s') }}>
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 8 }}>
+          <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 8 }}>
             Day {card.prevDay} · {fmtDate(card.prevDate)}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 34, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
             {card.prevCity}
           </p>
-          <p style={{ fontSize: 14, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
+          <p style={{ fontSize: T.fsMd, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
             {dayNarrative(card.prevCity, card.prevStopCount, card.prevStartTime, card.prevEndTime)}
           </p>
         </div>
@@ -218,10 +225,10 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                   padding: '8px 16px', borderRadius: 20,
                   background: T.skyBg, border: `1px solid ${T.skyBdr}`,
                 }}>
-                  <span className="ms" style={{ fontSize: 15, color: T.sky }}>{modeIcon}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
+                  <span className="ms" style={{ fontSize: T.fsMd, color: T.sky }}>{modeIcon}</span>
+                  <span style={{ fontSize: T.fsSm, fontWeight: 600, color: T.text1 }}>{modeLabel}</span>
                   {(durLabel || distLabel) && (
-                    <span style={{ fontSize: 11, color: T.text3 }}>
+                    <span style={{ fontSize: T.fsXs, color: T.text3 }}>
                       {[card.transitIsEstimated ? '~' : '', durLabel, distLabel].filter(Boolean).join(' · ')}
                     </span>
                   )}
@@ -230,16 +237,16 @@ export function ReelDayTransitionCard({ card, active }: Props) {
               {/* Actual times */}
               {hasTimes && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
-                  <span style={{ fontSize: 12, color: T.sky }}>{fmt12h(card.transitDepartureTime!)}</span>
-                  <span className="ms" style={{ fontSize: 11, color: T.text3 }}>arrow_forward</span>
-                  <span style={{ fontSize: 12, color: T.sky }}>{fmt12h(card.transitArrivalTime!)}</span>
+                  <span style={{ fontSize: T.fsXs, color: T.sky }}>{fmt12h(card.transitDepartureTime!)}</span>
+                  <span className="ms" style={{ fontSize: T.fsXs, color: T.text3 }}>arrow_forward</span>
+                  <span style={{ fontSize: T.fsXs, color: T.sky }}>{fmt12h(card.transitArrivalTime!)}</span>
                 </div>
               )}
               {/* Ref */}
               {card.transitRef && (
                 <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 8, background: 'rgba(0,0,0,.35)', border: `1px solid ${T.line}` }}>
-                  <span className="ms" style={{ fontSize: 11, color: T.text3 }}>confirmation_number</span>
-                  <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
+                  <span className="ms" style={{ fontSize: T.fsXs, color: T.text3 }}>confirmation_number</span>
+                  <span style={{ fontSize: T.fsXs, color: T.text2 }}>{card.transitRef}</span>
                 </div>
               )}
               {/* Drive route profile stats — shown once route profile loads */}
@@ -247,22 +254,22 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                 <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                   {routeProfile.elevation_gain_m != null && routeProfile.elevation_gain_m > 80 && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: 'rgba(107,148,112,.08)', border: '1px solid rgba(107,148,112,.2)' }}>
-                      <span className="ms" style={{ fontSize: 12, color: 'rgba(107,148,112,.8)' }}>trending_up</span>
-                      <span style={{ fontSize: 11, color: T.text2 }}>+{routeProfile.elevation_gain_m} m climb</span>
+                      <span className="ms" style={{ fontSize: T.fsXs, color: 'rgba(107,148,112,.8)' }}>trending_up</span>
+                      <span style={{ fontSize: T.fsXs, color: T.text2 }}>+{routeProfile.elevation_gain_m} m climb</span>
                     </div>
                   )}
                   {routeProfile.peak_elevation_m != null && routeProfile.peak_elevation_m > 500 && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: 'rgba(255,255,255,.04)', border: `1px solid ${T.line}` }}>
-                      <span className="ms" style={{ fontSize: 12, color: T.text3 }}>landscape</span>
-                      <span style={{ fontSize: 11, color: T.text2 }}>{routeProfile.peak_elevation_m} m peak</span>
+                      <span className="ms" style={{ fontSize: T.fsXs, color: T.text3 }}>landscape</span>
+                      <span style={{ fontSize: T.fsXs, color: T.text2 }}>{routeProfile.peak_elevation_m} m peak</span>
                     </div>
                   )}
                   {routeProfile.road_character != null && (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: routeProfile.road_character > 0.6 ? 'rgba(79,143,171,.08)' : 'rgba(255,255,255,.04)', border: routeProfile.road_character > 0.6 ? '1px solid rgba(79,143,171,.2)' : `1px solid ${T.line}` }}>
-                      <span className="ms" style={{ fontSize: 12, color: routeProfile.road_character > 0.6 ? T.sky : T.text3 }}>
+                      <span className="ms" style={{ fontSize: T.fsXs, color: routeProfile.road_character > 0.6 ? T.sky : T.text3 }}>
                         {routeProfile.road_character > 0.6 ? 'park' : 'toll'}
                       </span>
-                      <span style={{ fontSize: 11, color: T.text2 }}>
+                      <span style={{ fontSize: T.fsXs, color: T.text2 }}>
                         {routeProfile.road_character > 0.75 ? 'Scenic roads' : routeProfile.road_character > 0.4 ? 'Mixed roads' : 'Mostly highway'}
                       </span>
                     </div>
@@ -276,7 +283,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
             /* Same city — simple divider */
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <div style={{ flex: 1, height: 1, background: T.line }} />
-              <span className="ms" style={{ fontSize: 15, color: T.text3 }}>bedtime</span>
+              <span className="ms" style={{ fontSize: T.fsMd, color: T.text3 }}>bedtime</span>
               <div style={{ flex: 1, height: 1, background: T.line }} />
             </div>
           )}
@@ -284,15 +291,15 @@ export function ReelDayTransitionCard({ card, active }: Props) {
 
         {/* ── NEXT DAY preview ───────────────────────────── */}
         <div style={{ width: '100%', textAlign: 'center', ...fade('.2s') }}>
-          <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.sky, opacity: 0.8, marginBottom: 8 }}>
+          <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.sky, opacity: 0.8, marginBottom: 8 }}>
             Day {card.nextDay} · {fmtDate(card.nextDate)}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 38, fontWeight: 600, color: T.text1, lineHeight: 1.0, marginBottom: 8 }}>
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 600, color: T.text1, lineHeight: 1.0, marginBottom: 8 }}>
             {card.nextCity}
           </p>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-            <span className="ms" style={{ fontSize: 12, color: T.gold }}>schedule</span>
-            <span style={{ fontSize: 11, color: T.gold }}>
+            <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>schedule</span>
+            <span style={{ fontSize: T.fsXs, color: T.gold }}>
               {card.nextStopCount} stop{card.nextStopCount !== 1 ? 's' : ''}
               {card.nextStartTime ? ` · starts ${fmt12h(card.nextStartTime)}` : ''}
             </span>
@@ -304,22 +311,22 @@ export function ReelDayTransitionCard({ card, active }: Props) {
               {card.nextDayWalkKm > 0 && (
                 <div style={{ flex: 1, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(79,143,171,.06)', borderRight: card.nextDayRideKm > 0 ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
                   <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(79,143,171,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="ms fill" style={{ fontSize: 13, color: T.sky }}>directions_walk</span>
+                    <span className="ms fill" style={{ fontSize: T.fsSm, color: T.sky }}>directions_walk</span>
                   </div>
                   <div>
-                    <div style={{ fontSize: 9.5, color: T.text3, marginBottom: 1 }}>On foot</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text1 }}>{card.nextDayWalkKm} km</div>
+                    <div style={{ fontSize: T.fsXs, color: T.text3, marginBottom: 1 }}>On foot</div>
+                    <div style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.nextDayWalkKm} km</div>
                   </div>
                 </div>
               )}
               {card.nextDayRideKm > 0 && (
                 <div style={{ flex: 1, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,.02)' }}>
                   <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(180,180,220,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="ms fill" style={{ fontSize: 13, color: 'rgba(180,180,220,.55)' }}>directions_car</span>
+                    <span className="ms fill" style={{ fontSize: T.fsSm, color: 'rgba(180,180,220,.55)' }}>directions_car</span>
                   </div>
                   <div>
-                    <div style={{ fontSize: 9.5, color: T.text3, marginBottom: 1 }}>By ride</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text1 }}>{card.nextDayRideKm} km</div>
+                    <div style={{ fontSize: T.fsXs, color: T.text3, marginBottom: 1 }}>By ride</div>
+                    <div style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.nextDayRideKm} km</div>
                   </div>
                 </div>
               )}
@@ -331,7 +338,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
 
       {/* Swipe hint */}
       <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, textAlign: 'center', zIndex: 8 }}>
-        <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
+        <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.15)' }}>swipe_up</span>
       </div>
 
     </div>

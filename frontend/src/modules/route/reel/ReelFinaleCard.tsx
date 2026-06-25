@@ -49,11 +49,11 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         star
       </span>
 
-      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 36, fontWeight: 700, color: 'var(--color-text-1)', textAlign: 'center', marginBottom: 8, animation: active ? 'fadeUp .5s .15s both' : 'none' }}>
+      <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 40, fontWeight: 700, color: 'var(--color-text-1)', textAlign: 'center', marginBottom: 8, animation: active ? 'fadeUp .5s .15s both' : 'none' }}>
         {card.city ?? 'Your trip'} awaits
       </h2>
 
-      <p style={{ fontSize: 13, color: 'var(--color-text-3)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
+      <p style={{ fontSize: 15, color: 'var(--color-text-3)', marginBottom: 40, animation: active ? 'fadeUp .5s .25s both' : 'none' }}>
         {card.totalStops} stops, all yours
       </p>
 
@@ -66,10 +66,10 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
             animation: active ? 'fadeUp .5s .35s both' : 'none',
           }}
         >
-          <span className="ms fill" style={{ fontSize: 26, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
+          <span className="ms fill" style={{ fontSize: 30, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', margin: 0, marginBottom: 2 }}>Saved to trips</p>
-            <p style={{ fontSize: 12, color: 'var(--color-text-3)', margin: 0 }}>Come back to it any time</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#4ade80', margin: 0, marginBottom: 2 }}>Saved to trips</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: 0 }}>Come back to it any time</p>
           </div>
         </div>
       ) : (
@@ -79,7 +79,7 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
             width: '100%', height: 54, borderRadius: 16, border: 'none', cursor: 'pointer',
             background: 'linear-gradient(135deg, #d4a853, #b8893a)',
             color: '#fff',
-            fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 700,
+            fontFamily: 'var(--font-sans)', fontSize: 17, fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             boxShadow: '0 6px 28px rgba(212,168,83,.25)',
             marginBottom: 16,
@@ -100,13 +100,13 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
             width: '100%', padding: '12px 0', borderRadius: 14,
             border: '1px solid var(--color-border-m)',
             background: 'var(--color-surface)',
-            fontSize: 13, fontWeight: 600, color: 'var(--color-text-2)',
+            fontSize: 15, fontWeight: 600, color: 'var(--color-text-2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             textDecoration: 'none',
             animation: active ? 'fadeUp .5s .45s both' : 'none',
           }}
         >
-          <span className="ms" style={{ fontSize: 15, color: '#4285f4' }}>map</span>
+          <span className="ms" style={{ fontSize: 17, color: '#4285f4' }}>map</span>
           Open all stops in Google Maps
         </a>
       )}

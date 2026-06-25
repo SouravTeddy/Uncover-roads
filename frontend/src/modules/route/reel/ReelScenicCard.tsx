@@ -26,8 +26,8 @@ function VizCard({ label, value, accent, children }: { label: string; value: str
     <div style={{ borderRadius: 16, padding: '12px 14px 13px',
       background: 'rgba(242,237,230,.045)', border: '1px solid rgba(242,237,230,.07)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-        <span style={{ ...LF, fontSize: 9, fontWeight: 700, letterSpacing: '.16em', color: 'rgba(242,237,230,.45)' }}>{label}</span>
-        <span style={{ ...LF, fontSize: 10.5, fontWeight: 700, color: accent }}>{value}</span>
+        <span style={{ ...LF, fontSize: 10, fontWeight: 700, letterSpacing: '.16em', color: 'rgba(242,237,230,.45)' }}>{label}</span>
+        <span style={{ ...LF, fontSize: 12, fontWeight: 700, color: accent }}>{value}</span>
       </div>
       {children}
     </div>
@@ -51,15 +51,15 @@ function WalkCorridorViz({ accent, from, to }: { accent: string; from: string; t
           <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)',
             display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99,
             background: '#13131a', border: `1px solid ${accent}55` }}>
-            <span className="ms fill" style={{ fontSize: 12, color: accent, lineHeight: 1 }}>directions_walk</span>
-            <span style={{ ...LF, fontSize: 10, fontWeight: 700, color: '#f2ede6' }}>9 min</span>
+            <span className="ms fill" style={{ fontSize: 13, color: accent, lineHeight: 1 }}>directions_walk</span>
+            <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: '#f2ede6' }}>9 min</span>
           </div>
         </div>
         {dot(false)}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7 }}>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.5)' }}>{from}</span>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.5)' }}>{to}</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.5)' }}>{from}</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.5)' }}>{to}</span>
       </div>
     </VizCard>
   );
@@ -82,11 +82,11 @@ function RouteOverviewViz({ accent, from, to }: { accent: string; from: string; 
         ))}
         {/* destination */}
         <span className="ms fill" style={{ position: 'absolute', right: -2, top: '50%',
-          transform: 'translateY(-50%)', fontSize: 15, color: accent, lineHeight: 1 }}>place</span>
+          transform: 'translateY(-50%)', fontSize: 16, color: accent, lineHeight: 1 }}>place</span>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.5)' }}>{from}</span>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.5)' }}>{to}</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.5)' }}>{from}</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.5)' }}>{to}</span>
       </div>
     </VizCard>
   );
@@ -103,7 +103,7 @@ function SunsetDialViz({ accent }: { accent: string }) {
       <div style={{ position: 'relative', marginTop: 6, height: 12 }}>
         {[['5 PM', '6%'], ['6 PM', '50%'], ['7 PM', '92%']].map(([t, l], i) => (
           <span key={i} style={{ ...LF, position: 'absolute', left: l, transform: 'translateX(-50%)',
-            fontSize: 9, color: i === 1 ? accent : 'rgba(242,237,230,.45)', fontWeight: i === 1 ? 700 : 400 }}>{t}</span>
+            fontSize: 10, color: i === 1 ? accent : 'rgba(242,237,230,.45)', fontWeight: i === 1 ? 700 : 400 }}>{t}</span>
         ))}
       </div>
     </VizCard>
@@ -126,8 +126,8 @@ function ElevationViz({ accent, from }: { accent: string; from: string; to: stri
         <circle cx="146" cy="6" r="3.5" fill={accent} stroke="#0a0a0d" strokeWidth="1.5" />
       </svg>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.5)' }}>{from}</span>
-        <span style={{ ...LF, fontSize: 9.5, fontWeight: 700, color: accent }}>+340 m gain</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.5)' }}>{from}</span>
+        <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: accent }}>+340 m gain</span>
       </div>
     </VizCard>
   );
@@ -150,8 +150,8 @@ function QuietMeterViz({ accent }: { accent: string }) {
               background: accent, boxShadow: `0 0 8px ${accent}` }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-            <span style={{ ...LF, fontSize: 9, color: accent, fontWeight: 700 }}>EMPTY</span>
-            <span style={{ ...LF, fontSize: 9, color: 'rgba(242,237,230,.4)' }}>BUSY</span>
+            <span style={{ ...LF, fontSize: 10, color: accent, fontWeight: 700 }}>EMPTY</span>
+            <span style={{ ...LF, fontSize: 10, color: 'rgba(242,237,230,.4)' }}>BUSY</span>
           </div>
         </div>
       </div>
@@ -163,8 +163,8 @@ function CanopyViz({ accent }: { accent: string }) {
   const bar = (label: string, pct: number, val: string) => (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.6)' }}>{label}</span>
-        <span style={{ ...LF, fontSize: 9.5, fontWeight: 700, color: accent }}>{val}</span>
+        <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.6)' }}>{label}</span>
+        <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: accent }}>{val}</span>
       </div>
       <div style={{ height: 5, borderRadius: 99, background: 'rgba(242,237,230,.1)' }}>
         <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99,
@@ -177,8 +177,8 @@ function CanopyViz({ accent }: { accent: string }) {
       {bar('Overhead cover', 100, '100%')}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ ...LF, fontSize: 9.5, color: 'rgba(242,237,230,.6)' }}>Temp inside</span>
-          <span style={{ ...LF, fontSize: 9.5, fontWeight: 700, color: accent }}>−4–5 °C</span>
+          <span style={{ ...LF, fontSize: 11, color: 'rgba(242,237,230,.6)' }}>Temp inside</span>
+          <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: accent }}>−4–5 °C</span>
         </div>
         <div style={{ height: 5, borderRadius: 99,
           background: 'linear-gradient(90deg, #d98a6e, #5a8a6e)' }} />
@@ -275,16 +275,16 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
 
         {/* Route title + subtitle */}
         <div style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
             {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
           </div>
-          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 28 : 24, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
+          <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
             {card.from}
-            <span style={{ fontSize: isHighWalk ? 18 : 16, color: 'rgba(255,255,255,.35)', margin: '0 6px' }}>→</span>
+            <span style={{ fontSize: isHighWalk ? 22 : 18, color: 'rgba(255,255,255,.35)', margin: '0 6px' }}>→</span>
             {card.to}
           </div>
           {!isHighWalk && (
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
               {transitLabel
                 ? `or ${transitLabel} in ~${transitMins} min`
                 : viaStreets
@@ -294,8 +294,8 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           )}
           {!isHighWalk && card.detourMin > 0 && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 11px', borderRadius: 99, background: 'rgba(196,181,253,.08)', border: '1px solid rgba(196,181,253,.2)' }}>
-              <span className="ms" style={{ fontSize: 13, color: 'rgba(196,181,253,.7)' }}>add_circle</span>
-              <span style={{ fontSize: 11, color: 'rgba(196,181,253,.75)' }}>+{card.detourMin} min · adds {card.detourKm} km to your day</span>
+              <span className="ms" style={{ fontSize: 15, color: 'rgba(196,181,253,.7)' }}>add_circle</span>
+              <span style={{ fontSize: 13, color: 'rgba(196,181,253,.75)' }}>+{card.detourMin} min · adds {card.detourKm} km to your day</span>
             </div>
           )}
         </div>
@@ -303,13 +303,13 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
         {/* Badge — just above description */}
         {!isHighWalk && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(196,181,253,.1)', border: '1px solid rgba(196,181,253,.25)' }}>
-            <span className="ms" style={{ fontSize: 13, color: 'rgba(196,181,253,.8)' }}>directions_walk</span>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(196,181,253,.8)' }}>Optional detour</span>
+            <span className="ms" style={{ fontSize: 15, color: 'rgba(196,181,253,.8)' }}>directions_walk</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(196,181,253,.8)' }}>Optional detour</span>
           </div>
         )}
 
         {/* Why — persona voice */}
-        <div style={{ fontSize: isHighWalk ? 13 : 13, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.6)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
+        <div style={{ fontSize: isHighWalk ? 15 : 15, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.6)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
           {card.why}
         </div>
 
@@ -319,26 +319,26 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
             <>
               {/* High-walk: time · distance · path type */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1 }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(79,143,171,.7)' }}>timer</span>
+                <span className="ms" style={{ fontSize: 15, color: 'rgba(79,143,171,.7)' }}>timer</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>{timeValue}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>on foot</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea' }}>{timeValue}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>on foot</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(79,143,171,.7)' }}>straighten</span>
+                <span className="ms" style={{ fontSize: 15, color: 'rgba(79,143,171,.7)' }}>straighten</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>{distValue}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>flat route</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea' }}>{distValue}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>flat route</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(107,148,112,.7)', flexShrink: 0 }}>route</span>
+                <span className="ms" style={{ fontSize: 15, color: 'rgba(107,148,112,.7)', flexShrink: 0 }}>route</span>
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {viaStreets ? viaStreets[0] : 'local path'}
                   </div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>
                     {viaStreets && viaStreets.length > 1 ? `via ${viaStreets.slice(1, 3).join(', ')}` : 'on foot'}
                   </div>
                 </div>
@@ -348,28 +348,28 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
             <>
               {/* Walk chip — always shown */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: transitLabel ? 1 : 2 }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
+                <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.8)' }}>{timeValue} walk</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>on foot</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,.8)' }}>{timeValue} walk</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,.4)' }}>on foot</div>
                 </div>
               </div>
               {/* Transit chip — only shown when city has real transit */}
               {transitLabel && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                  <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>subway</span>
+                  <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>subway</span>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins ?? '?'} min {transitLabel}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>{transitSubLabel}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins ?? '?'} min {transitLabel}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,.28)' }}>{transitSubLabel}</div>
                   </div>
                 </div>
               )}
               {/* Rideshare chip — always shown */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.25)' }}>local_taxi</span>
+                <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>local_taxi</span>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>~{rideMins} min ride</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.28)' }}>rideshare</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>~{rideMins} min ride</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.28)' }}>rideshare</div>
                 </div>
               </div>
             </>
@@ -405,7 +405,7 @@ export default function ReelScenicCard({ card }: Props) {
         background: 'linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0))' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '1px solid rgba(255,255,255,.14)', background: 'rgba(0,0,0,.4)', backdropFilter: 'blur(10px)' }}>
-          <span className="ms" style={{ fontSize: 17, color: '#fff', lineHeight: 1 }}>more_horiz</span>
+          <span className="ms" style={{ fontSize: 18, color: '#fff', lineHeight: 1 }}>more_horiz</span>
         </div>
       </div>
 
@@ -425,9 +425,9 @@ export default function ReelScenicCard({ card }: Props) {
 
         {/* Eyebrow */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <span style={{ ...LF, fontSize: 10, fontWeight: 700, letterSpacing: '.16em', color: a }}>{card.cardType}</span>
+          <span style={{ ...LF, fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: a }}>{card.cardType}</span>
           <span style={{ flex: 1, height: 1, background: 'rgba(242,237,230,.1)' }} />
-          <span style={{ ...LF, fontSize: 10, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(242,237,230,.45)' }}>
+          <span style={{ ...LF, fontSize: 11, fontWeight: 700, letterSpacing: '.12em', color: 'rgba(242,237,230,.45)' }}>
             {String(pos).padStart(2, '0')} / {String(total).padStart(2, '0')}
           </span>
         </div>
@@ -438,21 +438,21 @@ export default function ReelScenicCard({ card }: Props) {
             background: `${a}1a`, border: `1px solid ${a}3a` }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
               background: a, boxShadow: `0 0 6px ${a}` }} />
-            <span style={{ ...LF, fontSize: 11, fontWeight: 600, color: '#f2ede6' }}>{card.timing}</span>
+            <span style={{ ...LF, fontSize: 13, fontWeight: 600, color: '#f2ede6' }}>{card.timing}</span>
           </div>
-          <span style={{ ...LF, fontSize: 11, fontWeight: 600, color: 'rgba(242,237,230,.55)' }}>{card.metaRight}</span>
+          <span style={{ ...LF, fontSize: 13, fontWeight: 600, color: 'rgba(242,237,230,.55)' }}>{card.metaRight}</span>
         </div>
 
         {/* Headline + route */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 29, fontWeight: 700,
+          <h2 style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 34, fontWeight: 700,
             lineHeight: 1.08, margin: 0, color: '#f2ede6', letterSpacing: '-.005em' }}>{card.place}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span className="ms fill" style={{ fontSize: 13, color: a, lineHeight: 1 }}>{msName(card.modeIcon)}</span>
-            <span style={{ ...LF, fontSize: 12, color: 'rgba(242,237,230,.7)' }}>{card.from}</span>
-            <span style={{ color: a, fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: 15 }}>→</span>
-            <span style={{ ...LF, fontSize: 12, color: 'rgba(242,237,230,.7)' }}>{card.to}</span>
-            <span style={{ ...LF, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
+            <span className="ms fill" style={{ fontSize: 15, color: a, lineHeight: 1 }}>{msName(card.modeIcon)}</span>
+            <span style={{ ...LF, fontSize: 13, color: 'rgba(242,237,230,.7)' }}>{card.from}</span>
+            <span style={{ color: a, fontFamily: "'Cormorant Garamond',serif", fontStyle: 'italic', fontSize: 16 }}>→</span>
+            <span style={{ ...LF, fontSize: 13, color: 'rgba(242,237,230,.7)' }}>{card.to}</span>
+            <span style={{ ...LF, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99,
               color: a, border: `1px solid ${a}40`, marginLeft: 2 }}>{card.tag}</span>
           </div>
         </div>
@@ -463,32 +463,32 @@ export default function ReelScenicCard({ card }: Props) {
         {/* Why this road · persona */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 13px', borderRadius: 12,
           background: `${a}14`, border: `1px solid ${a}33` }}>
-          <span className="ms fill" style={{ fontSize: 15, color: a, lineHeight: 1, marginTop: 1 }}>{msName(card.personaIcon)}</span>
+          <span className="ms fill" style={{ fontSize: 16, color: a, lineHeight: 1, marginTop: 1 }}>{msName(card.personaIcon)}</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <span style={{ ...LF, fontSize: 9, fontWeight: 700, letterSpacing: '.14em', color: a }}>
+            <span style={{ ...LF, fontSize: 10, fontWeight: 700, letterSpacing: '.14em', color: a }}>
               WHY THIS ROAD · {card.personaDisplay.toUpperCase()}
             </span>
-            <p style={{ ...LF, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(242,237,230,.86)', margin: 0 }}>{card.why}</p>
+            <p style={{ ...LF, fontSize: 13, lineHeight: 1.5, color: 'rgba(242,237,230,.86)', margin: 0 }}>{card.why}</p>
           </div>
         </div>
 
         {/* One sensory line */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-          <span className="ms" style={{ fontSize: 14, color: 'rgba(242,237,230,.5)', lineHeight: 1, marginTop: 1 }}>{msName(card.sensoryIcon)}</span>
-          <p style={{ ...LF, fontSize: 11.5, lineHeight: 1.5, color: 'rgba(242,237,230,.62)', margin: 0 }}>{card.sensory}</p>
+          <span className="ms" style={{ fontSize: 16, color: 'rgba(242,237,230,.5)', lineHeight: 1, marginTop: 1 }}>{msName(card.sensoryIcon)}</span>
+          <p style={{ ...LF, fontSize: 13, lineHeight: 1.5, color: 'rgba(242,237,230,.62)', margin: 0 }}>{card.sensory}</p>
         </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-          <span style={{ ...LF, fontSize: 9.5, fontWeight: 600, letterSpacing: '.1em',
+          <span style={{ ...LF, fontSize: 11, fontWeight: 600, letterSpacing: '.1em',
             textTransform: 'uppercase', color: 'rgba(242,237,230,.34)' }}>
             Reel · {card.reelPos}
           </span>
           {pos < total && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(242,237,230,.4)',
               animation: 'scrollHint 1.8s ease-in-out infinite' }}>
-              <span style={{ ...LF, fontSize: 10, letterSpacing: '.04em' }}>swipe</span>
-              <span className="ms" style={{ fontSize: 16, lineHeight: 1 }}>expand_more</span>
+              <span style={{ ...LF, fontSize: 11, letterSpacing: '.04em' }}>swipe</span>
+              <span className="ms" style={{ fontSize: 18, lineHeight: 1 }}>expand_more</span>
             </div>
           )}
         </div>
