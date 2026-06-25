@@ -320,8 +320,10 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
-  // localTip = atmospheric venue description; fall back to whyForYou when localTip absent and no orderReason already fills the narrative
-  const descriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
+  // localTip = atmospheric venue description; fall back to whyForYou when no orderReason fills the narrative
+  // Guard: suppress descriptionText if it's identical to reasonText (same string from both localTip and orderReason)
+  const rawDescriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
+  const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
   // Conflict: rain/bad weather vs a walking transit suggestion
   const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;
@@ -463,18 +465,35 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           </div>
         )}
 
-        {/* Time row */}
+        {/* Arrival context — Day 1 first stop */}
+        {card.arrivalNote && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
+            <span className="ms fill" style={{ fontSize: 11, color: T.sky }}>flight_land</span>
+            <span style={{ fontSize: 11, color: T.sky, fontWeight: 600 }}>{card.arrivalNote}</span>
+          </div>
+        )}
+
+        {/* Departure context — last day stops */}
+        {card.departureNote && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
+            <span className="ms fill" style={{ fontSize: 11, color: T.gold }}>flight_takeoff</span>
+            <span style={{ fontSize: 11, color: T.gold, fontWeight: 600 }}>{card.departureNote}</span>
+          </div>
+        )}
+
+        {/* Time row — ~ prefix signals these are suggested times */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 5, padding: '3px 9px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
           <span className="ms" style={{ fontSize: 11, color: T.text3 }}>schedule</span>
           {isJustAdjusted && card.timingAdjustment ? (
             <>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>{fmt12h(card.timingAdjustment.originalTime)}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4a853' }}>{fmt12h(stop.time)}</span>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#d4a853' }}>~{fmt12h(stop.time)}</span>
             </>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>{fmt12h(stop.time)}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
           )}
-          <span style={{ fontSize: 12, color: T.text3 }}>→ leave {addMinutes(stop.time, stop.durationMin)}</span>
+          <span style={{ fontSize: 12, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
+          <span style={{ fontSize: 9, color: T.text3, letterSpacing: '.04em', opacity: 0.7 }}>suggested</span>
         </div>
 
         {/* Title + area */}
@@ -609,13 +628,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             <span style={{ fontSize: 11.5, color: 'rgba(255,235,180,.75)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
           </div>
         )}
-        {card.timingAdjustment?.departurePressureNote && (
-          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 7, padding: '6px 11px', borderRadius: 8, background: 'rgba(79,143,171,.10)', border: '1px solid rgba(79,143,171,.22)' }}>
-            <span className="ms fill" style={{ fontSize: 13, color: '#5d9bc9', flexShrink: 0 }}>flight_takeoff</span>
-            <span style={{ fontSize: 11.5, color: 'rgba(180,215,240,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.departurePressureNote}</span>
-          </div>
-        )}
-
         {/* Next-leg transit row */}
         {card.nextLeg && (() => {
           const leg = card.nextLeg!;

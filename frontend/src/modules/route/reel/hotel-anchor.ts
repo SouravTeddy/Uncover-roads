@@ -49,73 +49,16 @@ function minutesToTime12(minutes: number): string {
 export function computeHotelAnchorRow(p: HotelAnchorParams): HotelAnchorRow | null {
   if (!p.hotel || p.hotel.lat == null || p.hotel.lon == null) return null;
   if (p.stopLat == null || p.stopLon == null) return null;
+  if (!p.isLastOfDay) return null;
 
   const distKm = haversineKm(p.hotel.lat, p.hotel.lon, p.stopLat, p.stopLon);
   const travelMin = driveMinutes(distKm);
 
-  // Departure day: last stop's closing anchor is the departure terminal, not hotel return
-  if (p.isLastOfDay && p.isLastDayInCity && p.cityDepartureTime) {
-    const depMin = timeToMinutes(p.cityDepartureTime);
-    const bufferMin = 90; // time needed at terminal before departure
-    const leaveByMin = depMin - bufferMin - travelMin;
-    const terminalName = p.cityArrivalVia ?? 'airport';
-    return {
-      text: `Leave by ${minutesToTime12(leaveByMin)} · ${terminalName} by ${minutesToTime12(depMin - bufferMin)}`,
-      isWarning: true,
-      isBlue: false,
-      icon: 'flight_takeoff',
-    };
-  }
-
-  // Arrival day anchor split: if stop time < check-in time → airport anchor
-  const checkInMin = p.hotel.checkInTime ? timeToMinutes(p.hotel.checkInTime) : null;
-  const stopMin = p.stopTime ? timeToMinutes(p.stopTime) : null;
-  const isPreCheckIn = checkInMin != null && stopMin != null && stopMin < checkInMin;
-  const hasArrivalInfo = !!p.cityArrivalTime && !!p.cityArrivalVia;
-
-  if (p.isFirstOfDay && isPreCheckIn && hasArrivalInfo) {
-    // Airport anchor
-    const leaveByMin = stopMin! - travelMin;
-    return {
-      text: `Leave airport (${p.cityArrivalVia}) by ${minutesToTime12(leaveByMin)} · ${travelMin} min`,
-      isWarning: travelMin >= 45,
-      isBlue: true,
-      icon: 'flight_land',
-    };
-  }
-
-  // Family last stop: time-based wrap-up nudge (target 9 PM hotel return)
-  if (p.isLastOfDay && p.travelGroup === 'family') {
-    const targetReturnMin = 21 * 60; // 9 PM
-    const leaveByMin = targetReturnMin - travelMin;
-    return {
-      text: `Leave by ${minutesToTime12(leaveByMin)} · back to hotel by 9 PM`,
-      isWarning: true,
-      isBlue: false,
-      icon: 'nights_stay',
-    };
-  }
-
-  // Normal last stop: back to hotel distance
-  if (p.isLastOfDay) {
-    return {
-      text: `Back to ${p.hotel.name} · ${travelMin} min`,
-      isWarning: travelMin >= 45,
-      isBlue: false,
-      icon: 'hotel',
-    };
-  }
-
-  // Normal first stop: leave-by time
-  if (p.isFirstOfDay && stopMin != null) {
-    const leaveByMin = stopMin - travelMin;
-    return {
-      text: `Leave hotel by ${minutesToTime12(leaveByMin)} · ${travelMin} min drive`,
-      isWarning: travelMin >= 45,
-      isBlue: false,
-      icon: 'hotel',
-    };
-  }
-
-  return null;
+  // Last stop of the day: show how far back to hotel — user decides when to head back
+  return {
+    text: `Back to ${p.hotel.name} · ~${travelMin} min`,
+    isWarning: travelMin >= 45,
+    isBlue: false,
+    icon: 'hotel',
+  };
 }
