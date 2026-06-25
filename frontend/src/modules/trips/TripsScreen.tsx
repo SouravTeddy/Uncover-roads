@@ -564,11 +564,9 @@ export function TripsScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('trips');
   const touchStartX = useRef<number | null>(null);
 
-  const sorted = [...savedItineraries].sort((a, b) => {
-    const aDate = a.travelDate ?? a.date;
-    const bDate = b.travelDate ?? b.date;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
+  const sorted = [...savedItineraries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -681,11 +679,9 @@ export function TripsList() {
   const { state, dispatch } = useAppStore();
   const { savedItineraries } = state;
 
-  const sorted = [...savedItineraries].sort((a, b) => {
-    const aDate = a.travelDate ?? a.date;
-    const bDate = b.travelDate ?? b.date;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
+  const sorted = [...savedItineraries].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
 
   if (sorted.length === 0) {
     return (

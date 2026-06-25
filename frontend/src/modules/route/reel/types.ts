@@ -91,8 +91,9 @@ export interface ReelStopCard {
     originalTime: string;          // engine time before cascade
     consequenceNote: string | null; // e.g., "Closes at 5 PM — about 1h inside"
     isClosingConflict: boolean;    // arrives after closing time
-    departurePressureNote: string | null; // e.g., "Your flight is at 8 AM — leave by 6 AM"
   } | null;
+  arrivalNote?: string | null;    // shown on Day 1 first stop: "Arriving this evening"
+  departureNote?: string | null;  // shown on last-day stops: "Departure day · morning"
   hotelAnchor?: {
     text: string;
     isWarning: boolean;

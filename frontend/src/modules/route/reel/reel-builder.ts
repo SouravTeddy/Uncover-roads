@@ -51,20 +51,12 @@ function parseClosingTimeMin(weekdayText: string[] | null | undefined, isoDate: 
   return h * 60 + min;
 }
 
-function arrivalModeBuffer(mode: string | null): number {
-  if (mode === 'flight') return 90;
-  if (mode === 'train') return 45;
-  if (mode === 'drive' || mode === 'bus') return 30;
-  return 60; // default: unknown or ferry
-}
-
 interface CascadeAdj {
   stopId: string;
   originalTime: string;
   newTime: string;
   consequenceNote: string | null;
   isClosingConflict: boolean;
-  departurePressureNote: string | null;
 }
 
 function cascadeDay(stops: EngineItineraryStop[], earliestStartMin: number, dayDate: string): CascadeAdj[] {
@@ -100,7 +92,7 @@ function cascadeDay(stops: EngineItineraryStop[], earliestStartMin: number, dayD
       }
     }
 
-    result.push({ stopId: stop.id, originalTime: stop.time, newTime, consequenceNote, isClosingConflict, departurePressureNote: null });
+    result.push({ stopId: stop.id, originalTime: stop.time, newTime, consequenceNote, isClosingConflict });
     floorMin = newMin + (stop.durationMin ?? 60) + 15;
   }
 
@@ -759,10 +751,9 @@ export function buildReelCards(
       };
       cards.push(transitionCard);
 
-      // Inter-city arrival cascade: if the transit leg has an arrival time, shift Day N stops forward
+      // Inter-city arrival: shift stops to start no earlier than arrival time (no buffer — times are suggested)
       if (tripDetails && isCityChange && transitArr) {
-        const buffer = arrivalModeBuffer(transitMode);
-        for (const adj of cascadeDay(day.stops, timeToMinutes(transitArr) + buffer, day.date)) {
+        for (const adj of cascadeDay(day.stops, timeToMinutes(transitArr), day.date)) {
           cascadeMap.set(adj.stopId, adj);
         }
       }
@@ -773,39 +764,15 @@ export function buildReelCards(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
 
-    // Day 0 arrival cascade: user arrives on the first itinerary day.
-    // Allow when dates match OR when day.date is unset (itinerary built without start date).
+    // Day 0 arrival cascade: shift stops to start no earlier than arrival time (no arbitrary buffer)
     const arrivalDateMatchesDay0 = !day.date || !tripDetails?.arrivalDate || tripDetails.arrivalDate === day.date;
     if (tripDetails && dayIdx === 0 && arrivalDateMatchesDay0 && tripDetails.arrivalTime) {
-      for (const adj of cascadeDay(day.stops, timeToMinutes(tripDetails.arrivalTime) + 60, day.date ?? tripDetails.arrivalDate ?? '')) {
+      for (const adj of cascadeDay(day.stops, timeToMinutes(tripDetails.arrivalTime), day.date ?? tripDetails.arrivalDate ?? '')) {
         cascadeMap.set(adj.stopId, adj);
       }
     }
 
-    // Departure day pressure: flag stops that run into departure prep time.
-    // Allow when dates match OR when day.date is unset (last day).
-    const departureDateMatchesDay = !day.date || !tripDetails?.departureDate || tripDetails.departureDate === day.date;
     const isLastDay = dayIdx === itinerary.days.length - 1;
-    if (tripDetails?.departureTime && (departureDateMatchesDay || (isLastDay && !day.date))) {
-      const depMin = timeToMinutes(tripDetails.departureTime);
-      const latestLeaveMin = depMin - 90; // 90 min before departure
-      for (let i = sortedStops.length - 1; i >= 0; i--) {
-        const s = sortedStops[i];
-        const existing = cascadeMap.get(s.id);
-        const startMin = existing ? timeToMinutes(existing.newTime) : timeToMinutes(s.time);
-        const endMin = startMin + (s.durationMin ?? 60);
-        if (endMin > latestLeaveMin) {
-          const leaveByMin = Math.max(0, latestLeaveMin);
-          const depNote = leaveByMin <= startMin
-            ? `Your departure is at ${fmt12h(tripDetails.departureTime)} — leave directly from here`
-            : `Your departure is at ${fmt12h(tripDetails.departureTime)} — head out by ${fmt12h(minutesToTime(leaveByMin))}`;
-          cascadeMap.set(s.id, {
-            ...(existing ?? { stopId: s.id, originalTime: s.time, newTime: s.time, consequenceNote: null, isClosingConflict: false }),
-            departurePressureNote: depNote,
-          });
-        }
-      }
-    }
 
     // Build scenic card lookup: stop.id → scenic card placed after that stop
     const dayScenic = buildScenicCards(sortedStops, persona, weights);
@@ -890,7 +857,6 @@ export function buildReelCards(
           originalTime: adj.originalTime,
           consequenceNote: adj.consequenceNote,
           isClosingConflict: adj.isClosingConflict,
-          departurePressureNote: adj.departurePressureNote,
         } : null,
       };
       // Hotel anchor row
@@ -917,6 +883,21 @@ export function buildReelCards(
         cityArrivalVia: cityArrivalEntry?.arrivalVia ?? null,
         cityDepartureTime: cityArrivalEntry?.departureTime ?? (isLastDayInCity && dayIdx === itinerary.days.length - 1 ? (tripDetails?.departureTime ?? null) : null),
       });
+
+      // Arrival context note — first stop of Day 1, when user set an arrival slot
+      if (dayIdx === 0 && si === 0 && tripDetails?.arrivalTime) {
+        const h = parseInt(tripDetails.arrivalTime.split(':')[0], 10);
+        const slotLabel = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+        const via = tripDetails.cityArrivals?.[0]?.arrivalVia;
+        stopCard.arrivalNote = `Arriving this ${slotLabel}${via ? ` · ${via}` : ''}`;
+      }
+
+      // Departure context note — all stops on the last day, when user set a departure slot
+      if (isLastDay && tripDetails?.departureTime) {
+        const h = parseInt(tripDetails.departureTime.split(':')[0], 10);
+        const slotLabel = h < 11 ? 'morning' : h < 14 ? 'midday' : 'afternoon';
+        stopCard.departureNote = `Departure day · ${slotLabel} slot`;
+      }
 
       cards.push(stopCard);
 

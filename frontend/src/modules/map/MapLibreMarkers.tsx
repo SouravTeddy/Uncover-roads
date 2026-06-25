@@ -107,7 +107,7 @@ export function MapLibreMarkers({
                 <div style={{
                   position: 'absolute', bottom: -2, right: -4,
                   width: 16, height: 16, borderRadius: '50%',
-                  background: '#0c0c0e',
+                  background: 'var(--color-bg)',
                   border: `1.5px solid ${color}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   animation: 'dotPop .25s cubic-bezier(.16,1,.3,1)',
