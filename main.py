@@ -4361,6 +4361,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
         if sid and sid not in _stop_order_msg and m["type"] in ("insert", "swap", "resequence"):
             _stop_order_msg[sid] = m
 
+
     # Assign messages to days based on stop_id match; day-level (stop_id=None) go to day 1
     is_first_non_travel_day = True
     days_out = []
