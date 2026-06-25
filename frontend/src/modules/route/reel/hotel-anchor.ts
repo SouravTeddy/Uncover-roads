@@ -32,20 +32,6 @@ export function driveMinutes(distKm: number): number {
   return Math.max(2, Math.floor(distKm * 2));
 }
 
-function timeToMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime12(minutes: number): string {
-  const clamped = Math.max(0, minutes);
-  const h = Math.floor(clamped / 60) % 24;
-  const m = clamped % 60;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
-
 export function computeHotelAnchorRow(p: HotelAnchorParams): HotelAnchorRow | null {
   if (!p.hotel || p.hotel.lat == null || p.hotel.lon == null) return null;
   if (p.stopLat == null || p.stopLon == null) return null;
