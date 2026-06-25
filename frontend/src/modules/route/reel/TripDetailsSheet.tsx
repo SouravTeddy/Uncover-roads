@@ -22,16 +22,16 @@ type ArrivalSlot = 'morning' | 'afternoon' | 'evening' | 'night'
 type DepartureSlot = 'morning' | 'midday' | 'afternoon'
 
 const ARRIVAL_SLOTS: { value: ArrivalSlot; label: string; time: string; note: string }[] = [
-  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Full day from arrival.' },
-  { value: 'afternoon', label: 'Afternoon', time: '14:00', note: 'Half day on arrival — afternoon stops only.' },
-  { value: 'evening',   label: 'Evening',   time: '19:00', note: 'Dinner and settle in. Sightseeing starts next day.' },
-  { value: 'night',     label: 'Night',     time: '22:00', note: 'No activities on arrival day.' },
+  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Suggested start: ~9 AM on arrival day.' },
+  { value: 'afternoon', label: 'Afternoon', time: '14:00', note: 'Suggested start: ~2 PM on arrival day.' },
+  { value: 'evening',   label: 'Evening',   time: '19:00', note: 'Suggested start: ~7 PM on arrival day.' },
+  { value: 'night',     label: 'Night',     time: '22:00', note: 'Suggested start: ~10 PM on arrival day.' },
 ]
 
 const DEPARTURE_SLOTS: { value: DepartureSlot; label: string; time: string; note: string }[] = [
-  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Last day is morning only — 1–2 stops before leaving.' },
-  { value: 'midday',    label: 'Midday',    time: '12:00', note: 'Good morning with 2–3 stops before heading off.' },
-  { value: 'afternoon', label: 'Afternoon', time: '15:00', note: 'Nearly a full last day — time for 3–4 stops.' },
+  { value: 'morning',   label: 'Morning',   time: '09:00', note: 'Suggested: plan winds down around 9 AM.' },
+  { value: 'midday',    label: 'Midday',    time: '12:00', note: 'Suggested: plan winds down around noon.' },
+  { value: 'afternoon', label: 'Afternoon', time: '15:00', note: 'Suggested: plan winds down around 3 PM.' },
 ]
 
 function timeToArrivalSlot(t: string | null): ArrivalSlot | null {

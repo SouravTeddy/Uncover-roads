@@ -859,6 +859,150 @@ def route(body: dict):
 
 
 # =========================================
+# ROUTE PROFILE
+# =========================================
+
+def _route_profile_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
+    return f"{round(olat,3)}_{round(olon,3)}_{round(dlat,3)}_{round(dlon,3)}"
+
+
+def _sample_linestring(coords: list[list[float]], n: int = 20) -> list[tuple[float, float]]:
+    """Return n evenly-spaced (lat, lon) points sampled from a GeoJSON linestring."""
+    if len(coords) <= n:
+        return [(c[1], c[0]) for c in coords]
+    step = (len(coords) - 1) / (n - 1)
+    return [(coords[round(i * step)][1], coords[round(i * step)][0]) for i in range(n)]
+
+
+def _fetch_elevations(points: list[tuple[float, float]]) -> list[int | None]:
+    """Batch-query Open-Elevation for a list of (lat, lon) pairs."""
+    try:
+        payload = {"locations": [{"latitude": lat, "longitude": lon} for lat, lon in points]}
+        res = requests.post(
+            "https://api.open-elevation.com/api/v1/lookup",
+            json=payload,
+            timeout=10,
+        )
+        results = res.json().get("results", [])
+        return [int(r["elevation"]) if r.get("elevation") is not None else None for r in results]
+    except Exception as e:
+        print(f"OPEN-ELEVATION: {e}")
+        return [None] * len(points)
+
+
+def _compute_elevation_stats(elevations: list[int | None]) -> dict:
+    clean = [e for e in elevations if e is not None]
+    if len(clean) < 2:
+        return {"gain": None, "loss": None, "peak": None}
+    gain = sum(max(0, clean[i] - clean[i - 1]) for i in range(1, len(clean)))
+    loss = sum(max(0, clean[i - 1] - clean[i]) for i in range(1, len(clean)))
+    return {"gain": int(gain), "loss": int(loss), "peak": max(clean)}
+
+
+def _road_character_score(steps: list[dict]) -> float:
+    """0 = all high-speed motorway, 1 = all scenic/residential.
+
+    Uses average speed per step as a proxy for road classification.
+    Steps faster than 80 km/h are treated as highway-grade.
+    """
+    total_dist = sum(s.get("distance", 0) for s in steps)
+    if total_dist == 0:
+        return 0.5
+    highway_dist = 0.0
+    for s in steps:
+        d = s.get("distance", 0)
+        t = s.get("duration", 0)
+        if t > 0 and (d / t) > 22.2:  # > 80 km/h → motorway/trunk
+            highway_dist += d
+    return round(1.0 - (highway_dist / total_dist), 3)
+
+
+def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> dict:
+    key = _route_profile_key(olat, olon, dlat, dlon)
+
+    # Cache read
+    if _supabase:
+        try:
+            row = _supabase.table("route_profile_cache").select("*").eq("corridor_key", key).execute()
+            if row.data:
+                r = row.data[0]
+                fetched = datetime.fromisoformat(r["fetched_at"].replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - fetched < timedelta(days=30):
+                    return {k: r.get(k) for k in (
+                        "distance_km", "duration_min", "elevation_gain_m", "elevation_loss_m",
+                        "peak_elevation_m", "road_character", "sample_elevations",
+                    )}
+        except Exception as e:
+            print(f"ROUTE PROFILE CACHE READ: {e}")
+
+    result: dict = {
+        "distance_km": None, "duration_min": None,
+        "elevation_gain_m": None, "elevation_loss_m": None,
+        "peak_elevation_m": None, "road_character": None,
+        "sample_elevations": None,
+    }
+
+    try:
+        coords = f"{olon},{olat};{dlon},{dlat}"
+        osrm = requests.get(
+            f"http://router.project-osrm.org/route/v1/driving/{coords}",
+            params={"overview": "full", "geometries": "geojson", "steps": "true"},
+            timeout=15,
+        ).json()
+        if osrm.get("code") != "Ok":
+            return result
+        route = osrm["routes"][0]
+        result["distance_km"]  = round(route["distance"] / 1000, 1)
+        result["duration_min"] = max(1, round(route["duration"] / 60))
+
+        # Road character from steps
+        all_steps = [step for leg in route.get("legs", []) for step in leg.get("steps", [])]
+        result["road_character"] = _road_character_score(all_steps)
+
+        # Elevation: sample polyline → Open-Elevation batch query
+        geom_coords = route["geometry"]["coordinates"]  # [[lon, lat], ...]
+        sample_pts = _sample_linestring(geom_coords, n=20)
+        elevations = _fetch_elevations(sample_pts)
+        stats = _compute_elevation_stats(elevations)
+        result["elevation_gain_m"] = stats["gain"]
+        result["elevation_loss_m"] = stats["loss"]
+        result["peak_elevation_m"] = stats["peak"]
+        clean_elev = [e for e in elevations if e is not None]
+        result["sample_elevations"] = clean_elev if clean_elev else None
+
+    except Exception as e:
+        print(f"ROUTE PROFILE BUILD: {e}")
+
+    # Cache write
+    if _supabase:
+        try:
+            _supabase.table("route_profile_cache").upsert({
+                "corridor_key":    key,
+                **result,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            }).execute()
+        except Exception as e:
+            print(f"ROUTE PROFILE CACHE WRITE: {e}")
+
+    return result
+
+
+@app.get("/route-profile")
+def route_profile(
+    origin_lat: float = Query(...),
+    origin_lon: float = Query(...),
+    dest_lat:   float = Query(...),
+    dest_lon:   float = Query(...),
+):
+    """
+    Returns road elevation and character profile between two coordinates.
+    Backed by OSRM routing + Open-Elevation sampling (free, no key required).
+    Cached 30 days in route_profile_cache.
+    """
+    return _fetch_route_profile(origin_lat, origin_lon, dest_lat, dest_lon)
+
+
+# =========================================
 # AI ITINERARY
 # =========================================
 @app.post("/ai-itinerary")
@@ -2633,7 +2777,7 @@ def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
 def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) -> dict:
     key = _corridor_key(olat, olon, dlat, dlon)
 
-    # 1. Cache read
+    # 1. Cache read — skip if walk_distance_m is missing (pre-migration rows need a refetch)
     if _supabase:
         try:
             row = _supabase.table("transit_corridor_cache") \
@@ -2641,68 +2785,122 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
             if row.data:
                 r = row.data[0]
                 fetched = datetime.fromisoformat(r["fetched_at"].replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) - fetched < timedelta(days=30):
-                    return {k: r[k] for k in (
+                if datetime.now(timezone.utc) - fetched < timedelta(days=30) and r.get("walk_distance_m") is not None:
+                    return {k: r.get(k) for k in (
                         "has_transit","transit_type","duration_min","line_name",
-                        "departure_stop","arrival_stop","transfers","walk_to_stop_min"
+                        "departure_stop","arrival_stop","transfers","walk_to_stop_min",
+                        "walk_distance_m","walk_duration_min","walk_via",
                     )}
         except Exception as e:
             print(f"TRANSIT CACHE READ: {e}")
 
-    # 2. Google Directions API
+    # 2. Fire transit + walking Google Directions calls in parallel
     result = {"has_transit": False, "transit_type": None, "duration_min": None,
               "line_name": None, "departure_stop": None, "arrival_stop": None,
-              "transfers": None, "walk_to_stop_min": None}
+              "transfers": None, "walk_to_stop_min": None,
+              "walk_distance_m": None, "walk_duration_min": None, "walk_via": None}
 
     api_key = os.getenv("GOOGLE_PLACES_API_KEY", "")
     if not api_key:
         _write_transit_cache(key, result)
         return result
 
-    try:
-        resp = requests.get(
+    def _call_directions(mode: str):
+        return requests.get(
             "https://maps.googleapis.com/maps/api/directions/json",
-            params={
-                "origin": f"{olat},{olon}",
-                "destination": f"{dlat},{dlon}",
-                "mode": "transit",
-                "key": api_key,
-            },
+            params={"origin": f"{olat},{olon}", "destination": f"{dlat},{dlon}",
+                    "mode": mode, "key": api_key},
             timeout=5,
-        )
-        data = resp.json()
-        routes = data.get("routes", [])
-        if not routes:
-            _write_transit_cache(key, result)
-            return result
+        ).json()
 
-        leg = routes[0]["legs"][0]
-        steps = leg.get("steps", [])
-        total_sec = leg.get("duration", {}).get("value", 0)
-
-        transit_steps = [s for s in steps if s.get("travel_mode") == "TRANSIT"]
-        walk_steps    = [s for s in steps if s.get("travel_mode") == "WALKING"]
-
-        if not transit_steps:
-            _write_transit_cache(key, result)
-            return result
-
-        first_transit = transit_steps[0]
-        td = first_transit.get("transit_details", {})
-        line = td.get("line", {})
-
-        result = {
-            "has_transit":      True,
-            "transit_type":     line.get("vehicle", {}).get("type"),
-            "duration_min":     max(1, round(total_sec / 60)),
-            "line_name":        line.get("short_name") or line.get("name"),
-            "departure_stop":   td.get("departure_stop", {}).get("name"),
-            "arrival_stop":     td.get("arrival_stop", {}).get("name"),
-            "transfers":        max(0, len(transit_steps) - 1),
-            "walk_to_stop_min": max(1, round(sum(s.get("duration",{}).get("value",0) for s in walk_steps) / 60)) if walk_steps else 0,
-        }
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    transit_data, walk_data = None, None
+    try:
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            fut_transit = ex.submit(_call_directions, "transit")
+            fut_walk    = ex.submit(_call_directions, "walking")
+            transit_data = fut_transit.result()
+            walk_data    = fut_walk.result()
     except Exception as e:
-        print(f"TRANSIT API: {e}")
+        print(f"DIRECTIONS API: {e}")
+
+    # 3. Parse transit response
+    try:
+        routes = (transit_data or {}).get("routes", [])
+        if routes:
+            leg = routes[0]["legs"][0]
+            steps = leg.get("steps", [])
+            total_sec = leg.get("duration", {}).get("value", 0)
+            transit_steps = [s for s in steps if s.get("travel_mode") == "TRANSIT"]
+            walk_steps    = [s for s in steps if s.get("travel_mode") == "WALKING"]
+            if transit_steps:
+                first_transit = transit_steps[0]
+                td = first_transit.get("transit_details", {})
+                line = td.get("line", {})
+                result.update({
+                    "has_transit":      True,
+                    "transit_type":     line.get("vehicle", {}).get("type"),
+                    "duration_min":     max(1, round(total_sec / 60)),
+                    "line_name":        line.get("short_name") or line.get("name"),
+                    "departure_stop":   td.get("departure_stop", {}).get("name"),
+                    "arrival_stop":     td.get("arrival_stop", {}).get("name"),
+                    "transfers":        max(0, len(transit_steps) - 1),
+                    "walk_to_stop_min": max(1, round(sum(s.get("duration",{}).get("value",0) for s in walk_steps) / 60)) if walk_steps else 0,
+                })
+    except Exception as e:
+        print(f"TRANSIT PARSE: {e}")
+
+    # 4. Parse walking response — real footpath distance, duration, and street names
+    _DIRECTION_WORDS = {
+        "north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest",
+        "left", "right", "straight", "ahead", "destination", "turn", "continue", "head",
+        "slight", "merge", "keep", "exit", "ramp", "roundabout",
+    }
+
+    def _extract_walk_via(steps: list) -> list[str]:
+        """Extract meaningful street / path names from Google Directions walking steps."""
+        import re
+        seen: set[str] = set()
+        names: list[str] = []
+        for step in steps:
+            html = step.get("html_instructions", "")
+            # Pull every <b>…</b> token
+            tokens = re.findall(r"<b>(.*?)</b>", html, re.IGNORECASE)
+            for raw in tokens:
+                # Strip any residual HTML tags inside the bold span
+                clean = re.sub(r"<[^>]+>", "", raw).strip()
+                if not clean:
+                    continue
+                lower = clean.lower()
+                # Skip pure direction / cardinal words
+                if lower in _DIRECTION_WORDS:
+                    continue
+                # Skip short tokens that are just ordinal/cardinal abbreviations
+                if len(clean) <= 2:
+                    continue
+                key = lower
+                if key not in seen:
+                    seen.add(key)
+                    names.append(clean)
+            if len(names) >= 4:
+                break
+        return names[:4]
+
+    try:
+        walk_routes = (walk_data or {}).get("routes", [])
+        if walk_routes:
+            walk_leg = walk_routes[0]["legs"][0]
+            dist_m   = walk_leg.get("distance", {}).get("value")   # metres
+            dur_sec  = walk_leg.get("duration", {}).get("value")   # seconds
+            if dist_m is not None and dur_sec is not None:
+                result["walk_distance_m"]   = int(dist_m)
+                result["walk_duration_min"] = max(1, round(dur_sec / 60))
+            walk_steps = walk_leg.get("steps", [])
+            via = _extract_walk_via(walk_steps)
+            if via:
+                result["walk_via"] = via
+    except Exception as e:
+        print(f"WALK PARSE: {e}")
 
     _write_transit_cache(key, result)
     return result
@@ -4251,6 +4449,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
                 "isEngineAdded": (order_msg["type"] == "insert") if order_msg else False,
             })
 
+        _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
         days_out.append({
             "day": i + 1,
             "date": day.date,
@@ -4258,6 +4457,7 @@ async def engine_itinerary(body: EngineItineraryPayload):
             "isTravel": day.is_travel_day,
             "stops": stops_out,
             "messages": day_messages,
+            "walkBaseKm": _day_city_data.movement.get("walk_base_km", 2.0),
         })
 
     weights = persona.get("weights", {})

@@ -614,6 +614,23 @@ export async function routeInterCity(
   }
 }
 
+export async function fetchRouteProfile(
+  originLat: number, originLon: number,
+  destLat: number, destLon: number,
+): Promise<import('../modules/route/reel/types').RouteProfile | null> {
+  try {
+    const params = new URLSearchParams({
+      origin_lat: String(originLat), origin_lon: String(originLon),
+      dest_lat: String(destLat), dest_lon: String(destLon),
+    });
+    const res = await fetch(`${BASE}/route-profile?${params}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function* aiItineraryStream(
   body: ItineraryRequest,
 ): AsyncGenerator<Itinerary> {

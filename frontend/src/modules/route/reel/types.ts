@@ -1,5 +1,15 @@
 import type { EngineItineraryStop, WeatherData } from '../../../shared/types';
 
+export interface RouteProfile {
+  distance_km: number | null;
+  duration_min: number | null;
+  elevation_gain_m: number | null;
+  elevation_loss_m: number | null;
+  peak_elevation_m: number | null;
+  road_character: number | null;   // 0 = all motorway, 1 = all scenic rural roads
+  sample_elevations: number[] | null;
+}
+
 export interface TransitInfo {
   has_transit: boolean;
   transit_type: string | null;   // SUBWAY | BUS | TRAM | HEAVY_RAIL | COMMUTER_TRAIN | FERRY
@@ -9,6 +19,9 @@ export interface TransitInfo {
   arrival_stop: string | null;
   transfers: number | null;
   walk_to_stop_min: number | null;
+  walk_distance_m: number | null;   // real footpath distance from Google Directions
+  walk_duration_min: number | null; // real walking duration from Google Directions
+  walk_via: string[] | null;        // street / path names extracted from walking steps
 }
 
 export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic' | 'day_transition';
@@ -105,6 +118,7 @@ export interface ReelStopCard {
 export type RecoTrigger =
   | 'lunch' | 'dinner' | 'evening' | 'culture' | 'rest'
   | 'weather' | 'closing_conflict' | 'walking_gap' | 'crowd_peak'
+  | 'walkable_detour'
   // New engine dimensions:
   | 'density_excess' | 'density_sparse' | 'geo_efficiency'
   | 'time_balance' | 'category_diversity' | 'social_gap'
@@ -238,6 +252,11 @@ export interface ReelDayTransitionCard {
   transitRef?: string | null;
   /** When true, this city change happens within the same calendar day — render as a compact en-route marker */
   sameDay?: boolean;
+  /** Origin/dest coords for drive legs — used to lazy-fetch route profile */
+  driveOriginLat?: number | null;
+  driveOriginLon?: number | null;
+  driveDestLat?: number | null;
+  driveDestLon?: number | null;
 }
 
 export interface DayIntelObservation {

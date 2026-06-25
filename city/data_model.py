@@ -104,13 +104,51 @@ def _maybe_single_data(response) -> dict | None:
     return response  # 1.x — response IS the dict
 
 
-def load_city(city_id: str, supabase=None) -> CityData:
-    """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline."""
+def _ensure_walk_base_km(city: "CityData", supabase=None) -> "CityData":
+    """Lazily compute and backfill walk_base_km for cities seeded before this field existed.
+
+    If movement.walk_base_km is missing, queries Overpass for real pedestrian infrastructure
+    density, computes the threshold, and writes it back to the DB row.  Subsequent loads
+    will hit the cache and skip Overpass entirely.
+
+    Returns the CityData with walk_base_km populated (may be the same object if already set).
+    """
+    if city.movement.get("walk_base_km") is not None:
+        return city
+
+    from city.seed_builder import _fetch_footway_density, _walk_base_km_from_density
+
+    lat, lon = city.center
+    density = _fetch_footway_density(lat, lon)
+    walk_base_km = _walk_base_km_from_density(density)
+
+    city.movement["walk_base_km"] = walk_base_km
+
+    if supabase is not None:
+        try:
+            row = supabase.table("city_data").select("data").eq("id", city.id).maybe_single().execute()
+            row_data = _maybe_single_data(row)
+            if row_data is not None:
+                stored = row_data["data"]
+                stored.setdefault("movement", {})["walk_base_km"] = walk_base_km
+                supabase.table("city_data").update({"data": stored}).eq("id", city.id).execute()
+        except Exception as e:
+            print(f"WALK BASE KM BACKFILL: {e}")
+
+    return city
+
+
+def load_city(city_id: str, supabase=None) -> "CityData":
+    """Load CityData. On first miss, auto-seeds any whitelisted city via real-data pipeline.
+
+    Lazily backfills walk_base_km from Overpass if the stored city predates that field.
+    """
     if supabase is not None:
         row = supabase.table("city_data").select("data").eq("id", city_id).maybe_single().execute()
         row_data = _maybe_single_data(row)
         if row_data is not None:
-            return load_city_from_dict(row_data["data"])
+            city = load_city_from_dict(row_data["data"])
+            return _ensure_walk_base_km(city, supabase)
     seed_path = Path(__file__).parent / f"seed/{city_id}.json"
     if seed_path.exists():
         seed = json.loads(seed_path.read_text())
@@ -125,7 +163,8 @@ def load_city(city_id: str, supabase=None) -> CityData:
                 }).execute()
             except Exception:
                 pass  # non-fatal — frontend will still get data next call
-        return load_city_from_dict(seed)
+        city = load_city_from_dict(seed)
+        return _ensure_walk_base_km(city, supabase)
     if supabase is not None:
         wl = supabase.table("city_whitelist").select("*").eq("city_id", city_id).maybe_single().execute()
         wl_data = _maybe_single_data(wl)
