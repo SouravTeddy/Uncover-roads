@@ -127,8 +127,14 @@ function ssGet<T>(key: string): T | null {
   } catch { return null; }
 }
 
+const SESSION_IDLE_MS = 60 * 60 * 1000; // 1 hour — reopen after this → explore tab
+
 function ssSave(key: string, value: unknown) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    // Track when the session was last active so idle reopens land on Explore
+    if (key === 'ur_ss_screen') localStorage.setItem('ur_ss_ts', String(Date.now()));
+  } catch { /* ignore */ }
 }
 
 function getInitialScreen(): Screen {
@@ -148,6 +154,13 @@ function getInitialScreen(): Screen {
     const hasCompletedOB = localStorage.getItem('ur_persona') || localStorage.getItem('ur_ob_done');
     if (hasCompletedOB) {
       try {
+        // After an idle session, always land on Explore rather than restoring
+        // whatever screen the user last had open
+        const lastTs = Number(localStorage.getItem('ur_ss_ts') ?? 0);
+        if (lastTs && Date.now() - lastTs > SESSION_IDLE_MS) {
+          return 'destination';
+        }
+
         const lastScreen = localStorage.getItem('ur_ss_screen');
         if (lastScreen) {
           const parsed = JSON.parse(lastScreen) as Screen;

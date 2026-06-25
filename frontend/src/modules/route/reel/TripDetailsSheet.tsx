@@ -400,7 +400,6 @@ export function TripDetailsSheet({ cities, existingDetails, onSave, onClose, fir
   useSheetDismiss(onClose, true);
 
   const firstCity = cities[0] ?? '';
-  const lastCity = cities[cities.length - 1] ?? '';
   const titleCities = formatCityLabel(cities).toUpperCase();
 
   function handleHotelChange(city: string, v: { name: string; placeId: string | null; lat?: number | null; lon?: number | null; checkInTime?: string | null }) {
