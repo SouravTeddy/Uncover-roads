@@ -42,10 +42,10 @@ const T = {
   pillClr:  'rgba(255,255,255,0.90)',
   ctrBg:    'rgba(0,0,0,0.68)',
   // Type scale — optimised for real-phone legibility
-  fsXs:    11,   // chip labels, footnotes
-  fsSm:    13,   // location, meta, secondary text
-  fsMd:    15,   // body copy, logistics rows
-  fsTitle: 36,   // stop name (Cormorant Garamond)
+  fsXs:    12,   // chip labels, footnotes
+  fsSm:    15,   // location, meta, secondary text
+  fsMd:    17,   // body copy, logistics rows
+  fsTitle: 40,   // stop name (Cormorant Garamond)
 };
 
 // ── Helpers ───────────────────────────────────────────────────
