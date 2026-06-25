@@ -9,6 +9,7 @@ interface Props {
   archetype: string;
   existingPlaceIds: string[];
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan') => void;
+  onMapNavigate?: (lat: number, lon: number, places: import('../../../shared/types').Place[]) => void;
 }
 
 const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
@@ -109,7 +110,7 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
   );
 }
 
-export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract }: Props) {
+export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
   const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,7 +224,16 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
 
         {/* Browse on map CTA */}
         <button
-          onClick={() => onInteract?.('tapped')}
+          onClick={() => {
+            onInteract?.('tapped');
+            if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
+              const mappedPlaces = places.map(p => ({
+                id: p.placeId, title: p.name, category: p.category as import('../../../shared/types').Category,
+                lat: p.lat, lon: p.lon, place_id: p.placeId, rating: p.rating ?? undefined, price_level: p.priceLevel ?? undefined,
+              }));
+              onMapNavigate(card.stopLat, card.stopLon, mappedPlaces);
+            }
+          }}
           style={{
             background: 'rgba(212,168,83,0.15)',
             border: '1px solid rgba(212,168,83,0.5)',
