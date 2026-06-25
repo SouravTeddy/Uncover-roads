@@ -399,14 +399,52 @@ export function ItineraryReelScreen() {
     ];
     const activeStep = STEPS.findIndex(s => !s.done);
 
+    // Collect photo URLs for the mosaic: stop photos first, city photos as supplement
+    const mosaicSrcs: string[] = [];
+    for (const day of activeItinerary?.days ?? []) {
+      for (const stop of day.stops ?? []) {
+        if (stop.imageUrl && !mosaicSrcs.includes(stop.imageUrl)) {
+          mosaicSrcs.push(stop.imageUrl);
+          if (mosaicSrcs.length >= 9) break;
+        }
+      }
+      if (mosaicSrcs.length >= 9) break;
+    }
+    for (const [, url] of cityPhotoMap) {
+      if (url && !mosaicSrcs.includes(url)) {
+        mosaicSrcs.push(url);
+        if (mosaicSrcs.length >= 9) break;
+      }
+    }
+
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Background layers */}
+        {/* Photo mosaic background */}
+        {mosaicSrcs.length > 0 && (
+          <div style={{ position: 'absolute', inset: '-12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: 3, filter: 'blur(14px) saturate(0.6)', overflow: 'hidden' }}>
+            {Array.from({ length: 9 }, (_, i) => {
+              const src = mosaicSrcs[i % mosaicSrcs.length];
+              const isAlt = i % 2 === 1;
+              return (
+                <img
+                  key={i}
+                  src={src}
+                  alt=""
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    animation: `${isAlt ? 'kenBurns2' : 'kenBurns'} ${18 + (i % 3) * 4}s ease-in-out infinite alternate`,
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+        {/* Dark overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: mosaicSrcs.length > 0 ? 'rgba(10,8,6,0.72)' : 'transparent', pointerEvents: 'none' }} />
+        {/* Colour accents on top */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 55% at 50% 30%, rgba(212,168,83,.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,143,171,.06) 0%, transparent 60%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 40% 30% at 15% 70%, rgba(212,168,83,.04) 0%, transparent 55%)', pointerEvents: 'none' }} />
-        {/* Subtle grid texture */}
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)', backgroundSize: '48px 48px', pointerEvents: 'none' }} />
 
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, padding: '0 40px', width: '100%', maxWidth: 340 }}>
 

@@ -31,22 +31,22 @@ export function ReelImg({ src, style, onFallback }: Props) {
   }, []);
 
   const handleError = () => {
-    if (attempt === 0) {
-      setTimeout(() => setAttempt(1), 800);
+    if (attempt < 3) {
+      setTimeout(() => setAttempt(a => a + 1), 800 * (attempt + 1));
     } else {
       setFailed(true);
-      onFallback?.();
+      // Keep shimmer visible — no gradient fallback per product requirement
     }
   };
 
-  const showShimmer = !!src && !loaded && !failed;
+  const showShimmer = !!src && !loaded;
 
   return (
     <>
       {showShimmer && (
         <div
           className="shimmer"
-          style={{ position: 'absolute', inset: 0, background: '#141210', zIndex: 0 }}
+          style={{ position: 'absolute', inset: 0, background: 'var(--color-surface2)', zIndex: 0 }}
         />
       )}
       {src && (

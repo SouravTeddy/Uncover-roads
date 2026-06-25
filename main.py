@@ -1490,7 +1490,7 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
             "action": "query", "list": "search",
             "srsearch": f"{name} {city}",
             "format": "json", "srlimit": 1
-        }, timeout=4).json()
+        }, timeout=8).json()
         results = search.get("query", {}).get("search", [])
         if results:
             title = results[0]["title"]
@@ -1498,7 +1498,7 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
                 "action": "query", "titles": title,
                 "prop": "pageimages", "pithumbsize": 600,
                 "format": "json"
-            }, timeout=4).json()
+            }, timeout=8).json()
             for page in images.get("query", {}).get("pages", {}).values():
                 thumb = page.get("thumbnail", {})
                 if thumb.get("source"):
@@ -1516,7 +1516,7 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
             "iiprop": "url",
             "iiurlwidth": 600,
             "format": "json", "gsrlimit": 5
-        }, timeout=4).json()
+        }, timeout=8).json()
         for page in commons.get("query", {}).get("pages", {}).values():
             info_list = page.get("imageinfo", [])
             for info in info_list:
@@ -2167,9 +2167,9 @@ async def track_event(request: Request, user=Depends(get_current_user)):
 # ADMIN USAGE DASHBOARD
 # =========================================
 
-_RAILWAY_TOKEN      = os.getenv("RAILWAY_TOKEN",      "92404200-82e1-4813-bea7-e74777d08dad")
-_RAILWAY_PROJECT_ID = os.getenv("RAILWAY_PROJECT_ID", "cb36d4b3-8004-428f-9a79-f3c6a59a596a")
-_RAILWAY_SERVICE_ID = os.getenv("RAILWAY_SERVICE_ID", "e99f6079-2b32-494e-86d6-9750fac259d8")
+_RAILWAY_TOKEN      = os.getenv("RAILWAY_TOKEN",      "")
+_RAILWAY_PROJECT_ID = os.getenv("RAILWAY_PROJECT_ID", "")
+_RAILWAY_SERVICE_ID = os.getenv("RAILWAY_SERVICE_ID", "")
 
 # Google Places API pricing (USD per 1000 requests, as of 2024)
 _GOOGLE_PRICES = {
@@ -2327,8 +2327,12 @@ def _estimate_google_spend(sb: dict) -> dict:
     return {"lines": lines, "total": round(total, 2)}
 
 
+_ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
+
 @app.get("/admin/dashboard", response_class=HTMLResponse)
-def admin_dashboard():
+def admin_dashboard(token: str = Query(default="")):
+    if not _ADMIN_SECRET or token != _ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="forbidden")
     sb      = _dashboard_supabase()
     rail    = _dashboard_railway()
     google  = _estimate_google_spend(sb)
@@ -2810,7 +2814,7 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
             "https://maps.googleapis.com/maps/api/directions/json",
             params={"origin": f"{olat},{olon}", "destination": f"{dlat},{dlon}",
                     "mode": mode, "key": api_key},
-            timeout=5,
+            timeout=12,
         ).json()
 
     from concurrent.futures import ThreadPoolExecutor, as_completed

@@ -320,7 +320,7 @@ function buildPersonaObservations(
 
   const restThreshold = REST_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
   if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
-    const hasCafeBreak = stops.some(s => s.category === 'cafe');
+    const hasCafeBreak = stops.some(s => s.category === 'cafe' || s.category === 'coffee' || s.category === 'bakery');
     if (!hasCafeBreak) {
       obs.push({
         id: `rest-${lastStop.id}`,
@@ -351,7 +351,7 @@ function buildWalkingGapObservations(
   weights: EngineWeights,
   walkBaseKm = 2.0,
 ): DayIntelObservation[] {
-  if (weights.w_walk_affinity >= 0.45) return [];
+  if (weights.w_walk_affinity >= 0.65) return [];
   const walkThresholdKm = walkBaseKm * (0.6 + weights.w_walk_affinity * 0.8);
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];

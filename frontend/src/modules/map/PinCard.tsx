@@ -119,39 +119,63 @@ export function PinCard({
     }
   }, [])
 
+  // Tracks whether the details-upgrade effect already populated imgSrcs for the current pin.
+  // Prevents a slower placeholder load from overwriting a better gallery already shown.
+  const detailsPhotoLoadedRef = useRef(false)
+
+  // Effect A: fires when the selected pin changes — clear and load a quick placeholder
   useEffect(() => {
     closing.current = false
+    detailsPhotoLoadedRef.current = false
     setImgSrcs([])
     setSlideIdx(0)
 
-    const refs: string[] =
-      (details?.photo_refs && details.photo_refs.length > 0)
-        ? details.photo_refs
-        : (details?.photo_ref ?? place.photo_ref)
-        ? [details?.photo_ref ?? place.photo_ref!]
-        : []
-
-    if (refs.length > 0) {
-      const urls = refs.map(r => getPlacePhotoUrl(r))
-      Promise.allSettled(
-        urls.map(url => new Promise<string>((res, rej) => {
-          const img = new Image(); img.onload = () => res(url); img.onerror = rej; img.src = url
-        }))
-      ).then(results => {
-        const loaded = results
-          .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
-          .map(r => r.value)
-        if (loaded.length > 0) {
-          setImgSrcs(loaded)
-        } else {
-          api.placeImage(place.title, city, place.id).then(url => { if (url) setImgSrcs([url]) })
-        }
-      })
+    const ref = place.photo_ref
+    if (ref) {
+      const url = getPlacePhotoUrl(ref)
+      const img = new Image()
+      img.onload = () => { if (!detailsPhotoLoadedRef.current) setImgSrcs([url]) }
+      img.onerror = () => {
+        if (!detailsPhotoLoadedRef.current)
+          api.placeImage(place.title, city, place.id).then(u => { if (u && !detailsPhotoLoadedRef.current) setImgSrcs([u]) })
+      }
+      img.src = url
     } else {
-      api.placeImage(place.title, city, place.id).then(url => { if (url) setImgSrcs([url]) })
+      api.placeImage(place.title, city, place.id).then(url => { if (url && !detailsPhotoLoadedRef.current) setImgSrcs([url]) })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [place.id, details?.photo_refs, details?.photo_ref])
+  }, [place.id])
+
+  // Effect B: fires when details arrive — upgrade to full gallery WITHOUT blanking the card
+  useEffect(() => {
+    if (!details) return
+
+    const refs: string[] =
+      (details.photo_refs && details.photo_refs.length > 0)
+        ? details.photo_refs
+        : details.photo_ref
+          ? [details.photo_ref]
+          : []
+
+    if (refs.length === 0) return
+
+    const urls = refs.map(r => getPlacePhotoUrl(r))
+    Promise.allSettled(
+      urls.map(url => new Promise<string>((res, rej) => {
+        const img = new Image(); img.onload = () => res(url); img.onerror = rej; img.src = url
+      }))
+    ).then(results => {
+      const loaded = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map(r => r.value)
+      if (loaded.length > 0) {
+        detailsPhotoLoadedRef.current = true
+        setImgSrcs(loaded)
+        setSlideIdx(0)
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details?.photo_refs, details?.photo_ref])
 
   useEffect(() => {
     setHoursOpen(false)
