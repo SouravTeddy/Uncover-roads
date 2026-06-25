@@ -228,14 +228,23 @@ function getTransitLabel(type: string | null | undefined, lineName: string | nul
 function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
   const isHighWalk = card.persona.includes('walk') || card.persona.includes('hike') || card.persona.includes('slow');
 
-  // Parse "1.9 km walk" → "1.9 km"
-  const distValue = card.metaRight.replace(/\s*walk$/i, '').trim();
-  // Parse "~23 min on foot." → "~23 min"
-  const timeMatch = card.sensory.match(/~?(\d+)\s*min/i);
-  const timeValue = timeMatch ? timeMatch[0] : card.sensory.replace('.', '');
-  const walkMins = timeMatch ? parseInt(timeMatch[1], 10) : 15;
   const ti = card.transitInfo;
   const hasRealTransit = ti?.has_transit === true;
+
+  // Prefer real Google Directions walking data; fall back to haversine estimates
+  const realDistM   = ti?.walk_distance_m ?? null;
+  const realWalkMin = ti?.walk_duration_min ?? null;
+  const viaStreets  = ti?.walk_via?.length ? ti.walk_via : null;
+
+  const distValue = realDistM !== null
+    ? (realDistM < 1000 ? `${realDistM} m` : `${(realDistM / 1000).toFixed(1)} km`)
+    : card.metaRight.replace(/\s*walk$/i, '').trim();
+
+  const walkMins = realWalkMin !== null
+    ? realWalkMin
+    : (() => { const m = card.sensory.match(/~?(\d+)\s*min/i); return m ? parseInt(m[1], 10) : 15; })();
+
+  const timeValue = `~${walkMins} min`;
   const rideMins = Math.max(3, Math.round(walkMins * 0.4));
   const transitLabel = hasRealTransit
     ? getTransitLabel(ti!.transit_type, ti!.line_name)
@@ -278,7 +287,9 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
               {transitLabel
                 ? `or ${transitLabel} in ~${transitMins} min`
-                : 'on foot'}
+                : viaStreets
+                  ? `via ${viaStreets.slice(0, 2).join(' · ')}`
+                  : 'on foot'}
             </div>
           )}
           {!isHighWalk && card.detourMin > 0 && (
@@ -321,11 +332,15 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>flat route</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(107,148,112,.7)' }}>nature</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea' }}>street</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>local path</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(107,148,112,.7)', flexShrink: 0 }}>route</span>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {viaStreets ? viaStreets[0] : 'local path'}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,.35)' }}>
+                    {viaStreets && viaStreets.length > 1 ? `via ${viaStreets.slice(1, 3).join(', ')}` : 'on foot'}
+                  </div>
                 </div>
               </div>
             </>

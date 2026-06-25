@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { ReelDayTransitionCard as ReelDayTransitionCardType } from './types';
+import type { ReelDayTransitionCard as ReelDayTransitionCardType, RouteProfile } from './types';
+import { fetchRouteProfile } from '../../../shared/api';
 
 interface Props {
   card: ReelDayTransitionCardType;
@@ -77,6 +78,7 @@ function fmtDur(m: number): string {
 
 export function ReelDayTransitionCard({ card, active }: Props) {
   const [on, setOn] = useState(false);
+  const [routeProfile, setRouteProfile] = useState<RouteProfile | null>(null);
 
   useEffect(() => {
     if (active) {
@@ -86,6 +88,22 @@ export function ReelDayTransitionCard({ card, active }: Props) {
       setOn(false);
     }
   }, [active]);
+
+  // Lazy-fetch route profile for drive legs when card becomes active
+  useEffect(() => {
+    if (
+      active &&
+      card.transitMode === 'drive' &&
+      card.driveOriginLat != null && card.driveOriginLon != null &&
+      card.driveDestLat != null && card.driveDestLon != null &&
+      !routeProfile
+    ) {
+      fetchRouteProfile(
+        card.driveOriginLat, card.driveOriginLon,
+        card.driveDestLat, card.driveDestLon,
+      ).then(p => { if (p) setRouteProfile(p); });
+    }
+  }, [active, card.transitMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fade = (delay: string): React.CSSProperties => ({
     opacity: on ? 1 : 0,
@@ -222,6 +240,33 @@ export function ReelDayTransitionCard({ card, active }: Props) {
                 <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 8, background: 'rgba(0,0,0,.35)', border: `1px solid ${T.line}` }}>
                   <span className="ms" style={{ fontSize: 11, color: T.text3 }}>confirmation_number</span>
                   <span style={{ fontSize: 11, color: T.text2 }}>{card.transitRef}</span>
+                </div>
+              )}
+              {/* Drive route profile stats — shown once route profile loads */}
+              {card.transitMode === 'drive' && routeProfile && (
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {routeProfile.elevation_gain_m != null && routeProfile.elevation_gain_m > 80 && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: 'rgba(107,148,112,.08)', border: '1px solid rgba(107,148,112,.2)' }}>
+                      <span className="ms" style={{ fontSize: 12, color: 'rgba(107,148,112,.8)' }}>trending_up</span>
+                      <span style={{ fontSize: 11, color: T.text2 }}>+{routeProfile.elevation_gain_m} m climb</span>
+                    </div>
+                  )}
+                  {routeProfile.peak_elevation_m != null && routeProfile.peak_elevation_m > 500 && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: 'rgba(255,255,255,.04)', border: `1px solid ${T.line}` }}>
+                      <span className="ms" style={{ fontSize: 12, color: T.text3 }}>landscape</span>
+                      <span style={{ fontSize: 11, color: T.text2 }}>{routeProfile.peak_elevation_m} m peak</span>
+                    </div>
+                  )}
+                  {routeProfile.road_character != null && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: routeProfile.road_character > 0.6 ? 'rgba(79,143,171,.08)' : 'rgba(255,255,255,.04)', border: routeProfile.road_character > 0.6 ? '1px solid rgba(79,143,171,.2)' : `1px solid ${T.line}` }}>
+                      <span className="ms" style={{ fontSize: 12, color: routeProfile.road_character > 0.6 ? T.sky : T.text3 }}>
+                        {routeProfile.road_character > 0.6 ? 'park' : 'toll'}
+                      </span>
+                      <span style={{ fontSize: 11, color: T.text2 }}>
+                        {routeProfile.road_character > 0.75 ? 'Scenic roads' : routeProfile.road_character > 0.4 ? 'Mixed roads' : 'Mostly highway'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Line below */}

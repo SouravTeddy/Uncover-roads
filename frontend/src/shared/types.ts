@@ -637,6 +637,7 @@ export interface EngineItineraryDay {
   isTravel: boolean          // ✈️ travel day — no stops
   stops: EngineItineraryStop[]
   messages: EngineMessage[]  // engine decision banners for this day
+  walkBaseKm?: number        // city pedestrian infrastructure baseline (from Overpass)
 }
 
 /**

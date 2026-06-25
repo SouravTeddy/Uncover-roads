@@ -196,24 +196,26 @@ function findPairWith(
 // Each builder returns DayIntelObservation[] (content for the single Day Intelligence card).
 
 const TRIGGER_SEARCH: Record<string, string> = {
-  lunch:    'restaurant',
-  dinner:   'restaurant',
-  evening:  'bar',
-  culture:  'museum',
-  rest:     'cafe',
-  walking_gap: 'cafe',
-  hidden_gem:  '',
+  lunch:            'restaurant',
+  dinner:           'restaurant',
+  evening:          'bar',
+  culture:          'museum',
+  rest:             'cafe',
+  walking_gap:      'cafe',
+  walkable_detour:  '',
+  hidden_gem:       '',
 };
 
 function triggerCTA(trigger: string, city: string): string {
   const label: Record<string, string> = {
-    lunch:       'Browse lunch spots',
-    dinner:      'Browse dinner spots',
-    evening:     'Browse evening options',
-    culture:     'Browse culture nearby',
-    rest:        'Browse cafés nearby',
-    walking_gap: 'Browse spots en route',
-    hidden_gem:  'View on map',
+    lunch:            'Browse lunch spots',
+    dinner:           'Browse dinner spots',
+    evening:          'Browse evening options',
+    culture:          'Browse culture nearby',
+    rest:             'Browse cafés nearby',
+    walking_gap:      'Browse spots en route',
+    walkable_detour:  'View walking route',
+    hidden_gem:       'View on map',
   };
   const base = label[trigger] ?? 'Browse nearby';
   return city ? `${base} in ${city}` : base;
@@ -347,13 +349,15 @@ function buildWalkingGapObservations(
   stops: EngineItineraryStop[],
   city: string,
   weights: EngineWeights,
+  walkBaseKm = 2.0,
 ): DayIntelObservation[] {
   if (weights.w_walk_affinity >= 0.45) return [];
+  const walkThresholdKm = walkBaseKm * (0.6 + weights.w_walk_affinity * 0.8);
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-    if (distKm > 2.0) {
+    if (distKm > walkThresholdKm) {
       return [{
         id: `walking-${a.id}-${b.id}`,
         trigger: 'walking_gap',
@@ -369,6 +373,57 @@ function buildWalkingGapObservations(
     }
   }
   return [];
+}
+
+// ── Walkable detour observations ─────────────────────────────
+// Fires for non-walk personas when a walkable leg exists that they'd naturally skip.
+// Distinct from walking_gap (which warns about a stretch that's *too far*) — this
+// surfaces a stretch that's *worth walking* even for non-walkers.
+function buildWalkableDetourObservations(
+  stops: EngineItineraryStop[],
+  city: string,
+  weights: EngineWeights,
+  walkBaseKm = 2.0,
+): DayIntelObservation[] {
+  // Only fire for users who are not walk-oriented — walk personas already get scenic cards
+  if (weights.w_walk_affinity >= 0.55) return [];
+
+  // Detour window: 0.3 km – walkBaseKm (the full scenic ceiling, ignoring persona discount)
+  // This is wider than buildScenicCards uses, intentionally — we want to surface it even
+  // when the persona's threshold would have filtered it out.
+  const minKm = 0.3;
+  const maxKm = walkBaseKm;
+
+  const obs: DayIntelObservation[] = [];
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i];
+    const b = stops[i + 1];
+    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
+    if (distKm < minKm || distKm > maxKm) continue;
+
+    const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
+    const distLabel = distKm < 1
+      ? `${Math.round(distKm * 1000)} m`
+      : `${distKm.toFixed(1)} km`;
+
+    obs.push({
+      id: `walkable-detour-${a.id}-${b.id}`,
+      trigger: 'walkable_detour',
+      what: `${distLabel} walkable stretch`,
+      why: `${a.title} to ${b.title} is short enough to walk — ~${walkMins} min on foot.`,
+      consequence: 'Worth the legs if you have time — you\'ll see more than from a ride.',
+      ctaLabel: triggerCTA('walkable_detour', city),
+      stopLat: a.lat,
+      stopLon: a.lon,
+      searchCategory: TRIGGER_SEARCH.walkable_detour,
+      anchorCity: city,
+    });
+
+    if (obs.length >= 1) break; // surface at most one per day — don't overwhelm
+  }
+
+  return obs;
 }
 
 // ── Discovery observations ────────────────────────────────────
@@ -421,24 +476,26 @@ function buildScenicCards(
   stops: EngineItineraryStop[],
   persona: string,
   weights: EngineWeights,
+  walkBaseKm = 2.0,
 ): Array<ReelScenicCard & { _afterStopId: string }> {
   const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
   const threshold = SCENIC_ARCHETYPES.has(archetypeLower) ? 0.2 : 0.4;
   if (weights.w_scenic < threshold) return [];
+
+  // Dynamic walk ceiling: city pedestrian density × walk affinity modifier
+  const walkThresholdKm = walkBaseKm * (0.6 + weights.w_walk_affinity * 0.8);
 
   const results: Array<ReelScenicCard & { _afterStopId: string }> = [];
 
   const personaDisplay = persona.split(/[\s_]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
   for (let i = 0; i < stops.length - 1; i++) {
-    // Fix 5: cap at 2 scenic cards per day
     if (results.length >= 2) break;
 
     const a = stops[i];
     const b = stops[i + 1];
     const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-    // Fix 5: skip pairs that are too close (not walkable) or too far
-    if (distKm < 0.1 || distKm > 2.0) continue;
+    if (distKm < 0.1 || distKm > walkThresholdKm) continue;
 
     // Fix 4: area label dedup — use title as fallback when both areas are the same
     const fromLabel = (a.area && a.area !== b.area) ? a.area : a.title;
@@ -609,7 +666,7 @@ export function buildReelCards(
   // Count scenic cards across all days (needed for intelItems on the intro card)
   const totalScenicCount = itinerary.days.reduce((sum, day) => {
     const sortedStops = [...day.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-    return sum + buildScenicCards(sortedStops, persona, weights).length;
+    return sum + buildScenicCards(sortedStops, persona, weights, day.walkBaseKm ?? 2.0).length;
   }, 0);
 
   cards.push({
@@ -748,6 +805,12 @@ export function buildReelCards(
         transitArrivalTime: transitArr,
         transitRef,
         sameDay: isMergedWithPrev,
+        ...(transitMode === 'drive' && prevLast && thisFirst ? {
+          driveOriginLat: prevLast.lat,
+          driveOriginLon: prevLast.lon,
+          driveDestLat:   thisFirst.lat,
+          driveDestLon:   thisFirst.lon,
+        } : {}),
       };
       cards.push(transitionCard);
 
@@ -775,7 +838,7 @@ export function buildReelCards(
     const isLastDay = dayIdx === itinerary.days.length - 1;
 
     // Build scenic card lookup: stop.id → scenic card placed after that stop
-    const dayScenic = buildScenicCards(sortedStops, persona, weights);
+    const dayScenic = buildScenicCards(sortedStops, persona, weights, day.walkBaseKm ?? 2.0);
     const scenicByStopId = new Map<string, ReelScenicCard>(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
@@ -805,7 +868,8 @@ export function buildReelCards(
       ...engineObservations,
       ...(nextDayMergesIn ? [] : buildMealObservations(sortedStops, day.city)),
       ...buildPersonaObservations(sortedStops, persona, day.city, weights),
-      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights)),
+      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0)),
+      ...buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0),
       ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryObservations(sortedStops, day.city)),
     ];
     // Deduplicate by trigger

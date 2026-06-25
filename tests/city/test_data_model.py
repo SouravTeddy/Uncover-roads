@@ -44,15 +44,20 @@ def test_load_city_triggers_on_demand_for_whitelisted_unseeded_city():
     from unittest.mock import MagicMock, patch
     from city.data_model import load_city
 
-    mock_supabase = MagicMock()
-    # city_data table: no row
-    mock_supabase.table.return_value.select.return_value.eq.return_value.single.return_value.execute.return_value = MagicMock(data=None)
-    # city_whitelist table: row found
     whitelist_row = {
         "city_id": "porto", "name": "Porto", "country_code": "PT",
         "tier": 1, "lat": 41.1579, "lon": -8.6291, "timezone": "Europe/Lisbon", "seeded": False,
     }
-    mock_supabase.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(data=whitelist_row)
+
+    # Differentiate city_data (no row) and city_whitelist (row found) by table name
+    city_data_mock = MagicMock()
+    city_data_mock.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(data=None)
+
+    whitelist_mock = MagicMock()
+    whitelist_mock.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = MagicMock(data=whitelist_row)
+
+    mock_supabase = MagicMock()
+    mock_supabase.table.side_effect = lambda name: city_data_mock if name == "city_data" else whitelist_mock
 
     mock_city = MagicMock()
     mock_city.id = "porto"

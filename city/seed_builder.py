@@ -359,29 +359,92 @@ def _derive_scenic_routes(neighborhoods: list[Neighborhood]) -> list[dict]:
     return routes[:3]
 
 
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Haversine distance in metres between two lat/lon points."""
+    R = 6_371_000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _fetch_footway_density(lat: float, lon: float, radius_m: int = 5000) -> float:
+    """Return pedestrian infrastructure density (km of footway per km²) for a city area.
+
+    Queries OSM Overpass for ways tagged as pedestrian-accessible within radius_m of the
+    city centre.  Sums their lengths from node geometry and normalises by the query area.
+
+    Returns 0.0 on any failure — callers must handle gracefully.
+    """
+    query = (
+        f"[out:json][timeout:30];"
+        f"(way[\"highway\"~\"^(footway|pedestrian|path|steps|living_street)$\"]"
+        f"(around:{radius_m},{lat},{lon}););"
+        f"out geom;"
+    )
+    try:
+        r = requests.post(_OVERPASS_URL, data={"data": query}, timeout=35)
+        r.raise_for_status()
+        elements = r.json().get("elements", [])
+    except Exception as e:
+        print(f"FOOTWAY DENSITY: Overpass failed — {e}")
+        return 0.0
+
+    total_m = 0.0
+    for way in elements:
+        geom = way.get("geometry", [])
+        for j in range(len(geom) - 1):
+            total_m += _haversine_m(
+                geom[j]["lat"], geom[j]["lon"],
+                geom[j + 1]["lat"], geom[j + 1]["lon"],
+            )
+
+    area_km2 = math.pi * (radius_m / 1000) ** 2
+    return (total_m / 1000) / area_km2  # km of footway per km²
+
+
+def _walk_base_km_from_density(density: float) -> float:
+    """Convert footway density (km/km²) to a walk-threshold baseline (km).
+
+    Uses a logarithmic scale so differences at low density matter more than at high density.
+    Clamps to [1.0, 6.0] km.
+
+    Calibration reference points:
+      density ~0.5  → 1.0 km  (car-centric: Dubai, Phoenix)
+      density ~2    → 2.2 km  (mixed: Bangkok, Mumbai)
+      density ~5    → 3.6 km  (walkable: Paris, NYC)
+      density ~8    → 4.4 km  (very walkable: Amsterdam, Tokyo)
+      density ~15+  → 5.5 km  (pedestrian-first: Venice, Prague old town)
+    """
+    return min(6.0, max(1.0, math.log(1 + density) * 2.0))
+
+
 def build_city_seed(city_entry: dict) -> CityData:
     """Build a CityData from real external sources. ~3–4s on cold city.
 
     Args:
         city_entry: dict with keys: city_id, name, lat, lon, country_code, timezone, tier
     """
-    with ThreadPoolExecutor(max_workers=5) as pool:
-        f_landmarks = pool.submit(_fetch_wikidata_landmarks, city_entry)
+    lat, lon = city_entry["lat"], city_entry["lon"]
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        f_landmarks     = pool.submit(_fetch_wikidata_landmarks, city_entry)
         f_neighborhoods = pool.submit(_fetch_osm_neighborhoods, city_entry)
-        f_climate = pool.submit(_fetch_climate, city_entry)
-        f_hidden = pool.submit(_fetch_foursquare_hidden_gems, city_entry)
-        neighborhoods = f_neighborhoods.result()
-        f_pois = pool.submit(_fetch_google_pois, city_entry, neighborhoods)
-        landmarks = f_landmarks.result()
-        climate = f_climate.result()
-        hidden_gems = f_hidden.result()
-        pois = f_pois.result()
+        f_climate       = pool.submit(_fetch_climate, city_entry)
+        f_hidden        = pool.submit(_fetch_foursquare_hidden_gems, city_entry)
+        f_density       = pool.submit(_fetch_footway_density, lat, lon)
+        neighborhoods   = f_neighborhoods.result()
+        f_pois          = pool.submit(_fetch_google_pois, city_entry, neighborhoods)
+        landmarks       = f_landmarks.result()
+        climate         = f_climate.result()
+        hidden_gems     = f_hidden.result()
+        density         = f_density.result()
+        pois            = f_pois.result()
 
     country_mods = get_country_modifiers(city_entry["country_code"])
     insert_candidates = _build_insert_candidates(pois)
     scenic_routes = _derive_scenic_routes(neighborhoods)
-
-    walkability = 3 if len(neighborhoods) >= 4 else (2 if len(neighborhoods) >= 2 else 1)
+    walk_base_km = _walk_base_km_from_density(density)
 
     return load_city_from_dict({
         "id": city_entry["city_id"],
@@ -390,7 +453,7 @@ def build_city_seed(city_entry: dict) -> CityData:
         "center": [city_entry["lat"], city_entry["lon"]],
         "timezone": city_entry.get("timezone", "UTC"),
         "climate": climate,
-        "movement": {"walkability": walkability, "transit": 2},
+        "movement": {"walk_base_km": walk_base_km},
         "culture": {
             "meal_times": country_mods["meal_times"],
             "siesta": country_mods["siesta_window"] is not None,
