@@ -320,7 +320,7 @@ function buildPersonaObservations(
 
   const restThreshold = REST_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
   if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
-    const hasCafeBreak = stops.some(s => s.category === 'cafe' || s.category === 'coffee' || s.category === 'bakery');
+    const hasCafeBreak = stops.some(s => s.category === 'cafe' || s.category === 'bakery');
     if (!hasCafeBreak) {
       obs.push({
         id: `rest-${lastStop.id}`,
