@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Reel — Distance Proto (Faithful)</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0c0c0e;font-family:'DM Sans',sans-serif;color:#f5f0ea}
+.ms{font-family:'Material Symbols Rounded';font-style:normal;line-height:1;user-select:none;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+
+/* ── Reel ── */
+#reel{width:100%;height:100dvh;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch}
+.card{width:100%;height:100dvh;scroll-snap-align:start;position:relative;overflow:hidden;flex-shrink:0}
+
+/* ── Progress dots ── */
+#dots{position:fixed;right:9px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;z-index:99;pointer-events:none}
+.dot{width:4px;height:4px;border-radius:999px;background:rgba(255,255,255,.2);transition:all .3s}
+.dot.active{background:#d4a853;height:14px}
+
+/* ── Card counter ── */
+#ctr-wrap{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 88px + 8px);left:50%;transform:translateX(-50%);z-index:99;pointer-events:none}
+#ctr-wrap span{font-size:10px;font-weight:600;color:rgba(255,255,255,.3);letter-spacing:.06em}
+
+/* ── Design tokens (matching real card) ── */
+/* gold:#d4a853  sky:#4f8fab  sage:#6b9470  text1:#f5f0ea  text3:rgba(255,255,255,.42) */
+
+/* ────────────────────────────────────────────────────────────
+   CARD A — Day Transition  (new distance bar added)
+   ──────────────────────────────────────────────────────────── */
+.day-tx{
+  background:linear-gradient(160deg,#0f0a06 0%,#120d08 50%,#0a0a0c 100%);
+  display:flex;flex-direction:column;
+  padding:52px 18px calc(88px + env(safe-area-inset-bottom,0px));
+}
+/* ★ NEW day distance bar */
+.ddb{display:flex;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.07);margin-bottom:14px}
+.ddb-seg{flex:1;padding:10px 13px;display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.03)}
+.ddb-seg+.ddb-seg{border-left:1px solid rgba(255,255,255,.06)}
+.ddb-ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ddb-l{font-size:9.5px;color:rgba(255,255,255,.3);margin-bottom:2px}
+.ddb-v{font-size:13px;font-weight:700;color:#f5f0ea}
+.ddb-s{font-size:9.5px;color:rgba(255,255,255,.25)}
+
+/* ────────────────────────────────────────────────────────────
+   CARD B — Stop card  (faithful to ReelStopCard.tsx)
+   ──────────────────────────────────────────────────────────── */
+.stk-photo{position:absolute;inset:0;background-size:cover;background-position:center top}
+.stk-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.1) 30%,rgba(0,0,0,.65) 65%,rgba(0,0,0,.90) 100%)}
+.stk-shade{position:absolute;bottom:0;left:0;right:0;height:65%;background:linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.18) 70%,transparent 100%);pointer-events:none;z-index:9}
+.stk-body{position:absolute;bottom:0;left:0;right:0;padding:11px 15px calc(88px + env(safe-area-inset-bottom,0px));z-index:10}
+
+/* top badges */
+.tod-pill{position:absolute;top:44px;left:14px;z-index:11;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;background:rgba(12,14,22,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08)}
+.wx-pill{position:absolute;top:44px;right:14px;z-index:10;display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.2)}
+
+/* Row 1 chips */
+.r1{display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap}
+.cpill{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:5px;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+/* Time row */
+.time-row{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.68);backdrop-filter:blur(10px)}
+/* Title */
+.stk-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:#f5f0ea;line-height:1.0;margin-bottom:2px;text-shadow:0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)}
+/* Area */
+.stk-area{display:flex;align-items:center;gap:4px;margin-bottom:6px}
+/* Meta */
+.meta-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;align-items:center}
+.mtag{padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.18);font-size:10px;color:rgba(255,255,255,.9);backdrop-filter:blur(10px)}
+.mtag-sage{padding:2px 7px;border-radius:99px;background:rgba(107,148,112,.07);border:1px solid rgba(107,148,112,.14);font-size:10px;color:#6b9470}
+/* Narrative */
+.narr{margin-bottom:7px;padding:7px 11px;border-radius:8px;background:rgba(212,168,83,.08);border-left:2px solid #d4a853}
+/* Logistics bar */
+.lbar{border-radius:9px;background:rgba(0,0,0,.52);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px);overflow:hidden}
+.lrow{display:flex;align-items:center;gap:8px;padding:6px 12px}
+.lrow+.lrow{border-top:1px solid rgba(255,255,255,.06)}
+.ltag{font-size:9.5px;font-weight:600;padding:1px 7px;border-radius:99px;flex-shrink:0}
+
+/* ★ NEW next-stop leg — bottom of stop body */
+.next-leg-row{display:flex;align-items:center;gap:7px;margin-top:7px;padding:7px 11px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.4);backdrop-filter:blur(8px)}
+.next-leg-row.walk{border-color:rgba(79,143,171,.22);background:rgba(79,143,171,.07)}
+.next-leg-row.ride{border-color:rgba(180,180,220,.15);background:rgba(0,0,0,.35)}
+
+/* ────────────────────────────────────────────────────────────
+   CARD C — Walk corridor card  (faithful to WalkCorridorCard)
+   ──────────────────────────────────────────────────────────── */
+.wc-bg{position:absolute;inset:0;background:linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)}
+.wc-photo{position:absolute;inset:0;object-fit:cover;width:100%;height:100%}
+.wc-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,.80) 100%);z-index:1}
+.wc-body{position:absolute;inset:0;display:flex;flex-direction:column;padding:52px 20px calc(88px + env(safe-area-inset-bottom,0px));z-index:5}
+.wc-eye{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#4f8fab;display:flex;align-items:center;gap:4px;margin-bottom:auto}
+.wc-dist-lbl{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(79,143,171,.8);margin-bottom:5px}
+.wc-route{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:#f5f0ea;line-height:1.1}
+.wc-why{font-size:13px;color:rgba(255,255,255,.75);line-height:1.55;font-style:italic;margin-bottom:10px}
+.wc-stats{display:flex;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);overflow:hidden}
+.wc-stat{flex:1;display:flex;align-items:center;gap:5px;padding:7px 11px}
+.wc-stat+.wc-stat{border-left:1px solid rgba(255,255,255,.08)}
+
+/* ★ NEW detour cost pill on walk card */
+.detour-cost{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:8px;background:rgba(196,181,253,.08);border:1px solid rgba(196,181,253,.2);font-size:11px;font-weight:600;color:rgba(196,181,253,.8);margin-bottom:10px;align-self:flex-start}
+
+/* ── Viz card (WalkCorridorViz) ── */
+.viz-card{border-radius:16px;padding:12px 14px 13px;background:rgba(242,237,230,.045);border:1px solid rgba(242,237,230,.07);margin-bottom:10px}
+.viz-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+
+</style>
+</head>
+<body>
+
+<div id="dots">
+  <div class="dot active"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+</div>
+<div id="ctr-wrap"><span id="ctr">1 / 4</span></div>
+
+<div id="reel">
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD 1 — Day Transition  (★ new distance bar)
+     ══════════════════════════════════════════════════════════ -->
+<div class="card day-tx">
+
+  <!-- eyebrow -->
+  <div style="font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(212,168,83,.5);margin-bottom:auto;display:flex;align-items:center;gap:5px">
+    <span class="ms" style="font-size:10px">calendar_today</span>
+    Day 1 · Delhi
+  </div>
+
+  <div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:700;color:#f5f0ea;line-height:1;margin-bottom:4px;text-shadow:0 2px 24px rgba(0,0,0,.6)">Delhi</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:16px">Monday, 14 Jul · 4 stops · Flaneur</div>
+
+    <!-- ★ NEW: day distance bar — sits here, above chips, no new card needed -->
+    <div class="ddb">
+      <div class="ddb-seg">
+        <div class="ddb-ico" style="background:rgba(79,143,171,.12)">
+          <span class="ms fill" style="font-size:14px;color:#4f8fab">directions_walk</span>
+        </div>
+        <div>
+          <div class="ddb-l">On foot today</div>
+          <div class="ddb-v">3.4 km</div>
+          <div class="ddb-s">~42 min walking</div>
+        </div>
+      </div>
+      <div class="ddb-seg">
+        <div class="ddb-ico" style="background:rgba(180,180,220,.07)">
+          <span class="ms fill" style="font-size:14px;color:rgba(180,180,220,.6)">directions_car</span>
+        </div>
+        <div>
+          <div class="ddb-l">By car / auto</div>
+          <div class="ddb-v">12.8 km</div>
+          <div class="ddb-s">~24 min riding</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- existing chips -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);font-size:11px;font-weight:600;color:rgba(255,255,255,.6)">
+        <span class="ms fill" style="font-size:11px">wb_sunny</span>34° Clear
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.25);font-size:11px;font-weight:600;color:#d4a853">
+        <span class="ms fill" style="font-size:11px">auto_awesome</span>Flaneur
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.1);font-size:11px;font-weight:600;color:rgba(255,255,255,.6)">
+        <span class="ms fill" style="font-size:11px">schedule</span>9:30 AM start
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD 2 — Stop card (faithful layout)  ★ + next-leg row
+     ══════════════════════════════════════════════════════════ -->
+<div class="card">
+  <!-- photo -->
+  <div class="stk-photo" style="background-image:url('https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&q=80')"></div>
+  <div class="stk-scrim"></div>
+  <div class="stk-shade"></div>
+
+  <!-- top-left: TOD + day badge -->
+  <div class="tod-pill">
+    <span style="width:6px;height:6px;border-radius:50%;background:#f5a623;box-shadow:0 0 6px #f5a623;flex-shrink:0"></span>
+    <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8)">Morning</span>
+  </div>
+  <div style="position:absolute;top:44px;left:120px;z-index:11;display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:99px;background:rgba(12,14,22,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08)">
+    <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)">Day 1 of 1</span>
+  </div>
+
+  <!-- top-right: weather -->
+  <div class="wx-pill">
+    <span class="ms fill" style="font-size:12px;color:#f5a623">wb_sunny</span>
+    <span style="font-size:11px;font-weight:700;color:#f5f0ea">34°</span>
+    <span style="font-size:10px;color:rgba(255,255,255,.42)">Clear</span>
+  </div>
+
+  <!-- body -->
+  <div class="stk-body">
+    <!-- Row 1: counter + identity chips -->
+    <div class="r1">
+      <div class="cpill" style="background:rgba(0,0,0,.68)">
+        <span style="color:rgba(255,255,255,.9)">Stop 1 of 4</span>
+      </div>
+      <div class="cpill" style="background:rgba(107,148,112,.07);border:1px solid rgba(107,148,112,.14)">
+        <span class="ms" style="font-size:10px;color:#6b9470">diamond</span>
+        <span style="color:#6b9470">Hidden gem</span>
+      </div>
+    </div>
+
+    <!-- Time row -->
+    <div class="time-row">
+      <span class="ms" style="font-size:11px;color:rgba(255,255,255,.42)">schedule</span>
+      <span style="font-size:12px;font-weight:700;color:#f5f0ea">9:30 AM</span>
+      <span style="font-size:12px;color:rgba(255,255,255,.42)">→ leave 11:00 AM</span>
+    </div>
+
+    <!-- Title -->
+    <h2 class="stk-title">Qutub Minar Complex</h2>
+
+    <!-- Area -->
+    <div class="stk-area">
+      <span class="ms" style="font-size:11px;color:rgba(255,255,255,.35)">location_on</span>
+      <span style="font-size:12px;color:rgba(255,255,255,.35)">Mehrauli · Delhi</span>
+    </div>
+
+    <!-- Meta -->
+    <div class="meta-row">
+      <span class="mtag">4.6 ★</span>
+      <span class="mtag-sage">Free</span>
+      <span class="mtag">Historic site</span>
+      <span class="mtag">UNESCO Heritage</span>
+    </div>
+
+    <!-- Narrative -->
+    <div class="narr">
+      <span style="font-size:12px;color:#f5f0ea;line-height:1.5;font-style:italic">The crowds thin out after 10 AM here — arriving at 9:30 puts you in the quietest window of the morning.</span>
+    </div>
+
+    <!-- Logistics bar -->
+    <div class="lbar">
+      <div class="lrow">
+        <span class="ms" style="font-size:13px;color:rgba(255,255,255,.32)">schedule</span>
+        <span style="font-size:11.5px;color:rgba(255,255,255,.7);flex:1">Crowd peak 10AM–3PM. You're arriving early — good window.</span>
+        <span class="ltag" style="background:rgba(107,148,112,.15);color:#6b9470">Good window</span>
+      </div>
+      <div class="lrow">
+        <span class="ms" style="font-size:13px;color:rgba(255,255,255,.32)">door_open</span>
+        <span style="font-size:11.5px;color:rgba(255,255,255,.7);flex:1">Open until 5:00 PM</span>
+        <span class="ltag" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.45)">Mon 14 Jul</span>
+      </div>
+    </div>
+
+    <!-- ★ NEW: next-leg row — sits at very bottom, after logistics -->
+    <div class="next-leg-row ride">
+      <span class="ms fill" style="font-size:14px;color:rgba(180,180,220,.55)">directions_car</span>
+      <span style="font-size:11px;color:rgba(255,255,255,.35);flex:1">8.6 km · ~18 min ride to <strong style="color:rgba(255,255,255,.6)">Hauz Khas Village</strong></span>
+      <span style="font-size:9.5px;color:rgba(255,255,255,.22);font-weight:600">Next →</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD 3 — Stop 2 with walk leg next + scenic hint
+     ══════════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="stk-photo" style="background-image:url('https://images.unsplash.com/photo-1562979314-bee7453e911c?w=800&q=80')"></div>
+  <div class="stk-scrim"></div>
+  <div class="stk-shade"></div>
+
+  <div class="tod-pill">
+    <span style="width:6px;height:6px;border-radius:50%;background:#e09040;box-shadow:0 0 6px #e09040;flex-shrink:0"></span>
+    <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.8)">Late Morning</span>
+  </div>
+  <div class="wx-pill">
+    <span class="ms fill" style="font-size:12px;color:#f5a623">wb_sunny</span>
+    <span style="font-size:11px;font-weight:700;color:#f5f0ea">36°</span>
+    <span style="font-size:10px;color:rgba(255,255,255,.42)">Clear</span>
+  </div>
+
+  <div class="stk-body">
+    <div class="r1">
+      <div class="cpill" style="background:rgba(0,0,0,.68)">
+        <span style="color:rgba(255,255,255,.9)">Stop 2 of 4</span>
+      </div>
+      <div class="cpill" style="background:rgba(212,168,83,.14);border:1px solid rgba(212,168,83,.25)">
+        <span class="ms" style="font-size:10px;color:#d4a853">bookmark</span>
+        <span style="color:#d4a853">Your pick</span>
+      </div>
+    </div>
+
+    <div class="time-row">
+      <span class="ms" style="font-size:11px;color:rgba(255,255,255,.42)">schedule</span>
+      <span style="font-size:12px;font-weight:700;color:#f5f0ea">11:45 AM</span>
+      <span style="font-size:12px;color:rgba(255,255,255,.42)">→ leave 1:00 PM</span>
+    </div>
+
+    <h2 class="stk-title">Hauz Khas Village</h2>
+
+    <div class="stk-area">
+      <span class="ms" style="font-size:11px;color:rgba(255,255,255,.35)">location_on</span>
+      <span style="font-size:12px;color:rgba(255,255,255,.35)">South Delhi</span>
+    </div>
+
+    <div class="meta-row">
+      <span class="mtag">4.3 ★</span>
+      <span class="mtag-sage">₹₹</span>
+      <span class="mtag">Neighbourhood</span>
+      <span class="mtag">Cafes & galleries</span>
+    </div>
+
+    <div class="narr">
+      <span style="font-size:12px;color:#f5f0ea;line-height:1.5;font-style:italic">Pairs well after the monument — easier pace, lots of street-level life to slow down in.</span>
+    </div>
+
+    <div class="lbar">
+      <div class="lrow">
+        <span class="ms" style="font-size:13px;color:rgba(255,255,255,.32)">groups</span>
+        <span style="font-size:11.5px;color:rgba(255,255,255,.7);flex:1">Gets busy after 11AM. Good time to browse.</span>
+        <span class="ltag" style="background:rgba(107,148,112,.15);color:#6b9470">Good window</span>
+      </div>
+    </div>
+
+    <!-- ★ NEW: walk leg + scenic note combined -->
+    <div class="next-leg-row walk">
+      <span class="ms fill" style="font-size:14px;color:#4f8fab">directions_walk</span>
+      <span style="font-size:11px;color:rgba(255,255,255,.45);flex:1">1.8 km · ~22 min walk to <strong style="color:rgba(255,255,255,.65)">Lodhi Garden</strong></span>
+      <span style="display:inline-flex;align-items:center;gap:3px;font-size:9.5px;color:rgba(196,181,253,.6);font-weight:600">
+        <span class="ms fill" style="font-size:11px;color:rgba(196,181,253,.5)">nature</span>
+        Scenic ↓
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CARD 4 — Walk corridor card (faithful)  ★ + detour cost
+     ══════════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="wc-bg"></div>
+  <!-- photo bg -->
+  <img class="wc-photo" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80" style="z-index:0;position:absolute;inset:0;object-fit:cover;width:100%;height:100%"/>
+  <div class="wc-scrim"></div>
+
+  <div class="wc-body">
+    <!-- eyebrow → pushes to top -->
+    <div class="wc-eye">
+      <span class="ms" style="font-size:11px">directions_walk</span>
+      Walking connector
+    </div>
+
+    <div style="display:flex;flex-direction:column">
+      <!-- ★ NEW: detour cost pill -->
+      <div class="detour-cost">
+        <span class="ms fill" style="font-size:13px">add_circle</span>
+        +22 min · adds 1.8 km to your day
+      </div>
+
+      <!-- dist label -->
+      <div class="wc-dist-lbl">1.8 km · ~22 min on foot</div>
+
+      <!-- route title -->
+      <div class="wc-route" style="margin-bottom:4px">
+        Hauz Khas
+        <span style="font-size:18px;color:rgba(255,255,255,.35);margin:0 5px">→</span>
+        Lodhi Garden
+      </div>
+
+      <!-- why -->
+      <div class="wc-why">
+        This is the walk, not just the route — 1.8 km through the neighbourhood between Hauz Khas and Lodhi Garden, past things most visitors never find. Given how much you enjoy exploring on foot, this one's worth the 22 minutes.
+      </div>
+
+      <!-- WalkCorridorViz (faithful) -->
+      <div class="viz-card" style="margin-bottom:10px">
+        <div class="viz-hd">
+          <span style="font-size:9px;font-weight:700;letter-spacing:.16em;color:rgba(242,237,230,.45)">WALK CORRIDOR</span>
+          <span style="font-size:10.5px;font-weight:700;color:#4f8fab">1.8 km connector</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <!-- origin dot -->
+          <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;background:#4f8fab;border:2px solid #4f8fab;box-shadow:0 0 10px #4f8fab88"></div>
+          <!-- dashed line with pill -->
+          <div style="flex:1;position:relative;height:2px;background:rgba(79,143,171,.33);border-radius:99px">
+            <div style="position:absolute;inset:0;border-radius:99px;background:repeating-linear-gradient(90deg,#4f8fab 0 6px,transparent 6px 11px)"></div>
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:#13131a;border:1px solid rgba(79,143,171,.55)">
+              <span class="ms fill" style="font-size:12px;color:#4f8fab;line-height:1">directions_walk</span>
+              <span style="font-size:10px;font-weight:700;color:#f2ede6">22 min</span>
+            </div>
+          </div>
+          <!-- dest dot -->
+          <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;background:transparent;border:2px solid #4f8fab"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:7px">
+          <span style="font-size:9.5px;color:rgba(242,237,230,.5)">Hauz Khas</span>
+          <span style="font-size:9.5px;color:rgba(242,237,230,.5)">Lodhi Garden</span>
+        </div>
+      </div>
+
+      <!-- stats bar (faithful) -->
+      <div class="wc-stats">
+        <div class="wc-stat">
+          <span class="ms" style="font-size:13px;color:rgba(79,143,171,.7)">timer</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#f5f0ea">22 min</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35)">on foot</div>
+          </div>
+        </div>
+        <div class="wc-stat">
+          <span class="ms" style="font-size:13px;color:rgba(79,143,171,.7)">straighten</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#f5f0ea">1.8 km</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35)">flat route</div>
+          </div>
+        </div>
+        <div class="wc-stat">
+          <span class="ms" style="font-size:13px;color:rgba(107,148,112,.7)">local_taxi</span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#f5f0ea">~9 min ride</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35)">rideshare alt</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /reel -->
+
+<script>
+const reel=document.getElementById('reel');
+const dots=document.querySelectorAll('.dot');
+const ctr=document.getElementById('ctr');
+reel.addEventListener('scroll',()=>{
+  const i=Math.round(reel.scrollTop/window.innerHeight);
+  dots.forEach((d,j)=>d.classList.toggle('active',j===i));
+  ctr.textContent=`${i+1} / ${dots.length}`;
+},{passive:true});
+</script>
+</body>
+</html>

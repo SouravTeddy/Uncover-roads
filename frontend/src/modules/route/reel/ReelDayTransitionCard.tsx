@@ -135,7 +135,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
             <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 4 }}>
               Continuing today →
             </p>
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsHero, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsHero, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
               {card.nextCity}
             </p>
           </div>
@@ -204,7 +204,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
           <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 8 }}>
             Day {card.prevDay} · {fmtDate(card.prevDate)}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 8 }}>
             {card.prevCity}
           </p>
           <p style={{ fontSize: T.fsMd, color: T.text2, lineHeight: 1.5, marginBottom: 0 }}>
@@ -294,7 +294,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
           <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.sky, opacity: 0.8, marginBottom: 8 }}>
             Day {card.nextDay} · {fmtDate(card.nextDate)}
           </p>
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 600, color: T.text1, lineHeight: 1.0, marginBottom: 8 }}>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 42, fontWeight: 600, color: T.text1, lineHeight: 1.0, marginBottom: 8 }}>
             {card.nextCity}
           </p>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 99, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>

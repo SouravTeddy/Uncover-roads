@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Prototype — Distance + Reco Quality</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0c0c0e; color: #f5f0ea; font-family: 'DM Sans', sans-serif; }
+
+  .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; user-select: none; }
+  .fill { font-variation-settings: 'FILL' 1; }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; gap: 0; align-items: stretch;
+    background: rgba(12,12,14,.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  nav button {
+    flex: 1; padding: 14px 0; background: none; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: .04em; color: rgba(255,255,255,.35); transition: color .2s;
+    border-bottom: 2px solid transparent;
+  }
+  nav button.active { color: #d4a853; border-bottom-color: #d4a853; }
+
+  /* ── Sections ── */
+  section { display: none; padding: 0 0 80px; }
+  section.active { display: block; }
+
+  /* ── SECTION A: Distance ── */
+
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: rgba(255,255,255,.3); padding: 24px 20px 10px;
+  }
+
+  /* Day summary bar */
+  .day-bar {
+    margin: 0 16px 20px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; gap: 0;
+  }
+  .day-bar-stat {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+  }
+  .day-bar-stat + .day-bar-stat {
+    border-left: 1px solid rgba(255,255,255,.08); padding-left: 14px;
+  }
+  .day-bar-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .day-bar-label { font-size: 10px; color: rgba(255,255,255,.35); margin-bottom: 1px; }
+  .day-bar-value { font-size: 14px; font-weight: 700; color: #f5f0ea; }
+  .day-bar-sub { font-size: 10px; color: rgba(255,255,255,.3); }
+
+  /* Stop card (condensed) */
+  .stop-card {
+    margin: 0 16px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07);
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .stop-num {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(212,168,83,.14); border: 1px solid rgba(212,168,83,.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #d4a853; flex-shrink: 0;
+  }
+  .stop-info { flex: 1; min-width: 0; }
+  .stop-title { font-size: 14px; font-weight: 600; color: #f5f0ea; margin-bottom: 2px; }
+  .stop-meta { font-size: 11px; color: rgba(255,255,255,.35); }
+  .stop-time { font-size: 12px; font-weight: 700; color: #d4a853; flex-shrink: 0; }
+
+  /* Leg connector — the star of section A */
+  .leg-connector {
+    margin: 0 16px;
+    padding: 8px 0 8px 28px; /* indent to align with stop text */
+    display: flex; align-items: center; gap: 8px;
+    position: relative;
+  }
+  .leg-connector::before {
+    content: '';
+    position: absolute; left: 27px; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+  }
+  .leg-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.09);
+    color: rgba(255,255,255,.5);
+    position: relative; z-index: 1;
+  }
+  .leg-pill.walk { background: rgba(79,143,171,.1); border-color: rgba(79,143,171,.2); color: #4f8fab; }
+  .leg-pill.ride { background: rgba(180,180,220,.07); border-color: rgba(180,180,220,.15); color: rgba(180,180,220,.7); }
+  .leg-pill.scenic { background: rgba(196,181,253,.08); border-color: rgba(196,181,253,.2); color: #c4b5fd; }
+  .leg-detour {
+    font-size: 10px; color: rgba(255,255,255,.25);
+    position: relative; z-index: 1;
+  }
+
+  /* Scenic insert inside leg */
+  .scenic-insert {
+    margin: 0 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(79,143,171,.08), rgba(196,181,253,.06));
+    border: 1px solid rgba(196,181,253,.14);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .scenic-insert-icon { color: #c4b5fd; font-size: 16px; }
+  .scenic-insert-title { font-size: 12px; font-weight: 600; color: rgba(196,181,253,.9); }
+  .scenic-insert-meta { font-size: 10px; color: rgba(255,255,255,.3); margin-top: 1px; }
+  .scenic-optional { font-size: 10px; color: rgba(196,181,253,.5); margin-left: auto; flex-shrink: 0; }
+
+  /* ── Existing vs Proposed callout ── */
+  .compare-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 6px;
+    display: inline-block; margin: 20px 16px 10px;
+  }
+  .compare-label.before { background: rgba(255,255,255,.06); color: rgba(255,255,255,.3); }
+  .compare-label.after { background: rgba(212,168,83,.12); color: #d4a853; }
+
+  /* ── SECTION B: Reco Quality ── */
+
+  .reco-card-container { padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .reco-card {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.07);
+    background: #111012;
+  }
+  .reco-card-header {
+    padding: 14px 16px 12px;
+    display: flex; align-items: center; gap: 10;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .reco-trigger-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-right: 10px;
+  }
+  .reco-label { font-size: 13px; font-weight: 700; color: #f5f0ea; }
+  .reco-consequence { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 2px; line-height: 1.4; }
+
+  /* Quality gate badge */
+  .quality-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+  }
+  .quality-badge.pass { background: rgba(52,199,89,.12); color: #34c759; border: 1px solid rgba(52,199,89,.2); }
+  .quality-badge.fail { background: rgba(255,59,48,.1); color: rgba(255,59,48,.7); border: 1px solid rgba(255,59,48,.15); }
+  .quality-badge.warn { background: rgba(255,159,10,.1); color: #ff9f0a; border: 1px solid rgba(255,159,10,.2); }
+
+  /* Reco place suggestion */
+  .reco-place {
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    border-top: 1px solid rgba(255,255,255,.04);
+  }
+  .reco-place-img {
+    width: 44px; height: 44px; border-radius: 8px;
+    object-fit: cover; flex-shrink: 0;
+    background: rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .reco-place-name { font-size: 13px; font-weight: 600; color: #f5f0ea; margin-bottom: 2px; }
+  .reco-place-meta { font-size: 10px; color: rgba(255,255,255,.35); }
+  .reco-place-score { text-align: right; flex-shrink: 0; }
+  .reco-place-rating { font-size: 14px; font-weight: 700; color: #d4a853; display: flex; align-items: center; gap: 3px; }
+  .reco-place-reviews { font-size: 10px; color: rgba(255,255,255,.3); }
+
+  .reco-threshold-bar {
+    margin: 12px 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .reco-threshold-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.25); margin-bottom: 8px; }
+  .reco-threshold-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .reco-threshold-name { font-size: 11px; color: rgba(255,255,255,.45); flex: 1; }
+  .reco-threshold-val { font-size: 11px; font-weight: 600; }
+
+  /* Suppressed reco */
+  .reco-suppressed {
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,.02);
+    opacity: .55;
+  }
+  .reco-suppressed-icon { font-size: 18px; color: rgba(255,255,255,.2); }
+  .reco-suppressed-label { font-size: 12px; color: rgba(255,255,255,.3); }
+
+  /* ── Footer note ── */
+  .proto-note {
+    margin: 30px 16px 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(212,168,83,.06);
+    border: 1px solid rgba(212,168,83,.14);
+    font-size: 11px; color: rgba(255,235,180,.6); line-height: 1.5;
+  }
+
+  /* spacer between cards */
+  .gap-sm { height: 8px; }
+  .gap-md { height: 16px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="active" onclick="show('a')">Distance intel</button>
+  <button onclick="show('b')">Reco quality gate</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION A: Distance intel                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="sec-a" class="active">
+
+  <div class="section-label">What exists today</div>
+
+  <!-- Before: no connectors, no day total -->
+  <span class="compare-label before">Current</span>
+  <div style="display:flex;flex-direction:column;gap:8px;padding:0 0 4px">
+    <div class="stop-card">
+      <div class="stop-num">1</div>
+      <div class="stop-info">
+        <div class="stop-title">Qutub Minar Complex</div>
+        <div class="stop-meta">Monument · 90 min</div>
+      </div>
+      <div class="stop-time">9:30 AM</div>
+    </div>
+    <div class="stop-card">
+      <div class="stop-num">2</div>
+      <div class="stop-info">
+        <div class="stop-title">Hauz Khas Village</div>
+        <div class="stop-meta">Neighbourhood · 75 min</div>
+      </div>
+      <div class="stop-time">11:45 AM</div>
+    </div>
+    <div class="stop-card">
+      <div class="stop-num">3</div>
+      <div class="stop-info">
+        <div class="stop-title">Lodhi Garden</div>
+        <div class="stop-meta">Park · 60 min</div>
+      </div>
+      <div class="stop-time">1:30 PM</div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+  <div style="height:1px;background:rgba(255,255,255,.05);margin:0 16px 20px"></div>
+
+  <!-- After: connectors + day bar -->
+  <span class="compare-label after">Proposed — no new cards, all inline</span>
+
+  <!-- Day summary bar -->
+  <div class="day-bar">
+    <div class="day-bar-stat">
+      <div class="day-bar-icon" style="background:rgba(79,143,171,.12)">
+        <span class="ms fill" style="font-size:15px;color:#4f8fab">directions_walk</span>
+      </div>
+      <div>
+        <div class="day-bar-label">On foot</div>
+        <div class="day-bar-value">3.4 km</div>
+        <div class="day-bar-sub">~42 min walking</div>
+      </div>
+    </div>
+    <div class="day-bar-stat" style="padding-left:14px">
+      <div class="day-bar-icon" style="background:rgba(180,180,220,.07)">
+        <span class="ms fill" style="font-size:15px;color:rgba(180,180,220,.6)">directions_car</span>
+      </div>
+      <div>
+        <div class="day-bar-label">By transit</div>
+        <div class="day-bar-value">14.2 km</div>
+        <div class="day-bar-sub">~28 min riding</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stop 1 -->
+  <div class="stop-card">
+    <div class="stop-num">1</div>
+    <div class="stop-info">
+      <div class="stop-title">Qutub Minar Complex</div>
+      <div class="stop-meta">Monument · 90 min</div>
+    </div>
+    <div class="stop-time">9:30 AM</div>
+  </div>
+
+  <!-- Leg 1→2: ride -->
+  <div class="leg-connector">
+    <div class="leg-pill ride">
+      <span class="ms" style="font-size:12px">directions_car</span>
+      8.6 km · ~18 min ride
+    </div>
+  </div>
+
+  <!-- Stop 2 -->
+  <div class="stop-card">
+    <div class="stop-num">2</div>
+    <div class="stop-info">
+      <div class="stop-title">Hauz Khas Village</div>
+      <div class="stop-meta">Neighbourhood · 75 min</div>
+    </div>
+    <div class="stop-time">11:45 AM</div>
+  </div>
+
+  <!-- Leg 2→3: walk + scenic option -->
+  <div class="leg-connector">
+    <div class="leg-pill walk">
+      <span class="ms" style="font-size:12px">directions_walk</span>
+      1.8 km · ~22 min walk
+    </div>
+  </div>
+
+  <!-- Scenic insert (optional detour) — sits inside the leg space -->
+  <div class="scenic-insert" style="margin-bottom:8px">
+    <span class="ms fill scenic-insert-icon">nature</span>
+    <div>
+      <div class="scenic-insert-title">Hauz Khas → Lodhi Garden</div>
+      <div class="scenic-insert-meta">Walk the lake path · 1.8 km · ~22 min</div>
+    </div>
+    <div class="scenic-optional">Optional</div>
+  </div>
+
+  <!-- Stop 3 -->
+  <div class="stop-card">
+    <div class="stop-num">3</div>
+    <div class="stop-info">
+      <div class="stop-title">Lodhi Garden</div>
+      <div class="stop-meta">Park · 60 min</div>
+    </div>
+    <div class="stop-time">1:30 PM</div>
+  </div>
+
+  <!-- Leg 3→4: short walk -->
+  <div class="leg-connector">
+    <div class="leg-pill walk">
+      <span class="ms" style="font-size:12px">directions_walk</span>
+      550 m · ~7 min walk
+    </div>
+  </div>
+
+  <!-- Stop 4 -->
+  <div class="stop-card">
+    <div class="stop-num">4</div>
+    <div class="stop-info">
+      <div class="stop-title">Khan Market</div>
+      <div class="stop-meta">Food & shopping · 60 min</div>
+    </div>
+    <div class="stop-time">3:00 PM</div>
+  </div>
+
+  <div class="proto-note">
+    <strong style="color:rgba(212,168,83,.85)">Design logic</strong><br>
+    · Day bar sits at the top of the reel day — replaces nothing, rides above the first stop.<br>
+    · Leg connector is a tiny vertical thread between stops. Walk legs get blue, ride legs get grey-violet, scenic connectors become a soft card within the thread.<br>
+    · "Optional" tag on scenic inserts distinguishes a true detour from a required leg.<br>
+    · All numbers computed from haversine + stop times — zero new API calls.
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SECTION B: Reco quality gate                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="sec-b">
+
+  <div class="section-label">Reco quality — how it works</div>
+
+  <!-- Threshold rules -->
+  <div class="reco-threshold-bar" style="margin-top:20px">
+    <div class="reco-threshold-title">Quality gate — all 3 must pass</div>
+    <div class="reco-threshold-row">
+      <span class="ms fill" style="font-size:14px;color:#34c759">star</span>
+      <div class="reco-threshold-name">Minimum rating</div>
+      <div class="reco-threshold-val" style="color:#34c759">≥ 4.2 ★</div>
+    </div>
+    <div class="reco-threshold-row">
+      <span class="ms fill" style="font-size:14px;color:#34c759">reviews</span>
+      <div class="reco-threshold-name">Minimum reviews</div>
+      <div class="reco-threshold-val" style="color:#34c759">≥ 50 reviews</div>
+    </div>
+    <div class="reco-threshold-row">
+      <span class="ms fill" style="font-size:14px;color:#34c759">photo_camera</span>
+      <div class="reco-threshold-name">Has photos</div>
+      <div class="reco-threshold-val" style="color:#34c759">Required</div>
+    </div>
+  </div>
+
+  <div class="gap-md"></div>
+  <div class="reco-card-container">
+
+    <!-- PASSES: good reco with top-scored place -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(52,199,89,.6);padding:0 2px 6px">
+        ✓ Reco fires — quality gate passed
+      </div>
+      <div class="reco-card">
+        <div class="reco-card-header">
+          <div class="reco-trigger-icon" style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.2)">
+            <span class="ms fill" style="font-size:18px;color:#ff9f0a">restaurant</span>
+          </div>
+          <div style="flex:1">
+            <div class="reco-label">No lunch planned</div>
+            <div class="reco-consequence">You've got a window around midday — a spot near Hauz Khas.</div>
+          </div>
+          <span class="quality-badge pass">High score</span>
+        </div>
+
+        <!-- Top-scored place shown on card -->
+        <div class="reco-place">
+          <div class="reco-place-img">🍜</div>
+          <div style="flex:1;min-width:0">
+            <div class="reco-place-name">Social — Hauz Khas</div>
+            <div class="reco-place-meta">Restaurant · 350m from Lodhi Garden · ₹₹</div>
+          </div>
+          <div class="reco-place-score">
+            <div class="reco-place-rating"><span class="ms fill" style="font-size:12px">star</span>4.4</div>
+            <div class="reco-place-reviews">2,100 reviews</div>
+          </div>
+        </div>
+
+        <div class="reco-place" style="background:rgba(255,255,255,.015)">
+          <div class="reco-place-img">🥗</div>
+          <div style="flex:1;min-width:0">
+            <div class="reco-place-name">Burma Burma</div>
+            <div class="reco-place-meta">Restaurant · 600m from Lodhi Garden · ₹₹₹</div>
+          </div>
+          <div class="reco-place-score">
+            <div class="reco-place-rating"><span class="ms fill" style="font-size:12px">star</span>4.3</div>
+            <div class="reco-place-reviews">870 reviews</div>
+          </div>
+        </div>
+
+        <div style="padding:10px 16px 14px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:11px;color:rgba(255,255,255,.3)">2 options nearby</span>
+          <button style="background:rgba(212,168,83,.12);border:1px solid rgba(212,168,83,.3);color:#d4a853;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit">Browse on map</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPPRESSED: no qualifying places -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,59,48,.5);padding:0 2px 6px">
+        ✗ Reco suppressed — no qualifying places
+      </div>
+      <div class="reco-suppressed">
+        <span class="ms" style="font-size:20px;color:rgba(255,255,255,.15)">restaurant</span>
+        <div>
+          <div class="reco-suppressed-label" style="font-size:11px;font-weight:600;color:rgba(255,255,255,.25)">No lunch planned</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.18);margin-top:2px">No highly-rated nearby options found — reco hidden.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSES at lower quality — downgraded to hint -->
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,159,10,.6);padding:0 2px 6px">
+        ~ Reco fires with warning — marginal quality (4.0–4.1)
+      </div>
+      <div class="reco-card">
+        <div class="reco-card-header">
+          <div class="reco-trigger-icon" style="background:rgba(120,200,120,.1);border:1px solid rgba(120,200,120,.2)">
+            <span class="ms fill" style="font-size:18px;color:rgba(120,200,120,.8)">park</span>
+          </div>
+          <div style="flex:1">
+            <div class="reco-label">No outdoor stop today</div>
+            <div class="reco-consequence">Good day for it — a couple of options near Lodhi Colony.</div>
+          </div>
+          <span class="quality-badge warn">Limited</span>
+        </div>
+        <div class="reco-place">
+          <div class="reco-place-img">🌿</div>
+          <div style="flex:1;min-width:0">
+            <div class="reco-place-name">Sanjay Van</div>
+            <div class="reco-place-meta">Nature reserve · 1.2 km away</div>
+          </div>
+          <div class="reco-place-score">
+            <div class="reco-place-rating" style="color:rgba(212,168,83,.65)"><span class="ms fill" style="font-size:12px">star</span>4.0</div>
+            <div class="reco-place-reviews">62 reviews</div>
+          </div>
+        </div>
+        <div style="padding:8px 16px 12px">
+          <div style="font-size:10px;color:rgba(255,159,10,.5);display:flex;align-items:center;gap:4px">
+            <span class="ms fill" style="font-size:12px">info</span>
+            Fewer reviews than usual — check recent ratings before going
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="proto-note" style="margin-top:24px">
+    <strong style="color:rgba(212,168,83,.85)">Scoring logic</strong><br>
+    · Reco fires only if at least one nearby place clears: rating ≥ 4.2, reviews ≥ 50, has photos.<br>
+    · If best available is 4.0–4.1 with ≥ 50 reviews → reco fires with "Limited" badge and a caveat line.<br>
+    · Below 4.0 or fewer than 50 reviews → reco silently suppressed. No card shown.<br>
+    · Scores pulled from our existing place data. No new API call needed at card render.<br>
+    · Place cards on reco show rating + review count so user sees the signal, not just a name.
+  </div>
+
+</section>
+
+<script>
+function show(id) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

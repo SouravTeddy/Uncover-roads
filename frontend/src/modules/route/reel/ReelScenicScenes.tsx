@@ -134,7 +134,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to bottom, transparent, #0a0908)' }} />
         <div style={{ position: 'absolute', top: 56, left: 24 }}>
           <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>From</div>
-          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.from}</div>
+          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Playfair Display', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.from}</div>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to top, transparent, #0a0908)' }} />
         <div style={{ position: 'absolute', bottom: 64, left: 24 }}>
           <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>To</div>
-          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.to}</div>
+          <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Playfair Display', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.to}</div>
         </div>
       </div>
 

@@ -89,7 +89,7 @@ export function ReelSummaryCard({ card }: Props) {
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#4f8fab' }}>Trip Summary</span>
           </div>
 
-          <div style={{ color: '#f5f0ea', fontSize: 40, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, lineHeight: 1.05, marginBottom: 10 }}>
+          <div style={{ color: '#f5f0ea', fontSize: 40, fontFamily: "'Playfair Display', serif", fontWeight: 600, lineHeight: 1.05, marginBottom: 10 }}>
             {card.totalDays} Day{card.totalDays !== 1 ? 's' : ''} Planned
           </div>
 

@@ -312,7 +312,7 @@ export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onM
           <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: T.eyebrow, marginBottom: 4 }}>
             Before you go
           </div>
-          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: T.t1, lineHeight: 1.15 }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 600, color: T.t1, lineHeight: 1.15 }}>
             {title}
           </div>
           {subtitle && (

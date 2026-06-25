@@ -52,7 +52,7 @@ export function ReelGrowthCard({ card, active, onBrowse }: Props) {
 
       {/* Headline */}
       <h2 style={{
-        fontFamily: "'Cormorant Garamond', serif",
+        fontFamily: "'Playfair Display', serif",
         fontSize: 36, fontWeight: 600,
         color: '#f5f0ea', textAlign: 'center',
         lineHeight: 1.1, margin: 0, marginBottom: 14,

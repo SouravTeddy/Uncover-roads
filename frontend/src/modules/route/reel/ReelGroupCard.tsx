@@ -85,7 +85,7 @@ function MiniCard({ item, fullWidth }: { item: ReelGroupMiniCard; fullWidth?: bo
       {/* Text overlay at bottom */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 16px 18px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{
-          fontSize: 21, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600,
+          fontSize: 21, fontFamily: "'Playfair Display', serif", fontWeight: 600,
           color: '#f5f0ea', lineHeight: 1.15, textShadow: '0 1px 10px rgba(0,0,0,0.9)',
         }}>
           {item.name}
