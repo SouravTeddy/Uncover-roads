@@ -589,6 +589,7 @@ function deriveTransitMode(distKm: number): 'flight' | 'drive' | 'train' | null 
   return 'flight';
 }
 
+
 // ── Balance message builder ──────────────────────────────────
 
 function buildBalanceMessage(
