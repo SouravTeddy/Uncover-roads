@@ -628,11 +628,8 @@ export function buildReelCards(
   const getWeatherForCity = (cityName: string): WeatherData | null =>
     weatherByCity.get(cityName.toLowerCase()) ?? null;
 
-  // Trip-level growth card tracking
+  // Trip-level observation count (used to gate reco fallback card)
   let totalObsCount = 0;
-  let lastCityName = '';
-  let lastCityLat: number | null = null;
-  let lastCityLon: number | null = null;
 
   const weights: EngineWeights = itinerary.personaSnapshot ?? DEFAULT_WEIGHTS;
   const cards: ReelCard[] = [];
@@ -984,14 +981,7 @@ export function buildReelCards(
       if (scenicCard) cards.push(scenicCard);
     }
 
-    // Accumulate observations for trip-level growth card (no per-day intel cards)
     totalObsCount += dedupedObservations.length;
-    const dayLastStop = sortedStops.at(-1);
-    if (dayLastStop) {
-      lastCityName = day.city || primaryCity;
-      lastCityLat  = dayLastStop.lat;
-      lastCityLon  = dayLastStop.lon;
-    }
 
     // Remaining intel cards not matched to a specific stop — push after all stops
     const intelAnchorStop = sortedStops.at(-1);
