@@ -148,29 +148,6 @@ export function WalkthroughScreen() {
           transition: exiting ? 'opacity .2s ease' : 'none',
         }}
       >
-        {/* Accent label pill */}
-        {card.label && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '4px 12px', borderRadius: 999, marginBottom: 14,
-            border: `1px solid ${card.accent}60`,
-            background: `${card.accent}18`,
-          }}>
-            <div style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: card.accent,
-              animation: 'glowPulse 2s ease-in-out infinite',
-            }} />
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              letterSpacing: '.14em', textTransform: 'uppercase',
-              color: card.accent,
-            }}>
-              {card.label}
-            </span>
-          </div>
-        )}
-
         {/* Headline */}
         <h1 style={{
           fontFamily: 'var(--font-heading), serif',
