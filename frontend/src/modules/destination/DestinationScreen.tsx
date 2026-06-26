@@ -97,7 +97,7 @@ export function DestinationScreen() {
           <div
             className="flex-1 overflow-y-auto"
             style={{
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 130px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 200px)',
               scrollbarWidth: 'none',
               animation: 'slideUp 0.3s ease forwards',
               position: 'relative',
@@ -120,10 +120,12 @@ export function DestinationScreen() {
                 right: 0,
                 bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
                 zIndex: 10,
+                height: 90,
                 display: 'flex',
+                alignItems: 'flex-end',
                 justifyContent: 'flex-end',
-                padding: '10px 16px',
-                background: 'linear-gradient(to top, var(--color-bg) 60%, transparent)',
+                padding: '0 16px 12px',
+                background: 'linear-gradient(to top, var(--color-bg) 70%, transparent)',
               }}
             >
               <button
