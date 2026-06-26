@@ -15,8 +15,15 @@ import type {
   EngineItinerary,
   ReelRecoPlace,
 } from './types';
+import { supabase } from './supabase';
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /** Returns the URL of a Google Place photo via the backend proxy. */
 export function getPlacePhotoUrl(photoRef: string, maxWidth = 800, maxHeight?: number): string {
@@ -34,7 +41,7 @@ async function get<T>(path: string): Promise<T> {
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...await authHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}`);
