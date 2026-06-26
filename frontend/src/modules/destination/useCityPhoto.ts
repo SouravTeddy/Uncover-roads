@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { preloadImages } from '../../shared/imagePreloader';
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -34,6 +35,7 @@ export function useCityPhoto(cityName: string | null): string | null {
         if (!data) return;
         const resolved = resolveDbUrl(Object.values(data)[0]);
         _cache.set(key, resolved);
+        preloadImages([resolved]);
         setUrl(resolved);
       })
       .catch(() => {});
@@ -67,6 +69,7 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string | null> 
           const resolved = resolveDbUrl(imgUrl);
           _cache.set(name.toLowerCase(), resolved);
           updated.set(name.toLowerCase(), resolved);
+          preloadImages([resolved]);
         }
         setPhotoMap(updated);
       })

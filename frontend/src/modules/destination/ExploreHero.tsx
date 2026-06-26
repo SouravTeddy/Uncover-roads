@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhoto } from './useCityPhoto';
+import { preloadImages } from '../../shared/imagePreloader';
 import type { Persona } from '../../shared/types';
 
 interface ExploreHeroProps {
@@ -43,6 +44,7 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
   useEffect(() => {
     setActiveSrc(photoUrl);
     setImgFailed(false);
+    preloadImages([photoUrl]);
   }, [photoUrl]);
 
   const handleError = () => {

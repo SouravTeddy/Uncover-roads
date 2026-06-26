@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Persona } from '../../shared/types';
 import { CITY_PHOTO_FALLBACK_GRADIENT } from '../../shared/cityPhoto';
 import { useCityPhotoBatch } from './useCityPhoto';
+import { isPreloaded } from '../../shared/imagePreloader';
 import { ARCHETYPE_CITIES, DEFAULT_CITIES } from './types';
 
 interface CuratedCityCardsProps {
@@ -69,11 +70,13 @@ interface CityCardProps {
 
 function CityCard({ name, country, photoUrl, height, onSelect }: CityCardProps) {
   const [activeSrc, setActiveSrc] = useState<string | null>(photoUrl);
-  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>(photoUrl ? 'loading' : 'error');
+  const [imgState, setImgState] = useState<'loading' | 'loaded' | 'error'>(
+    !photoUrl ? 'error' : isPreloaded(photoUrl) ? 'loaded' : 'loading'
+  );
 
   useEffect(() => {
     setActiveSrc(photoUrl);
-    setImgState(photoUrl ? 'loading' : 'error');
+    setImgState(!photoUrl ? 'error' : isPreloaded(photoUrl) ? 'loaded' : 'loading');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUrl]);
 
