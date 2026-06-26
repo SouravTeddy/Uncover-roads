@@ -12,3 +12,7 @@ export function preloadImages(urls: (string | null | undefined)[]) {
 export function isPreloaded(url: string | null | undefined): boolean {
   return !!url && preloaded.has(url);
 }
+
+export function getPreloadedUrls(): string[] {
+  return [...preloaded];
+}

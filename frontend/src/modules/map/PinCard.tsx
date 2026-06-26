@@ -1014,8 +1014,8 @@ export function PinCard({
 
         </div>
 
-        {/* Pinned CTA footer */}
-        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'env(safe-area-inset-bottom, 10px)', borderTop: '1px solid var(--color-border)' }}>
+        {/* Pinned CTA footer — paddingBottom clears the floating BottomNav (~72px from bottom) */}
+        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)' }}>
           {details == null ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
