@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { api } from '../../shared/api';
+import { api, getPlacePhotoUrl } from '../../shared/api';
+import { preloadImages } from '../../shared/imagePreloader';
 import type { Place, MapFilter } from '../../shared/types';
 
 // Maps persona venue_filter/itinerary_bias values → OSM category values that actually exist in map data
@@ -57,6 +58,7 @@ export function useMap(activeCategories: string[] = []) {
       const raw: Place[] = Array.isArray(data) ? data : [];
       const withIds = raw.map((p, i) => ({ ...p, id: p.id ?? `${p.title}-${i}` }));
       dispatch({ type: 'SET_PLACES', places: withIds });
+      preloadImages(withIds.map(p => p.photo_ref ? getPlacePhotoUrl(p.photo_ref) : (p as any).imageUrl));
       if (withIds.length === 0) setError(true);
     } catch (e) {
       console.error('[useMap] loadPlaces failed:', e);
@@ -84,9 +86,13 @@ export function useMap(activeCategories: string[] = []) {
         reason: (p as any).whyRec ?? p.reason,
         reasonSignal: (p as any).signal ?? p.reasonSignal,
       }));
-      setRecommendedPlaces(withIds.length > 0 ? withIds : clientSideFallback());
+      const resolved = withIds.length > 0 ? withIds : clientSideFallback();
+      setRecommendedPlaces(resolved);
+      preloadImages(resolved.map(p => p.photo_ref ? getPlacePhotoUrl(p.photo_ref) : (p as any).imageUrl));
     } catch {
-      setRecommendedPlaces(clientSideFallback());
+      const fallback = clientSideFallback();
+      setRecommendedPlaces(fallback);
+      preloadImages(fallback.map(p => p.photo_ref ? getPlacePhotoUrl(p.photo_ref) : (p as any).imageUrl));
     } finally {
       setRecLoading(false);
     }
