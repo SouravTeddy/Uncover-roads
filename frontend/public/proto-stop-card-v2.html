@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Stop Card · Proto v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,400,1,0" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --text1: #f2ede6;
+      --text2: rgba(242,237,230,0.58);
+      --text3: rgba(242,237,230,0.30);
+      --gold:  #d4a853;
+      --gold-bg:  rgba(212,168,83,0.10);
+      --gold-bdr: rgba(212,168,83,0.22);
+      --sky:   #4f8fab;
+      --sky-bg:  rgba(79,143,171,0.09);
+      --sky-bdr: rgba(79,143,171,0.18);
+      --sage:  #6b9470;
+      --sage-bg:  rgba(107,148,112,0.09);
+      --sage-bdr: rgba(107,148,112,0.20);
+      --red:   #c85040;
+      --red-bg:  rgba(200,80,64,0.10);
+      --red-bdr: rgba(200,80,64,0.22);
+      --card-bg: rgba(8,9,16,0.97);
+      --surface: rgba(255,255,255,0.05);
+      --bdr: rgba(255,255,255,0.07);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #060810;
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .ms {
+      font-family: 'Material Symbols Rounded';
+      font-weight: 400;
+      font-style: normal;
+      font-size: inherit;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      user-select: none;
+    }
+
+    /* ─── SCREEN ───────────────────────────────────── */
+    .screen {
+      position: fixed;
+      inset: 0;
+    }
+
+    /* ─── PHOTO ────────────────────────────────────── */
+    .photo {
+      position: absolute;
+      inset: 0;
+      background:
+        url('https://images.unsplash.com/photo-1503152397897-4dc6ffcd6d58?w=900&q=85')
+        center 30% / cover no-repeat;
+    }
+    .photo::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(6,8,16,0.12) 0%,
+        rgba(6,8,16,0.05) 25%,
+        rgba(6,8,16,0.40) 55%,
+        rgba(6,8,16,0.82) 75%,
+        rgba(6,8,16,1.00) 100%
+      );
+    }
+
+    /* ─── TOP BAR ──────────────────────────────────── */
+    .top-bar {
+      position: absolute;
+      top: env(safe-area-inset-top, 0px);
+      left: 0; right: 0;
+      z-index: 30;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .back-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255,255,255,0.11);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--text1);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ─── CARD ─────────────────────────────────────── */
+    .card {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 20;
+      background: var(--card-bg);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      border-radius: 22px 22px 0 0;
+      border: 1px solid var(--bdr);
+      border-bottom: none;
+
+      /* collapsed height — enough to show handle + title + desc + chips + next leg */
+      --collapsed-h: 224px;
+      height: var(--collapsed-h);
+      overflow: hidden;
+      transition: height 0.44s cubic-bezier(0.22,1,0.36,1);
+
+      /* intercept touch when collapsed so swipe-up works */
+      touch-action: none;
+    }
+    .card.expanded {
+      height: 68dvh;
+      touch-action: auto;
+    }
+    @supports not (height: 1dvh) {
+      .card.expanded { height: 68vh; }
+    }
+
+    /* ─── COLLAPSED STATE ──────────────────────────── */
+    .collapsed {
+      position: absolute;
+      inset: 0;
+      padding: 0 20px;
+      transition: opacity 0.15s ease;
+    }
+    .card.expanded .collapsed {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .handle-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 0 8px;
+    }
+    .handle {
+      width: 34px; height: 3px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.16);
+      margin-bottom: 7px;
+    }
+    .c-counter {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+    .c-title {
+      font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      font-size: 27px;
+      font-weight: 700;
+      color: var(--text1);
+      line-height: 1.15;
+      margin-bottom: 5px;
+      /* stop it from wrapping oddly */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .c-desc {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text2);
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .c-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .c-next-leg {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--text3);
+    }
+    .c-next-leg strong { color: var(--text2); font-weight: 600; }
+
+    /* ─── EXPANDED STATE ───────────────────────────── */
+    .expanded-view {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease 0.16s;
+    }
+    .card.expanded .expanded-view {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Meta strip — fixed, doesn't scroll */
+    .meta-strip {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 14px 20px 13px;
+      border-bottom: 1px solid var(--bdr);
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text3);
+    }
+    .meta-item.hi { color: var(--text1); font-weight: 600; }
+    .meta-sep {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.16);
+      margin: 0 10px;
+    }
+    .meta-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .e-stop-counter {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+    .close-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text3);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      padding: 4px 0;
+    }
+
+    /* Scroll area — everything below meta strip */
+    .scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+      overscroll-behavior: contain;
+      padding: 18px 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 20px);
+    }
+    .scroll-area::-webkit-scrollbar { display: none; }
+
+    /* Content inside scroll area */
+    .e-title {
+      font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text1);
+      line-height: 1.14;
+      margin-bottom: 7px;
+    }
+    .e-location {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 13px;
+      color: var(--text3);
+      margin-bottom: 13px;
+    }
+    .e-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .e-description {
+      font-size: 15px;
+      line-height: 1.68;
+      color: var(--text2);
+      margin-bottom: 0;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--bdr);
+      margin: 20px 0;
+    }
+
+    /* Section label */
+    .sec-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.20);
+      margin-bottom: 11px;
+    }
+
+    /* ─── CHIPS ────────────────────────────────────── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .chip.gold  { background: var(--gold-bg);  border: 1px solid var(--gold-bdr);  color: var(--gold); }
+    .chip.blue  { background: rgba(91,155,213,0.13); border: 1px solid rgba(91,155,213,0.25); color: #6ab4f5; }
+    .chip.dim   { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); color: var(--text3); }
+
+    /* ─── PILLS ────────────────────────────────────── */
+    .pills-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.10s ease, background 0.12s ease;
+    }
+    .pill:active { transform: scale(0.96); }
+
+    .pill.neutral {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text3);
+      cursor: default;
+    }
+    .pill.tappable {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text2);
+    }
+    .pill.tappable:hover { background: rgba(255,255,255,0.10); }
+    .pill.tappable.active {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.20);
+      color: var(--text1);
+    }
+    .pill.urgent {
+      background: var(--red-bg);
+      border: 1px solid var(--red-bdr);
+      color: #e07060;
+    }
+    .pill.urgent.active {
+      background: rgba(200,80,64,0.16);
+      border-color: rgba(200,80,64,0.32);
+    }
+    .pill.gem {
+      background: var(--sage-bg);
+      border: 1px solid var(--sage-bdr);
+      color: var(--sage);
+    }
+    .pill.gem.active {
+      background: rgba(107,148,112,0.14);
+    }
+    .pill-chev {
+      font-size: 14px;
+      opacity: 0.45;
+      transition: transform 0.22s ease;
+      margin-left: 1px;
+    }
+    .pill.active .pill-chev { transform: rotate(180deg); opacity: 0.65; }
+
+    /* Pill detail */
+    .pill-detail {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition:
+        max-height 0.32s cubic-bezier(0.22,1,0.36,1),
+        opacity 0.20s ease,
+        margin 0.28s ease;
+      margin-top: 0;
+    }
+    .pill-detail.open {
+      max-height: 240px;
+      opacity: 1;
+      margin-top: 9px;
+    }
+    .pill-detail-inner {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .pill-detail-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      margin-bottom: 5px;
+    }
+    .pill-detail-body {
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text2);
+    }
+
+    /* ─── WHY THIS STOP ────────────────────────────── */
+    .why-block {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: var(--gold-bg);
+      border-left: 2px solid rgba(212,168,83,0.38);
+      font-size: 14px;
+      line-height: 1.65;
+      color: rgba(242,237,230,0.80);
+    }
+
+    /* ─── TRANSIT ──────────────────────────────────── */
+    .transit-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: var(--sky-bg);
+      border: 1px solid var(--sky-bdr);
+      font-size: 14px;
+      color: var(--text2);
+      line-height: 1.4;
+    }
+
+    /* ─── EXPLORE BUTTON ───────────────────────────── */
+    .explore-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 14px 16px;
+      margin-top: 6px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #d4a853 0%, #c08535 100%);
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: #0a080a;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.12s;
+    }
+    .explore-btn:active { opacity: 0.85; }
+  </style>
+</head>
+<body>
+<div class="screen">
+
+  <!-- Photo -->
+  <div class="photo"></div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <button class="back-btn" onclick="history.back()">
+      <span class="ms" style="font-size:20px">arrow_back</span>
+    </button>
+  </div>
+
+  <!-- Card -->
+  <div class="card" id="card">
+
+    <!-- ══ COLLAPSED ══════════════════════════════════ -->
+    <div class="collapsed" id="collapsed">
+      <div class="handle-row">
+        <div class="handle"></div>
+        <div class="c-counter">Stop 1 of 9</div>
+      </div>
+
+      <div class="c-title">Musée d'Orsay</div>
+
+      <div class="c-desc">
+        Major 19th-century art collections in a former railway station. World-class impressionists.
+      </div>
+
+      <div class="c-chips">
+        <div class="chip gold">
+          <span class="ms" style="font-size:11px">bookmark</span>
+          Your pick
+        </div>
+        <div class="chip blue">
+          <span class="ms" style="font-size:11px">auto_awesome</span>
+          We added this
+        </div>
+      </div>
+
+      <div class="c-next-leg">
+        <span class="ms" style="font-size:16px;color:var(--text3)">directions_walk</span>
+        Then <strong>&thinsp;12 min · 900 m walk</strong>&thinsp; to next stop
+      </div>
+    </div>
+
+    <!-- ══ EXPANDED ════════════════════════════════════ -->
+    <div class="expanded-view" id="expanded-view">
+
+      <!-- Meta strip: date · day · weather — fixed, doesn't scroll -->
+      <div class="meta-strip">
+        <div class="meta-item">
+          <span class="ms" style="font-size:13px">calendar_today</span>
+          Sat 11 Jul
+        </div>
+        <div class="meta-sep"></div>
+        <div class="meta-item">Day 1 / 2</div>
+        <div class="meta-sep"></div>
+        <div class="meta-item hi">
+          <span class="ms" style="font-size:14px;color:#f5a623">wb_cloudy</span>
+          37°
+        </div>
+
+        <div class="meta-right">
+          <div class="e-stop-counter">Stop 1 of 9</div>
+          <button class="close-btn" id="close-btn">
+            <span class="ms" style="font-size:15px">expand_more</span>
+            Close
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable area — EVERYTHING scrolls, no fixed title -->
+      <div class="scroll-area" id="scroll-area">
+
+        <div class="e-title">Musée d'Orsay</div>
+
+        <div class="e-location">
+          <span class="ms" style="font-size:13px">location_on</span>
+          Paris Center · Paris
+        </div>
+
+        <div class="e-chips">
+          <div class="chip gold">
+            <span class="ms" style="font-size:11px">bookmark</span>
+            Your pick
+          </div>
+          <div class="chip blue">
+            <span class="ms" style="font-size:11px">auto_awesome</span>
+            We added this
+          </div>
+          <div class="chip dim">
+            <span class="ms" style="font-size:11px">groups</span>
+            Popular here
+          </div>
+        </div>
+
+        <div class="e-description">
+          Major 19th- and 20th-century European art collections housed in a monumental former
+          railway station. The impressionist and post-impressionist galleries on the top floor
+          are world-class — Monet, Renoir, Van Gogh all here.
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── AT A GLANCE: pills ── -->
+        <div>
+          <div class="sec-label">At a glance</div>
+          <div class="pills-wrap" id="pills">
+
+            <div class="pill gem" data-id="gem"
+              data-title="Discovery stage"
+              data-body="This spot is still off the mainstream radar — fewer crowds than comparable museums, and a more considered experience. Worth arriving before 10 AM.">
+              <span class="ms" style="font-size:14px">diamond</span>
+              Hidden gem
+              <span class="ms pill-chev">expand_more</span>
+            </div>
+
+            <div class="pill urgent" data-id="crowd"
+              data-title="Crowd alert"
+              data-body="Peak window is 10 AM – 3 PM. You're arriving at 9:30 AM — you'll be ahead of the rush by about 30 minutes. Get the top-floor impressionists first while it's quiet.">
+              <span class="ms" style="font-size:14px">person_raised_hand</span>
+              Peak 10 AM – 3 PM
+              <span class="ms pill-chev">expand_more</span>
+            </div>
+
+            <div class="pill tappable" data-id="timing"
+              data-title="Your visit window"
+              data-body="Arriving ~9:30 AM, leaving ~11:10 AM. That's 1 hr 40 min — enough for the main impressionist floor and one or two ground-floor galleries.">
+              <span class="ms" style="font-size:14px">schedule</span>
+              9:30 → 11:10 AM
+              <span class="ms pill-chev">expand_more</span>
+            </div>
+
+            <div class="pill tappable" data-id="transit"
+              data-title="Getting here"
+              data-body="12 min walk · 900 m from the previous stop (Louvre). Head east along the Seine on Quai des Tuileries — flat, completely walkable, and scenic.">
+              <span class="ms" style="font-size:14px">directions_walk</span>
+              12 min walk
+              <span class="ms pill-chev">expand_more</span>
+            </div>
+
+            <div class="pill neutral">
+              <span class="ms" style="font-size:14px">door_open</span>
+              Open until 6 PM
+            </div>
+
+            <div class="pill neutral">
+              <span class="ms" style="font-size:14px">timer</span>
+              1.7 hr
+            </div>
+
+            <div class="pill neutral">
+              <span class="ms" style="font-size:14px">star</span>
+              4.8 ★
+            </div>
+
+            <div class="pill neutral">
+              <span class="ms" style="font-size:14px">payments</span>
+              $$
+            </div>
+
+          </div>
+
+          <!-- Pill detail — inline, below pill group -->
+          <div class="pill-detail" id="pill-detail">
+            <div class="pill-detail-inner">
+              <div class="pill-detail-title" id="pd-title"></div>
+              <div class="pill-detail-body" id="pd-body"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── WHY THIS STOP ── -->
+        <div>
+          <div class="sec-label">Why this stop</div>
+          <div class="why-block">
+            Best visited Saturday — crowds peak toward midday. The impressionist galleries
+            (top floor) are the main draw; the ground-floor sculpture hall is a quieter
+            contrast in the afternoon. Allow at least 90 minutes.
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── GETTING HERE ── -->
+        <div>
+          <div class="sec-label">Getting here</div>
+          <div class="transit-row">
+            <span class="ms" style="font-size:20px;color:var(--sky);flex-shrink:0">directions_walk</span>
+            <span>900 m · 12 min walk from Louvre — follow Quai des Tuileries east along the Seine</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── EXPLORE ── -->
+        <button class="explore-btn">
+          <span class="ms" style="font-size:18px">explore</span>
+          Explore nearby
+        </button>
+
+      </div><!-- /scroll-area -->
+    </div><!-- /expanded-view -->
+
+  </div><!-- /card -->
+</div><!-- /screen -->
+
+<script>
+  const card     = document.getElementById('card');
+  const closeBtn = document.getElementById('close-btn');
+  const pillsEl  = document.getElementById('pills');
+  const pillDetail = document.getElementById('pill-detail');
+  const pdTitle  = document.getElementById('pd-title');
+  const pdBody   = document.getElementById('pd-body');
+  const scrollArea = document.getElementById('scroll-area');
+
+  let expanded = false;
+  let activePill = null;
+
+  // ── Expand / Collapse ──────────────────────────────
+  function expand() {
+    if (expanded) return;
+    expanded = true;
+    card.classList.add('expanded');
+  }
+
+  function collapse() {
+    if (!expanded) return;
+    expanded = false;
+    card.classList.remove('expanded');
+    closePillDetail();
+  }
+
+  // Tap collapsed card → expand
+  card.addEventListener('click', e => { if (!expanded) expand(); });
+  closeBtn.addEventListener('click', e => { e.stopPropagation(); collapse(); });
+
+  // ── Swipe gesture ──────────────────────────────────
+  // Uses touchstart / touchend directly on the card.
+  // When collapsed: swipe up → expand.
+  // When expanded: swipe down while at scroll top → collapse.
+
+  let tsY = 0;
+  let tsScrollTop = 0;
+
+  card.addEventListener('touchstart', e => {
+    tsY = e.touches[0].clientY;
+    tsScrollTop = scrollArea.scrollTop;
+  }, { passive: true });
+
+  card.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - tsY;
+    if (!expanded && dy < -36) {
+      expand();
+      return;
+    }
+    if (expanded && tsScrollTop <= 2 && dy > 72) {
+      collapse();
+    }
+  }, { passive: true });
+
+  // ── Pill detail ────────────────────────────────────
+  function closePillDetail() {
+    if (activePill) {
+      activePill.classList.remove('active');
+      activePill = null;
+    }
+    pillDetail.classList.remove('open');
+  }
+
+  pillsEl.addEventListener('click', e => {
+    e.stopPropagation();
+    const pill = e.target.closest('.pill[data-id]');
+    if (!pill) return;
+
+    // Toggle: tap active pill → close
+    if (activePill === pill) {
+      closePillDetail();
+      return;
+    }
+
+    // Open new
+    closePillDetail();
+    activePill = pill;
+    pill.classList.add('active');
+
+    pdTitle.textContent = pill.dataset.title;
+    pdBody.textContent  = pill.dataset.body;
+    pillDetail.classList.add('open');
+
+    // Scroll so the pill + detail are visible
+    setTimeout(() => {
+      pill.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  });
+</script>
+</body>
+</html>
