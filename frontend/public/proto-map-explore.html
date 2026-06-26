@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<title>Proto · Map Explore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+:root{
+  /* brand — same both themes */
+  --gold:#d4a853;--gold-bg:rgba(212,168,83,.12);--gold-bdr:rgba(212,168,83,.3);
+  --sage:#6b9470;--sage-bg:rgba(107,148,112,.13);--sage-bdr:rgba(107,148,112,.35);
+  --sky:#4f8fab;--rose:#c0655a;--plum:#8878b8;
+  --serif:'Playfair Display',serif;--sans:'DM Sans',sans-serif;
+  --bar-h:68px;--safe-b:env(safe-area-inset-bottom,0px);
+
+  /* DARK theme (default) */
+  --bg:#0f0d0c;
+  --surface:#181512;
+  --t1:#f5f0ea;--t2:rgba(255,255,255,.65);--t3:rgba(255,255,255,.38);
+  --border:rgba(255,255,255,.09);
+  --ui-bg:rgba(10,9,8,.90);--ui-bdr:rgba(255,255,255,.1);--ui-clr:rgba(255,255,255,.65);
+  --add-btn-bg:rgba(255,255,255,.1);--add-btn-bdr:rgba(255,255,255,.18);--add-btn-clr:#f5f0ea;
+  --row-div:rgba(255,255,255,.05);
+  --panel-shadow:rgba(0,0,0,.5);
+  --map-base:radial-gradient(ellipse 140% 140% at 50% 46%,#1c2538 0%,#141c28 55%,#0e1420 100%);
+  --map-grid-h:rgba(255,255,255,.015);--map-grid-v:rgba(255,255,255,.015);
+  --map-road:rgba(255,255,255,.07);--map-road-a:rgba(255,255,255,.14);
+  --map-water:rgba(28,58,88,.45);--map-park:rgba(38,62,42,.48);--map-blk:rgba(255,255,255,.03);
+  --anchor-bdr:#141210;--anchor-lbl-bg:rgba(10,9,8,.92);
+  --pin-bdr:rgba(0,0,0,.4);--pin-done-bdr:#0e1420;
+}
+
+/* LIGHT theme override */
+html.light{
+  --bg:#f0ece5;
+  --surface:#ffffff;
+  --t1:#1a1512;--t2:rgba(0,0,0,.65);--t3:rgba(0,0,0,.38);
+  --border:rgba(0,0,0,.09);
+  --ui-bg:rgba(255,252,248,.92);--ui-bdr:rgba(0,0,0,.1);--ui-clr:rgba(0,0,0,.65);
+  --add-btn-bg:rgba(0,0,0,.06);--add-btn-bdr:rgba(0,0,0,.12);--add-btn-clr:#1a1512;
+  --row-div:rgba(0,0,0,.06);
+  --panel-shadow:rgba(0,0,0,.14);
+  --map-base:radial-gradient(ellipse 140% 140% at 50% 46%,#e2ddd5 0%,#cdc8bf 55%,#b8b3aa 100%);
+  --map-grid-h:rgba(0,0,0,.04);--map-grid-v:rgba(0,0,0,.04);
+  --map-road:rgba(255,255,255,.75);--map-road-a:rgba(255,255,255,.95);
+  --map-water:rgba(147,194,222,.65);--map-park:rgba(160,210,155,.65);--map-blk:rgba(160,155,148,.35);
+  --anchor-bdr:#e8e4de;--anchor-lbl-bg:rgba(255,252,248,.94);
+  --pin-bdr:rgba(0,0,0,.25);--pin-done-bdr:#cdc8bf;
+}
+
+html,body{width:100%;height:100%;background:var(--bg);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;color:var(--t1);transition:background .3s}
+.ms{font-family:'Material Symbols Rounded';line-height:1;display:inline-block;vertical-align:middle}
+
+/* ── REEL CARD — always dark (photo card), ignore theme vars ── */
+#reel{
+  position:fixed;inset:0;z-index:1;transition:transform .52s cubic-bezier(.32,.72,0,1);
+  --t1:#f5f0ea;--t2:rgba(255,255,255,.65);--t3:rgba(255,255,255,.38);--border:rgba(255,255,255,.09);
+}
+#reel.away{pointer-events:none;transform:translateY(100%)}
+.card-photo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,9,8,0) 0%,rgba(10,9,8,.55) 42%,rgba(10,9,8,.93) 68%,#0f0d0c 100%),url('https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=900&q=80') center/cover no-repeat}
+.eyebrow{position:absolute;top:22px;left:22px;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.card-bottom{position:absolute;bottom:0;left:0;right:0;padding:0 20px 32px}
+.reco-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 12px 5px 8px;border-radius:99px;background:rgba(192,101,90,.12);border:1px solid rgba(192,101,90,.35);margin-bottom:14px;cursor:pointer}
+.reco-pill .ms{font-size:15px;color:var(--rose)}
+.reco-pill span{font-size:12px;font-weight:600;color:var(--rose)}
+.reco-pill em{font-style:normal;color:var(--t3);font-weight:400}
+.chips{display:flex;gap:7px;margin-bottom:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.12);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);backdrop-filter:blur(12px)}
+.chip .ms{font-size:12px}
+.stop-name{font-family:var(--serif);font-size:40px;font-weight:600;line-height:1.05;text-shadow:0 2px 16px rgba(0,0,0,.7);margin-bottom:4px}
+.stop-sub{font-size:14px;color:var(--t3);display:flex;align-items:center;gap:5px;margin-bottom:20px}
+.stop-sub .ms{font-size:14px}
+.action-row{display:flex;gap:10px}
+.time-pill{display:flex;align-items:center;gap:5px;padding:12px 14px;border-radius:13px;background:rgba(0,0,0,.55);border:1px solid var(--border);backdrop-filter:blur(14px);flex-shrink:0}
+.time-pill .ms{font-size:16px;color:var(--t3)}
+.time-pill span{font-size:15px;font-weight:700}
+.explore-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:var(--t1);font-family:var(--sans);font-size:15px;font-weight:600;cursor:pointer;backdrop-filter:blur(14px);transition:background .14s}
+.explore-btn:active{background:rgba(255,255,255,.13)}
+.explore-btn .ms{font-size:20px;color:var(--sky)}
+
+/* ── MAP ── */
+#map{position:fixed;inset:0;z-index:10;overflow:hidden;transform:translateY(-102%);transition:transform .64s cubic-bezier(.32,.72,0,1);touch-action:none}
+#map.open{transform:translateY(0)}
+#canvas{position:absolute;width:300%;height:300%;top:-100%;left:-100%;will-change:transform}
+.tiles{position:absolute;inset:0;background:repeating-linear-gradient(0deg,var(--map-grid-h) 0 1px,transparent 1px 80px),repeating-linear-gradient(90deg,var(--map-grid-v) 0 1px,transparent 1px 80px),var(--map-base);transition:background .3s}
+.water{position:absolute;background:var(--map-water);border-radius:6px;transition:background .3s}
+.park{position:absolute;background:var(--map-park);border-radius:8px;transition:background .3s}
+.rd{position:absolute;border-radius:2px;background:var(--map-road);transition:background .3s}
+.rd.a{background:var(--map-road-a)}
+.blk{position:absolute;background:var(--map-blk);border-radius:3px;transition:background .3s}
+/* (map no longer needs an exit animation — reel slides over it) */
+
+/* ── ITINERARY SHEET ── */
+#itin{
+  position:fixed;inset:0;z-index:22;
+  background:var(--surface);
+  display:flex;flex-direction:column;
+  transform:translateY(100%);
+  transition:transform .46s cubic-bezier(.32,.72,0,1), background .3s;
+}
+#itin.open{transform:translateY(0)}
+.itin-handle{width:36px;height:4px;border-radius:99px;background:var(--border);margin:12px auto 0;flex-shrink:0}
+.itin-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px;flex-shrink:0}
+.itin-hd h2{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--t1)}
+.itin-hd .close{width:32px;height:32px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.itin-hd .close .ms{font-size:17px;color:var(--t2)}
+.itin-day{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding:0 20px 10px;flex-shrink:0}
+.itin-divider{height:1px;background:var(--border);flex-shrink:0}
+.itin-list{flex:1;overflow-y:auto;padding:4px 20px 8px}
+.itin-list::-webkit-scrollbar{display:none}
+.itin-row{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--border)}
+.itin-row:last-child{border-bottom:none}
+.itin-row.new{animation:rowIn .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes rowIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.itin-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.itin-num.orig{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-bdr)}
+.itin-num.added{background:var(--sage-bg);color:var(--sage);border:1px solid var(--sage-bdr)}
+.itin-info{flex:1}
+.itin-name{font-size:15px;font-weight:600;color:var(--t1);margin-bottom:2px}
+.itin-sub{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:5px}
+.itin-badge{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:var(--sage-bg);color:var(--sage)}
+.itin-time{font-size:13px;font-weight:600;color:var(--t3);flex-shrink:0}
+.itin-foot{padding:10px 20px calc(var(--safe-b) + 10px);flex-shrink:0;border-top:1px solid var(--border)}
+.itin-rebuild{width:100%;padding:14px;border-radius:14px;background:var(--gold-bg);border:1px solid var(--gold-bdr);color:var(--gold);font-family:var(--sans);font-size:16px;font-weight:700;cursor:pointer;transition:background .15s}
+.itin-rebuild:active{background:rgba(212,168,83,.22)}
+.zoom-ctrl{position:absolute;right:14px;bottom:90px;z-index:5;display:flex;flex-direction:column;gap:4px}
+.zb{width:38px;height:38px;border-radius:11px;background:var(--ui-bg);border:1px solid var(--ui-bdr);display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(12px);transition:background .3s}
+.zb:active{background:rgba(128,128,128,.15)}
+.zb .ms{font-size:22px;color:var(--t2)}
+/* Pins */
+.pin{position:absolute;transform:translate(-50%,-50%);cursor:pointer;z-index:3}
+.pb{display:flex;align-items:center;gap:5px;padding:7px 11px 7px 8px;border-radius:99px;border:2px solid var(--pin-bdr);box-shadow:0 2px 10px rgba(0,0,0,.5);font-size:12px;font-weight:700;color:#fff;white-space:nowrap;transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s}
+.pb .ms{font-size:14px}
+.pin.food .pb{background:var(--rose)} .pin.cafe .pb{background:var(--plum)} .pin.park .pb{background:var(--sage)} .pin.cult .pb{background:var(--sky)}
+.pin.sel .pb{transform:scale(1.14);box-shadow:0 0 0 4px rgba(255,255,255,.22),0 4px 18px rgba(0,0,0,.6)}
+.pin.done .pb{opacity:.42}
+.pin.done::after{content:'✓';position:absolute;top:-5px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--sage);border:2px solid var(--pin-done-bdr);font-size:9px;font-weight:900;color:#fff;display:flex;align-items:center;justify-content:center}
+.anchor{position:absolute;transform:translate(-50%,-50%)}
+.anchor-dot{width:14px;height:14px;border-radius:50%;background:var(--gold);border:3px solid var(--anchor-bdr);box-shadow:0 0 0 5px rgba(212,168,83,.2),0 0 18px rgba(212,168,83,.28)}
+.anchor-lbl{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:700;background:var(--anchor-lbl-bg);border:1px solid var(--gold-bdr);padding:4px 9px;border-radius:8px;color:var(--t2)}
+
+/* ════════════════════════════════════════
+   UNIFIED BOTTOM PANEL
+   — bar state: only action-bar visible (card-body height = 0)
+   — card state: card-body expands upward
+════════════════════════════════════════ */
+#panel{
+  position:fixed;bottom:0;left:0;right:0;z-index:20;
+  background:var(--surface);
+  border-radius:22px 22px 0 0;
+  border:1px solid var(--border);border-bottom:none;
+  box-shadow:0 -6px 32px var(--panel-shadow);
+  transform:translateY(100%);
+  transition:transform .56s cubic-bezier(.32,.72,0,1), background .3s, border-color .3s;
+}
+#panel.open{transform:translateY(0)}
+
+/* drag hint at top of panel — hides when card is open (card has its own handle) */
+.swipe-hint{width:36px;height:4px;border-radius:99px;background:var(--border);margin:10px auto 2px;transition:opacity .2s}
+#panel.card-open .swipe-hint{opacity:0;pointer-events:none}
+
+/* card body — collapses / expands */
+#card-body{
+  overflow:hidden;
+  max-height:0;
+  opacity:0;
+  transition:max-height .38s cubic-bezier(.32,.72,0,1), opacity .28s ease;
+}
+#panel.card-open #card-body{
+  max-height:260px;
+  opacity:1;
+}
+
+/* drag handle — only visible when card is open */
+.panel-handle{
+  width:36px;height:4px;border-radius:99px;
+  background:var(--border);
+  margin:0 auto;
+  padding-top:12px;
+  opacity:0;transition:opacity .2s;
+}
+#panel.card-open .panel-handle{opacity:1}
+
+.card-head{display:flex;align-items:flex-start;gap:14px;padding:16px 18px 0}
+.card-icon{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-icon .ms{font-size:24px}
+.card-icon.food{background:rgba(192,101,90,.13)} .card-icon.food .ms{color:var(--rose)}
+.card-icon.cafe{background:rgba(136,120,184,.13)} .card-icon.cafe .ms{color:var(--plum)}
+.card-icon.park{background:rgba(107,148,112,.13)} .card-icon.park .ms{color:var(--sage)}
+.card-icon.cult{background:rgba(79,143,171,.13)}  .card-icon.cult .ms{color:var(--sky)}
+.card-title{flex:1}
+.card-name{font-family:var(--serif);font-size:21px;font-weight:600;color:var(--t1);line-height:1.1;margin-bottom:5px;transition:color .3s}
+.card-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cat-badge{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:5px}
+.cat-badge.food{background:rgba(192,101,90,.13);color:var(--rose)}
+.cat-badge.cafe{background:rgba(136,120,184,.13);color:var(--plum)}
+.cat-badge.park{background:rgba(107,148,112,.13);color:var(--sage)}
+.cat-badge.cult{background:rgba(79,143,171,.13);color:var(--sky)}
+.rating{font-size:13px;color:var(--gold);font-weight:600}
+.dist{font-size:13px;color:var(--t3)}
+
+.card-rows{padding:12px 18px 0}
+.card-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--row-div)}
+.card-row:last-child{border-bottom:none}
+.card-row .ms{font-size:17px;color:var(--t3);flex-shrink:0}
+.card-row span{font-size:13px;color:var(--t2)}
+
+/* divider between card and action bar */
+.panel-divider{height:1px;background:var(--border);margin:12px 0 0}
+
+/* ── Action bar (always visible inside panel) ── */
+#action-bar{
+  padding:10px 14px calc(var(--safe-b) + 10px);
+}
+#act-btn{
+  width:100%;padding:14px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-family:var(--sans);font-size:16px;font-weight:700;
+  cursor:pointer;border:1px solid transparent;position:relative;
+  transition:background .2s, border-color .2s, color .2s;
+}
+#act-btn.rebuild{background:var(--gold-bg);border-color:var(--gold-bdr);color:var(--gold)}
+#act-btn.rebuild:active{background:rgba(212,168,83,.2)}
+#act-btn.add{background:var(--add-btn-bg);border-color:var(--add-btn-bdr);color:var(--add-btn-clr)}
+#act-btn.add:active{background:var(--add-btn-bg)}
+#act-btn .ms{font-size:22px}
+#badge{display:none}
+
+/* ── rebuild overlay ── */
+#overlay{position:fixed;inset:0;z-index:50;background:rgba(10,9,8,0);pointer-events:none;display:flex;align-items:center;justify-content:center;transition:background .5s ease}
+#overlay.on{background:rgba(10,9,8,.84);pointer-events:auto}
+.ov-inner{text-align:center;opacity:0;transform:translateY(10px);transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+#overlay.on .ov-inner{opacity:1;transform:translateY(0)}
+.ov-inner .ms{font-size:44px;color:var(--gold);display:block;margin-bottom:16px}
+.ov-inner h3{font-family:var(--serif);font-size:26px;font-weight:600;color:var(--t1);margin-bottom:6px}
+.ov-inner p{font-size:14px;color:var(--t3)}
+</style>
+</head>
+<body>
+
+<!-- REEL -->
+<div id="reel">
+  <div style="position:relative;height:100%;overflow:hidden">
+    <div class="card-photo"></div>
+    <div class="eyebrow">Stop 2 of 5 · Day 1 · Tokyo</div>
+    <button id="theme-btn" onclick="toggleTheme()" style="position:absolute;top:16px;right:16px;z-index:3;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(10px)"><span class="ms" id="theme-icon" style="font-size:18px;color:rgba(255,255,255,.7)">light_mode</span></button>
+    <div class="card-bottom">
+      <div class="reco-pill" onclick="openMap()">
+        <span class="ms">restaurant</span>
+        <span>No lunch stop ahead · <em>find a spot</em></span>
+      </div>
+      <div class="chips">
+        <span class="chip"><span class="ms">schedule</span> 10:30 AM</span>
+        <span class="chip">Temple</span>
+        <span class="chip">1h 30m</span>
+      </div>
+      <div class="stop-name">Senso-ji Temple</div>
+      <div class="stop-sub"><span class="ms">location_on</span> Asakusa, Tokyo</div>
+      <div class="action-row">
+        <div class="time-pill"><span class="ms">directions_walk</span><span>8 min</span></div>
+        <button class="explore-btn" onclick="openMap()">
+          <span class="ms">explore</span> Explore nearby
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map">
+  <div id="canvas">
+    <div class="tiles"></div>
+    <div class="water" style="left:57%;top:20%;width:17%;height:26%"></div>
+    <div class="park"  style="left:61%;top:4%;width:20%;height:15%"></div>
+    <div class="park"  style="left:7%;top:62%;width:13%;height:11%"></div>
+    <div class="rd a" style="top:calc(33% + 8px);height:10px;left:0;right:0"></div>
+    <div class="rd a" style="left:calc(33% + 5px);width:10px;top:0;bottom:0"></div>
+    <div class="rd" style="top:calc(33% - 58px);height:5px;left:0;right:0"></div>
+    <div class="rd" style="top:calc(33% + 72px);height:4px;left:4%;right:7%"></div>
+    <div class="rd" style="top:calc(33% + 138px);height:3px;left:0;right:14%"></div>
+    <div class="rd" style="left:calc(33% - 78px);width:5px;top:0;bottom:0"></div>
+    <div class="rd" style="left:calc(33% + 92px);width:4px;top:0;bottom:0"></div>
+    <div class="rd" style="left:calc(33% + 170px);width:3px;top:4%;bottom:8%"></div>
+    <div class="rd" style="left:calc(33% - 162px);width:3px;top:7%;bottom:4%"></div>
+    <div class="rd" style="width:160%;height:4px;top:calc(33% + 34px);left:-30%;transform:rotate(-7deg)"></div>
+    <div class="blk" style="left:calc(33% - 150px);top:calc(33% - 95px);width:52px;height:38px"></div>
+    <div class="blk" style="left:calc(33% - 74px);top:calc(33% - 90px);width:38px;height:28px"></div>
+    <div class="blk" style="left:calc(33% + 32px);top:calc(33% - 100px);width:58px;height:42px"></div>
+    <div class="blk" style="left:calc(33% + 112px);top:calc(33% - 86px);width:42px;height:32px"></div>
+    <div class="blk" style="left:calc(33% - 155px);top:calc(33% + 32px);width:48px;height:36px"></div>
+    <div class="blk" style="left:calc(33% + 118px);top:calc(33% + 28px);width:52px;height:40px"></div>
+    <div class="blk" style="left:calc(33% - 68px);top:calc(33% + 82px);width:40px;height:30px"></div>
+    <div class="blk" style="left:calc(33% + 42px);top:calc(33% + 88px);width:36px;height:26px"></div>
+    <div class="anchor" style="left:33.33%;top:33.33%">
+      <div class="anchor-lbl">Senso-ji</div>
+      <div class="anchor-dot"></div>
+    </div>
+    <div class="pin food" id="p0" style="left:calc(33.33% - 108px);top:calc(33.33% - 52px)" onclick="pinTap(event,0)"><div class="pb"><span class="ms">restaurant</span> Asakusa Imahan</div></div>
+    <div class="pin cafe" id="p1" style="left:calc(33.33% + 128px);top:calc(33.33% + 62px)" onclick="pinTap(event,1)"><div class="pb"><span class="ms">coffee</span> Nakamura Tokichi</div></div>
+    <div class="pin park" id="p2" style="left:calc(33.33% + 78px);top:calc(33.33% - 108px)" onclick="pinTap(event,2)"><div class="pb"><span class="ms">park</span> Sumida Park</div></div>
+    <div class="pin cult" id="p3" style="left:calc(33.33% - 58px);top:calc(33.33% + 118px)" onclick="pinTap(event,3)"><div class="pb"><span class="ms">museum</span> Edo-Tokyo Museum</div></div>
+    <div class="pin food" id="p4" style="left:calc(33.33% + 198px);top:calc(33.33% - 28px)" onclick="pinTap(event,4)"><div class="pb"><span class="ms">ramen_dining</span> Ramen Yoroiya</div></div>
+    <div class="pin cafe" id="p5" style="left:calc(33.33% - 188px);top:calc(33.33% + 78px)" onclick="pinTap(event,5)"><div class="pb"><span class="ms">local_cafe</span> Sazanka Café</div></div>
+  </div>
+  <div class="zoom-ctrl">
+    <div class="zb" onclick="doZoom(0.28)"><span class="ms">add</span></div>
+    <div class="zb" onclick="doZoom(-0.28)"><span class="ms">remove</span></div>
+  </div>
+</div>
+
+<!-- UNIFIED BOTTOM PANEL -->
+<div id="panel">
+  <div class="swipe-hint"></div>
+  <!-- Card body — expands when pin selected -->
+  <div id="card-body">
+    <div style="height:12px;display:flex;align-items:center;justify-content:center;padding-top:12px">
+      <div class="panel-handle" style="padding-top:0;width:36px;height:4px;border-radius:99px;background:rgba(255,255,255,.13)"></div>
+    </div>
+    <div class="card-head">
+      <div class="card-icon" id="ci"><span class="ms" id="ci-ms">restaurant</span></div>
+      <div class="card-title">
+        <div class="card-name" id="c-name">—</div>
+        <div class="card-meta">
+          <span class="cat-badge" id="c-badge">Food</span>
+          <span class="rating" id="c-rating">4.5 ★</span>
+          <span class="dist" id="c-dist">280 m</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-rows">
+      <div class="card-row"><span class="ms">directions_walk</span><span id="c-walk">4 min walk from Senso-ji</span></div>
+      <div class="card-row"><span class="ms">format_quote</span><span id="c-note" style="color:var(--t3);font-style:italic">—</span></div>
+    </div>
+    <div class="panel-divider"></div>
+  </div>
+
+  <!-- Action bar — always visible -->
+  <div id="action-bar">
+    <button id="act-btn" class="rebuild" onclick="actTap()">
+      <span id="act-text">Rebuild itinerary</span>
+      <div id="badge"></div>
+    </button>
+  </div>
+</div>
+
+<!-- ITINERARY SHEET -->
+<div id="itin">
+  <div class="itin-handle"></div>
+  <div class="itin-hd">
+    <h2>Your plan</h2>
+    <div class="close" onclick="closeItinerary()"><span class="ms">close</span></div>
+  </div>
+  <div class="itin-day">Day 1 · Tokyo</div>
+  <div class="itin-divider"></div>
+  <div class="itin-list" id="itin-list"></div>
+  <div class="itin-foot">
+    <button class="itin-rebuild" onclick="doRebuild()">Rebuild itinerary</button>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="ov-inner">
+    <span class="ms">auto_awesome</span>
+    <h3>Rebuilding your plan…</h3>
+    <p id="ov-sub">Fitting new stops into Day 1</p>
+  </div>
+</div>
+
+<script>
+const PLACES = [
+  {id:0,cat:'food',ms:'restaurant',   name:'Asakusa Imahan',   badge:'Food',    rating:'4.8 ★',dist:'280 m', walk:'4 min walk from Senso-ji', note:'"Legendary sukiyaki. Perfect between temples."'},
+  {id:1,cat:'cafe',ms:'coffee',       name:'Nakamura Tokichi', badge:'Café',    rating:'4.4 ★',dist:'420 m', walk:'6 min walk from Senso-ji', note:'"Matcha parfait worth the wait."'},
+  {id:2,cat:'park',ms:'park',         name:'Sumida Park',      badge:'Park',    rating:'4.6 ★',dist:'550 m', walk:'8 min walk from Senso-ji', note:'"Great stop. Views of Skytree."'},
+  {id:3,cat:'cult',ms:'museum',       name:'Edo-Tokyo Museum', badge:'Culture', rating:'4.3 ★',dist:'1.1 km',walk:'15 min walk from Senso-ji',note:'"Budget 2–3 hours if history is your thing."'},
+  {id:4,cat:'food',ms:'ramen_dining', name:'Ramen Yoroiya',    badge:'Food',    rating:'4.5 ★',dist:'620 m', walk:'9 min walk from Senso-ji', note:'"Thick tonkotsu. Arrive before noon."'},
+  {id:5,cat:'cafe',ms:'local_cafe',   name:'Sazanka Café',     badge:'Café',    rating:'4.2 ★',dist:'380 m', walk:'5 min walk from Senso-ji', note:'"Quiet corner. Great mid-morning break."'},
+];
+
+let sel   = null;
+let added = new Set();
+let dragMoved = false;
+
+/* ── open / close map ── */
+function openMap() {
+  document.getElementById('reel').classList.add('away');
+  const map = document.getElementById('map');
+  map.style.display = ''; // clear any lingering display:none
+  map.classList.add('open');
+  document.getElementById('panel').classList.add('open');
+  setBarState();
+}
+function closeMap() {
+  deselect();
+  const map = document.getElementById('map');
+  const panel = document.getElementById('panel');
+  const reel = document.getElementById('reel');
+  // pull map + panel out of render tree instantly — clean slate for reel
+  map.style.display = 'none';
+  panel.style.transition = 'none';
+  panel.style.transform = 'translateY(100%)';
+  // reel is the only thing animating — no bleed-through possible
+  reel.classList.remove('away');
+  setTimeout(() => {
+    map.classList.remove('open');
+    map.style.display = '';   // map reappears off-screen above (translateY(-102%))
+    panel.style.transition = '';
+    panel.style.transform = '';
+    panel.classList.remove('open');
+  }, 680);
+}
+
+/* ── pin tap ── */
+function pinTap(e, idx) {
+  e.stopPropagation();
+  if (dragMoved) return;
+  if (sel === idx) { deselect(); return; }
+  deselect();
+  sel = idx;
+  document.getElementById('p'+idx).classList.add('sel');
+  populateCard(PLACES[idx]);
+  document.getElementById('panel').classList.add('card-open');
+  setAddState(PLACES[idx]);
+}
+
+function deselect() {
+  if (sel !== null) document.getElementById('p'+sel)?.classList.remove('sel');
+  sel = null;
+  document.getElementById('panel').classList.remove('card-open');
+  setBarState();
+}
+
+/* ── populate card body ── */
+function populateCard(p) {
+  document.getElementById('ci-ms').textContent = p.ms;
+  document.getElementById('c-name').textContent = p.name;
+  document.getElementById('c-rating').textContent = p.rating;
+  document.getElementById('c-dist').textContent = p.dist;
+  document.getElementById('c-walk').textContent = p.walk;
+  document.getElementById('c-note').textContent = p.note;
+  document.getElementById('c-badge').textContent = p.badge;
+  document.getElementById('c-badge').className = 'cat-badge ' + p.cat;
+  document.getElementById('ci').className = 'card-icon ' + p.cat;
+}
+
+/* ── button states ── */
+function setBarState() {
+  document.getElementById('act-btn').className = 'rebuild';
+  const n = added.size;
+  document.getElementById('act-text').textContent =
+    n > 0 ? `Rebuild itinerary (${n})` : 'Rebuild itinerary';
+}
+
+function setAddState(p) {
+  const alreadyAdded = added.has(p.id);
+  const btn = document.getElementById('act-btn');
+  btn.className = alreadyAdded ? 'rebuild' : 'add';
+  document.getElementById('act-text').textContent = alreadyAdded ? 'Already added' : 'Add to itinerary';
+  document.getElementById('badge').classList.remove('show');
+}
+
+/* ── action button tap ── */
+function actTap() {
+  if (sel !== null && !added.has(sel)) {
+    added.add(sel);
+    document.getElementById('p'+sel).classList.add('done');
+    deselect();
+  } else if (sel !== null && added.has(sel)) {
+    deselect();
+  } else {
+    // "Rebuild itinerary" tap → loading overlay then reveal reel
+    const n = added.size;
+    const overlay = document.getElementById('overlay');
+    document.getElementById('ov-sub').textContent =
+      n > 0 ? `Weaving ${n} new stop${n>1?'s':''} into Day 1` : 'Returning to your plan';
+    overlay.classList.add('on');
+    // at 1800ms: reel slides up behind overlay, then overlay fades revealing it
+    setTimeout(() => {
+      const map = document.getElementById('map');
+      const panel = document.getElementById('panel');
+      const reel = document.getElementById('reel');
+      map.style.display = 'none';
+      panel.style.transition = 'none';
+      panel.style.transform = 'translateY(100%)';
+      // reel rises behind overlay, overlay fades to reveal it
+      reel.classList.remove('away');
+      overlay.classList.remove('on');
+      setTimeout(() => {
+        map.classList.remove('open');
+        map.style.display = '';
+        panel.style.transition = '';
+        panel.style.transform = '';
+        panel.classList.remove('open');
+        deselect();
+      }, 700);
+    }, 1800);
+  }
+}
+
+/* ── itinerary open / close (synced with map slide-down) ── */
+const BASE_STOPS = [
+  {num:1, name:'Tsukiji Outer Market', sub:'Market',  time:'9:00 AM'},
+  {num:2, name:'Senso-ji Temple',       sub:'Temple · 1h 30m', time:'10:30 AM'},
+  {num:3, name:'Ueno Park',             sub:'Park',   time:'1:00 PM'},
+  {num:4, name:'Akihabara',             sub:'Shopping',time:'3:00 PM'},
+  {num:5, name:'Shibuya Crossing',      sub:'Landmark',time:'5:30 PM'},
+];
+
+function buildItinList() {
+  const list = document.getElementById('itin-list');
+  list.innerHTML = '';
+  BASE_STOPS.forEach((s,i) => {
+    list.appendChild(makeRow(s.num, s.name, s.sub, s.time, 'orig'));
+    // insert added places after stop 2 (current stop)
+    if (i === 1 && added.size > 0) {
+      [...added].forEach(id => {
+        const p = PLACES[id];
+        list.appendChild(makeRow('＋', p.name, p.badge + ' · Added', '—', 'added'));
+      });
+    }
+  });
+}
+
+function makeRow(num, name, sub, time, type) {
+  const row = document.createElement('div');
+  row.className = 'itin-row' + (type === 'added' ? ' new' : '');
+  row.innerHTML = `
+    <div class="itin-num ${type}">${num}</div>
+    <div class="itin-info">
+      <div class="itin-name">${name}</div>
+      <div class="itin-sub">
+        <span>${sub}</span>
+        ${type==='added' ? '<span class="itin-badge">Added</span>' : ''}
+      </div>
+    </div>
+    <div class="itin-time">${time}</div>`;
+  return row;
+}
+
+function openItinerary() {
+  buildItinList();
+  document.getElementById('map').classList.add('itin-open');
+  document.getElementById('itin').classList.add('open');
+}
+
+function closeItinerary() {
+  document.getElementById('map').classList.remove('itin-open');
+  document.getElementById('itin').classList.remove('open');
+}
+
+function doRebuild() {
+  const n = added.size;
+  document.getElementById('ov-sub').textContent =
+    n > 0 ? `Weaving ${n} new stop${n>1?'s':''} into Day 1` : 'Returning to your plan';
+  document.getElementById('overlay').classList.add('on');
+  setTimeout(() => {
+    document.getElementById('overlay').classList.remove('on');
+    setTimeout(() => { closeItinerary(); closeMap(); }, 300);
+  }, 1900);
+}
+
+/* ── swipe up on panel to open itinerary ── */
+(function(){
+  const panel = document.getElementById('panel');
+  let sy = 0;
+  panel.addEventListener('touchstart', e => { sy = e.touches[0].clientY; }, {passive:true});
+  panel.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - sy < -44) closeMap();
+  }, {passive:true});
+  panel.addEventListener('mousedown', e => { sy = e.clientY; });
+  panel.addEventListener('mouseup', e => { if (e.clientY - sy < -44) closeMap(); });
+})();
+
+/* ── pan / zoom ── */
+let tx=0,ty=0,sc=1,drag={on:false,sx:0,sy:0,ox:0,oy:0};
+function applyT(a){const c=document.getElementById('canvas');c.style.transition=a?'transform .26s ease':'none';c.style.transform=`translate(${tx}px,${ty}px) scale(${sc})`;}
+function doZoom(d){sc=Math.max(0.55,Math.min(3.5,sc+d));applyT(true);}
+
+const mapEl=document.getElementById('map');
+const skip=e=>e.target.closest('.map-bar,.zoom-ctrl,.pin');
+mapEl.addEventListener('touchstart',e=>{dragMoved=false;if(skip(e))return;drag={on:true,sx:e.touches[0].clientX,sy:e.touches[0].clientY,ox:tx,oy:ty};},{passive:true});
+mapEl.addEventListener('touchmove',e=>{if(!drag.on)return;e.preventDefault();const dx=e.touches[0].clientX-drag.sx,dy=e.touches[0].clientY-drag.sy;if(Math.abs(dx)+Math.abs(dy)>5)dragMoved=true;tx=drag.ox+dx;ty=drag.oy+dy;applyT(false);},{passive:false});
+mapEl.addEventListener('touchend',()=>{drag.on=false;});
+mapEl.addEventListener('mousedown',e=>{dragMoved=false;if(skip(e))return;drag={on:true,sx:e.clientX,sy:e.clientY,ox:tx,oy:ty};});
+mapEl.addEventListener('mousemove',e=>{if(!drag.on)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;if(Math.abs(dx)+Math.abs(dy)>5)dragMoved=true;tx=drag.ox+dx;ty=drag.oy+dy;applyT(false);});
+mapEl.addEventListener('mouseup',()=>{drag.on=false;});
+mapEl.addEventListener('mouseleave',()=>{drag.on=false;});
+mapEl.addEventListener('click',e=>{if(skip(e)||dragMoved)return;deselect();});
+
+applyT(false);
+
+/* ── theme ── */
+function applyTheme(light) {
+  document.documentElement.classList.toggle('light', light);
+  document.getElementById('theme-icon').textContent = light ? 'dark_mode' : 'light_mode';
+}
+function toggleTheme() {
+  applyTheme(!document.documentElement.classList.contains('light'));
+}
+if (window.matchMedia('(prefers-color-scheme: light)').matches) applyTheme(true);
+</script>
+</body>
+</html>
