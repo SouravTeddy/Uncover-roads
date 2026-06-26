@@ -13,6 +13,7 @@ import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelSt
 import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
+import { getPreloadedUrls } from '../../../shared/imagePreloader';
 import { ReelBalanceCard } from './ReelBalanceCard';
 import ReelScenicCard from './ReelScenicCard';
 import { ReelGroupCard } from './ReelGroupCard';
@@ -400,7 +401,8 @@ export function ItineraryReelScreen() {
     ];
     const activeStep = STEPS.findIndex(s => !s.done);
 
-    // Collect photo URLs for the mosaic: stop photos first, city photos as supplement
+    // Collect photo URLs for the mosaic: stop photos first, city photos as supplement,
+    // then fall back to anything already in the browser bitmap cache (preloaded from destination screen).
     const mosaicSrcs: string[] = [];
     for (const day of activeItinerary?.days ?? []) {
       for (const stop of day.stops ?? []) {
@@ -414,6 +416,13 @@ export function ItineraryReelScreen() {
     for (const [, url] of cityPhotoMap) {
       if (url && !mosaicSrcs.includes(url)) {
         mosaicSrcs.push(url);
+        if (mosaicSrcs.length >= 9) break;
+      }
+    }
+    // Seed from preloaded bitmap cache so the background appears instantly
+    if (mosaicSrcs.length < 3) {
+      for (const url of getPreloadedUrls()) {
+        if (!mosaicSrcs.includes(url)) mosaicSrcs.push(url);
         if (mosaicSrcs.length >= 9) break;
       }
     }
