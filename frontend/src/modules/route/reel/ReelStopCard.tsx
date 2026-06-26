@@ -272,6 +272,8 @@ interface CardPill {
   color?: string;
   bg?: string;
   border?: string;
+  // If set, pill renders as an <a> link (opens Google Maps / external URL)
+  href?: string;
 }
 
 // ── Main component ────────────────────────────────────────────
@@ -413,7 +415,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     allPills.push({ icon: 'timer', label: durLabel, urgent: false, detail: null });
   }
   if (stop.rating != null && stop.rating > 0) {
-    allPills.push({ icon: 'star', label: `${stop.rating} ★`, urgent: false, detail: null });
+    const mapsHref = stop.googleMapsUrl
+      ?? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(stop.placeId)}`;
+    allPills.push({ icon: 'star', label: `${stop.rating} ★`, urgent: false, detail: null, href: mapsHref, color: T.gold });
   }
   const price = priceLabel(stop.priceLevel);
   if (price) {
@@ -463,7 +467,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
       fontSize: 15, fontWeight: 600,
       maxWidth: '100%', overflow: 'hidden',
       userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-      cursor: clickable ? 'pointer' : 'default',
+      textDecoration: 'none',
+      cursor: clickable || pill.href ? 'pointer' : 'default',
       transition: 'background .12s',
     };
     const style: React.CSSProperties = pill.color
@@ -471,15 +476,28 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
       : clickable
       ? { ...base, background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.22)', color: 'rgba(255,255,255,.88)' }
       : { ...base, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.09)', color: 'rgba(255,255,255,.42)' };
+    const inner = (
+      <>
+        <span className="ms" style={{ fontSize: 15, flexShrink: 0 }}>{pill.icon}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pill.label}</span>
+        {pill.href && <span className="ms" style={{ fontSize: 11, opacity: 0.4, marginLeft: 1, flexShrink: 0 }}>open_in_new</span>}
+        {clickable && <span className="ms" style={{ fontSize: 12, opacity: 0.5, marginLeft: 1, flexShrink: 0 }}>{isOpen ? 'expand_less' : 'expand_more'}</span>}
+      </>
+    );
+    if (pill.href) {
+      return (
+        <a key={idx} href={pill.href} target="_blank" rel="noopener noreferrer" style={style} onClick={(e) => e.stopPropagation()}>
+          {inner}
+        </a>
+      );
+    }
     return (
       <div
         key={idx}
         style={style}
         onClick={clickable ? (e) => { e.stopPropagation(); handlePillClick(pill, e.currentTarget as HTMLElement); } : (e) => e.stopPropagation()}
       >
-        <span className="ms" style={{ fontSize: 15, flexShrink: 0 }}>{pill.icon}</span>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pill.label}</span>
-        {clickable && <span className="ms" style={{ fontSize: 12, opacity: 0.5, marginLeft: 1, flexShrink: 0 }}>{isOpen ? 'expand_less' : 'expand_more'}</span>}
+        {inner}
       </div>
     );
   };
@@ -762,6 +780,21 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                 )}
               </div>
 
+              {/* Hotel anchor — before Why this stop */}
+              {card.hotelAnchor && (() => {
+                const anchor = card.hotelAnchor!;
+                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
+                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
+                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
+                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
+                return (
+                  <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: bg, border: `1px solid ${border}` }}>
+                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
+                    <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>{anchor.text}</span>
+                  </div>
+                );
+              })()}
+
               {/* Why this stop */}
               {stop.isEngineAdded && card.orderReason && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
@@ -811,21 +844,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                   <div style={{ fontSize: 15, lineHeight: 1.65, color: 'rgba(255,255,255,.82)' }}>{pillDetail.body}</div>
                 </div>
               )}
-
-              {/* Hotel anchor */}
-              {card.hotelAnchor && (() => {
-                const anchor = card.hotelAnchor!;
-                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
-                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
-                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
-                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
-                return (
-                  <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: bg, border: `1px solid ${border}` }}>
-                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
-                    <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>{anchor.text}</span>
-                  </div>
-                );
-              })()}
 
               {/* Next-leg in expanded */}
               {card.nextLeg && (() => {
