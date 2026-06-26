@@ -589,13 +589,10 @@ export function TripsScreen() {
       {/* Header */}
       <div style={{
         flexShrink: 0,
-        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
         paddingBottom: 0, paddingLeft: 20, paddingRight: 20,
         borderBottom: '1px solid var(--color-divider)',
       }}>
-        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 12 }}>
-          My Journeys
-        </h1>
         <div style={{ display: 'flex', gap: 0 }}>
           {(['trips', 'places'] as Tab[]).map(tab => {
             const isActive = activeTab === tab;
@@ -605,13 +602,13 @@ export function TripsScreen() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 style={{
-                  padding: '8px 4px', marginRight: 20, background: 'none', border: 'none', cursor: 'pointer',
-                  borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  padding: '8px 4px', marginRight: 24, background: 'none', border: 'none', cursor: 'pointer',
+                  borderBottom: isActive ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
                   transition: 'border-color 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  display: 'flex', alignItems: 'center', gap: 7,
                 }}
               >
-                <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? 'var(--color-text-1)' : 'var(--color-text-3)', transition: 'color 0.2s' }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 26, fontWeight: 700, color: isActive ? 'var(--color-text-1)' : 'var(--color-text-4)', transition: 'color 0.2s' }}>
                   {tab === 'trips' ? 'Trips' : 'Places'}
                 </span>
                 {count > 0 && (

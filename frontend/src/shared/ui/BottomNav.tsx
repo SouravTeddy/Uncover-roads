@@ -3,7 +3,7 @@ import type { Screen } from '../types';
 
 const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
   { screen: 'destination', icon: 'explore', label: 'Explore'   },
-  { screen: 'trips',       icon: 'route',    label: 'Itinerary' },
+  { screen: 'trips',       icon: 'route',    label: 'Trips' },
   { screen: 'profile',     icon: 'person',  label: 'Profile'   },
 ];
 
