@@ -571,7 +571,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
           overflow: 'hidden',
           touchAction: 'none',
-          maxHeight: expanded ? '72dvh' : 'none',
+          maxHeight: expanded ? '72dvh' : '52dvh',
           transition: 'max-height .4s cubic-bezier(.22,1,.36,1)',
         }}
         ref={panelRef}
@@ -821,7 +821,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               {/* Divider */}
               <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '4px 0 14px' }} />
 
-              {/* At a glance — all pills */}
+              {/* At a glance — all pills except stage (stage is shown as a chip above) */}
               {allPills.length > 0 && (
                 <>
                   <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 9 }}>At a glance</div>
@@ -832,7 +832,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                     </div>
                   )}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                    {allPills.map((pill, i) => renderPill(pill, i))}
+                    {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
                   </div>
                 </>
               )}

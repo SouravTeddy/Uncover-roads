@@ -48,7 +48,6 @@ export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom =
               <div style={{
                 width: size, height: size, borderRadius: '50%',
                 background: pinBg,
-                backdropFilter: 'blur(10px)',
                 border: pinBdr,
                 boxShadow: isActive
                   ? `0 0 0 3px rgba(212,168,83,0.22), ${UNIFIED_PIN_SHADOW}`
@@ -70,26 +69,27 @@ export function RecoPlacesPinsLayer({ places, activePinId, onPinClick, mapZoom =
                 }}>❤️</span>
               )}
 
-              {/* label card — fades with zoom */}
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 7px)',
-                left: '50%', transform: 'translateX(-50%)',
-                padding: '6px 11px', borderRadius: 13,
-                background: isDark ? 'rgba(9,10,14,0.96)' : 'rgba(255,255,255,0.96)',
-                backdropFilter: 'blur(14px)',
-                border: isDark ? '1px solid rgba(242,237,230,0.1)' : '1px solid rgba(44,36,32,0.1)',
-                boxShadow: isDark ? '0 5px 16px rgba(0,0,0,0.6)' : '0 2px 12px rgba(0,0,0,0.12)',
-                whiteSpace: 'nowrap', maxWidth: 130,
-                overflow: 'hidden', textOverflow: 'ellipsis',
-                fontSize: 12.5, fontWeight: 600,
-                color: isDark ? '#f2ede6' : '#2c2420',
-                letterSpacing: '0.01em',
-                pointerEvents: 'none',
-                opacity: labelOpacity,
-                transition: 'opacity 0.25s ease',
-              }}>
-                {place.title}
-              </div>
+              {/* label card — only rendered when zoomed in enough */}
+              {labelOpacity > 0 && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 7px)',
+                  left: '50%', transform: 'translateX(-50%)',
+                  padding: '6px 11px', borderRadius: 13,
+                  background: isDark ? 'rgba(9,10,14,0.96)' : 'rgba(255,255,255,0.96)',
+                  border: isDark ? '1px solid rgba(242,237,230,0.1)' : '1px solid rgba(44,36,32,0.1)',
+                  boxShadow: isDark ? '0 5px 16px rgba(0,0,0,0.6)' : '0 2px 12px rgba(0,0,0,0.12)',
+                  whiteSpace: 'nowrap', maxWidth: 130,
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  fontSize: 12.5, fontWeight: 600,
+                  color: isDark ? '#f2ede6' : '#2c2420',
+                  letterSpacing: '0.01em',
+                  pointerEvents: 'none',
+                  opacity: labelOpacity,
+                  transition: 'opacity 0.25s ease',
+                }}>
+                  {place.title}
+                </div>
+              )}
             </div>
           </Marker>
         )

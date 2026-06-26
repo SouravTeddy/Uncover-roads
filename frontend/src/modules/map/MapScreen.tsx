@@ -189,6 +189,22 @@ export function MapScreen() {
     [filteredPlaces, archetype],
   )
 
+  // Viewport-culled places — only pins inside (or just outside) the current map bbox.
+  // Prevents rendering 2000 accumulated Marker nodes when the user has panned around.
+  const PIN_CAP = 150;
+  const viewportFilteredPlaces = useMemo(() => {
+    if (!mapBbox) return filteredPlaces.slice(0, PIN_CAP);
+    const [minLat, maxLat, minLon, maxLon] = mapBbox;
+    const latPad = (maxLat - minLat) * 0.3;
+    const lonPad = (maxLon - minLon) * 0.3;
+    return filteredPlaces
+      .filter(p =>
+        p.lat >= minLat - latPad && p.lat <= maxLat + latPad &&
+        p.lon >= minLon - lonPad && p.lon <= maxLon + lonPad
+      )
+      .slice(0, PIN_CAP);
+  }, [filteredPlaces, mapBbox]);
+
   // Returns places filtered by the active category chips (no-op when no filter is active)
   const applyCategories = useCallback(
     (items: Place[]): Place[] =>
@@ -544,9 +560,9 @@ export function MapScreen() {
         onBearingChange={setMapBearing}
         routeGeojson={routeGeojson}
       >
-        {/* Famous places — de-dupe against curated picks */}
+        {/* Famous places — viewport-culled and de-duped against curated picks */}
         <FamousPinsLayer
-          places={filteredPlaces.filter(p =>
+          places={viewportFilteredPlaces.filter(p =>
             !selectedIds.has(p.id) &&
             !ourPickIds.has(p.id)
           )}
