@@ -20,6 +20,8 @@ interface Props {
   primaryCity?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
   isJustAdjusted?: boolean;
+  onExplore?: () => void;
+  onRemove?: () => void;
 }
 
 // ── Design tokens ─────────────────────────────────────────────
@@ -254,7 +256,7 @@ const chipBase: React.CSSProperties = {
 };
 
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onExplore, onRemove }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { stop } = card;
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
@@ -669,6 +671,42 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
           );
         })()}
+
+        {/* Action row: Explore nearby + Remove stop */}
+        <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+          {onExplore && (
+            <button
+              onClick={onExplore}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: 7, padding: '11px 16px',
+                borderRadius: 12, border: '1px solid rgba(255,255,255,.12)',
+                background: 'rgba(255,255,255,.07)', backdropFilter: 'blur(10px)',
+                cursor: 'pointer', color: 'rgba(255,255,255,.75)',
+                fontSize: T.fsMd, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+                transition: 'background .15s',
+              }}
+            >
+              <span className="ms" style={{ fontSize: T.fsMd }}>explore</span>
+              Explore nearby
+            </button>
+          )}
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              title="Remove stop"
+              style={{
+                width: 44, flexShrink: 0, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', borderRadius: 12,
+                border: '1px solid rgba(255,255,255,.12)',
+                background: 'rgba(255,255,255,.07)', backdropFilter: 'blur(10px)',
+                cursor: 'pointer', transition: 'background .15s',
+              }}
+            >
+              <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,.45)' }}>delete</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

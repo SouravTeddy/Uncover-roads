@@ -1008,16 +1008,6 @@ export function buildReelCards(
     // No separate wrap-up card needed.
   }
 
-  // Trip-level growth card: show once if ≥2 observations fired across the whole trip
-  if (totalObsCount >= 2 && lastCityLat != null && lastCityLon != null) {
-    cards.push({
-      type: 'growth',
-      lastCity: lastCityName,
-      lastLat:  lastCityLat,
-      lastLon:  lastCityLon,
-    });
-  }
-
   // Balance card: engine ran, zero recos, and no observations — plan is genuinely well-balanced
   const allRecosCount = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
   if (recosByDayIdx.size > 0 && allRecosCount === 0 && totalObsCount < 2) {
