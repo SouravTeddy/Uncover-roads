@@ -4406,28 +4406,9 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         # Also update all_place_ids for subsequent queries (e.g., place_dynamic_profiles)
         all_place_ids = list(set(all_place_ids) | set(_post_swap_place_ids))
 
-    # Backfill photo_ref for inserted stops without cache entry
-    if GOOGLE_PLACES_API_KEY:
-        _all_result_stops_now = [s for day in result.days for s in day.stops]
-        for s in _all_result_stops_now:
-            if s.place_id and s.place_id not in place_details_map:
-                try:
-                    nb = requests.get(
-                        f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                        params={
-                            "location": f"{s.lat},{s.lon}",
-                            "radius": 50,
-                            "keyword": s.name,
-                            "key": GOOGLE_PLACES_API_KEY,
-                        },
-                        timeout=4,
-                    ).json()
-                    nb_results = nb.get("results", [])
-                    if nb_results and nb_results[0].get("photos"):
-                        ref = nb_results[0]["photos"][0]["photo_reference"]
-                        place_details_map[s.place_id] = {"photo_ref": ref}
-                except Exception:
-                    pass
+    # Photo backfill for inserted stops is intentionally omitted from the request path.
+    # The reel card fetches photos on-demand (ReelStopCard fetchPlaceDetails fallback),
+    # so blocking here with sequential Google NearbySearch calls is unnecessary latency.
 
     # Fetch discovery stage (hidden_gem / rising / mainstream) from place_dynamic_profiles
     _stage_map: dict[str, dict] = {}

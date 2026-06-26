@@ -9,13 +9,13 @@ import os
 import anthropic
 from engine.types import EngineMessage, EngineContext
 
-_client: anthropic.Anthropic | None = None
+_client: anthropic.AsyncAnthropic | None = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> anthropic.AsyncAnthropic:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        _client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     return _client
 
 
@@ -79,10 +79,9 @@ async def narrate(
         return messages
     try:
         prompt = _build_batch_prompt(messages, ctx.persona)
-        # Use sync client in async context — acceptable for a single batched call
-        response = _get_client().messages.create(
+        response = await _get_client().messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=2000,
+            max_tokens=min(2000, 120 * len(messages)),
             messages=[{"role": "user", "content": prompt}],
         )
         return _parse_narrated_messages(response, messages)
