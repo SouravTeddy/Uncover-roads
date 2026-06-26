@@ -155,6 +155,12 @@ function ScreenRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const { currentScreen } = state;
+
+  // Once the map has been visited, keep it mounted forever so MapLibre state survives tab switches.
+  const mapEverVisited = React.useRef(false);
+  if (currentScreen === 'map') mapEverVisited.current = true;
+
   if (isDesktop && !desktopBypassed && state.currentScreen !== 'trips') {
     return <DesktopGate onBypass={() => {
       try { localStorage.setItem('ur_desktop_bypass', '1'); } catch { /* ignore */ }
@@ -162,13 +168,22 @@ function ScreenRouter() {
     }} />;
   }
 
-  const { currentScreen } = state;
-
   return (
     <div
       className="relative w-full"
       style={{ background: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      {/* MapScreen lives outside AnimatePresence so the MapLibre instance (tiles, viewport,
+          pins) survives tab switches. Mounted on first visit, then toggled via display. */}
+      {mapEverVisited.current && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          display: currentScreen === 'map' ? undefined : 'none',
+        }}>
+          <MapScreen />
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentScreen}
@@ -192,7 +207,6 @@ function ScreenRouter() {
           {currentScreen === 'ob9'          && <OB9BudgetProtect />}
           {currentScreen === 'persona'     && <PersonaScreen />}
           {currentScreen === 'destination' && <DestinationScreen />}
-          {currentScreen === 'map'         && <MapScreen />}
           {currentScreen === 'journey'     && <JourneyScreen />}
           {currentScreen === 'route'          && <RouteScreen />}
           {/* Keep reel mounted while on map so back-navigation is instant (no rebuild) */}

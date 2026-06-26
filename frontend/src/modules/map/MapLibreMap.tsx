@@ -55,10 +55,34 @@ function inject3DBuildings(style: any): any {
   return { ...style, layers }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function styleLabels(style: any): any {
+  const isDark = document.documentElement.dataset.theme !== 'light'
+  // Override text color on all symbol (label) layers to match theme
+  const textColor = isDark ? 'rgba(215,205,190,.82)' : 'rgba(38,28,18,.72)'
+  const haloColor = isDark ? 'rgba(10,9,8,.7)' : 'rgba(255,252,248,.8)'
+  return {
+    ...style,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    layers: style.layers.map((layer: any) => {
+      if (layer.type !== 'symbol' || !layer.paint?.['text-color']) return layer
+      return {
+        ...layer,
+        paint: {
+          ...layer.paint,
+          'text-color': textColor,
+          'text-halo-color': haloColor,
+          'text-halo-width': 1.2,
+        },
+      }
+    }),
+  }
+}
+
 async function fetchMapStyle(url: string): Promise<StyleSpecification> {
   const res = await fetch(url)
   const style = await res.json()
-  return inject3DBuildings(forceEnglishLabels(style))
+  return inject3DBuildings(styleLabels(forceEnglishLabels(style)))
 }
 
 export interface MapHandle {

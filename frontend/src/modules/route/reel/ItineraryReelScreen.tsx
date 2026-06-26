@@ -813,7 +813,23 @@ export function ItineraryReelScreen() {
           }
           else if (card.type === 'stop') {
             const isJustAdjusted = recentlyAdjustedIds.has((card as ReelStopCardType).stop.id);
-            child = <ReelStopCard card={card} active={isActive} weather={weather} primaryCity={city || activeItinerary?.city || ''} isJustAdjusted={isJustAdjusted} />;
+            child = <ReelStopCard
+              card={card} active={isActive} weather={weather}
+              primaryCity={city || activeItinerary?.city || ''}
+              isJustAdjusted={isJustAdjusted}
+              onExplore={() => {
+                const { lat, lon } = (card as ReelStopCardType).stop;
+                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.03, lat + 0.03, lon - 0.03, lon + 0.03] } });
+                dispatch({ type: 'GO_TO', screen: 'map' });
+              }}
+              onRemove={() => {
+                const stop = (card as ReelStopCardType).stop;
+                if (undoTimer.current) clearTimeout(undoTimer.current);
+                setRemovedStopIds(prev => new Set([...prev, stop.id]));
+                setUndoPending({ id: stop.id, label: stop.title });
+                undoTimer.current = setTimeout(() => setUndoPending(null), 4000);
+              }}
+            />;
           }
           else if (card.type === 'reco')    child = (
             <ReelRecoCard

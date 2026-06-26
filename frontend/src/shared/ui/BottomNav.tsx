@@ -24,6 +24,13 @@ export function BottomNav() {
   }
 
   function handleTap(screen: Screen) {
+    // When tapping Explore while already in the explore group, do nothing — preserve map state.
+    if (screen === 'destination' && EXPLORE_SCREENS.has(currentScreen)) return;
+    // When returning to Explore from another tab, go straight to map if a city is loaded.
+    if (screen === 'destination' && state.cityGeo) {
+      dispatch({ type: 'NAV_TAB', screen: 'map' });
+      return;
+    }
     dispatch({ type: 'NAV_TAB', screen });
   }
 
