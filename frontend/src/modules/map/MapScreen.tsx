@@ -215,6 +215,8 @@ export function MapScreen() {
     state.travelStartDate, state.travelEndDate, activeCityDays,
   )
 
+  const cityAbortRef = useRef<AbortController | null>(null);
+
   const handleAreaLoad = useCallback(async (
     centerLat: number,
     centerLon: number,
@@ -222,9 +224,19 @@ export function MapScreen() {
     replace = false,
   ) => {
     if (!city) return;
+
+    // Cancel any in-flight city-replace request before starting a new one
+    let signal: AbortSignal | undefined;
+    if (replace) {
+      cityAbortRef.current?.abort();
+      cityAbortRef.current = new AbortController();
+      signal = cityAbortRef.current.signal;
+    }
+
     setMapStatus('loading');
     try {
-      const raw = await mapData(city, centerLat, centerLon, radiusM);
+      const raw = await mapData(city, centerLat, centerLon, radiusM, signal);
+      if (signal?.aborted) return;
       const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({
         ...p,
         id: p.id ?? `${p.title}-${i}`,

@@ -1,5 +1,28 @@
 import { useCallback, useRef } from 'react';
 
+const TILE_ZOOM  = 14;   // ~2.4 km tiles at equator, ~1.5 km at 45°
+const DEBOUNCE   = 500;  // ms — wait until the user stops moving
+const MIN_ZOOM   = 12;   // don't fetch pins when zoomed too far out
+const PREFETCH_DELAY = 350; // ms after primary fetch fires adjacent tiles
+
+function latLonToTile(lat: number, lon: number, z: number): [number, number] {
+  const n = Math.pow(2, z);
+  const x = Math.floor((lon + 180) / 360 * n);
+  const lr = lat * Math.PI / 180;
+  const y = Math.floor((1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n);
+  return [x, y];
+}
+
+function tileCenter(tx: number, ty: number, z: number): [number, number] {
+  const n = Math.pow(2, z);
+  const lon = (tx + 0.5) / n * 360 - 180;
+  const lr = Math.atan(Math.sinh(Math.PI * (1 - 2 * (ty + 0.5) / n)));
+  return [lr * 180 / Math.PI, lon];
+}
+
+// N, S, W, E orthogonal neighbours — most likely next direction of travel
+const NEIGHBOURS: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
 interface UseMapMoveProps {
   onFetch: (center: [number, number], zoom: number) => void;
   onZoomedOut: () => void;
@@ -7,43 +30,53 @@ interface UseMapMoveProps {
 
 export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
   const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastFetchRef = useRef<[number, number] | null>(null);
+  const prefetchRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchedTiles = useRef(new Set<string>());
 
   const handleMoveEnd = useCallback(
     (center: [number, number], zoom: number) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
       debounceRef.current = setTimeout(() => {
-        // Zoom gate — don't load pins when zoomed too far out
-        if (zoom < 12) {
-          // Clear lastFetch so zooming back in always triggers a fresh fetch
-          lastFetchRef.current = null;
+        if (zoom < MIN_ZOOM) {
+          // Zoomed too far out — clear cache so zooming back in re-fetches fresh data
+          fetchedTiles.current.clear();
           onZoomedOut();
           return;
         }
 
-        // Displacement check — only fetch if moved >40% of viewport width
-        const viewportWidthDeg = 360 / Math.pow(2, zoom);
-        const thresholdDeg = viewportWidthDeg * 0.4;
+        const [tx, ty] = latLonToTile(center[0], center[1], TILE_ZOOM);
+        const key = `${tx}/${ty}`;
 
-        if (lastFetchRef.current) {
-          const [lastLat, lastLon] = lastFetchRef.current;
-          const dLat = Math.abs(center[0] - lastLat);
-          const dLon = Math.abs(center[1] - lastLon);
-          if (dLat < thresholdDeg && dLon < thresholdDeg) return;
-        }
+        // Tile already fetched — nothing to do
+        if (fetchedTiles.current.has(key)) return;
 
-        lastFetchRef.current = center;
+        // Primary tile
+        fetchedTiles.current.add(key);
         onFetch(center, zoom);
-      }, 700);
+
+        // Prefetch orthogonal neighbours after a short delay so the primary
+        // fetch gets a head start and the server isn't hit by 5 requests at once
+        if (prefetchRef.current) clearTimeout(prefetchRef.current);
+        prefetchRef.current = setTimeout(() => {
+          for (const [dx, dy] of NEIGHBOURS) {
+            const nKey = `${tx + dx}/${ty + dy}`;
+            if (!fetchedTiles.current.has(nKey)) {
+              fetchedTiles.current.add(nKey);
+              onFetch(tileCenter(tx + dx, ty + dy, TILE_ZOOM), zoom);
+            }
+          }
+        }, PREFETCH_DELAY);
+      }, DEBOUNCE);
     },
     [onFetch, onZoomedOut],
   );
 
-  // Call when a fetch is initiated externally (e.g. initial load)
-  // so the displacement check starts from the right position
+  // Called on initial city load so the starting tile is recorded as already fetched,
+  // preventing a duplicate fetch when the user pans back to the starting position.
   const setLastFetch = useCallback((center: [number, number]) => {
-    lastFetchRef.current = center;
+    const [tx, ty] = latLonToTile(center[0], center[1], TILE_ZOOM);
+    fetchedTiles.current.add(`${tx}/${ty}`);
   }, []);
 
   return { handleMoveEnd, setLastFetch };

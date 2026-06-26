@@ -423,6 +423,19 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const collapsedPills = allPills.slice(0, 2);
 
   const panelRef = useRef<HTMLDivElement>(null);
+  const panelTouchY = useRef(0);
+
+  // ── Panel swipe — drag up to expand, drag down to collapse ─
+  const onPanelTouchStart = (e: React.TouchEvent) => {
+    panelTouchY.current = e.touches[0].clientY;
+  };
+  const onPanelTouchEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - panelTouchY.current;
+    if (Math.abs(dy) < 24) return; // too small — let click fire normally
+    e.preventDefault(); // prevent the subsequent synthetic click
+    if (dy < 0) setExpandedSync(true);
+    if (dy > 0) { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }
+  };
 
   // ── Pill click ─────────────────────────────────────────────
   const handlePillClick = (pill: CardPill, el: HTMLElement) => {
@@ -546,6 +559,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         ref={panelRef}
         data-panel="true"
         onClick={(e) => { e.stopPropagation(); if (!expanded) setExpandedSync(true); }}
+        onTouchStart={onPanelTouchStart}
+        onTouchEnd={onPanelTouchEnd}
       >
         {/* Handle + stop counter — tap to toggle expanded */}
         <div
@@ -704,7 +719,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
         {/* Expanded content */}
         {expanded && (
-          <div className="no-scrollbar" style={{ overflowY: 'auto', maxHeight: 'calc(72dvh - 160px)', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+          <div className="no-scrollbar" style={{ overflowY: 'auto', maxHeight: 'calc(72dvh - 160px)', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
             <div style={{ padding: '0 18px calc(env(safe-area-inset-bottom,0px) + 84px)' }}>
 
               {/* Identity chips row */}

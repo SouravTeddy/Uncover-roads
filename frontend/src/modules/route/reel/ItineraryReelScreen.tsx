@@ -341,52 +341,11 @@ export function ItineraryReelScreen() {
 
 
 
-  // Document-level gesture handler — mirrors proto approach.
-  // touchAction:'none' on the container blocks native scroll; we drive card
-  // navigation with scrollBy() and panel expand/collapse via panelControlRef.
+  // Collapse the panel whenever the active card changes so expanded state
+  // from a previous card doesn't bleed into the next one.
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    let startX = 0, startY = 0, onPanel = false, active = false;
-
-    const onDown = (x: number, y: number, target: Element | null) => {
-      startX = x; startY = y; active = true;
-      onPanel = !!target?.closest('[data-panel]');
-    };
-    const onUp = (x: number, y: number) => {
-      if (!active) return;
-      active = false;
-      const dx = x - startX, dy = y - startY;
-      if (Math.abs(dx) > Math.abs(dy) || Math.abs(dy) < 28) return;
-      const isExp = panelControlRef.current?.isExpanded() ?? false;
-      if (onPanel) {
-        if (dy < 0) panelControlRef.current?.expand();
-        if (dy > 0) panelControlRef.current?.collapse();
-      } else {
-        if (isExp) {
-          // swipe down on photo while expanded → collapse first, then go back
-          if (dy > 0) {
-            panelControlRef.current?.collapse();
-            setTimeout(() => el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' }), 380);
-          }
-          // swipe up on photo while expanded → do nothing (collapse first)
-        } else {
-          if (dy < 0) el.scrollBy({ top:  el.clientHeight, behavior: 'smooth' });
-          if (dy > 0) el.scrollBy({ top: -el.clientHeight, behavior: 'smooth' });
-        }
-      }
-    };
-
-    const onPD = (e: PointerEvent) => { if (e.pointerType !== 'mouse' || true) onDown(e.clientX, e.clientY, e.target as Element); };
-    const onPU = (e: PointerEvent) => onUp(e.clientX, e.clientY);
-
-    document.addEventListener('pointerdown', onPD);
-    document.addEventListener('pointerup',   onPU);
-    return () => {
-      document.removeEventListener('pointerdown', onPD);
-      document.removeEventListener('pointerup',   onPU);
-    };
-  }, []);
+    panelControlRef.current?.collapse();
+  }, [activeIdx]);
 
   // Show the scroll-to-top arrow for 1 s whenever the active card changes, then fade it out
   useEffect(() => {
@@ -829,7 +788,7 @@ export function ItineraryReelScreen() {
           position: 'fixed', inset: 0,
           overflowY: 'scroll', overflowX: 'hidden',
           scrollSnapType: 'y mandatory',
-          touchAction: 'none',
+          touchAction: 'pan-y',
           overscrollBehavior: 'none',
           background: 'var(--color-bg)',
         }}
