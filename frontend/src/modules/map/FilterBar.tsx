@@ -55,11 +55,11 @@ export function FilterBar({
 
   const chipStyle = (isActive: boolean, isEmptyActive = false): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-    padding: '5px 12px', height: 30, borderRadius: 999,
+    padding: '6px 14px', height: 34, borderRadius: 999,
     background: isEmptyActive ? 'rgba(232,97,90,.14)' : isActive ? 'rgba(212,168,83,.15)' : 'var(--color-surface2)',
     border: isEmptyActive ? '1.5px solid #e8615a' : isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
     color: isEmptyActive ? '#e8615a' : isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
-    fontSize: '0.8rem', fontWeight: 600,
+    fontSize: '0.875rem', fontWeight: 600,
     backdropFilter: 'blur(8px)', cursor: 'pointer',
     whiteSpace: 'nowrap', transition: 'all 0.12s ease',
   })

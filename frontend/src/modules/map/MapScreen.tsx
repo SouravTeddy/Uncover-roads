@@ -189,6 +189,13 @@ export function MapScreen() {
     [filteredPlaces, archetype],
   )
 
+  // Returns places filtered by the active category chips (no-op when no filter is active)
+  const applyCategories = useCallback(
+    (items: Place[]): Place[] =>
+      activeCategories.length === 0 ? items : items.filter(p => activeCategories.includes(p.category)),
+    [activeCategories],
+  )
+
   // Phase 11: Live events layer
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([])
 
@@ -549,9 +556,9 @@ export function MapScreen() {
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
-        {/* Reco places — always visible */}
+        {/* Reco places — filtered by active category when a chip is selected */}
         <RecoPlacesPinsLayer
-          places={(recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '') && !selectedIds.has(p.id) && !selectedIds.has(p.place_id ?? ''))}
+          places={applyCategories((recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '') && !selectedIds.has(p.id) && !selectedIds.has(p.place_id ?? '')))}
           activePinId={activePinId ?? null}
           mapZoom={mapZoom}
           favouritedIds={favouritedIds}
@@ -570,7 +577,7 @@ export function MapScreen() {
 
         {/* Curated picks — ✦ sparkle distinguishes them visually */}
         <OurPicksPinsLayer
-          picks={ourPicks}
+          picks={applyCategories(ourPicks)}
           activePinId={activePinId ?? null}
           onPinClick={handlePicksPinClick}
           selectedPlaceIds={selectedIds}

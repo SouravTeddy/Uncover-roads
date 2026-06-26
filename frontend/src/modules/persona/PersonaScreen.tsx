@@ -1,39 +1,11 @@
 // frontend/src/modules/persona/PersonaScreen.tsx
 import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../../shared/store';
 import { supabase } from '../../shared/supabase';
 import { syncPersonaProfile } from '../../shared/userSync';
 import { PERSONA_DEFINITIONS } from './types';
 import { resolvePersonaKey, legacyArchetypeToPersonaKey } from './persona-resolver';
 import type { PersonaKey } from './types';
-
-// ── Framer variants ───────────────────────────────────────────────────────────
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-const sectionVariants = {
-  hidden:   { opacity: 0, y: 20 },
-  visible:  { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-};
-const tagContainerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.065, delayChildren: 0.08 } },
-};
-const tagItemVariants = {
-  hidden:  { opacity: 0, y: 10, scale: 0.9 },
-  visible: { opacity: 1, y: 0,  scale: 1,
-    transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] } },
-};
-
-// ── Social context SVG icons ─────────────────────────────────────────────────
-const SOCIAL_ICONS: Record<string, string> = {
-  solo:   `<circle cx="12" cy="7" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>`,
-  couple: `<path d="M12 21l-1.4-1.3C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.2L12 21z"/>`,
-  family: `<circle cx="8.5" cy="6" r="2.5"/><circle cx="15.5" cy="6" r="2.5"/><circle cx="12" cy="16" r="2"/><path d="M3 19c0-3 2.5-5.5 5.5-5.5h1.5M21 19c0-3-2.5-5.5-5.5-5.5h-1.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-  group:  `<circle cx="7" cy="7.5" r="2.5"/><circle cx="17" cy="7.5" r="2.5"/><circle cx="7" cy="16.5" r="2.5"/><circle cx="17" cy="16.5" r="2.5"/>`,
-};
 
 // ── Confetti burst ────────────────────────────────────────────────────────────
 function ConfettiBurst({ primary }: { primary: string }) {
@@ -71,41 +43,39 @@ function ConfettiBurst({ primary }: { primary: string }) {
   );
 }
 
+// ── Interest-style chips (replaces behaviour-style chips for the reveal card) ─
+const LOVE_CHIPS: Record<PersonaKey, [string, string, string]> = {
+  flaneur:            ['Hidden Streets',    'Local Wandering',      'Unexpected Finds'],
+  gastronaut:         ['Street Food',       'Local Markets',        'Authentic Flavours'],
+  slowScholar:        ['History & Heritage','Museums',              'Deep Culture'],
+  neighbourhoodLocal: ['Local Life',        'Neighbourhood Texture','Quiet Corners'],
+  efficientExplorer:  ['Key Landmarks',     'City Highlights',      'Local Finds'],
+  aesthete:           ['Art & Design',      'Architecture',         'Beautiful Spaces'],
+  nightCreature:      ['Nightlife',         'Late Bars',            'Live Music'],
+  ritualSeeker:       ['Local Rituals',     'Morning Culture',      'Cultural Events'],
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 export function PersonaScreen() {
   const { state, dispatch } = useAppStore();
   const profile    = state.personaProfile;
   const rawAnswers = state.rawOBAnswers;
-
-  // Beat 1: atmosphere (0–1.5s)
-  // Beat 2: traits (1.5–4s)
-  // Beat 3: statement + rings (4–6.5s)
-  // Beat 4: content reveal (6.5s+)
-  const [beat, setBeat] = useState<1 | 2 | 3 | 4>(1);
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setBeat(2), 2500);
-    const t2 = setTimeout(() => setBeat(3), 6500);
-    const t3 = setTimeout(() => { setBeat(4); setShowConfetti(true); }, 11000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const t = setTimeout(() => setShowConfetti(true), 350);
+    return () => clearTimeout(t);
   }, []);
 
-  // ── Resolve persona ─────────────────────────────────────────────────────────
   const personaKey: PersonaKey = useMemo(() => {
     if (rawAnswers) return resolvePersonaKey(rawAnswers);
-    // Fallback: if stored persona exists with old key, migrate it
     const stored = state.persona?.archetype;
     if (stored) return legacyArchetypeToPersonaKey(stored);
     return 'flaneur';
   }, [rawAnswers, state.persona?.archetype]);
 
   const def = PERSONA_DEFINITIONS[personaKey];
-
-  // ── Social context ──────────────────────────────────────────────────────────
-  const rawGroup = rawAnswers?.group ?? 'solo';
-  const socialKey: 'solo' | 'couple' | 'family' | 'group' =
-    rawGroup === 'friends' ? 'group' : rawGroup;
+  const loveChips = LOVE_CHIPS[personaKey];
 
   if (!profile) {
     return (
@@ -122,9 +92,6 @@ export function PersonaScreen() {
     );
   }
 
-  const bgGradient = `linear-gradient(to bottom, ${def.bgFrom}, ${def.bgTo})`;
-  const gradientText = `linear-gradient(135deg, ${def.primary}, ${def.secondary})`;
-
   function startPlanning() {
     dispatch({
       type: 'SET_PERSONA',
@@ -134,7 +101,7 @@ export function PersonaScreen() {
         archetype_desc: def.headline,
         ritual:         null, sensory: null, style: null,
         attractions: [], pace: null, social: null,
-        insight:        def.social[socialKey],
+        insight:        def.social['solo'],
         venue_filters:  def.placeTags,
         itinerary_bias: def.chips,
         archetypeData:  { name: def.name, desc: def.headline, venue_filters: def.placeTags, itinerary_bias: def.chips },
@@ -149,252 +116,102 @@ export function PersonaScreen() {
     dispatch({ type: 'GO_TO', screen: 'destination' });
   }
 
-  const statementLines = def.statement.split('\n');
-
   return (
-    <div
-      className="fixed inset-0 overflow-y-auto"
-      style={{ zIndex: 20, background: bgGradient, animation: 'springUp 0.45s ease both' }}
-    >
+    <div className="fixed inset-0" style={{ zIndex: 20, animation: 'springUp 0.38s ease both' }}>
       {showConfetti && <ConfettiBurst primary={def.primary} />}
 
-      {/* ── Cinematic overlay ── */}
-      <AnimatePresence>
-        {beat < 4 && (
-          <motion.div
-            className="fixed inset-0 flex flex-col items-center justify-center px-8"
-            style={{ zIndex: 30, background: bgGradient }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            {/* Beat 1 — big emoji */}
-            {beat === 1 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 0.35, scale: 1 }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
-                style={{ fontSize: 'clamp(80px, 22vw, 120px)', lineHeight: 1, filter: `drop-shadow(0 0 32px ${def.primary})` }}
-              >
-                {def.heroEmoji}
-              </motion.div>
-            )}
+      {/* Full-bleed hero image */}
+      <img
+        src={def.image}
+        alt=""
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        loading="eager"
+      />
 
-            {/* Beat 2 — trait lines */}
-            {beat === 2 && (
-              <div className="flex flex-col items-center justify-center gap-6">
-                {def.traits.map((line, i) => (
-                  <motion.p
-                    key={i}
-                    className="text-white/90 text-center font-light tracking-wide"
-                    style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(18px, 5vw, 22px)' }}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.8, duration: 0.7 }}
-                  >
-                    {line}
-                  </motion.p>
-                ))}
-              </div>
-            )}
+      {/* Gradient scrim — darkens toward the bottom for legibility */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: `linear-gradient(to bottom, rgba(0,0,0,.12) 0%, ${def.bgFrom}bb 45%, ${def.bgFrom}f5 72%, ${def.bgFrom} 100%)`,
+      }} />
 
-            {/* Beat 3 — statement + rings */}
-            {beat === 3 && (
-              <div className="relative flex flex-col items-center justify-center">
-                {[0, 0.55].map((delay, i) => (
-                  <div key={i} className="absolute" style={{
-                    width: 200, height: 200, borderRadius: '50%',
-                    border: `1px solid ${i === 0 ? def.primary + '55' : 'rgba(255,255,255,0.18)'}`,
-                    animation: `persona-ring 2.2s ${delay}s ease-out infinite`,
-                  }} />
-                ))}
-                <motion.div
-                  className="relative flex flex-col items-center gap-3"
-                  initial={{ opacity: 0, scale: 0.88 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {statementLines.map((line, i) => (
-                    <span
-                      key={i}
-                      className="text-center leading-none"
-                      style={{
-                        fontFamily: 'var(--font-heading)',
-                        fontSize: 'clamp(44px, 13vw, 64px)',
-                        fontWeight: 700,
-                        ...(i === def.gradientLine
-                          ? { background: gradientText, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }
-                          : { color: '#fff' }
-                        ),
-                      }}
-                    >
-                      {line}
-                    </span>
-                  ))}
-                </motion.div>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Content — bottom-anchored */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        padding: '0 24px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)',
+        animation: 'springUp 0.52s 0.18s ease both',
+      }}>
+        {/* Eyebrow */}
+        <p style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,.38)', marginBottom: 20,
+        }}>
+          Based on your answers
+        </p>
 
-      {/* ── Main content ── */}
-      <motion.div variants={containerVariants} initial="hidden" animate={beat >= 4 ? 'visible' : 'hidden'}>
-
-        {/* Top bar */}
-        <motion.div variants={sectionVariants} className="flex items-center gap-2 px-5 py-4 border-b border-white/6">
-          <span className="ms text-text-2 text-xl">explore</span>
-          <span className="font-heading font-bold text-text-1 text-[15px]">Uncover Roads</span>
-        </motion.div>
-
-        {/* Header image */}
-        <motion.div variants={sectionVariants} className="relative w-full overflow-hidden" style={{ height: 220 }}>
-          <img
-            src={def.image}
-            alt=""
-            className="w-full h-full object-cover"
-            loading="eager"
-          />
-          {/* Color grade overlay */}
-          <div className="absolute inset-0" style={{
-            background: `linear-gradient(to bottom, ${def.primary}44 0%, transparent 45%, ${def.bgFrom} 100%)`,
-          }} />
-          {/* Social badge */}
-          <div
-            className="absolute bottom-3 right-4 flex items-center justify-center"
-            style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'rgba(0,0,0,0.7)',
-              border: `1.5px solid ${def.primary}`,
-              color: def.primary,
-              boxShadow: `0 0 10px ${def.primary}60`,
-            }}
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"
-              dangerouslySetInnerHTML={{ __html: SOCIAL_ICONS[socialKey] }}
-            />
-          </div>
-        </motion.div>
-
-        {/* Hero headline + social subtext */}
-        <motion.div variants={sectionVariants} className="px-5 mt-4">
-          <h1
-            className="leading-tight"
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: 'clamp(26px, 7vw, 32px)',
-              fontWeight: 700,
-              background: gradientText,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            {def.headline}
-          </h1>
-          <p className="text-text-2 text-[13px] mt-2 leading-relaxed" style={{ maxWidth: 300 }}>
-            {def.social[socialKey]}
-          </p>
-        </motion.div>
-
-        {/* Instinct chips */}
-        <motion.div variants={sectionVariants} className="px-5 mt-5">
-          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Your travel instincts</p>
-          <div className="flex gap-2 flex-wrap">
-            {def.chips.map((chip, i) => (
-              <div
-                key={`chip-${i}`}
-                className="px-3 h-9 rounded-full flex items-center text-[13px] font-semibold"
-                style={{
-                  background: i === 0 ? `${def.primary}20` : i === 1 ? `${def.secondary}18` : `${def.primary}12`,
-                  border:     i === 0 ? `1px solid ${def.primary}45` : i === 1 ? `1px solid ${def.secondary}40` : `1px solid ${def.primary}30`,
-                  color:      i === 1 ? def.secondary : def.primary,
-                }}
-              >
-                {chip}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Route style */}
-        <motion.div variants={sectionVariants} className="px-5 mt-5">
-          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-2">How we build your day</p>
-          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
-            <span style={{ fontSize: 18 }}>🗺️</span>
-            <p className="text-text-2 text-[13px] leading-relaxed">{def.route}</p>
-          </div>
-        </motion.div>
-
-        {/* Prioritise / Skip */}
-        <motion.div variants={sectionVariants} className="px-5 mt-4 flex flex-col gap-2">
-          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
-            <span className="text-[13px] font-bold mt-0.5" style={{ color: def.primary }}>✦</span>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: def.primary }}>We surface</p>
-              <p className="text-text-2 text-[13px] leading-relaxed">{def.prioritise}</p>
+        {/* We think you love */}
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(100,220,255,.7)', marginBottom: 10 }}>
+          We think you love
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
+          {loveChips.map((chip, i) => (
+            <div key={i} style={{
+              padding: '7px 15px', borderRadius: 999,
+              background: 'rgba(56,210,255,.12)',
+              border: '1px solid rgba(56,210,255,.45)',
+              color: '#38D2FF',
+              fontSize: 13, fontWeight: 600,
+            }}>
+              {chip}
             </div>
-          </div>
-          <div className="flex items-start gap-3 py-3 px-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
-            <span className="text-[13px] font-bold mt-0.5 opacity-40">✕</span>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-text-3">We skip</p>
-              <p className="text-text-2 text-[13px] leading-relaxed">{def.skip}</p>
+          ))}
+        </div>
+
+        {/* We'll surface */}
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.38)', marginBottom: 10 }}>
+          We'll surface
+        </p>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 32 }}>
+          {def.placeTags.slice(0, 4).map((tag, i) => (
+            <div key={i} style={{
+              padding: '6px 13px', borderRadius: 999,
+              background: 'rgba(255,255,255,.07)',
+              border: '1px solid rgba(255,255,255,.16)',
+              color: 'rgba(255,255,255,.75)',
+              fontSize: 12, fontWeight: 500,
+            }}>
+              {tag}
             </div>
-          </div>
-        </motion.div>
+          ))}
+        </div>
 
-        {/* Place tags — per-tag stagger */}
-        <motion.div variants={sectionVariants} className="px-5 mt-5">
-          <p className="text-text-3 text-[10px] font-bold uppercase tracking-widest mb-3">Places for you</p>
-          <motion.div
-            className="flex flex-wrap gap-2"
-            variants={tagContainerVariants}
-            initial="hidden"
-            animate={beat >= 4 ? 'visible' : 'hidden'}
-          >
-            {def.placeTags.map((tag, i) => (
-              <motion.div
-                key={`tag-${i}`}
-                variants={tagItemVariants}
-                className="flex items-center px-3 h-9 rounded-xl text-[13px] font-medium"
-                style={{
-                  background: i % 2 === 0 ? `${def.primary}14` : `${def.secondary}12`,
-                  border:     i % 2 === 0 ? `1px solid ${def.primary}30` : `1px solid ${def.secondary}28`,
-                  color:      i % 2 === 0 ? def.primary : def.secondary,
-                }}
-              >
-                {tag}
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
+        {/* CTA */}
+        <button
+          onClick={startPlanning}
+          style={{
+            position: 'relative', overflow: 'hidden',
+            width: '100%', height: 56, borderRadius: 18,
+            background: `linear-gradient(135deg, ${def.primary}, ${def.secondary})`,
+            border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            fontFamily: 'var(--font-sans)', fontSize: 16, fontWeight: 700, color: '#fff',
+          }}
+        >
+          Start exploring
+          <span className="ms" style={{ fontSize: 18 }}>arrow_forward</span>
+        </button>
 
-        {/* CTAs */}
-        <motion.div variants={sectionVariants} className="px-5 mt-8 pb-14">
-          <button
-            onClick={startPlanning}
-            className="relative overflow-hidden w-full h-14 rounded-2xl font-heading font-bold text-white text-[17px] flex items-center justify-center gap-2 mb-3"
-            style={{ background: `linear-gradient(135deg, ${def.primary}, ${def.secondary})` }}
-          >
-            <motion.div
-              className="absolute inset-y-0 pointer-events-none"
-              style={{ width: '55%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)' }}
-              initial={{ left: '-60%', skewX: -15 }}
-              animate={{ left: '160%', skewX: -15 }}
-              transition={{ delay: 0.9, duration: 0.62, ease: 'easeInOut' }}
-            />
-            Start Planning
-            <span className="ms text-base">arrow_forward</span>
-          </button>
-          <button
-            onClick={() => dispatch({ type: 'GO_TO', screen: 'ob1' })}
-            className="w-full h-12 rounded-2xl bg-transparent text-text-3 text-[14px] flex items-center justify-center gap-1.5 border border-white/8"
-          >
-            <span className="ms text-base">refresh</span>
-            Retake Assessment
-          </button>
-        </motion.div>
-
-      </motion.div>
+        {/* Retake — subtle link */}
+        <button
+          onClick={() => dispatch({ type: 'GO_TO', screen: 'ob1' })}
+          style={{
+            width: '100%', marginTop: 14, background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 12, color: 'rgba(255,255,255,.3)', fontFamily: 'var(--font-sans)',
+          }}
+        >
+          Retake assessment
+        </button>
+      </div>
     </div>
   );
 }
