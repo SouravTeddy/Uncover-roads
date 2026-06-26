@@ -12,6 +12,12 @@ import {
   makeRng, WEATHER_ICON,
 } from './reel-constants';
 
+export interface PanelControl {
+  expand:     () => void;
+  collapse:   () => void;
+  isExpanded: () => boolean;
+}
+
 interface Props {
   card: ReelStopCardType;
   active: boolean;
@@ -22,6 +28,7 @@ interface Props {
   isJustAdjusted?: boolean;
   onExplore?: () => void;
   onRemove?: () => void;
+  onRegisterPanelControl?: (ctrl: PanelControl | null) => void;
 }
 
 // ── Design tokens ─────────────────────────────────────────────
@@ -44,9 +51,9 @@ const T = {
   pillClr:  'rgba(255,255,255,0.90)',
   ctrBg:    'rgba(0,0,0,0.68)',
   // Type scale — optimised for real-phone legibility
-  fsXs:    12,   // chip labels, footnotes
-  fsSm:    15,   // location, meta, secondary text
-  fsMd:    17,   // body copy, logistics rows
+  fsXs:    13,   // chip labels, footnotes
+  fsSm:    16,   // location, meta, secondary text
+  fsMd:    18,   // body copy, logistics rows
   fsTitle: 40,   // stop name (Playfair Display)
 };
 
@@ -255,10 +262,41 @@ const chipBase: React.CSSProperties = {
   backdropFilter: 'blur(8px)',
 };
 
+// ── Pill types ────────────────────────────────────────────────
+interface CardPill {
+  icon: string;
+  label: string;
+  urgent: boolean;            // amber vs neutral
+  detail: { title: string; body: string } | null;
+  // Optional explicit color overrides (for stage/identity pills)
+  color?: string;
+  bg?: string;
+  border?: string;
+}
+
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onExplore, onRemove }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onExplore, onRemove, onRegisterPanelControl }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const expandedRef = useRef(false);
+  const [pillDetail, setPillDetail] = useState<{ title: string; body: string } | null>(null);
+  const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
+
+  // Keep expandedRef in sync so PanelControl.isExpanded() always reads current value
+  const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
+
+  // Register expand/collapse handles with the parent (ItineraryReelScreen gesture handler)
+  useEffect(() => {
+    onRegisterPanelControl?.({
+      expand:     () => setExpandedSync(true),
+      collapse:   () => { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); },
+      isExpanded: () => expandedRef.current,
+    });
+    return () => onRegisterPanelControl?.(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onRegisterPanelControl]);
   const { stop } = card;
+  // Use stop.time for visit-time-based crowd notes — NOT current system clock
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
   const dotColor  = todDotColor(hour);
   const wxOverride = import.meta.env.DEV
@@ -341,6 +379,98 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
   const visitDateLabel = fmtVisitDate(card.visitDate);
 
+  // ── Build pill list (ordered by priority) ─────────────────
+  const allPills: CardPill[] = [];
+
+  if (stageLabel) {
+    allPills.push({ icon: stageLabel.icon, label: stageLabel.text, urgent: false, detail: null, color: stageLabel.color, bg: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` });
+  }
+
+  if (card.timingAdjustment?.isClosingConflict) {
+    allPills.push({ icon: 'warning', label: card.timingAdjustment.consequenceNote ?? 'Closing conflict', urgent: true, detail: { title: 'Timing conflict', body: card.timingAdjustment.consequenceNote ?? '' } });
+  }
+  if (crowdRow?.isBusy) {
+    allPills.push({ icon: crowdRow.icon, label: crowdRow.text, urgent: true, detail: { title: 'Crowd level', body: crowdRow.text } });
+  }
+  if (card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict) {
+    allPills.push({ icon: 'schedule', label: card.timingAdjustment.consequenceNote, urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
+  }
+  if (crowdRow && !crowdRow.isBusy) {
+    allPills.push({ icon: crowdRow.icon, label: crowdRow.text, urgent: false, detail: { title: 'Crowd & timing', body: crowdRow.text } });
+  }
+  if (transitSig) {
+    if (hasConflict) {
+      allPills.push({ icon: 'umbrella', label: 'Alt. transport · rain conflict', urgent: true, detail: { title: 'Getting here', body: `Rain detected. ${transitSig.text} — consider alternative transport.` } });
+    } else {
+      allPills.push({ icon: transitSig.icon ?? 'directions_walk', label: transitSig.text, urgent: false, detail: { title: 'Getting here', body: transitSig.text } });
+    }
+  }
+  if (hoursStr) {
+    allPills.push({ icon: 'door_open', label: hoursStr, urgent: false, detail: null });
+  }
+  if (stop.durationMin) {
+    const durLabel = stop.durationMin >= 60 ? `${(stop.durationMin / 60).toFixed(1).replace(/\.0$/, '')} hr` : `${stop.durationMin} min`;
+    allPills.push({ icon: 'timer', label: durLabel, urgent: false, detail: null });
+  }
+  if (stop.rating != null && stop.rating > 0) {
+    allPills.push({ icon: 'star', label: `${stop.rating} ★`, urgent: false, detail: null });
+  }
+  const price = priceLabel(stop.priceLevel);
+  if (price) {
+    allPills.push({ icon: 'attach_money', label: price, urgent: false, detail: null });
+  }
+
+  const collapsedPills = allPills.slice(0, 2);
+
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // ── Pill click ─────────────────────────────────────────────
+  const handlePillClick = (pill: CardPill, el: HTMLElement) => {
+    if (!pill.detail) return;
+    if (!expanded) {
+      setExpandedSync(true);
+      setTimeout(() => { setPillDetail(pill.detail); setActivePillEl(el); }, 420);
+    } else {
+      if (pillDetail === pill.detail) {
+        setPillDetail(null); setActivePillEl(null);
+      } else {
+        if (activePillEl) activePillEl.setAttribute('data-open', 'false');
+        setPillDetail(pill.detail); setActivePillEl(el);
+      }
+    }
+  };
+
+  // ── Pill renderer ──────────────────────────────────────────
+  const renderPill = (pill: CardPill, idx: number) => {
+    const clickable = !!pill.detail;
+    const isOpen = pillDetail === pill.detail && pillDetail !== null;
+    const base: React.CSSProperties = {
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '7px 13px', borderRadius: 999,
+      fontSize: 15, fontWeight: 600,
+      maxWidth: '100%', overflow: 'hidden',
+      userSelect: 'none', WebkitTapHighlightColor: 'transparent',
+      cursor: clickable ? 'pointer' : 'default',
+      transition: 'background .12s',
+    };
+    const style: React.CSSProperties = pill.color
+      ? { ...base, background: pill.bg ?? 'rgba(255,255,255,.06)', border: pill.border ?? '1px solid rgba(255,255,255,.12)', color: pill.color }
+      : clickable
+      ? { ...base, background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.22)', color: 'rgba(255,255,255,.88)' }
+      : { ...base, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.09)', color: 'rgba(255,255,255,.42)' };
+    return (
+      <div
+        key={idx}
+        style={style}
+        onClick={clickable ? (e) => { e.stopPropagation(); handlePillClick(pill, e.currentTarget as HTMLElement); } : (e) => e.stopPropagation()}
+      >
+        <span className="ms" style={{ fontSize: 15, flexShrink: 0 }}>{pill.icon}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pill.label}</span>
+        {clickable && <span className="ms" style={{ fontSize: 12, opacity: 0.5, marginLeft: 1, flexShrink: 0 }}>{isOpen ? 'expand_less' : 'expand_more'}</span>}
+      </div>
+    );
+  };
+
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
 
@@ -349,39 +479,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         src={photoUrl}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
       />
-
-      {/* Top-left: TOD badge + day badge */}
-      <div style={{ position: 'absolute', top: 44, left: 14, zIndex: 11, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, boxShadow: `0 0 6px ${dotColor}`, flexShrink: 0 }} />
-          <span style={{ fontSize: T.fsXs, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.8)' }}>
-            {todLabel(hour)}
-          </span>
-        </div>
-        {card.totalDays > 1 && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 99, background: 'rgba(12,14,22,.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,.08)' }}>
-            <span style={{ fontSize: T.fsXs, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)' }}>
-              Day {card.day} of {card.totalDays}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Weather chip — top-right */}
-      {card.weather && (() => {
-        const wxCond = (card.weather!.condition ?? '').toLowerCase();
-        const wxIsRain = wxCond.includes('rain') || wxCond.includes('drizzle') || wxCond.includes('thunder');
-        const wxBg    = wxIsRain ? 'rgba(79,120,171,.15)' : 'rgba(245,166,35,.1)';
-        const wxBdr   = wxIsRain ? 'rgba(79,120,171,.3)' : 'rgba(245,166,35,.2)';
-        const wxClr   = wxIsRain ? '#5d9bc9' : '#f5a623';
-        return (
-          <div style={{ position: 'absolute', top: 44, right: 14, zIndex: 10, display: 'inline-flex', alignItems: 'center', gap: 5, background: wxBg, border: `1px solid ${wxBdr}`, borderRadius: 20, padding: '5px 11px' }}>
-            <span className="ms" style={{ fontSize: T.fsSm, color: wxClr }}>{wxIcon(card.weather!.condition ?? '')}</span>
-            <span style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
-            <span style={{ fontSize: T.fsXs, color: T.text3 }}>{(card.weather!.condition ?? '').split(' ').slice(0, 2).join(' ')}</span>
-          </div>
-        );
-      })()}
 
       {/* Sky tint */}
       <SkyTintLayers condition={condition} />
@@ -405,308 +502,353 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         </div>
       )}
 
-      {/* ── stk-body: frosted content panel ─────────────────────── */}
-      <div className="stk-body no-scrollbar" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '72dvh', overflowY: 'auto', padding: '18px 16px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 10, background: 'rgba(10,10,14,0.52)', backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', borderRadius: '20px 20px 0 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-
-        {/* Row 1: counter pill + identity chips */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-          <div style={{ ...chipBase, background: T.ctrBg }}>
-            <span style={{ color: T.pillClr }}>Stop {card.stopNumber} of {card.totalStops}</span>
+      {/* ── Top bar ─────────────────────────────────────────────── */}
+      <div style={{ position: 'absolute', top: 44, left: 14, right: 14, zIndex: 11, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Left: TOD + date + day */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(0,0,0,.28)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,.10)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, boxShadow: `0 0 5px ${dotColor}`, flexShrink: 0 }} />
+            <span style={{ fontSize: T.fsXs, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.85)' }}>{todLabel(hour)}</span>
+            {visitDateLabel && <>
+              <span style={{ width: 1, height: 10, background: 'rgba(255,255,255,.15)', margin: '0 2px' }} />
+              <span style={{ fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.55)' }}>{visitDateLabel}</span>
+            </>}
+            {card.totalDays > 1 && <>
+              <span style={{ width: 1, height: 10, background: 'rgba(255,255,255,.15)', margin: '0 2px' }} />
+              <span style={{ fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.45)' }}>Day {card.day}/{card.totalDays}</span>
+            </>}
           </div>
-          {stageLabel && (
-            <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
-              <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
-              <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
-            </div>
-          )}
-          {stop.isUserAdded && (
-            <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
-              <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
-              <span style={{ color: '#d4a853' }}>Your pick</span>
-            </div>
-          )}
-          {stop.isEngineAdded && (
-            <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
-              <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
-              <span style={{ color: '#6ab4f5' }}>We added this</span>
-            </div>
-          )}
-          {card.movedFrom != null && (
-            <div style={{ ...chipBase, background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)' }}>
-              <span className="ms" style={{ fontSize: T.fsXs, color: 'rgba(255,255,255,.7)' }}>swap_vert</span>
-              <span style={{ color: 'rgba(255,255,255,.7)' }}>Moved</span>
-            </div>
-          )}
         </div>
-
-        {/* Engine-added reason line */}
-        {stop.isEngineAdded && card.orderReason && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
-            <span className="ms" style={{ fontSize: T.fsXs, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
-            <span style={{ fontSize: T.fsSm, color: 'rgba(106,180,245,.75)', fontStyle: 'italic' }}>
-              We thought: {card.orderReason}
-            </span>
-          </div>
-        )}
-
-        {/* Arrival context */}
-        {card.arrivalNote && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
-            <span className="ms fill" style={{ fontSize: T.fsSm, color: T.sky }}>flight_land</span>
-            <span style={{ fontSize: T.fsSm, color: T.sky, fontWeight: 600 }}>{card.arrivalNote}</span>
-          </div>
-        )}
-
-        {/* Departure context */}
-        {card.departureNote && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-            <span className="ms fill" style={{ fontSize: T.fsSm, color: T.gold }}>flight_takeoff</span>
-            <span style={{ fontSize: T.fsSm, color: T.gold, fontWeight: 600 }}>{card.departureNote}</span>
-          </div>
-        )}
-
-        {/* Time row */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: '4px 10px', borderRadius: 6, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)' }}>
-          <span className="ms" style={{ fontSize: T.fsSm, color: T.text3 }}>schedule</span>
-          {isJustAdjusted && card.timingAdjustment ? (
-            <>
-              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
-              <span style={{ fontSize: T.fsMd, fontWeight: 700, color: '#d4a853' }}>~{fmt12h(stop.time)}</span>
-            </>
-          ) : (
-            <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
-          )}
-          <span style={{ fontSize: T.fsSm, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
-          <span style={{ fontSize: T.fsXs, color: T.text3, letterSpacing: '.04em', opacity: 0.7 }}>suggested</span>
-        </div>
-
-        {/* Title */}
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0, marginBottom: 3, textShadow: '0 1px 6px rgba(0,0,0,.9),0 2px 16px rgba(0,0,0,.5)' }}>
-          {stop.title}
-        </h2>
-
-        {/* Area / city */}
-        {(() => {
-          const areaLabel = stop.area?.includes(',') ? null : stop.area;
-          return (areaLabel || stop.city) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-              <span className="ms" style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.35)' }}>location_on</span>
-              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.35)' }}>
-                {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
-              </span>
+        {/* Right: weather only */}
+        {card.weather && (() => {
+          const wxCond = (card.weather!.condition ?? '').toLowerCase();
+          const wxIsRain = wxCond.includes('rain') || wxCond.includes('drizzle') || wxCond.includes('thunder');
+          return (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: wxIsRain ? 'rgba(79,120,171,.18)' : 'rgba(0,0,0,.28)', border: `1px solid ${wxIsRain ? 'rgba(79,120,171,.35)' : 'rgba(255,255,255,.10)'}`, borderRadius: 20, padding: '5px 11px', backdropFilter: 'blur(12px)' }}>
+              <span className="ms" style={{ fontSize: T.fsSm, color: wxIsRain ? '#5d9bc9' : '#f5a623' }}>{wxIcon(card.weather!.condition ?? '')}</span>
+              <span style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
             </div>
-          ) : <div style={{ marginBottom: 8 }} />;
+          );
         })()}
+      </div>
 
-        {/* Meta row: rating + price + tags + website */}
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 9, alignItems: 'center' }}>
-          {stop.rating != null && stop.rating > 0 && (
-            <span style={{ padding: '3px 9px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: T.fsXs, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
-              {stop.rating} ★
-            </span>
-          )}
-          {priceLabel(stop.priceLevel) != null && (
-            <span style={{ padding: '3px 9px', borderRadius: 99, background: T.sageBg, border: `1px solid ${T.sageBdr}`, fontSize: T.fsXs, color: T.sage }}>
-              {priceLabel(stop.priceLevel)}
-            </span>
-          )}
-          {(stop.tags?.length ? stop.tags : [categoryLabel(stop.category)]).map((tag, i) => {
-            const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(tag);
-            return hasEmoji ? (
-              <span key={i} style={{ padding: '3px 9px', borderRadius: 99, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.10)', fontSize: T.fsXs, color: 'rgba(255,255,255,.45)' }}>
-                {tag}
-              </span>
+      {/* ── Panel ───────────────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
+          background: 'rgba(7,9,15,.9)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
+          borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
+          overflow: 'hidden',
+          touchAction: 'none',
+          maxHeight: expanded ? '72dvh' : 'none',
+          transition: 'max-height .4s cubic-bezier(.22,1,.36,1)',
+        }}
+        ref={panelRef}
+        data-panel="true"
+        onClick={(e) => { e.stopPropagation(); if (!expanded) setExpandedSync(true); }}
+      >
+        {/* Handle + stop counter — tap to toggle expanded */}
+        <div
+          onClick={() => { if (expanded) { setPillDetail(null); setActivePillEl(null); } setExpandedSync(!expandedRef.current); }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 4px', cursor: 'pointer' }}
+        >
+          <div style={{ width: 36, height: 3.5, borderRadius: 2, background: 'rgba(255,255,255,.15)', marginBottom: 8 }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
+            {onRemove && (
+              <button onClick={onRemove} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4 }}>
+                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.22)' }}>delete_outline</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Time + name */}
+        <div style={{ padding: '0 18px 6px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)' }}>
+            <span className="ms" style={{ fontSize: T.fsSm, color: T.text3 }}>schedule</span>
+            {isJustAdjusted && card.timingAdjustment ? (
+              <>
+                <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
+                <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.gold }}>~{fmt12h(stop.time)}</span>
+              </>
             ) : (
-              <span key={i} style={{ padding: '3px 9px', borderRadius: 99, background: T.pillBg, border: `1px solid ${T.pillBdr}`, fontSize: T.fsXs, color: T.pillClr, backdropFilter: 'blur(10px)' }}>
-                {tag}
-              </span>
-            );
-          })}
-          {stop.website && (() => {
-            const domain = extractDomain(stop.website);
-            return domain ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '3px 9px', borderRadius: 99, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: T.fsXs, color: T.sky }}>
-                <span className="ms" style={{ fontSize: T.fsXs }}>language</span>{domain}
-              </span>
+              <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
+            )}
+            <span style={{ fontSize: T.fsSm, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
+          </div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: T.text1, lineHeight: 1.18, margin: 0, marginBottom: 6 }}>
+            {stop.title}
+          </h2>
+          {/* Area */}
+          {(() => {
+            const areaLabel = stop.area?.includes(',') ? null : stop.area;
+            return (areaLabel || stop.city) ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.30)' }}>location_on</span>
+                <span style={{ fontSize: 14, color: 'rgba(255,255,255,.30)' }}>{areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}</span>
+              </div>
             ) : null;
           })()}
         </div>
 
-        {/* Narrative */}
-        {hasConflict ? (
-          <div style={{ marginBottom: 9, padding: '9px 12px', borderRadius: 8, background: 'rgba(79,120,171,.12)', borderLeft: '2px solid rgba(79,120,171,.5)', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <span className="ms" style={{ fontSize: T.fsMd, color: '#5d9bc9', flexShrink: 0, marginTop: 1 }}>rainy</span>
-            <span style={{ fontSize: T.fsMd, color: 'rgba(200,220,255,.85)', lineHeight: 1.5, fontStyle: 'italic' }}>
-              {reasonText ?? "We'd skip the walk today — rain all morning. The stop itself is still worth it; the weather actually keeps the crowds away."}
-            </span>
+        {/* Tags + website — always visible */}
+        {((stop.tags && stop.tags.length > 0) || stop.website) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 18px 8px' }}>
+            {stop.tags?.map((tag, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 9px', borderRadius: 999, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)', fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.38)' }}>
+                {categoryLabel(tag)}
+              </span>
+            ))}
+            {stop.website && (
+              <a
+                href={stop.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 999, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: T.fsXs, fontWeight: 600, color: T.sky, textDecoration: 'none' }}
+              >
+                <span className="ms" style={{ fontSize: 13 }}>language</span>
+                {extractDomain(stop.website)}
+              </a>
+            )}
           </div>
-        ) : reasonText ? (
-          <div style={{ marginBottom: 9, padding: '10px 13px', borderRadius: 8, background: 'rgba(212,168,83,0.14)', borderLeft: `2px solid ${T.gold}`, backdropFilter: 'blur(8px)' }}>
-            <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.88)', lineHeight: 1.55 }}>{reasonText}</span>
-          </div>
-        ) : null}
-
-        {/* Venue description */}
-        {descriptionText && (
-          <p style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.55, margin: 0, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {descriptionText}
-          </p>
         )}
 
-        {/* Logistics bar */}
-        {(crowdRow || transitSig || hoursStr) && (
-          <div style={{ borderRadius: 9, background: 'rgba(0,0,0,.52)', border: '1px solid rgba(255,255,255,.14)', backdropFilter: 'blur(16px)', overflow: 'hidden' }}>
-            {crowdRow && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px', borderBottom: (transitSig || hoursStr) ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
-                <span className="ms" style={{ fontSize: T.fsMd, color: crowdRow.isBusy ? '#e07050' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{crowdRow.icon}</span>
-                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>{crowdRow.text}</span>
-                <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: crowdRow.isBusy ? 'rgba(212,100,50,0.12)' : 'rgba(107,148,112,.15)', color: crowdRow.isBusy ? '#e07050' : T.sage, flexShrink: 0 }}>
-                  {crowdRow.isBusy ? 'Busy period' : 'Good window'}
-                </span>
-              </div>
-            )}
-            {transitSig && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px', borderBottom: hoursStr ? '1px solid rgba(255,255,255,.06)' : 'none', background: hasConflict ? 'rgba(79,120,171,.08)' : 'transparent' }}>
-                <span className="ms" style={{ fontSize: T.fsMd, color: hasConflict ? 'rgba(79,143,171,.7)' : 'rgba(255,255,255,.32)', flexShrink: 0 }}>{hasConflict ? 'directions_bus' : (transitSig.icon ?? 'directions_walk')}</span>
-                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', lineHeight: 1.3, flex: 1 }}>
-                  {hasConflict ? (
-                    <>
-                      <s style={{ color: 'rgba(255,255,255,.28)' }}>{transitSig.text}</s><br />
-                      <span style={{ color: 'rgba(170,200,240,.7)' }}>Alternative transport — rain all morning</span>
-                    </>
-                  ) : transitSig.text}
-                </span>
-                <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: hasConflict ? 'rgba(79,120,171,.15)' : 'rgba(255,255,255,.08)', color: hasConflict ? '#5d9bc9' : 'rgba(255,255,255,.45)', flexShrink: 0 }}>
-                  {hasConflict ? 'Rain detour' : visitDateLabel}
-                </span>
-              </div>
-            )}
-            {hoursStr && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 13px' }}>
-                <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.32)', flexShrink: 0 }}>door_open</span>
-                <span style={{ fontSize: T.fsMd, color: 'rgba(255,255,255,.82)', flex: 1 }}>{hoursStr}</span>
-                {visitDateLabel && (
-                  <span style={{ fontSize: T.fsXs, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.45)', flexShrink: 0 }}>
-                    {visitDateLabel}
-                  </span>
+        {/* Collapsed content */}
+        {!expanded && (
+          <>
+            {/* Identity chips */}
+            {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 18px 8px' }}>
+                {stageLabel && (
+                  <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
+                    <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
+                  </div>
+                )}
+                {stop.isUserAdded && (
+                  <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
+                    <span style={{ color: '#d4a853' }}>Your pick</span>
+                  </div>
+                )}
+                {stop.isEngineAdded && (
+                  <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
+                    <span style={{ color: '#6ab4f5' }}>We added this</span>
+                  </div>
+                )}
+                {card.movedFrom != null && (
+                  <div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span>
+                    <span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span>
+                  </div>
+                )}
+                {card.arrivalNote && (
+                  <div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span>
+                    <span style={{ color: T.sky }}>{card.arrivalNote}</span>
+                  </div>
+                )}
+                {card.departureNote && (
+                  <div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span>
+                    <span style={{ color: T.gold }}>{card.departureNote}</span>
+                  </div>
                 )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Timing adjustment notes */}
-        {card.timingAdjustment?.isClosingConflict && (
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: 'rgba(212,100,50,.10)', border: '1px solid rgba(212,100,50,.22)' }}>
-            <span className="ms fill" style={{ fontSize: T.fsMd, color: '#e07050', flexShrink: 0 }}>warning</span>
-            <span style={{ fontSize: T.fsSm, color: 'rgba(255,220,200,.85)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
-          </div>
-        )}
-        {card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict && (
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: 'rgba(212,168,83,.08)', border: '1px solid rgba(212,168,83,.20)' }}>
-            <span className="ms" style={{ fontSize: T.fsMd, color: 'rgba(212,168,83,.7)', flexShrink: 0 }}>schedule</span>
-            <span style={{ fontSize: T.fsSm, color: 'rgba(255,235,180,.75)', lineHeight: 1.35 }}>{card.timingAdjustment.consequenceNote}</span>
-          </div>
-        )}
+            {/* Description 2-line */}
+            {(descriptionText || reasonText) && (
+              <p style={{ fontSize: 16, lineHeight: 1.6, color: 'rgba(255,255,255,.5)', padding: '0 18px 12px', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                {descriptionText || reasonText}
+              </p>
+            )}
 
-        {/* Next-leg transit row */}
-        {card.nextLeg && (() => {
-          const leg = card.nextLeg!;
-          const isWalk = leg.mode === 'walk';
-          const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
-          return (
-            <div style={{
-              marginTop: 8, display: 'flex', alignItems: 'center', gap: 7,
-              padding: '7px 12px', borderRadius: 8,
-              background: isWalk ? 'rgba(79,143,171,.07)' : 'rgba(0,0,0,.35)',
-              border: `1px solid ${isWalk ? 'rgba(79,143,171,.2)' : 'rgba(255,255,255,.07)'}`,
-            }}>
-              <span className="ms fill" style={{ fontSize: T.fsMd, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>
-                {isWalk ? 'directions_walk' : 'directions_car'}
-              </span>
-              <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
-                {distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to{' '}
-                <span style={{ color: 'rgba(255,255,255,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</span>
-              </span>
-              <span style={{ fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.2)', flexShrink: 0 }}>Next →</span>
+            {/* 2 pills */}
+            {collapsedPills.length > 0 && (
+              <div style={{ padding: '0 18px', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflow: 'hidden' }}>
+                  {collapsedPills.map((pill, i) => (
+                    <div key={i} style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }}>
+                      {renderPill(pill, i)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Next-leg footer */}
+            {card.nextLeg && (() => {
+              const leg = card.nextLeg!;
+              const isWalk = leg.mode === 'walk';
+              const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px 10px', color: 'rgba(255,255,255,.28)', fontSize: 14, fontWeight: 500 }}>
+                  <span className="ms" style={{ fontSize: 15 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
+                  Then <span style={{ color: 'rgba(255,255,255,.55)', fontWeight: 600, marginLeft: 3 }}>{distStr} · ~{leg.durationMin} min</span>
+                  <span style={{ marginLeft: 2 }}>to {leg.nextStopTitle}</span>
+                  <span className="ms" style={{ fontSize: 14, marginLeft: 2 }}>arrow_forward</span>
+                </div>
+              );
+            })()}
+
+            {/* Accordion hint */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 calc(env(safe-area-inset-bottom,0px) + 72px)' }}>
+              <span className="ms" style={{ fontSize: 22, color: 'rgba(255,255,255,.18)' }}>keyboard_arrow_down</span>
             </div>
-          );
-        })()}
+          </>
+        )}
 
-        {/* Hotel anchor row */}
-        {card.hotelAnchor && (() => {
-          const anchor = card.hotelAnchor!;
-          const bg = anchor.isBlue
-            ? 'rgba(91,155,213,.09)'
-            : anchor.isWarning
-              ? 'rgba(232,160,48,.09)'
-              : 'rgba(212,168,83,.08)';
-          const border = anchor.isBlue
-            ? 'rgba(91,155,213,.2)'
-            : anchor.isWarning
-              ? 'rgba(232,160,48,.2)'
-              : 'rgba(212,168,83,.2)';
-          const textColor = anchor.isBlue
-            ? 'rgba(91,155,213,.85)'
-            : anchor.isWarning
-              ? 'rgba(232,160,48,.85)'
-              : 'rgba(212,168,83,.85)';
-          const iconColor = anchor.isBlue
-            ? '#5b9bd5'
-            : anchor.isWarning
-              ? '#e8a030'
-              : T.gold;
-          return (
-            <div style={{
-              marginTop: 8, display: 'flex', alignItems: 'center', gap: 7,
-              padding: '7px 12px', borderRadius: 8,
-              background: bg, border: `1px solid ${border}`,
-            }}>
-              <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>
-                {anchor.icon}
-              </span>
-              <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>
-                {anchor.text}
-              </span>
+        {/* Expanded content */}
+        {expanded && (
+          <div className="no-scrollbar" style={{ overflowY: 'auto', maxHeight: 'calc(72dvh - 160px)', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
+            <div style={{ padding: '0 18px calc(env(safe-area-inset-bottom,0px) + 84px)' }}>
+
+              {/* Identity chips row */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                {stageLabel && (
+                  <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
+                    <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
+                  </div>
+                )}
+                {stop.isUserAdded && (
+                  <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
+                    <span style={{ color: '#d4a853' }}>Your pick</span>
+                  </div>
+                )}
+                {stop.isEngineAdded && (
+                  <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
+                    <span style={{ color: '#6ab4f5' }}>We added this</span>
+                  </div>
+                )}
+                {card.movedFrom != null && (
+                  <div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span>
+                    <span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span>
+                  </div>
+                )}
+                {card.arrivalNote && (
+                  <div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span>
+                    <span style={{ color: T.sky }}>{card.arrivalNote}</span>
+                  </div>
+                )}
+                {card.departureNote && (
+                  <div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
+                    <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span>
+                    <span style={{ color: T.gold }}>{card.departureNote}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Why this stop */}
+              {stop.isEngineAdded && card.orderReason && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                  <span className="ms" style={{ fontSize: 13, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
+                  <span style={{ fontSize: 13, color: 'rgba(106,180,245,.75)', fontStyle: 'italic', lineHeight: 1.45 }}>
+                    We thought: {card.orderReason}
+                  </span>
+                </div>
+              )}
+              {(reasonText || descriptionText) && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(212,168,83,.7)', marginBottom: 8 }}>Why this stop</div>
+                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: 'rgba(212,168,83,0.10)', borderLeft: '2px solid rgba(212,168,83,.55)' }}>
+                    <span style={{ fontSize: 15, color: 'rgba(255,255,255,.85)', lineHeight: 1.58 }}>{reasonText || descriptionText}</span>
+                  </div>
+                </>
+              )}
+              {descriptionText && reasonText && (
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,.55)', lineHeight: 1.55, margin: 0, marginBottom: 14 }}>
+                  {descriptionText}
+                </p>
+              )}
+
+              {/* Divider */}
+              <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '4px 0 14px' }} />
+
+              {/* At a glance — all pills */}
+              {allPills.length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 9 }}>At a glance</div>
+                  {crowdRow && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
+                      <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                    {allPills.map((pill, i) => renderPill(pill, i))}
+                  </div>
+                </>
+              )}
+
+              {/* Pill detail inline sheet */}
+              {pillDetail && (
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,.32)', marginBottom: 6 }}>{pillDetail.title}</div>
+                  <div style={{ fontSize: 15, lineHeight: 1.65, color: 'rgba(255,255,255,.82)' }}>{pillDetail.body}</div>
+                </div>
+              )}
+
+              {/* Hotel anchor */}
+              {card.hotelAnchor && (() => {
+                const anchor = card.hotelAnchor!;
+                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
+                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
+                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
+                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
+                return (
+                  <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: bg, border: `1px solid ${border}` }}>
+                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
+                    <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>{anchor.text}</span>
+                  </div>
+                );
+              })()}
+
+              {/* Next-leg in expanded */}
+              {card.nextLeg && (() => {
+                const leg = card.nextLeg!;
+                const isWalk = leg.mode === 'walk';
+                const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
+                return (
+                  <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: isWalk ? 'rgba(79,143,171,.07)' : 'rgba(0,0,0,.35)', border: `1px solid ${isWalk ? 'rgba(79,143,171,.2)' : 'rgba(255,255,255,.07)'}` }}>
+                    <span className="ms fill" style={{ fontSize: T.fsMd, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
+                    <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
+                      {distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to{' '}
+                      <span style={{ color: 'rgba(255,255,255,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</span>
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Explore nearby CTA */}
+              {onExplore && (
+                <button
+                  onClick={onExplore}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 7, padding: '13px 16px', borderRadius: 14,
+                    border: 'none', background: `linear-gradient(135deg, ${T.gold}, #c4903d)`,
+                    cursor: 'pointer', color: '#0f0d0c',
+                    fontSize: T.fsMd, fontWeight: 700, fontFamily: "'DM Sans',sans-serif",
+                    marginBottom: 8,
+                  }}
+                >
+                  <span className="ms" style={{ fontSize: T.fsMd }}>explore</span>
+                  Explore nearby
+                </button>
+              )}
+
             </div>
-          );
-        })()}
-
-        {/* Action row: Explore nearby + Remove stop */}
-        <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-          {onExplore && (
-            <button
-              onClick={onExplore}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: 7, padding: '11px 16px',
-                borderRadius: 12, border: '1px solid rgba(255,255,255,.12)',
-                background: 'rgba(255,255,255,.07)', backdropFilter: 'blur(10px)',
-                cursor: 'pointer', color: 'rgba(255,255,255,.75)',
-                fontSize: T.fsMd, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
-                transition: 'background .15s',
-              }}
-            >
-              <span className="ms" style={{ fontSize: T.fsMd }}>explore</span>
-              Explore nearby
-            </button>
-          )}
-          {onRemove && (
-            <button
-              onClick={onRemove}
-              title="Remove stop"
-              style={{
-                width: 44, flexShrink: 0, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', borderRadius: 12,
-                border: '1px solid rgba(255,255,255,.12)',
-                background: 'rgba(255,255,255,.07)', backdropFilter: 'blur(10px)',
-                cursor: 'pointer', transition: 'background .15s',
-              }}
-            >
-              <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,.45)' }}>delete</span>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

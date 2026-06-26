@@ -126,9 +126,9 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
       {/* Trip details button */}
       <button
         onClick={onShowTripDetails}
-        style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, ...CHIP, padding: '7px 11px', cursor: 'pointer', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.18)', color: 'rgba(255,255,255,.82)' }}
+        style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, ...CHIP, padding: '10px 16px', cursor: 'pointer', background: 'rgba(212,168,83,.28)', border: '1px solid rgba(212,168,83,.75)', color: '#f5d060', fontSize: 15, fontWeight: 700, gap: 7, boxShadow: '0 2px 12px rgba(212,168,83,.25)' }}
       >
-        <span className="ms" style={{ fontSize: 15 }}>edit_calendar</span>
+        <span className="ms fill" style={{ fontSize: 17, color: '#f5d060' }}>edit_calendar</span>
         Add trip details
       </button>
 
