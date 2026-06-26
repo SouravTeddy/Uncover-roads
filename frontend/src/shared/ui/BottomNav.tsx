@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { useAppStore } from '../store';
 import type { Screen } from '../types';
 
@@ -15,6 +16,15 @@ const ITINERARY_SCREENS  = new Set<Screen>(['trips', 'itinerary-reel']);
 export function BottomNav() {
   const { state, dispatch } = useAppStore();
   const { currentScreen } = state;
+
+  // Remember which explore screen the user was on before switching tabs
+  const lastExploreScreen = useRef<Screen>('destination');
+  useEffect(() => {
+    if (EXPLORE_SCREENS.has(currentScreen)) {
+      lastExploreScreen.current = currentScreen;
+    }
+  }, [currentScreen]);
+
   if (OB_SCREENS.has(currentScreen)) return null;
 
   function isActive(screen: Screen): boolean {
@@ -26,8 +36,8 @@ export function BottomNav() {
   function handleTap(screen: Screen) {
     // When tapping Explore while already in the explore group, do nothing — preserve map state.
     if (screen === 'destination' && EXPLORE_SCREENS.has(currentScreen)) return;
-    // When returning to Explore from another tab, go straight to map if a city is loaded.
-    if (screen === 'destination' && state.cityGeo) {
+    // Return to whichever explore screen the user was on before they left.
+    if (screen === 'destination' && lastExploreScreen.current === 'map') {
       dispatch({ type: 'NAV_TAB', screen: 'map' });
       return;
     }

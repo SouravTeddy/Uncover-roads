@@ -8,3 +8,7 @@ export function preloadImages(urls: (string | null | undefined)[]) {
     img.src = url;
   }
 }
+
+export function isPreloaded(url: string | null | undefined): boolean {
+  return !!url && preloaded.has(url);
+}
