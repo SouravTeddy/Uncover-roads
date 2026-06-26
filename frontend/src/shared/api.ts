@@ -86,6 +86,7 @@ export async function mapData(
   centerLat: number,
   centerLon: number,
   radiusM = 3000,
+  signal?: AbortSignal,
 ): Promise<Place[]> {
   const params = new URLSearchParams({
     city,
@@ -94,7 +95,7 @@ export async function mapData(
     radius_m:   String(radiusM),
   });
   try {
-    const res = await fetch(`${BASE}/map-data?${params}`);
+    const res = await fetch(`${BASE}/map-data?${params}`, { signal });
     if (res.ok) {
       const data: Place[] = await res.json();
       const limited = data.slice(0, 150);
@@ -102,6 +103,7 @@ export async function mapData(
       return limited;
     }
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') return [];
     console.error('[mapData] fetch failed:', err);
   }
   return [];
