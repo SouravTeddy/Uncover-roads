@@ -291,14 +291,6 @@
       line-height: 1.14;
       margin-bottom: 7px;
     }
-    .e-location {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 13px;
-      color: var(--text3);
-      margin-bottom: 13px;
-    }
     .e-chips {
       display: flex;
       gap: 6px;
@@ -344,6 +336,105 @@
     .chip.gold  { background: var(--gold-bg);  border: 1px solid var(--gold-bdr);  color: var(--gold); }
     .chip.blue  { background: rgba(91,155,213,0.13); border: 1px solid rgba(91,155,213,0.25); color: #6ab4f5; }
     .chip.dim   { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); color: var(--text3); }
+    .chip.amber { background: rgba(232,160,48,0.10); border: 1px solid rgba(232,160,48,0.22); color: #e8a030; }
+    .chip.sky   { background: var(--sky-bg); border: 1px solid var(--sky-bdr); color: var(--sky); }
+
+    /* Location row: location + website side by side */
+    .e-location-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .e-location {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 13px;
+      color: var(--text3);
+    }
+
+    /* Website chip */
+    .website-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: var(--sky-bg);
+      border: 1px solid var(--sky-bdr);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--sky);
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.12s;
+    }
+    .website-chip:hover { background: rgba(79,143,171,0.15); }
+
+    /* Category tags */
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 13px;
+    }
+    .tag {
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      font-size: 11px;
+      color: var(--text3);
+      letter-spacing: 0.03em;
+    }
+
+    /* Hotel anchor note */
+    .anchor-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(91,155,213,0.06);
+      border: 1px solid rgba(91,155,213,0.13);
+      font-size: 13px;
+      color: var(--text3);
+      line-height: 1.45;
+    }
+
+    /* Engine reasoning note */
+    .we-thought {
+      display: flex;
+      align-items: flex-start;
+      gap: 5px;
+      margin-bottom: 9px;
+      font-size: 13px;
+      font-style: italic;
+      color: rgba(91,155,213,0.50);
+      line-height: 1.45;
+    }
+
+    /* Rating pill — styled as a link */
+    a.rating-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      text-decoration: none;
+      -webkit-tap-highlight-color: transparent;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--gold);
+      transition: background 0.12s;
+    }
+    a.rating-pill:hover { background: rgba(212,168,83,0.09); }
 
     /* ─── PILLS ────────────────────────────────────── */
     .pills-wrap {
@@ -570,11 +661,26 @@
 
         <div class="e-title">Musée d'Orsay</div>
 
-        <div class="e-location">
-          <span class="ms" style="font-size:13px">location_on</span>
-          Paris Center · Paris
+        <!-- Location + website on the same row -->
+        <div class="e-location-row">
+          <div class="e-location">
+            <span class="ms" style="font-size:13px">location_on</span>
+            Paris Center · Paris
+          </div>
+          <a class="website-chip" href="https://www.musee-orsay.fr" target="_blank" rel="noopener noreferrer">
+            <span class="ms" style="font-size:13px">language</span>
+            musee-orsay.fr
+          </a>
         </div>
 
+        <!-- Category tags -->
+        <div class="tags-row">
+          <span class="tag">Museum</span>
+          <span class="tag">Historic site</span>
+          <span class="tag">Art gallery</span>
+        </div>
+
+        <!-- Identity chips -->
         <div class="e-chips">
           <div class="chip gold">
             <span class="ms" style="font-size:11px">bookmark</span>
@@ -584,9 +690,13 @@
             <span class="ms" style="font-size:11px">auto_awesome</span>
             We added this
           </div>
-          <div class="chip dim">
-            <span class="ms" style="font-size:11px">groups</span>
-            Popular here
+          <div class="chip amber">
+            <span class="ms" style="font-size:11px">swap_horiz</span>
+            Moved from stop 3
+          </div>
+          <div class="chip sky">
+            <span class="ms" style="font-size:11px">flight_land</span>
+            Arriving this evening
           </div>
         </div>
 
@@ -594,6 +704,29 @@
           Major 19th- and 20th-century European art collections housed in a monumental former
           railway station. The impressionist and post-impressionist galleries on the top floor
           are world-class — Monet, Renoir, Van Gogh all here.
+        </div>
+
+        <!-- Hotel anchor note -->
+        <div class="anchor-row">
+          <span class="ms" style="font-size:16px;color:#5b9bd5;flex-shrink:0">hotel</span>
+          <span>Your hotel for tonight is nearby — walking distance after this stop</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ── WHY THIS STOP — moved above At a glance ── -->
+        <div>
+          <div class="sec-label">Why this stop</div>
+          <!-- Engine reasoning note (for engine-added stops) -->
+          <div class="we-thought">
+            <span class="ms" style="font-size:13px;color:rgba(91,155,213,0.45)">subdirectory_arrow_right</span>
+            <span>We thought: tacking on 60 minutes before your lunch window closes</span>
+          </div>
+          <div class="why-block">
+            Best visited Saturday — crowds peak toward midday. The impressionist galleries
+            (top floor) are the main draw; the ground-floor sculpture hall is a quieter
+            contrast in the afternoon. Allow at least 90 minutes.
+          </div>
         </div>
 
         <div class="divider"></div>
@@ -616,6 +749,14 @@
               data-body="Peak window is 10 AM – 3 PM. You're arriving at 9:30 AM — you'll be ahead of the rush by about 30 minutes. Get the top-floor impressionists first while it's quiet.">
               <span class="ms" style="font-size:14px">person_raised_hand</span>
               Peak 10 AM – 3 PM
+              <span class="ms pill-chev">expand_more</span>
+            </div>
+
+            <div class="pill urgent" data-id="conflict"
+              data-title="Timing conflict"
+              data-body="This stop closes at 6 PM — you'd arrive at 5:30. That leaves about 30 minutes inside. Consider visiting earlier or swapping the order with the next stop.">
+              <span class="ms" style="font-size:14px">warning</span>
+              Closes at 6 PM — 30 min inside
               <span class="ms pill-chev">expand_more</span>
             </div>
 
@@ -645,10 +786,12 @@
               1.7 hr
             </div>
 
-            <div class="pill neutral">
+            <!-- Rating pill → opens Google reviews -->
+            <a class="pill rating-pill" href="https://www.google.com/maps/search/?api=1&query=Mus%C3%A9e+d%27Orsay&query_place_id=ChIJmVgpe6Bv5kcRQDqeTRJ9ygA" target="_blank" rel="noopener noreferrer">
               <span class="ms" style="font-size:14px">star</span>
               4.8 ★
-            </div>
+              <span class="ms" style="font-size:11px;opacity:0.4;margin-left:1px">open_in_new</span>
+            </a>
 
             <div class="pill neutral">
               <span class="ms" style="font-size:14px">payments</span>
@@ -663,18 +806,6 @@
               <div class="pill-detail-title" id="pd-title"></div>
               <div class="pill-detail-body" id="pd-body"></div>
             </div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- ── WHY THIS STOP ── -->
-        <div>
-          <div class="sec-label">Why this stop</div>
-          <div class="why-block">
-            Best visited Saturday — crowds peak toward midday. The impressionist galleries
-            (top floor) are the main draw; the ground-floor sculpture hall is a quieter
-            contrast in the afternoon. Allow at least 90 minutes.
           </div>
         </div>
 
