@@ -424,8 +424,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     allPills.push({ icon: 'attach_money', label: price, urgent: false, detail: null });
   }
 
-  const collapsedPills = allPills.slice(0, 2);
-
   const panelRef = useRef<HTMLDivElement>(null);
   const panelTouchY = useRef(0);
 
@@ -563,325 +561,301 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         })()}
       </div>
 
-      {/* ── Panel ───────────────────────────────────────────────── */}
+      {/* ── Panel — matches proto-stop-card-v2 architecture ───────── */}
       <div
+        ref={panelRef}
+        data-panel="true"
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
-          background: 'rgba(7,9,15,.9)', backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
+          background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
           overflow: 'hidden',
           touchAction: 'none',
-          maxHeight: expanded ? '72dvh' : '52dvh',
-          transition: 'max-height .4s cubic-bezier(.22,1,.36,1)',
+          // height (not maxHeight) so CSS can animate between two concrete values
+          height: expanded ? '68dvh' : '224px',
+          transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
         }}
-        ref={panelRef}
-        data-panel="true"
         onClick={(e) => { e.stopPropagation(); if (!expanded) setExpandedSync(true); }}
         onTouchStart={onPanelTouchStart}
         onTouchEnd={onPanelTouchEnd}
       >
-        {/* Handle + stop counter — tap to toggle expanded */}
-        <div
-          onClick={() => { if (expanded) { setPillDetail(null); setActivePillEl(null); } setExpandedSync(!expandedRef.current); }}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 4px', cursor: 'pointer' }}
-        >
-          <div style={{ width: 36, height: 3.5, borderRadius: 2, background: 'rgba(255,255,255,.15)', marginBottom: 8 }} />
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
-            {onRemove && (
-              <button onClick={onRemove} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4 }}>
-                <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.22)' }}>delete_outline</span>
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Time + name */}
-        <div style={{ padding: '0 18px 6px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '4px 10px', borderRadius: 6, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)' }}>
-            <span className="ms" style={{ fontSize: T.fsSm, color: T.text3 }}>schedule</span>
-            {isJustAdjusted && card.timingAdjustment ? (
-              <>
-                <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,0.32)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
-                <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.gold }}>~{fmt12h(stop.time)}</span>
-              </>
-            ) : (
-              <span style={{ fontSize: T.fsMd, fontWeight: 700, color: T.text1 }}>~{fmt12h(stop.time)}</span>
-            )}
-            <span style={{ fontSize: T.fsSm, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
+        {/* ── COLLAPSED — always mounted, fades out on expand ──────── */}
+        <div style={{
+          position: 'absolute', inset: 0, padding: '0 20px',
+          opacity: expanded ? 0 : 1,
+          pointerEvents: expanded ? 'none' : 'auto',
+          transition: 'opacity 0.15s ease',
+        }}>
+          {/* Handle + counter */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 8px' }}>
+            <div style={{ width: 34, height: 3, borderRadius: 2, background: 'rgba(255,255,255,.16)', marginBottom: 7 }} />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>
+                Stop {card.stopNumber} of {card.totalStops}
+              </span>
+              {onRemove && (
+                <button onClick={(e) => { e.stopPropagation(); onRemove?.(); }} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4 }}>
+                  <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.22)' }}>delete_outline</span>
+                </button>
+              )}
+            </div>
           </div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 30, fontWeight: 700, color: T.text1, lineHeight: 1.18, margin: 0, marginBottom: 6 }}>
+
+          {/* Title — single line with ellipsis (matches proto .c-title) */}
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: T.text1, lineHeight: 1.15, margin: '0 0 5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {stop.title}
           </h2>
-          {/* Area */}
-          {(() => {
-            const areaLabel = stop.area?.includes(',') ? null : stop.area;
-            return (areaLabel || stop.city) ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.30)' }}>location_on</span>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,.30)' }}>{areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}</span>
+
+          {/* Description — 2-line clamp */}
+          {(descriptionText || reasonText) && (
+            <p style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(242,237,230,.58)', margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {descriptionText || reasonText}
+            </p>
+          )}
+
+          {/* Identity chips */}
+          {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
+              {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span><span style={{ color: '#d4a853' }}>Your pick</span></div>)}
+              {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
+              {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
+              {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
+              {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
+            </div>
+          )}
+
+          {/* Next leg */}
+          {card.nextLeg && (() => {
+            const leg = card.nextLeg!;
+            const isWalk = leg.mode === 'walk';
+            const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'rgba(255,255,255,.30)' }}>
+                <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.30)' }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
+                Then <strong style={{ color: 'rgba(242,237,230,.55)', fontWeight: 600, margin: '0 2px' }}>{distStr} · ~{leg.durationMin} min</strong> to {leg.nextStopTitle}
               </div>
-            ) : null;
+            );
           })()}
         </div>
 
-        {/* Tags + website — always visible */}
-        {((stop.tags && stop.tags.length > 0) || stop.website) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 18px 8px' }}>
-            {stop.tags?.map((tag, i) => (
-              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 9px', borderRadius: 999, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)', fontSize: T.fsXs, fontWeight: 600, color: 'rgba(255,255,255,.38)' }}>
-                {categoryLabel(tag)}
-              </span>
-            ))}
-            {stop.website && (
-              <a
-                href={stop.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 999, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: T.fsXs, fontWeight: 600, color: T.sky, textDecoration: 'none' }}
-              >
-                <span className="ms" style={{ fontSize: 13 }}>language</span>
-                {extractDomain(stop.website)}
-              </a>
+        {/* ── EXPANDED — always mounted, fades in on expand ─────────── */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          opacity: expanded ? 1 : 0,
+          pointerEvents: expanded ? 'auto' : 'none',
+          transition: 'opacity 0.22s ease 0.16s',
+        }}>
+          {/* Fixed meta strip: date · day · weather + stop counter + close */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '14px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+            {visitDateLabel && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,.30)' }}>
+                  <span className="ms" style={{ fontSize: 13 }}>calendar_today</span>
+                  {visitDateLabel}
+                </div>
+                <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,.16)', margin: '0 10px' }} />
+              </>
             )}
+            {card.totalDays > 1 && (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,.30)' }}>Day {card.day}/{card.totalDays}</div>
+                <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,.16)', margin: '0 10px' }} />
+              </>
+            )}
+            {card.weather && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.text1 }}>
+                <span className="ms" style={{ fontSize: 14, color: '#f5a623' }}>{wxIcon(card.weather.condition ?? '')}</span>
+                {Math.round(card.weather.temp ?? 0)}°
+              </div>
+            )}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.30)', cursor: 'pointer', padding: '4px 0', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <span className="ms" style={{ fontSize: 15 }}>expand_more</span>
+                Close
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Collapsed content */}
-        {!expanded && (
-          <>
-            {/* Identity chips */}
-            {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 18px 8px' }}>
-                {stageLabel && (
-                  <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
-                    <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
-                  </div>
-                )}
-                {stop.isUserAdded && (
-                  <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
-                    <span style={{ color: '#d4a853' }}>Your pick</span>
-                  </div>
-                )}
-                {stop.isEngineAdded && (
-                  <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
-                    <span style={{ color: '#6ab4f5' }}>We added this</span>
-                  </div>
-                )}
-                {card.movedFrom != null && (
-                  <div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span>
-                    <span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span>
-                  </div>
-                )}
-                {card.arrivalNote && (
-                  <div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span>
-                    <span style={{ color: T.sky }}>{card.arrivalNote}</span>
-                  </div>
-                )}
-                {card.departureNote && (
-                  <div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span>
-                    <span style={{ color: T.gold }}>{card.departureNote}</span>
-                  </div>
-                )}
+          {/* Scroll area — everything below meta strip scrolls */}
+          <div
+            className="no-scrollbar"
+            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 20px)' }}
+          >
+            {/* Title */}
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: T.text1, lineHeight: 1.14, margin: '0 0 7px' }}>
+              {stop.title}
+            </h2>
+
+            {/* Time row — arrival → departure, with adjustment callout */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '3px 9px', borderRadius: 6, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
+              <span className="ms" style={{ fontSize: 13, color: T.text3 }}>schedule</span>
+              {isJustAdjusted && card.timingAdjustment ? (
+                <>
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,.28)', textDecoration: 'line-through' }}>~{fmt12h(card.timingAdjustment.originalTime)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.gold }}>~{fmt12h(stop.time)}</span>
+                </>
+              ) : (
+                <span style={{ fontSize: 13, fontWeight: 600, color: T.text1 }}>~{fmt12h(stop.time)}</span>
+              )}
+              <span style={{ fontSize: 13, color: T.text3 }}>→ leave ~{addMinutes(stop.time, stop.durationMin)}</span>
+            </div>
+
+            {/* Location + website on same row */}
+            {(() => {
+              const areaLabel = stop.area?.includes(',') ? null : stop.area;
+              const hasLocation = !!(areaLabel || stop.city);
+              return (hasLocation || stop.website) ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                  {hasLocation && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, color: 'rgba(255,255,255,.30)' }}>
+                      <span className="ms" style={{ fontSize: 13 }}>location_on</span>
+                      {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
+                    </div>
+                  )}
+                  {stop.website && (
+                    <a href={stop.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 12, fontWeight: 500, color: T.sky, textDecoration: 'none' }}>
+                      <span className="ms" style={{ fontSize: 13 }}>language</span>
+                      {extractDomain(stop.website)}
+                    </a>
+                  )}
+                </div>
+              ) : null;
+            })()}
+
+            {/* Category tags */}
+            {stop.tags && stop.tags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 13 }}>
+                {stop.tags.map((tag, i) => (
+                  <span key={i} style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)', fontSize: 11, color: 'rgba(255,255,255,.30)', letterSpacing: '.03em' }}>
+                    {categoryLabel(tag)}
+                  </span>
+                ))}
               </div>
             )}
 
-            {/* Description 2-line */}
-            {(descriptionText || reasonText) && (
-              <p style={{ fontSize: 16, lineHeight: 1.6, color: 'rgba(255,255,255,.5)', padding: '0 18px 12px', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                {descriptionText || reasonText}
+            {/* Identity chips */}
+            {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
+                {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span><span style={{ color: '#d4a853' }}>Your pick</span></div>)}
+                {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
+                {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
+                {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
+                {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
+              </div>
+            )}
+
+            {/* Full description */}
+            {descriptionText && (
+              <p style={{ fontSize: 15, lineHeight: 1.68, color: 'rgba(242,237,230,.58)', margin: '0 0 0' }}>
+                {descriptionText}
               </p>
             )}
 
-            {/* 2 pills */}
-            {collapsedPills.length > 0 && (
-              <div style={{ padding: '0 18px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflow: 'hidden' }}>
-                  {collapsedPills.map((pill, i) => (
-                    <div key={i} style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }}>
-                      {renderPill(pill, i)}
-                    </div>
-                  ))}
+            {/* Hotel anchor */}
+            {card.hotelAnchor && (() => {
+              const anchor = card.hotelAnchor!;
+              const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
+              const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
+              const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
+              const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
+              return (
+                <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
+                  <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
+                  <span style={{ fontSize: 13, color: textColor, lineHeight: 1.45 }}>{anchor.text}</span>
+                </div>
+              );
+            })()}
+
+            {/* Divider */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
+
+            {/* WHY THIS STOP */}
+            {(reasonText || (stop.isEngineAdded && card.orderReason)) && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>Why this stop</div>
+                {stop.isEngineAdded && card.orderReason && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, marginBottom: 9, fontSize: 13, fontStyle: 'italic', color: 'rgba(91,155,213,.50)', lineHeight: 1.45 }}>
+                    <span className="ms" style={{ fontSize: 13, color: 'rgba(91,155,213,.45)', flexShrink: 0 }}>subdirectory_arrow_right</span>
+                    We thought: {card.orderReason}
+                  </div>
+                )}
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(212,168,83,.10)', borderLeft: '2px solid rgba(212,168,83,.38)', fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.80)' }}>
+                  {reasonText}
                 </div>
               </div>
             )}
 
-            {/* Next-leg footer */}
+            {/* Divider */}
+            <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
+
+            {/* AT A GLANCE — all pills except stage (shown as chip above) */}
+            {allPills.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>At a glance</div>
+                {crowdRow && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
+                    <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                  {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
+                </div>
+                {/* Pill detail */}
+                {pillDetail && (
+                  <div style={{ marginTop: 9, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 5 }}>{pillDetail.title}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.58)' }}>{pillDetail.body}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Divider + Getting here (next leg as transit block) */}
             {card.nextLeg && (() => {
               const leg = card.nextLeg!;
               const isWalk = leg.mode === 'walk';
               const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
               return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px 10px', color: 'rgba(255,255,255,.28)', fontSize: 14, fontWeight: 500 }}>
-                  <span className="ms" style={{ fontSize: 15 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                  Then <span style={{ color: 'rgba(255,255,255,.55)', fontWeight: 600, marginLeft: 3 }}>{distStr} · ~{leg.durationMin} min</span>
-                  <span style={{ marginLeft: 2 }}>to {leg.nextStopTitle}</span>
-                  <span className="ms" style={{ fontSize: 14, marginLeft: 2 }}>arrow_forward</span>
-                </div>
+                <>
+                  <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>Getting here</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderRadius: 10, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 14, color: 'rgba(242,237,230,.58)', lineHeight: 1.4 }}>
+                      <span className="ms" style={{ fontSize: 20, color: T.sky, flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
+                      <span>{distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to <strong style={{ color: 'rgba(242,237,230,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</strong></span>
+                    </div>
+                  </div>
+                </>
               );
             })()}
 
-            {/* Accordion hint */}
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 calc(env(safe-area-inset-bottom,0px) + 72px)' }}>
-              <span className="ms" style={{ fontSize: 22, color: 'rgba(255,255,255,.18)' }}>keyboard_arrow_down</span>
-            </div>
-          </>
-        )}
-
-        {/* Expanded content */}
-        {expanded && (
-          <div className="no-scrollbar" style={{ overflowY: 'auto', maxHeight: 'calc(72dvh - 160px)', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'] }}>
-            <div style={{ padding: '0 18px calc(env(safe-area-inset-bottom,0px) + 84px)' }}>
-
-              {/* Identity chips row */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                {stageLabel && (
-                  <div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span>
-                    <span style={{ color: stageLabel.color }}>{stageLabel.text}</span>
-                  </div>
-                )}
-                {stop.isUserAdded && (
-                  <div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span>
-                    <span style={{ color: '#d4a853' }}>Your pick</span>
-                  </div>
-                )}
-                {stop.isEngineAdded && (
-                  <div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span>
-                    <span style={{ color: '#6ab4f5' }}>We added this</span>
-                  </div>
-                )}
-                {card.movedFrom != null && (
-                  <div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span>
-                    <span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span>
-                  </div>
-                )}
-                {card.arrivalNote && (
-                  <div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span>
-                    <span style={{ color: T.sky }}>{card.arrivalNote}</span>
-                  </div>
-                )}
-                {card.departureNote && (
-                  <div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}>
-                    <span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span>
-                    <span style={{ color: T.gold }}>{card.departureNote}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Hotel anchor — before Why this stop */}
-              {card.hotelAnchor && (() => {
-                const anchor = card.hotelAnchor!;
-                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
-                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
-                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
-                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
-                return (
-                  <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: bg, border: `1px solid ${border}` }}>
-                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
-                    <span style={{ fontSize: T.fsSm, color: textColor, flex: 1, lineHeight: 1.3 }}>{anchor.text}</span>
-                  </div>
-                );
-              })()}
-
-              {/* Why this stop */}
-              {stop.isEngineAdded && card.orderReason && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                  <span className="ms" style={{ fontSize: 13, color: 'rgba(91,155,213,.45)' }}>subdirectory_arrow_right</span>
-                  <span style={{ fontSize: 13, color: 'rgba(106,180,245,.75)', fontStyle: 'italic', lineHeight: 1.45 }}>
-                    We thought: {card.orderReason}
-                  </span>
-                </div>
-              )}
-              {(reasonText || descriptionText) && (
-                <>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(212,168,83,.7)', marginBottom: 8 }}>Why this stop</div>
-                  <div style={{ marginBottom: 14, padding: '10px 14px', borderRadius: 8, background: 'rgba(212,168,83,0.10)', borderLeft: '2px solid rgba(212,168,83,.55)' }}>
-                    <span style={{ fontSize: 15, color: 'rgba(255,255,255,.85)', lineHeight: 1.58 }}>{reasonText || descriptionText}</span>
-                  </div>
-                </>
-              )}
-              {descriptionText && reasonText && (
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,.55)', lineHeight: 1.55, margin: 0, marginBottom: 14 }}>
-                  {descriptionText}
-                </p>
-              )}
-
-              {/* Divider */}
-              <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '4px 0 14px' }} />
-
-              {/* At a glance — all pills except stage (stage is shown as a chip above) */}
-              {allPills.length > 0 && (
-                <>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 9 }}>At a glance</div>
-                  {crowdRow && (
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
-                      <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-                    {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
-                  </div>
-                </>
-              )}
-
-              {/* Pill detail inline sheet */}
-              {pillDetail && (
-                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'rgba(255,255,255,.32)', marginBottom: 6 }}>{pillDetail.title}</div>
-                  <div style={{ fontSize: 15, lineHeight: 1.65, color: 'rgba(255,255,255,.82)' }}>{pillDetail.body}</div>
-                </div>
-              )}
-
-              {/* Next-leg in expanded */}
-              {card.nextLeg && (() => {
-                const leg = card.nextLeg!;
-                const isWalk = leg.mode === 'walk';
-                const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
-                return (
-                  <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px', borderRadius: 8, background: isWalk ? 'rgba(79,143,171,.07)' : 'rgba(0,0,0,.35)', border: `1px solid ${isWalk ? 'rgba(79,143,171,.2)' : 'rgba(255,255,255,.07)'}` }}>
-                    <span className="ms fill" style={{ fontSize: T.fsMd, color: isWalk ? T.sky : 'rgba(180,180,220,.5)', flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                    <span style={{ fontSize: T.fsSm, color: 'rgba(255,255,255,.38)', flex: 1, lineHeight: 1.3 }}>
-                      {distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to{' '}
-                      <span style={{ color: 'rgba(255,255,255,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</span>
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Explore nearby CTA */}
-              {onExplore && (
+            {/* Explore nearby CTA */}
+            {onExplore && (
+              <>
+                <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
                 <button
                   onClick={onExplore}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: 7, padding: '13px 16px', borderRadius: 14,
-                    border: 'none', background: `linear-gradient(135deg, ${T.gold}, #c4903d)`,
-                    cursor: 'pointer', color: '#0f0d0c',
-                    fontSize: T.fsMd, fontWeight: 700, fontFamily: "'DM Sans',sans-serif",
-                    marginBottom: 8,
-                  }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '14px 16px', marginTop: 6, borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${T.gold} 0%, #c08535 100%)`, cursor: 'pointer', color: '#0a080a', fontSize: 15, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span className="ms" style={{ fontSize: T.fsMd }}>explore</span>
+                  <span className="ms" style={{ fontSize: 18 }}>explore</span>
                   Explore nearby
                 </button>
-              )}
+              </>
+            )}
 
-            </div>
           </div>
-        )}
+        </div>
+
       </div>
     </div>
   );
