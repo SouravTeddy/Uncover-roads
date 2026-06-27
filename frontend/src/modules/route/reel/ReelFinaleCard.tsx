@@ -57,59 +57,52 @@ export function ReelFinaleCard({ card, active, onSave, saved }: Props) {
         {card.totalStops} stops, all yours
       </p>
 
-      {saved ? (
-        <div
-          style={{
-            width: '100%', padding: '16px 20px', borderRadius: 16,
-            background: 'rgba(22,163,74,.1)', border: '1px solid rgba(22,163,74,.3)',
-            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
-            animation: active ? 'fadeUp .5s .35s both' : 'none',
-          }}
-        >
-          <span className="ms fill" style={{ fontSize: 30, color: '#4ade80', flexShrink: 0 }}>check_circle</span>
-          <div>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#4ade80', margin: 0, marginBottom: 2 }}>Saved to trips</p>
-            <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: 0 }}>Come back to it any time</p>
-          </div>
-        </div>
-      ) : (
+      {/* Save action — icon tap, not a button */}
+      <div style={{ display: 'flex', gap: 28, alignItems: 'center', marginBottom: 36, animation: active ? 'fadeUp .5s .35s both' : 'none' }}>
         <button
-          onClick={onSave}
+          onClick={saved ? undefined : onSave}
           style={{
-            width: '100%', height: 54, borderRadius: 16, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-            color: '#fff',
-            fontFamily: 'var(--font-sans)', fontSize: 17, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: '0 6px 28px rgba(212,168,83,.25)',
-            marginBottom: 16,
-            animation: active ? 'fadeUp .5s .35s both' : 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', cursor: saved ? 'default' : 'pointer', padding: 0,
           }}
         >
-          <span className="ms fill" style={{ fontSize: 18 }}>bookmark_add</span>
-          Save trip
+          <div style={{
+            width: 52, height: 52, borderRadius: 16,
+            background: saved ? 'rgba(74,222,128,.12)' : 'rgba(212,168,83,.12)',
+            border: `1px solid ${saved ? 'rgba(74,222,128,.28)' : 'rgba(212,168,83,.28)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span className="ms fill" style={{ fontSize: 22, color: saved ? '#4ade80' : '#d4a853' }}>
+              {saved ? 'bookmark' : 'bookmark_add'}
+            </span>
+          </div>
+          <span style={{ fontSize: 11, color: saved ? '#4ade80' : 'var(--color-text-3)', fontWeight: 500 }}>
+            {saved ? 'Saved' : 'Save trip'}
+          </span>
         </button>
-      )}
 
-      {card.googleMapsUrl && (
-        <a
-          href={card.googleMapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            width: '100%', padding: '12px 0', borderRadius: 14,
-            border: '1px solid var(--color-border-m)',
-            background: 'var(--color-surface)',
-            fontSize: 15, fontWeight: 600, color: 'var(--color-text-2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            textDecoration: 'none',
-            animation: active ? 'fadeUp .5s .45s both' : 'none',
-          }}
-        >
-          <span className="ms" style={{ fontSize: 17, color: '#4285f4' }}>map</span>
-          Open all stops in Google Maps
-        </a>
-      )}
+        {card.googleMapsUrl && (
+          <a
+            href={card.googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              textDecoration: 'none',
+            }}
+          >
+            <div style={{
+              width: 52, height: 52, borderRadius: 16,
+              background: 'rgba(66,133,244,.1)',
+              border: '1px solid rgba(66,133,244,.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span className="ms" style={{ fontSize: 22, color: '#4285f4' }}>map</span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--color-text-3)', fontWeight: 500 }}>Open in Maps</span>
+          </a>
+        )}
+      </div>
     </div>
   );
 }
