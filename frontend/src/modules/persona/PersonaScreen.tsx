@@ -78,7 +78,7 @@ function buildRevealContent(
 
   // ── Group / situation chip (for love[2]) ────────────────────────────────
   const group = raw?.group ?? 'solo';
-  let loveFromGroup = 'Travelling on your own terms, nobody else's schedule';
+  let loveFromGroup = "Travelling on your own terms, nobody else's schedule";
   if (group === 'couple')  loveFromGroup = 'Discovering places that feel better shared with someone';
   if (group === 'family')  loveFromGroup = 'Making memories that actually stick for everyone';
   if (group === 'friends') loveFromGroup = 'Big plans and the chaos of making them work together';
