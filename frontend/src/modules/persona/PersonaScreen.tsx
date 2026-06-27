@@ -6,6 +6,7 @@ import { syncPersonaProfile } from '../../shared/userSync';
 import { PERSONA_DEFINITIONS } from './types';
 import { resolvePersonaKey, legacyArchetypeToPersonaKey } from './persona-resolver';
 import type { PersonaKey } from './types';
+import type { RawOBAnswers } from '../../shared/types';
 
 // ── Confetti burst ────────────────────────────────────────────────────────────
 function ConfettiBurst({ primary }: { primary: string }) {
@@ -43,17 +44,178 @@ function ConfettiBurst({ primary }: { primary: string }) {
   );
 }
 
-// ── Interest-style chips (replaces behaviour-style chips for the reveal card) ─
-const LOVE_CHIPS: Record<PersonaKey, [string, string, string]> = {
-  flaneur:            ['Hidden Streets',    'Local Wandering',      'Unexpected Finds'],
-  gastronaut:         ['Street Food',       'Local Markets',        'Authentic Flavours'],
-  slowScholar:        ['History & Heritage','Museums',              'Deep Culture'],
-  neighbourhoodLocal: ['Local Life',        'Neighbourhood Texture','Quiet Corners'],
-  efficientExplorer:  ['Key Landmarks',     'City Highlights',      'Local Finds'],
-  aesthete:           ['Art & Design',      'Architecture',         'Beautiful Spaces'],
-  nightCreature:      ['Nightlife',         'Late Bars',            'Live Music'],
-  ritualSeeker:       ['Local Rituals',     'Morning Culture',      'Cultural Events'],
-};
+// ── Dynamic reveal content built from actual OB answers ──────────────────────
+//
+// love[3]    — WHO you are as a traveller (identity, emotional, travel-style)
+// surface[4] — WHAT we'll literally do differently for you (product promise, functional)
+//
+// Rule: no concept appears in both sections.
+
+function buildRevealContent(
+  raw: RawOBAnswers | null,
+  personaKey: PersonaKey,
+): { love: [string, string, string]; surface: [string, string, string, string] } {
+
+  // ── Base identity chip from persona (always 1st in love) ────────────────
+  const personaLove: Record<PersonaKey, string> = {
+    flaneur:            'Getting lost on purpose, following what looks interesting',
+    gastronaut:         'Eating your way through a city, one neighbourhood at a time',
+    slowScholar:        'Going deep on one thing rather than ticking off a list',
+    neighbourhoodLocal: 'Living like a local, not a tourist passing through',
+    efficientExplorer:  'Seeing the most of a place without wasting a minute',
+    aesthete:           'Finding beauty in architecture, detail and light',
+    nightCreature:      'Cities that come alive after dark',
+    ritualSeeker:       'Morning coffee, local markets and the rhythm of daily life',
+  };
+
+  // ── Pace chips (for love[1]) ─────────────────────────────────────────────
+  const pace = raw?.pace ?? [];
+  let loveFromPace = 'Moving at your own pace, no fixed schedule';
+  if (pace.includes('slow'))        loveFromPace = 'Taking it slow, staying long enough to actually feel a place';
+  else if (pace.includes('pack'))   loveFromPace = 'Covering serious ground without burning out';
+  else if (pace.includes('spontaneous')) loveFromPace = 'Waking up without a plan and seeing what happens';
+  else if (pace.includes('balanced')) loveFromPace = 'Mixing structure with room to wander';
+
+  // ── Group / situation chip (for love[2]) ────────────────────────────────
+  const group = raw?.group ?? 'solo';
+  let loveFromGroup = 'Travelling on your own terms, nobody else's schedule';
+  if (group === 'couple')  loveFromGroup = 'Discovering places that feel better shared with someone';
+  if (group === 'family')  loveFromGroup = 'Making memories that actually stick for everyone';
+  if (group === 'friends') loveFromGroup = 'Big plans and the chaos of making them work together';
+
+  // ── Surface chips — built from answers, no overlap with love ────────────
+  const surface: string[] = [];
+  const usedConcepts = new Set<string>();
+
+  // Evening → surface if not persona-already-nightCreature
+  const evening = raw?.evening ?? null;
+  if (evening === 'bars' && personaKey !== 'nightCreature') {
+    surface.push('Late-night spots and bars that locals actually go to');
+    usedConcepts.add('evening');
+  } else if (evening === 'dinner_wind') {
+    surface.push('Unhurried dinner spots over tourist-row restaurants');
+    usedConcepts.add('evening');
+  } else if (evening === 'markets') {
+    surface.push('Evening markets and outdoor spots to wind down');
+    usedConcepts.add('evening');
+  } else if (evening === 'early') {
+    surface.push('Places that close early so you can too — no late pressure');
+    usedConcepts.add('evening');
+  }
+
+  // Dietary → always surface (very specific, never love)
+  const dietary = raw?.dietary ?? [];
+  if (dietary.includes('plant_based')) {
+    surface.push('Plant-based spots worth going to, not just tolerating');
+    usedConcepts.add('dietary');
+  } else if (dietary.includes('halal')) {
+    surface.push('Halal-friendly options that don\'t compromise on quality');
+    usedConcepts.add('dietary');
+  } else if (dietary.includes('kosher')) {
+    surface.push('Kosher-certified places along your route');
+    usedConcepts.add('dietary');
+  } else if (dietary.includes('allergy')) {
+    surface.push('Places with clear allergy info so you can eat without stress');
+    usedConcepts.add('dietary');
+  }
+
+  // Budget → surface
+  const budget = raw?.budget ?? null;
+  const budgetProtect = raw?.budget_protect ?? null;
+  if (budget === 'budget' || budgetProtect === 'free_only') {
+    surface.push('Free entry, local pricing — real value over tourist markup');
+    usedConcepts.add('budget');
+  } else if (budgetProtect === 'street_food') {
+    surface.push('Street food and market stalls over sit-down restaurants');
+    usedConcepts.add('budget');
+  } else if (budget === 'luxury') {
+    surface.push('Higher-quality venues — the kind worth spending on');
+    usedConcepts.add('budget');
+  } else if (budget === 'comfortable') {
+    surface.push('Solid mid-range spots that actually feel worth it');
+    usedConcepts.add('budget');
+  }
+
+  // Kid focus (family) → surface
+  if (group === 'family') {
+    const kidFocus = raw?.kid_focus ?? null;
+    if (kidFocus === 'outdoor') surface.push('Open outdoor spaces where kids can actually move around');
+    else if (kidFocus === 'edu') surface.push('Interactive museums and places where kids learn something real');
+    else if (kidFocus === 'food') surface.push('Places with proper kid-friendly menus, not just chips');
+    else surface.push('A pace that works for all ages — no one gets left behind');
+    usedConcepts.add('kids');
+  }
+
+  // Mood → surface (pick the strongest one not already expressed by persona)
+  const mood = raw?.mood ?? [];
+  if (!usedConcepts.has('mood')) {
+    if (mood.includes('culture') && personaKey !== 'slowScholar' && personaKey !== 'aesthete') {
+      surface.push('Galleries, museums and cultural sites timed before crowds arrive');
+      usedConcepts.add('mood');
+    } else if (mood.includes('eat_drink') && personaKey !== 'gastronaut') {
+      surface.push('Places worth eating at — from market stalls to proper sit-downs');
+      usedConcepts.add('mood');
+    } else if (mood.includes('relax') && !pace.includes('slow')) {
+      surface.push('Green spaces and quiet corners to actually slow down in');
+      usedConcepts.add('mood');
+    } else if (mood.includes('explore')) {
+      surface.push('Off-the-main-drag spots that reward the detour');
+      usedConcepts.add('mood');
+    }
+  }
+
+  // Pace → surface timing signal (only if slow/pack, different angle from love chip)
+  if (pace.includes('slow') && !usedConcepts.has('pace_timing')) {
+    surface.push('Quieter visit windows so you\'re not fighting crowds at every stop');
+    usedConcepts.add('pace_timing');
+  } else if (pace.includes('pack') && !usedConcepts.has('pace_timing')) {
+    surface.push('Tight routing so you cover more ground without doubling back');
+    usedConcepts.add('pace_timing');
+  }
+
+  // Day open → surface the morning flavour
+  const dayOpen = raw?.day_open ?? null;
+  if (dayOpen === 'coffee' && !usedConcepts.has('morning')) {
+    surface.push('A good first coffee stop before anything else gets planned');
+    usedConcepts.add('morning');
+  } else if (dayOpen === 'breakfast' && !usedConcepts.has('morning')) {
+    surface.push('Proper breakfast spots to start the day right');
+    usedConcepts.add('morning');
+  }
+
+  // Persona-specific surface chip (if we still need more)
+  const personaSurface: Record<PersonaKey, string> = {
+    flaneur:            'Side streets and courtyards that most visitors walk straight past',
+    gastronaut:         'Local market stalls and neighbourhood restaurants over tourist menus',
+    slowScholar:        'Lesser-known historical sites alongside the main ones',
+    neighbourhoodLocal: 'One neighbourhood in depth rather than five places by taxi',
+    efficientExplorer:  'The highest-impact stops sequenced so you waste no time',
+    aesthete:           'Striking architecture and design spaces that most people overlook',
+    nightCreature:      'Bars and live music venues locals actually go to after dark',
+    ritualSeeker:       'Morning cafes, local markets and the quieter cultural rhythm',
+  };
+
+  // Fill to exactly 4 surface chips
+  if (surface.length < 4) surface.push(personaSurface[personaKey]);
+  if (surface.length < 4) {
+    // Generic catch-all fillers covering dimensions not already used
+    const fillers = [
+      'Spots that earn their place — nothing just to fill the day',
+      'Walking routes that connect stops naturally, less time in taxis',
+      'Real neighbourhood life over the usual tourist circuit',
+      'A mix of well-known and genuinely off-radar to keep it interesting',
+    ];
+    for (const f of fillers) {
+      if (surface.length >= 4) break;
+      surface.push(f);
+    }
+  }
+
+  return {
+    love: [personaLove[personaKey], loveFromPace, loveFromGroup],
+    surface: [surface[0], surface[1], surface[2], surface[3]] as [string, string, string, string],
+  };
+}
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function PersonaScreen() {
@@ -75,7 +237,10 @@ export function PersonaScreen() {
   }, [rawAnswers, state.persona?.archetype]);
 
   const def = PERSONA_DEFINITIONS[personaKey];
-  const loveChips = LOVE_CHIPS[personaKey];
+  const { love: loveChips, surface: surfaceChips } = useMemo(
+    () => buildRevealContent(rawAnswers, personaKey),
+    [rawAnswers, personaKey],
+  );
 
   if (!profile) {
     return (
@@ -172,7 +337,7 @@ export function PersonaScreen() {
           We'll surface
         </p>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 32 }}>
-          {def.placeTags.slice(0, 4).map((tag, i) => (
+          {surfaceChips.map((chip, i) => (
             <div key={i} style={{
               padding: '6px 13px', borderRadius: 999,
               background: 'rgba(255,255,255,.07)',
@@ -180,7 +345,7 @@ export function PersonaScreen() {
               color: 'rgba(255,255,255,.75)',
               fontSize: 12, fontWeight: 500,
             }}>
-              {tag}
+              {chip}
             </div>
           ))}
         </div>
