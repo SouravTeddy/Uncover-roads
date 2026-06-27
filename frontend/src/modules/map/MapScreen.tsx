@@ -762,9 +762,10 @@ export function MapScreen() {
         )
       })()}
 
-      {/* Empty area banner — screen-level so position: absolute works correctly */}
+      {/* Empty area banner — tappable to clear the active category filter */}
       {emptyArea && (
-        <div
+        <button
+          onClick={() => { setActiveCategories([]); setActiveQuickPickLabel(null); }}
           style={{
             position: 'absolute',
             left: 16,
@@ -781,17 +782,18 @@ export function MapScreen() {
             border: '1.5px solid rgba(232,97,90,.6)',
             boxShadow: '0 12px 36px rgba(0,0,0,.6), 0 0 22px rgba(232,97,90,.16)',
             animation: 'bannerIn .4s cubic-bezier(.25,0,0,1) both',
-            pointerEvents: 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
           }}
         >
           <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(232,97,90,.16)', border: '1px solid rgba(232,97,90,.4)' }}>
-            <span className="ms" style={{ fontSize: 19, color: '#e8615a' }}>search</span>
+            <span className="ms" style={{ fontSize: 19, color: '#e8615a' }}>search_off</span>
           </div>
           <div style={{ lineHeight: 1.3 }}>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: '#e8615a' }}>No {activeCategoryLabel ?? 'spots'} here</div>
-            <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(242,237,230,.6)', marginTop: 1 }}>Pan back toward the city to populate spots</div>
+            <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(242,237,230,.6)', marginTop: 1 }}>Tap to clear filter and see all pins</div>
           </div>
-        </div>
+        </button>
       )}
 
       {/* Reco focus places banner — shown when navigating from reel */}
