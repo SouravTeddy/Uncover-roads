@@ -11,6 +11,7 @@ import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api, reverseGeocodeCity } from '../../shared/api';
+import { computeTotalDays } from './trip-capacity-utils';
 import { useAppStore } from '../../shared/store';
 import { saveSessionMulti } from '../destination/useRecentSessions';
 import { MapLibreMap } from './MapLibreMap';
@@ -442,7 +443,8 @@ export function MapScreen() {
     setBuildError(null)
     try {
       const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
-      const days = (state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1
+      const daysFromDates = computeTotalDays(state.travelStartDate, state.travelEndDate);
+      const days = daysFromDates > 0 ? daysFromDates : ((state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1)
 
       // Resolve the city for every selected place using _city (stamped at add time
       // via geocode). For any place still missing _city (geocode was in-flight when
@@ -495,6 +497,7 @@ export function MapScreen() {
         engineWeights: null,
         cities: orderedCities.length > 1 ? orderedCities : undefined,
         arrivalTime: state.pendingTripDetails?.arrivalTime ?? null,
+        departureTime: state.pendingTripDetails?.departureTime ?? null,
         startType: state.tripContext.startType ?? 'hotel',
       })
       dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })

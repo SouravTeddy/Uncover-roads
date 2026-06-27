@@ -273,7 +273,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
           animation: `cardEntry 0.38s ease ${index * 0.08}s both`,
           cursor: 'pointer',
         }}
-        onClick={() => setNudgeOpen(true)}
+        onClick={handlePlay}
       >
         <div style={{
           position: 'relative',
@@ -380,7 +380,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
               </div>
             </div>
 
-            {/* Arrow button */}
+            {/* Arrow button — opens nudge sheet with smart updates */}
             <button
               onClick={e => { e.stopPropagation(); setNudgeOpen(true); }}
               style={{

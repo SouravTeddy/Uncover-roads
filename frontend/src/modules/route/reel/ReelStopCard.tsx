@@ -319,6 +319,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedDetails, setRefreshedDetails] = useState<import('../../../shared/types').PlaceDetails | null>(null);
+
+  async function handleRefresh() {
+    if (refreshing || !stop.placeId) return;
+    setRefreshing(true);
+    try {
+      const details = await fetchPlaceDetails(stop.placeId);
+      if (details) setRefreshedDetails(details);
+    } catch { /* silent */ } finally {
+      setRefreshing(false);
+    }
+  }
+
   const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
   const photoFetchAttempted = useRef(false);
   const photoUrl = stop.imageUrl
@@ -414,10 +428,11 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     const durLabel = stop.durationMin >= 60 ? `${(stop.durationMin / 60).toFixed(1).replace(/\.0$/, '')} hr` : `${stop.durationMin} min`;
     allPills.push({ icon: 'timer', label: durLabel, urgent: false, detail: null });
   }
-  if (stop.rating != null && stop.rating > 0) {
+  const displayRating = refreshedDetails?.rating ?? stop.rating;
+  if (displayRating != null && displayRating > 0) {
     const mapsHref = stop.googleMapsUrl
       ?? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(stop.placeId)}`;
-    allPills.push({ icon: 'star', label: `${stop.rating} ★`, urgent: false, detail: null, href: mapsHref, color: T.gold });
+    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, href: mapsHref, color: T.gold });
   }
   const price = priceLabel(stop.priceLevel);
   if (price) {
@@ -662,9 +677,19 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           pointerEvents: expanded ? 'auto' : 'none',
           transition: 'opacity 0.22s ease 0.16s',
         }}>
-          {/* Meta strip: stop counter left — handle above serves as close */}
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+          {/* Meta strip: stop counter left, refresh icon right */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
+            {stop.placeId && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRefresh(); }}
+                disabled={refreshing}
+                title="Refresh stop info"
+                style={{ background: 'none', border: 'none', padding: '2px 0 2px 8px', cursor: refreshing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <span className="ms" style={{ fontSize: 16, color: refreshing ? T.gold : 'rgba(255,255,255,.25)', opacity: refreshing ? 0.7 : 1, transition: 'color 0.2s, opacity 0.2s' }}>sync</span>
+              </button>
+            )}
           </div>
 
           {/* Scroll area — everything below meta strip scrolls */}
@@ -695,7 +720,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {(() => {
               const areaLabel = stop.area?.includes(',') ? null : stop.area;
               const hasLocation = !!(areaLabel || stop.city);
-              return (hasLocation || stop.website) ? (
+              const displayWebsite = refreshedDetails?.website ?? stop.website;
+              return (hasLocation || displayWebsite) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                   {hasLocation && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, color: 'rgba(255,255,255,.30)' }}>
@@ -703,11 +729,11 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                       {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
                     </div>
                   )}
-                  {stop.website && (
-                    <a href={stop.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  {displayWebsite && (
+                    <a href={displayWebsite} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 12, fontWeight: 500, color: T.sky, textDecoration: 'none' }}>
                       <span className="ms" style={{ fontSize: 13 }}>language</span>
-                      {extractDomain(stop.website)}
+                      {extractDomain(displayWebsite)}
                     </a>
                   )}
                 </div>

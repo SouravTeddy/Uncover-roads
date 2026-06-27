@@ -393,6 +393,29 @@ def _day1_adjusted_start(user_arrival_time: str, start_type: str = "hotel") -> t
     return adj // 60, adj % 60
 
 
+def _apply_departure_pressure(days: list["EngineDay"], ctx: EngineContext) -> list["EngineDay"]:
+    """Trim stops on the last day that would run past user_departure_time."""
+    if not ctx.user_departure_time or not days:
+        return days
+    try:
+        dh, dm = (int(x) for x in ctx.user_departure_time.split(":")[:2])
+    except (ValueError, AttributeError):
+        return days
+    cutoff = dh * 60 + dm
+    last_day = days[-1]
+    kept = []
+    for stop in last_day.stops:
+        if not stop.scheduled_time:
+            kept.append(stop)
+            continue
+        sh, sm = (int(x) for x in stop.scheduled_time.split(":"))
+        end = sh * 60 + sm + stop.duration_min
+        if end <= cutoff:
+            kept.append(stop)
+    last_day.stops = kept
+    return days
+
+
 def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[EngineDay]:
     """Distribute stops across travel_dates, grouping by city for multi-city trips.
 
@@ -567,6 +590,7 @@ async def build_itinerary(
         narrated = all_messages
 
     days = _split_into_days(stops, ctx)
+    days = _apply_departure_pressure(days, ctx)
     walk_advisories = _heavy_walk_advisories(days, ctx)
     recs = await _get_recommendations(ctx) if _needs_recommendations(stops, ctx) else None
 
