@@ -444,10 +444,17 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     total_days = len(dates)
 
     if n_cities == 1:
-        # Single city — distribute evenly
+        # Single city — distribute evenly across dates, but carry timing forward
+        # when a day ends before 4 PM (same SAME_DAY_CUTOFF_MIN logic as multi-city).
         per_day = max(1, len(stops) // total_days)
         days: list[EngineDay] = []
+        prev_day_end_min: int | None = None
         for i, date in enumerate(dates):
+            # If previous day ended early enough, continue on same calendar date
+            same_day = (i > 0 and prev_day_end_min is not None and prev_day_end_min <= SAME_DAY_CUTOFF_MIN)
+            if same_day:
+                date = dates[i - 1]
+
             slice_start = i * per_day
             slice_end = slice_start + per_day if i < total_days - 1 else len(stops)
             day_stops = stops[slice_start:slice_end]
@@ -455,8 +462,23 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                sm = _non_day1_start_min(day_stops, ctx, date)
+                if same_day and prev_day_end_min is not None:
+                    sm = prev_day_end_min + buffer_min
+                else:
+                    sm = _non_day1_start_min(day_stops, ctx, date)
                 _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
+
+            # Track end time for next iteration
+            if day_stops:
+                last = day_stops[-1]
+                if last.scheduled_time:
+                    lh, lm = (int(x) for x in last.scheduled_time.split(":"))
+                    prev_day_end_min = lh * 60 + lm + last.duration_min
+                else:
+                    prev_day_end_min = None
+            else:
+                prev_day_end_min = None
+
             days.append(EngineDay(date=date, stops=day_stops))
         return days
 
