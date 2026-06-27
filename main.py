@@ -3505,6 +3505,7 @@ _TRIGGER_TYPES: dict[str, list[str]] = {
     "closing_conflict":  ["tourist_attraction", "museum", "art_gallery", "park"],
     "walking_gap":       ["cafe", "restaurant"],
     "crowd_peak":        ["museum", "art_gallery", "cafe"],
+    "famous_spots":      ["tourist_attraction", "museum", "point_of_interest"],
 }
 
 _TRIGGER_RADIUS: dict[str, int] = {
@@ -3517,6 +3518,7 @@ _TRIGGER_RADIUS: dict[str, int] = {
     "closing_conflict":  1000,
     "walking_gap":       400,
     "crowd_peak":        800,
+    "famous_spots":      2000,
 }
 
 def _reel_match_reasons(affinity: float, rating: float | None, distance_m: int, price_level: int | None) -> list[str]:

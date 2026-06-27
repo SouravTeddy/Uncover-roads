@@ -670,26 +670,27 @@ export function MapScreen() {
         )}
       </MapLibreMap>
 
-      {/* Back button — top-left, only when not coming from itinerary (which has its own back) */}
-      {!fromItinerary && (
-        <button
-          onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-          aria-label="Back"
-          style={{
-            position: 'absolute',
-            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-            left: 16,
-            zIndex: 20,
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'rgba(15,20,30,.82)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,.1)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', padding: 0,
-          }}
-        >
-          <span className="ms text-text-2 text-base">arrow_back</span>
-        </button>
-      )}
+      {/* Back button — always visible top-left; goes back to reel if came from itinerary */}
+      <button
+        onClick={() => fromItinerary
+          ? dispatch({ type: 'GO_BACK' })
+          : dispatch({ type: 'GO_TO', screen: 'destination' })
+        }
+        aria-label="Back"
+        style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+          left: 16,
+          zIndex: 20,
+          width: 40, height: 40, borderRadius: '50%',
+          background: 'rgba(15,20,30,.82)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', padding: 0,
+        }}
+      >
+        <span className="ms text-text-2 text-base">arrow_back</span>
+      </button>
 
       {/* Compass — top-right, below filter bar */}
       <button
@@ -1104,9 +1105,7 @@ export function MapScreen() {
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
-          fromReel={fromItinerary}
           onBuild={handleBuild}
-          onBackToReel={() => dispatch({ type: 'GO_BACK' })}
         />
       )}
 

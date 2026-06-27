@@ -473,17 +473,36 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             city_days.append(alloc)
             remaining -= alloc
 
+    # If a city ends before 4 PM, the next city continues on the same calendar date.
+    SAME_DAY_CUTOFF_MIN = 16 * 60
+
     days = []
     date_idx = 0
     global_day_idx = 0
-    prev_day_end_min: int | None = None  # track end-of-day minute for same-date overflow
-    for (city, city_stops), n_days in zip(city_groups, city_days):
+    prev_day_end_min: int | None = None
+    for city_idx, ((city, city_stops), n_days) in enumerate(zip(city_groups, city_days)):
         n_days = max(1, n_days)
         per_day = max(1, len(city_stops) // n_days)
         for j in range(n_days):
-            overflowed = date_idx >= total_days
-            date = dates[date_idx] if not overflowed else dates[-1]
-            date_idx += 1
+            # Same-day continuation: first day of a non-first city that ended early enough
+            same_day = (
+                j == 0 and city_idx > 0 and
+                prev_day_end_min is not None and
+                prev_day_end_min <= SAME_DAY_CUTOFF_MIN
+            )
+            if same_day:
+                # Reuse previous city's last date; don't advance date_idx
+                date = dates[date_idx - 1]
+                overflowed = False
+            elif date_idx >= total_days:
+                date = dates[-1]
+                date_idx += 1
+                overflowed = True
+            else:
+                date = dates[date_idx]
+                date_idx += 1
+                overflowed = False
+
             slice_start = j * per_day
             slice_end = slice_start + per_day if j < n_days - 1 else len(city_stops)
             day_stops = city_stops[slice_start:slice_end]
@@ -491,9 +510,8 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                if overflowed and prev_day_end_min is not None:
-                    # Same calendar date as previous city: carry forward from where
-                    # that city ended (+ transit buffer) instead of resetting to morning.
+                if same_day or (overflowed and prev_day_end_min is not None):
+                    # Carry forward from where previous city ended (+ transit buffer)
                     sm = prev_day_end_min + buffer_min
                 else:
                     sm = _non_day1_start_min(day_stops, ctx, date)

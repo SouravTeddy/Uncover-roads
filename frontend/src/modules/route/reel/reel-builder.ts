@@ -204,6 +204,7 @@ const TRIGGER_SEARCH: Record<string, string> = {
   walking_gap:      'cafe',
   walkable_detour:  '',
   hidden_gem:       '',
+  famous_spots:     'tourist_attraction',
 };
 
 function triggerCTA(trigger: string, city: string): string {
@@ -216,6 +217,7 @@ function triggerCTA(trigger: string, city: string): string {
     walking_gap:      'Browse spots en route',
     walkable_detour:  'View walking route',
     hidden_gem:       'View on map',
+    famous_spots:     'Browse famous spots',
   };
   const base = label[trigger] ?? 'Browse nearby';
   return city ? `${base} in ${city}` : base;
