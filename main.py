@@ -157,6 +157,7 @@ class EngineItineraryPayload(BaseModel):
     engineWeights: Optional[dict] = None
     cities: Optional[list[str]] = None  # ordered city list for multi-city trips
     arrivalTime: Optional[str] = None   # user's actual arrival time for day-1 adjustment
+    departureTime: Optional[str] = None  # user's departure time on last day
     startType: Optional[str] = "hotel"  # 'airport' | 'hotel' | 'custom'
 
 
@@ -4360,6 +4361,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         travel_dates=travel_dates,
         weather=None,
         user_arrival_time=body.arrivalTime or None,
+        user_departure_time=body.departureTime or None,
         user_start_type=body.startType or "hotel",
     )
 

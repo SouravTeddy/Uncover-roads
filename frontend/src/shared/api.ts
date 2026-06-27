@@ -193,6 +193,7 @@ export const api = {
     engineWeights: EngineWeights | null
     cities?: string[]
     arrivalTime?: string | null
+    departureTime?: string | null
     startType?: string | null
   }) =>
     post<EngineItinerary>('/engine-itinerary', body),

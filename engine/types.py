@@ -41,6 +41,7 @@ class EngineContext:
     generation_count: int = 0
     user_arrival_time: str | None = None       # user's actual arrival time, day-1 only
     user_start_type: str | None = None         # 'airport' | 'hotel' | 'custom'
+    user_departure_time: str | None = None     # user's departure time on last day
 
 
 @dataclass
