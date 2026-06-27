@@ -389,26 +389,26 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   }
 
   if (card.timingAdjustment?.isClosingConflict) {
-    allPills.push({ icon: 'warning', label: card.timingAdjustment.consequenceNote ?? 'Closing conflict', urgent: true, detail: { title: 'Timing conflict', body: card.timingAdjustment.consequenceNote ?? '' } });
+    allPills.push({ icon: 'warning', label: 'Closing conflict', urgent: true, detail: { title: 'Timing conflict', body: card.timingAdjustment.consequenceNote ?? '' } });
   }
   if (crowdRow?.isBusy) {
-    allPills.push({ icon: crowdRow.icon, label: crowdRow.text, urgent: true, detail: { title: 'Crowd level', body: crowdRow.text } });
+    allPills.push({ icon: crowdRow.icon, label: 'Busy period', urgent: true, detail: { title: 'Crowd level', body: crowdRow.text } });
   }
   if (card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict) {
-    allPills.push({ icon: 'schedule', label: card.timingAdjustment.consequenceNote, urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
+    allPills.push({ icon: 'schedule', label: 'Timing note', urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
   }
   if (crowdRow && !crowdRow.isBusy) {
-    allPills.push({ icon: crowdRow.icon, label: crowdRow.text, urgent: false, detail: { title: 'Crowd & timing', body: crowdRow.text } });
+    allPills.push({ icon: crowdRow.icon, label: 'Good window', urgent: false, detail: { title: 'Crowd & timing', body: crowdRow.text } });
   }
   if (transitSig) {
     if (hasConflict) {
-      allPills.push({ icon: 'umbrella', label: 'Alt. transport · rain conflict', urgent: true, detail: { title: 'Getting here', body: `Rain detected. ${transitSig.text} — consider alternative transport.` } });
+      allPills.push({ icon: 'umbrella', label: 'Rain conflict', urgent: true, detail: { title: 'Getting here', body: `Rain detected. ${transitSig.text} — consider alternative transport.` } });
     } else {
-      allPills.push({ icon: transitSig.icon ?? 'directions_walk', label: transitSig.text, urgent: false, detail: { title: 'Getting here', body: transitSig.text } });
+      allPills.push({ icon: transitSig.icon ?? 'directions_walk', label: 'Transit info', urgent: false, detail: { title: 'Getting here', body: transitSig.text } });
     }
   }
   if (hoursStr) {
-    allPills.push({ icon: 'door_open', label: hoursStr, urgent: false, detail: null });
+    allPills.push({ icon: 'door_open', label: hoursStr, urgent: false, detail: { title: 'Opening hours', body: hoursStr } });
   }
   if (stop.durationMin) {
     const durLabel = stop.durationMin >= 60 ? `${(stop.durationMin / 60).toFixed(1).replace(/\.0$/, '')} hr` : `${stop.durationMin} min`;
@@ -648,30 +648,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           pointerEvents: expanded ? 'auto' : 'none',
           transition: 'opacity 0.22s ease 0.16s',
         }}>
-          {/* Fixed meta strip: date · day · weather + stop counter + close */}
+          {/* Fixed meta strip: stop counter + close only (date/day/weather already in top bar) */}
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '14px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
-            {visitDateLabel && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,.30)' }}>
-                  <span className="ms" style={{ fontSize: 13 }}>calendar_today</span>
-                  {visitDateLabel}
-                </div>
-                <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,.16)', margin: '0 10px' }} />
-              </>
-            )}
-            {card.totalDays > 1 && (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,.30)' }}>Day {card.day}/{card.totalDays}</div>
-                <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(255,255,255,.16)', margin: '0 10px' }} />
-              </>
-            )}
-            {card.weather && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: T.text1 }}>
-                <span className="ms" style={{ fontSize: 14, color: '#f5a623' }}>{wxIcon(card.weather.condition ?? '')}</span>
-                {Math.round(card.weather.temp ?? 0)}°
-              </div>
-            )}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }}
@@ -686,7 +665,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           {/* Scroll area — everything below meta strip scrolls */}
           <div
             className="no-scrollbar"
-            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 20px)' }}
+            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
           >
             {/* Title */}
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: T.text1, lineHeight: 1.14, margin: '0 0 7px' }}>
