@@ -443,9 +443,11 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     n_cities = len(city_groups)
     total_days = len(dates)
 
+    SAME_DAY_CUTOFF_MIN = 16 * 60  # if a day ends before 4 PM, next segment continues same date
+
     if n_cities == 1:
         # Single city — distribute evenly across dates, but carry timing forward
-        # when a day ends before 4 PM (same SAME_DAY_CUTOFF_MIN logic as multi-city).
+        # when a day ends before 4 PM.
         per_day = max(1, len(stops) // total_days)
         days: list[EngineDay] = []
         prev_day_end_min: int | None = None
@@ -494,9 +496,6 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
             alloc = min(alloc, remaining - (n_cities - 1 - i))
             city_days.append(alloc)
             remaining -= alloc
-
-    # If a city ends before 4 PM, the next city continues on the same calendar date.
-    SAME_DAY_CUTOFF_MIN = 16 * 60
 
     days = []
     date_idx = 0
