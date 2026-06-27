@@ -54,6 +54,14 @@ function ScreenRouter() {
   }, []);
 
   async function handleSignedIn(user: User) {
+    // If a different user is logging in, clear the previous user's local state entirely
+    const storedUserId = localStorage.getItem('ur_user_id');
+    if (storedUserId && storedUserId !== user.id) {
+      const keysToRemove = Object.keys(localStorage).filter(k => k.startsWith('ur_'));
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
+    localStorage.setItem('ur_user_id', user.id);
+
     // Persist user info for the welcome back screen
     localStorage.setItem('ur_user', JSON.stringify({
       name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',

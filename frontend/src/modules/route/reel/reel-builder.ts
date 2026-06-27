@@ -691,8 +691,9 @@ export function buildReelCards(
     neighborhoods: [],
   });
 
-  // Pre-pass: detect days that are same-day city continuations (short morning in city 1, then hop to city 2)
-  // Condition: prev day ends before 13:00 AND city changes AND transit ≤ 3h (or distance ≤ 300km)
+  // Pre-pass: detect days that are same-day continuations.
+  // Case 1: same city, same calendar date (engine merged them because prev day ended before 4 PM)
+  // Case 2: different cities, prev ends before 13:00, transit ≤ 3h or distance ≤ 300km
   const sameDayMergeSet = new Set<number>();
   for (let di = 1; di < itinerary.days.length; di++) {
     const prevD = itinerary.days[di - 1];
@@ -701,6 +702,13 @@ export function buildReelCards(
     const currCityRaw = currD.city || (itinerary.cities?.[di] ?? '');
     const prevCityKey = prevCityRaw.toLowerCase();
     const currCityKey = currCityRaw.toLowerCase();
+
+    // Same city, same calendar date → engine already merged them as a same-day continuation
+    if (prevCityKey && currCityKey && prevCityKey === currCityKey && prevD.date === currD.date) {
+      sameDayMergeSet.add(di);
+      continue;
+    }
+
     if (!prevCityKey || !currCityKey || prevCityKey === currCityKey) continue;
     const prevSortedPre = [...prevD.stops].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
     const prevLastPre = prevSortedPre.at(-1);

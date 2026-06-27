@@ -305,8 +305,8 @@ export function ReelDayTransitionCard({ card, active }: Props) {
             </span>
           </div>
 
-          {/* Day distance bar */}
-          {(card.nextDayWalkKm > 0 || card.nextDayRideKm > 0) && (
+          {/* Day distance bar — only for city changes (same-city looks like transit) */}
+          {card.isCityChange && (card.nextDayWalkKm > 0 || card.nextDayRideKm > 0) && (
             <div style={{ display: 'flex', marginTop: 14, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,.07)', width: '100%', maxWidth: 280 }}>
               {card.nextDayWalkKm > 0 && (
                 <div style={{ flex: 1, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(79,143,171,.06)', borderRight: card.nextDayRideKm > 0 ? '1px solid rgba(255,255,255,.06)' : 'none' }}>
