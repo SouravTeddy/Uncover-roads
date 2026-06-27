@@ -319,20 +319,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshedDetails, setRefreshedDetails] = useState<import('../../../shared/types').PlaceDetails | null>(null);
-
-  async function handleRefresh() {
-    if (refreshing || !stop.placeId) return;
-    setRefreshing(true);
-    try {
-      const details = await fetchPlaceDetails(stop.placeId);
-      if (details) setRefreshedDetails(details);
-    } catch { /* silent */ } finally {
-      setRefreshing(false);
-    }
-  }
-
   const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
   const photoFetchAttempted = useRef(false);
   const photoUrl = stop.imageUrl
@@ -428,7 +414,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     const durLabel = stop.durationMin >= 60 ? `${(stop.durationMin / 60).toFixed(1).replace(/\.0$/, '')} hr` : `${stop.durationMin} min`;
     allPills.push({ icon: 'timer', label: durLabel, urgent: false, detail: null });
   }
-  const displayRating = refreshedDetails?.rating ?? stop.rating;
+  const displayRating = stop.rating;
   if (displayRating != null && displayRating > 0) {
     const mapsHref = stop.googleMapsUrl
       ?? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(stop.placeId)}`;
@@ -632,9 +618,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           </div>
 
           {/* Title — single line with ellipsis (matches proto .c-title) */}
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: T.text1, lineHeight: 1.15, margin: '0 0 5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: T.text1, lineHeight: 1.15, margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {stop.title}
           </h2>
+
+          {/* Arrival → departure time */}
+          {stop.time && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, fontSize: 12, color: T.text3 }}>
+              <span className="ms" style={{ fontSize: 14 }}>schedule</span>
+              <span>~{fmt12h(stop.time)}</span>
+              {stop.durationMin > 0 && (
+                <><span style={{ opacity: 0.4 }}>→ leave</span><span>~{addMinutes(stop.time, stop.durationMin)}</span></>
+              )}
+            </div>
+          )}
 
           {/* Description — 2-line clamp */}
           {(descriptionText || reasonText) && (
@@ -677,19 +674,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           pointerEvents: expanded ? 'auto' : 'none',
           transition: 'opacity 0.22s ease 0.16s',
         }}>
-          {/* Meta strip: stop counter left, refresh icon right */}
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+          {/* Meta strip: stop counter */}
+          <div style={{ flexShrink: 0, padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
-            {stop.placeId && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleRefresh(); }}
-                disabled={refreshing}
-                title="Refresh stop info"
-                style={{ background: 'none', border: 'none', padding: '2px 0 2px 8px', cursor: refreshing ? 'default' : 'pointer', display: 'flex', alignItems: 'center', WebkitTapHighlightColor: 'transparent' }}
-              >
-                <span className="ms" style={{ fontSize: 16, color: refreshing ? T.gold : 'rgba(255,255,255,.25)', opacity: refreshing ? 0.7 : 1, transition: 'color 0.2s, opacity 0.2s' }}>sync</span>
-              </button>
-            )}
           </div>
 
           {/* Scroll area — everything below meta strip scrolls */}
@@ -720,7 +707,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {(() => {
               const areaLabel = stop.area?.includes(',') ? null : stop.area;
               const hasLocation = !!(areaLabel || stop.city);
-              const displayWebsite = refreshedDetails?.website ?? stop.website;
+              const displayWebsite = stop.website;
               return (hasLocation || displayWebsite) ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                   {hasLocation && (

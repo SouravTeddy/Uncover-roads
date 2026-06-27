@@ -122,7 +122,7 @@ export type RecoTrigger =
   // New engine dimensions:
   | 'density_excess' | 'density_sparse' | 'geo_efficiency'
   | 'time_balance' | 'category_diversity' | 'social_gap'
-  | 'budget_mismatch' | 'live_event' | 'hidden_gem';
+  | 'budget_mismatch' | 'live_event' | 'hidden_gem' | 'famous_spots';
 
 export interface ReelRecoCard {
   type: 'reco';

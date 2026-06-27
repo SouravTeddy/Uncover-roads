@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useAppStore } from '../../../shared/store';
 import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
@@ -79,6 +79,9 @@ export function ItineraryReelScreen() {
   const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const activeIdxRef = useRef(0);
+  // When true, the next cards update should restore scroll position (secondary rebuild)
+  const restoreScrollRef = useRef(false);
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
   const [undoPending, setUndoPending] = useState<{ id: string; label: string } | null>(null);
   const [saved, setSaved] = useState(!!savedItem);
@@ -126,6 +129,25 @@ export function ItineraryReelScreen() {
         );
         const dayStops = itinerary.days[dayIdx]?.stops ?? [];
         const recos = deriveRecos(dayStops, signal);
+        // Append famous spots reco if the day has no landmark/museum/historic stops
+        const LANDMARK_CATS = new Set(['museum', 'historic', 'tourism', 'gallery', 'amusement_park', 'zoo', 'aquarium']);
+        const hasLandmark = dayStops.some(s => LANDMARK_CATS.has(s.category));
+        if (!hasLandmark && dayStops.length > 0 && recos.length < 4) {
+          const anchor = dayStops[Math.floor(dayStops.length / 2)];
+          recos.push({
+            type: 'reco',
+            id: `famous-spots-${day.city}-${dayIdx}`,
+            trigger: 'famous_spots' as ReelRecoCardType['trigger'],
+            label: `Famous spots in ${day.city}`,
+            consequence: `You haven't added any of ${day.city}'s iconic landmarks — browse what's nearby.`,
+            nearbyCity: day.city,
+            persona: signal.archetype,
+            afterStopId: anchor.id,
+            weightScore: 0.4,
+            stopLat: anchor.lat,
+            stopLon: anchor.lon,
+          });
+        }
         recosByDayIdx.set(dayIdx, recos);
       });
     }
@@ -255,15 +277,29 @@ export function ItineraryReelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
+  // Keep activeIdxRef in sync so the scroll restore effect can read it synchronously
+  useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
+
+  // After secondary card rebuilds (weather/persona/photos), restore scroll so the
+  // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
+  useLayoutEffect(() => {
+    if (!restoreScrollRef.current || !scrollRef.current) return;
+    restoreScrollRef.current = false;
+    const el = scrollRef.current;
+    el.scrollTop = activeIdxRef.current * el.clientHeight;
+  }, [cards]);
+
   // Enrichment-only updates — when weatherByCity, personaName, or city photos arrive
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
+    restoreScrollRef.current = true;
     setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
+    restoreScrollRef.current = true;
     setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
@@ -550,6 +586,7 @@ export function ItineraryReelScreen() {
       category_diversity:{ label: 'Variety',         icon: 'grid_view',       color: '#8b9e6a' },
       social_gap:        { label: 'Social',          icon: 'people',          color: '#4f8fab' },
       density_sparse:    { label: 'Room to add',     icon: 'explore',         color: '#8b9e6a' },
+      famous_spots:      { label: 'Landmarks',       icon: 'museum',          color: '#7b9fcf' },
     };
 
     // Contextual fallback images — used when no real place photo is available.
@@ -585,6 +622,9 @@ export function ItineraryReelScreen() {
       },
       walking_gap: {
         _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
+      },
+      famous_spots: {
+        _any:    u('1499856845038-586f388a7b93'), // iconic city monument
       },
       social_gap: {
         couple:  u('1516450360452-9312f5e86fc7'),
@@ -932,8 +972,8 @@ export function ItineraryReelScreen() {
             card.type === 'day_divider' ? `day-${card.day}` :
             card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
             card.type === 'day_intel' ? card.id :
-            card.type === 'scenic' ? `scenic-${idx}-${card.pos}` :
-            card.type === 'group' ? `group-${idx}-${card.fromStop}` :
+            card.type === 'scenic' ? `scenic-${card.from}-${card.to}` :
+            card.type === 'group' ? `group-${card.fromStop}-${card.toStop}` :
             card.type === 'growth' ? 'growth-card' :
             `${card.type}-${idx}`;
           return (

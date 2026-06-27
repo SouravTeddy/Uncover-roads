@@ -9,7 +9,7 @@ const OPTIONS = [
   { value: 'couple',  label: 'Partner',   sublabel: 'Two minds, one itinerary',
     imageUrl: 'https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=400&q=80' },
   { value: 'family',  label: 'Family',    sublabel: 'Built for everyone, fun for all',
-    imageUrl: 'https://images.unsplash.com/photo-1602524811736-bb0b315d1765?w=400&q=80' },
+    imageUrl: '/ob-family.jpg' },
   { value: 'friends', label: 'Friends',   sublabel: 'Big plans, shared memories',
     imageUrl: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80' },
 ];
