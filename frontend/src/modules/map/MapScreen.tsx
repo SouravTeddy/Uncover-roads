@@ -289,7 +289,9 @@ export function MapScreen() {
     }, [handleAreaLoad]),
     onZoomedOut: useCallback(() => {
       setMapStatus('zoomed-out');
-    }, []),
+      // Free pin memory — zoomed-out view shows only itinerary places (UserPinsLayer)
+      dispatch({ type: 'SET_PLACES', places: [] });
+    }, [dispatch]),
   });
 
   const handleMapMoveEnd = useCallback((center: [number, number], zoom: number, bbox: [number, number, number, number]) => {
@@ -532,6 +534,11 @@ export function MapScreen() {
 
   const ourPickIds = new Set(ourPicks.map(p => p.id))
 
+  // Discovery pins only render when zoomed in enough to have loaded area data.
+  // UserPinsLayer (itinerary places) is always visible regardless of zoom.
+  const DISCOVER_ZOOM = 12;
+  const pinsVisible = mapZoom >= DISCOVER_ZOOM;
+
   const curatedCount = ourPicks.length + liveEvents.length + recommendedPlaces.length
 
   const displayCount = activeCategories.length > 0 ? filteredPlaces.length : places.length
@@ -563,69 +570,76 @@ export function MapScreen() {
         onBearingChange={setMapBearing}
         routeGeojson={routeGeojson}
       >
-        {/* Famous places — viewport-culled and de-duped against curated picks */}
-        <FamousPinsLayer
-          places={viewportFilteredPlaces.filter(p =>
-            !selectedIds.has(p.id) &&
-            !ourPickIds.has(p.id)
-          )}
-          activePlaceId={activePinId}
-          discoveryMode="anchor"
-          isDark={isDark}
-          onPinClick={handlePinClick}
-          mapZoom={mapZoom}
-          favouritedIds={favouritedIds}
-        />
-        <ReferencePinsLayer
-          pins={state.referencePins}
-          activePinId={activePinId}
-          onPinClick={handlePinClick}
-        />
+        {/* Famous places — only when zoomed in; disappear on zoom-out to free memory */}
+        {pinsVisible && (
+          <FamousPinsLayer
+            places={viewportFilteredPlaces.filter(p =>
+              !selectedIds.has(p.id) &&
+              !ourPickIds.has(p.id)
+            )}
+            activePlaceId={activePinId}
+            discoveryMode="anchor"
+            isDark={isDark}
+            onPinClick={handlePinClick}
+            mapZoom={mapZoom}
+            favouritedIds={favouritedIds}
+          />
+        )}
+        {pinsVisible && (
+          <ReferencePinsLayer
+            pins={state.referencePins}
+            activePinId={activePinId}
+            onPinClick={handlePinClick}
+          />
+        )}
         <UserPinsLayer
           itineraryPlaces={selectedPlaces}
           favouritedPins={favouritedPins}
           activePinId={activePinId}
           onPinClick={handlePinClick}
         />
-        {/* Reco places — filtered by active category when a chip is selected */}
-        <RecoPlacesPinsLayer
-          places={applyCategories((recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '') && !selectedIds.has(p.id) && !selectedIds.has(p.place_id ?? '')))}
-          activePinId={activePinId ?? null}
-          mapZoom={mapZoom}
-          favouritedIds={favouritedIds}
-          isDark={isDark}
-          onPinClick={(id) => {
-            const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
-            if (p) {
-              setActivePlace(p)
-              fetchDetails(p)
-              trackViewedCategory(p.category)
-              dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
-            }
-          }}
-        />
+        {/* Reco / curated / events — only when zoomed in */}
+        {pinsVisible && (
+          <RecoPlacesPinsLayer
+            places={applyCategories((recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).filter(p => !ourPickIds.has(p.id) && !ourPickIds.has(p.place_id ?? '') && !selectedIds.has(p.id) && !selectedIds.has(p.place_id ?? '')))}
+            activePinId={activePinId ?? null}
+            mapZoom={mapZoom}
+            favouritedIds={favouritedIds}
+            isDark={isDark}
+            onPinClick={(id) => {
+              const p = (recoFocusPlaces.length > 0 ? recoFocusPlaces : recommendedPlaces).find(r => r.id === id)
+              if (p) {
+                setActivePlace(p)
+                fetchDetails(p)
+                trackViewedCategory(p.category)
+                dispatch({ type: 'SET_ACTIVE_PIN_ID', id })
+              }
+            }}
+          />
+        )}
 
+        {pinsVisible && (
+          <OurPicksPinsLayer
+            picks={applyCategories(ourPicks)}
+            activePinId={activePinId ?? null}
+            onPinClick={handlePicksPinClick}
+            selectedPlaceIds={selectedIds}
+            mapZoom={mapZoom}
+            favouritedIds={favouritedIds}
+            isDark={isDark}
+          />
+        )}
 
-        {/* Curated picks — ✦ sparkle distinguishes them visually */}
-        <OurPicksPinsLayer
-          picks={applyCategories(ourPicks)}
-          activePinId={activePinId ?? null}
-          onPinClick={handlePicksPinClick}
-          selectedPlaceIds={selectedIds}
-          mapZoom={mapZoom}
-          favouritedIds={favouritedIds}
-          isDark={isDark}
-        />
-
-        {/* Live Events */}
-        <LiveEventPinsLayer
-          events={liveEvents}
-          activePinId={activePinId ?? null}
-          onPinClick={handleEventPinClick}
-        />
+        {pinsVisible && (
+          <LiveEventPinsLayer
+            events={liveEvents}
+            activePinId={activePinId ?? null}
+            onPinClick={handleEventPinClick}
+          />
+        )}
 
         {/* Numbered search result pins */}
-        {showSearchStrip && searchPins.length > 0 && (
+        {pinsVisible && showSearchStrip && searchPins.length > 0 && (
           <NumberedPinsLayer
             pins={searchPins}
             onPinClick={(pin) => {
@@ -641,17 +655,19 @@ export function MapScreen() {
           places={places}
           neighborhoods={neighborhoods}
           heatmapSeeds={heatmapSeeds}
-          visible={activeFilter === 'all' && activeCategories.length === 0}
+          visible={pinsVisible && activeFilter === 'all' && activeCategories.length === 0}
           bbox={mapBbox}
           mapCenter={mapCenter}
         />
-        <AreaPillsOverlay
-          neighborhoods={neighborhoods}
-          mapZoom={mapZoom}
-          selectedAreaId={selectedAreaId}
-          onSelectArea={setSelectedAreaId}
-          activeFilter={activeFilter}
-        />
+        {pinsVisible && (
+          <AreaPillsOverlay
+            neighborhoods={neighborhoods}
+            mapZoom={mapZoom}
+            selectedAreaId={selectedAreaId}
+            onSelectArea={setSelectedAreaId}
+            activeFilter={activeFilter}
+          />
+        )}
       </MapLibreMap>
 
       {/* Back button — top-left, only when not coming from itinerary (which has its own back) */}
