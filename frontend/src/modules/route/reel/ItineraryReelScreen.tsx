@@ -831,8 +831,18 @@ export function ItineraryReelScreen() {
           }
           else if (card.type === 'stop') {
             const isJustAdjusted = recentlyAdjustedIds.has((card as ReelStopCardType).stop.id);
+            // Recompute stop number from visible (non-removed) stop cards so numbers
+            // stay consecutive after deletions (e.g. removing stop 1 doesn't leave "2 of 10")
+            const visibleStopCards = reelCards.filter(c => c.type === 'stop') as ReelStopCardType[];
+            const visibleStopCount = visibleStopCards.length;
+            const visibleStopNumber = visibleStopCards.findIndex(c => c.stop.id === (card as ReelStopCardType).stop.id) + 1;
+            const cardWithFixedNumbers: ReelStopCardType = {
+              ...(card as ReelStopCardType),
+              stopNumber: visibleStopNumber,
+              totalStops: visibleStopCount,
+            };
             child = <ReelStopCard
-              card={card} active={isActive} weather={weather}
+              card={cardWithFixedNumbers} active={isActive} weather={weather}
               primaryCity={city || activeItinerary?.city || ''}
               isJustAdjusted={isJustAdjusted}
               onExplore={() => {

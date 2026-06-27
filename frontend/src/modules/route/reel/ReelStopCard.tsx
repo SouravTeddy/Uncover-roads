@@ -571,35 +571,49 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
           overflow: 'hidden',
           touchAction: 'none',
-          // height (not maxHeight) so CSS can animate between two concrete values
-          height: expanded ? '68dvh' : '224px',
+          // extend collapsed height past the nav bar so visible content = 224px above it
+          height: expanded ? '68dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
           transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
+          display: 'flex', flexDirection: 'column',
         }}
-        onClick={(e) => { e.stopPropagation(); if (!expanded) setExpandedSync(true); }}
         onTouchStart={onPanelTouchStart}
         onTouchEnd={onPanelTouchEnd}
       >
+        {/* ── Always-visible drag handle — tap collapses/expands ──── */}
+        <div
+          onClick={(e) => { e.stopPropagation(); if (expanded) { setPillDetail(null); setActivePillEl(null); } setExpandedSync(!expandedRef.current); }}
+          style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+        >
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.22)' }} />
+        </div>
 
-        {/* ── COLLAPSED — always mounted, fades out on expand ──────── */}
+        {/* ── Content wrapper — collapsed and expanded overlap here ── */}
+        <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+
+        {/* ── COLLAPSED — fades out on expand ──────────────────────── */}
         <div style={{
           position: 'absolute', inset: 0, padding: '0 20px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
           opacity: expanded ? 0 : 1,
           pointerEvents: expanded ? 'none' : 'auto',
           transition: 'opacity 0.15s ease',
-        }}>
-          {/* Handle + counter */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 8px' }}>
-            <div style={{ width: 34, height: 3, borderRadius: 2, background: 'rgba(255,255,255,.16)', marginBottom: 7 }} />
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>
-                Stop {card.stopNumber} of {card.totalStops}
-              </span>
-              {onRemove && (
-                <button onClick={(e) => { e.stopPropagation(); onRemove?.(); }} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 4 }}>
-                  <span className="ms" style={{ fontSize: 13, color: 'rgba(255,255,255,.22)' }}>delete_outline</span>
-                </button>
-              )}
-            </div>
+        }}
+          onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
+        >
+          {/* Stop counter row: left-aligned counter, right-aligned delete */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>
+              Stop {card.stopNumber} of {card.totalStops}
+            </span>
+            {onRemove && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onRemove?.(); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(200,60,60,.15)', border: '1px solid rgba(200,60,60,.28)', borderRadius: 8, padding: '5px 9px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+              >
+                <span className="ms" style={{ fontSize: 18, color: 'rgba(230,100,90,.85)' }}>delete_outline</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(230,100,90,.75)', letterSpacing: '.04em' }}>Remove</span>
+              </button>
+            )}
           </div>
 
           {/* Title — single line with ellipsis (matches proto .c-title) */}
@@ -640,7 +654,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           })()}
         </div>
 
-        {/* ── EXPANDED — always mounted, fades in on expand ─────────── */}
+        {/* ── EXPANDED — fades in on expand ────────────────────────── */}
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column',
@@ -648,18 +662,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           pointerEvents: expanded ? 'auto' : 'none',
           transition: 'opacity 0.22s ease 0.16s',
         }}>
-          {/* Fixed meta strip: stop counter + close only (date/day/weather already in top bar) */}
-          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '14px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
-              <button
-                onClick={(e) => { e.stopPropagation(); setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.30)', cursor: 'pointer', padding: '4px 0', WebkitTapHighlightColor: 'transparent' }}
-              >
-                <span className="ms" style={{ fontSize: 15 }}>expand_more</span>
-                Close
-              </button>
-            </div>
+          {/* Meta strip: stop counter left — handle above serves as close */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.30)' }}>Stop {card.stopNumber} of {card.totalStops}</span>
           </div>
 
           {/* Scroll area — everything below meta strip scrolls */}
@@ -835,6 +840,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           </div>
         </div>
 
+        </div>{/* ── end content-wrapper ── */}
       </div>
     </div>
   );
