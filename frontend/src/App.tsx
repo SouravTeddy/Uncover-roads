@@ -5,7 +5,7 @@ import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
-import { syncProfile, loadSavedItineraries, loadUserProfile, fetchPersonaForRestore } from './shared/userSync';
+import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import {
@@ -54,15 +54,6 @@ function ScreenRouter() {
   }, []);
 
   async function handleSignedIn(user: User) {
-    // Clear stale local state when a different user logs in OR when ur_user_id was never
-    // set (pre-tracking devices that still hold another user's ur_persona/ur_gen_count).
-    const storedUserId = localStorage.getItem('ur_user_id');
-    if (!storedUserId || storedUserId !== user.id) {
-      const keysToRemove = Object.keys(localStorage).filter(k => k.startsWith('ur_'));
-      keysToRemove.forEach(k => localStorage.removeItem(k));
-    }
-    localStorage.setItem('ur_user_id', user.id);
-
     // Persist user info for the welcome back screen
     localStorage.setItem('ur_user', JSON.stringify({
       name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',
@@ -82,7 +73,8 @@ function ScreenRouter() {
       dispatch({ type: 'PROFILE_LOADED' });
     }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
 
-    const hasPersona = Boolean(localStorage.getItem('ur_persona') || localStorage.getItem('ur_ob_done'));
+    const hasPersona = Boolean(localStorage.getItem('ur_persona'));
+    const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
     if (hasPersona) {
       // If the user had an active session in progress, restore them directly to
       // that screen instead of the welcome screen. This handles iOS PWA restarts,
@@ -97,21 +89,10 @@ function ScreenRouter() {
         }
       } catch { /* ignore */ }
       dispatch({ type: 'GO_TO', screen: 'welcome' });
+    } else if (hasSeenWalkthrough) {
+      dispatch({ type: 'GO_TO', screen: 'ob1' });
     } else {
-      // New device or cleared storage — check Supabase so returning users skip OB.
-      fetchPersonaForRestore(user.id).then(restored => {
-        if (restored) {
-          // Mark OB as done locally so hasPersona is true on next boot.
-          localStorage.setItem('ur_ob_done', '1');
-          dispatch({ type: 'GO_TO', screen: 'welcome' });
-        } else {
-          const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
-          dispatch({ type: 'GO_TO', screen: hasSeenWalkthrough ? 'ob1' : 'walkthrough' });
-        }
-      }).catch(() => {
-        const hasSeenWalkthrough = Boolean(localStorage.getItem('ur_walkthrough_seen'));
-        dispatch({ type: 'GO_TO', screen: hasSeenWalkthrough ? 'ob1' : 'walkthrough' });
-      });
+      dispatch({ type: 'GO_TO', screen: 'walkthrough' });
     }
   }
 
