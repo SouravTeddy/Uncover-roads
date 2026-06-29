@@ -54,9 +54,10 @@ function ScreenRouter() {
   }, []);
 
   async function handleSignedIn(user: User) {
-    // If a different user is logging in, clear the previous user's local state entirely
+    // Clear stale local state when a different user logs in OR when ur_user_id was never
+    // set (pre-tracking devices that still hold another user's ur_persona/ur_gen_count).
     const storedUserId = localStorage.getItem('ur_user_id');
-    if (storedUserId && storedUserId !== user.id) {
+    if (!storedUserId || storedUserId !== user.id) {
       const keysToRemove = Object.keys(localStorage).filter(k => k.startsWith('ur_'));
       keysToRemove.forEach(k => localStorage.removeItem(k));
     }
