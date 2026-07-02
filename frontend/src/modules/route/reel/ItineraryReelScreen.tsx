@@ -335,6 +335,39 @@ export function ItineraryReelScreen() {
       );
       setCards(filtered);
 
+      // Fetch live events for all days in the trip.
+      // Clear stale events first so a city change doesn't carry over previous results.
+      dispatch({ type: 'SET_LIVE_EVENTS', events: [] });
+      if (activeItinerary.days.length > 0) {
+        const firstDay = activeItinerary.days[0];
+        const lastDay = activeItinerary.days[activeItinerary.days.length - 1];
+        const eventsCity = activeItinerary.city ?? activeItinerary.cities?.[0] ?? '';
+        if (eventsCity && firstDay.date && lastDay.date) {
+          api.events(eventsCity, firstDay.date, lastDay.date)
+            .then((places) => {
+              if (cancelled) return;
+              // Convert Place[] to LiveEvent[] shape.
+              // Place.title (not .name), Place.id is required, Place.lat/lon are non-nullable.
+              // No googleMapsUrl on Place — use place_id to build a Maps URL.
+              // date is left empty so computeLiveEvent matches on title presence, not specific date.
+              const events: import('../../../shared/types').LiveEvent[] = places.map(p => ({
+                id:         p.place_id ?? p.id,
+                title:      p.title,
+                lat:        p.lat,
+                lon:        p.lon,
+                venueName:  p.title,
+                date:       '',
+                time:       '',
+                genre:      p.category ?? '',
+                url:        p.place_id ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}` : '',
+                imageUrl:   p.imageUrl ?? null,
+              }));
+              dispatch({ type: 'SET_LIVE_EVENTS', events });
+            })
+            .catch(() => { /* non-critical — events just won't show */ });
+        }
+      }
+
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
       enrichScenicCardsWithTransit(filtered, apiBase)

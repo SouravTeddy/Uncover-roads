@@ -98,7 +98,7 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
     weatherAlignment:   signal.weather?.isOutdoorFriendly ? w.w_scenic * 0.7 + 0.3 : (1 - w.w_scenic) * 0.8,
     crowdOptimization:  w.w_crowd_aversion,
     budgetAlignment:    1 - w.w_budget_sensitivity * 0.8,
-    liveEventOverlap:   signal.savedEvents.length > 0 || signal.dismissedPinIds.size > 0 ? signal.spontaneityBias : null,
+    liveEventOverlap:   signal.savedEvents.length > 0 || signal.dismissedPinIds.size > 0 || signal.liveEvents.length > 0 ? signal.spontaneityBias : null,
     trendAlignment: null, localVelocity: null, curatedCoverage: null, routeScenicity: null,
   };
 }
@@ -232,15 +232,21 @@ export function computeActualProfile(
 }
 
 function computeLiveEvent(stops: EngineItineraryStop[], signal: RecoSignal): number | null {
-  const { savedEvents, trip } = signal;
-  if (savedEvents.length === 0 && signal.dismissedPinIds.size === 0) return null;
+  const { savedEvents, liveEvents, trip } = signal;
+
+  if (savedEvents.length === 0 && signal.dismissedPinIds.size === 0 && liveEvents.length === 0) return null;
 
   const stopTitles = new Set(stops.map(s => s.title.toLowerCase()));
-  const unadded = savedEvents.filter(e => {
+
+  const unaddedSaved = savedEvents.filter(e => {
     const dateMatch = e.date === trip.currentDayDate ||
       (e.isAnnual && e.date?.slice(5) === trip.currentDayDate?.slice(5));
     return dateMatch && !stopTitles.has(e.title.toLowerCase());
   });
 
-  return unadded.length === 0 ? null : Math.min(1, unadded.length * 0.5);
+  // Live events fetched from API: date is '' (trip-wide fetch) so match on title absence only.
+  const unaddedLive = liveEvents.filter(e => !stopTitles.has(e.title.toLowerCase()));
+
+  const totalUnadded = unaddedSaved.length + unaddedLive.length;
+  return totalUnadded === 0 ? null : Math.min(1, totalUnadded * 0.5);
 }

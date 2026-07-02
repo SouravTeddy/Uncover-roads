@@ -13,6 +13,7 @@ function makeSignal(overrides: Partial<RecoSignal> = {}): RecoSignal {
     trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-05-26' },
     weather: { condition: 'sunny', tempC: 22, isOutdoorFriendly: true },
     dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
     ...overrides,
   };
 }
