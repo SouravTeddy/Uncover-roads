@@ -43,7 +43,7 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 const CULTURE_CATS  = new Set(['museum', 'gallery', 'historic', 'heritage', 'library', 'spiritual']);
 const OUTDOOR_CATS  = new Set(['park', 'viewpoint', 'beach', 'zoo', 'aquarium', 'amusement_park']);
 const SOCIAL_CATS   = new Set(['bar', 'nightlife', 'market', 'restaurant']);
-const FOOD_CATS     = new Set(['restaurant', 'cafe', 'bakery', 'street_food', 'market']);
+export const FOOD_CATS = new Set(['restaurant', 'cafe', 'bakery', 'street_food', 'market']);
 const REST_CATS     = new Set(['cafe', 'park']);
 const CROWD_PEAK: Record<string, [number, number]> = {
   museum: [600, 720], beach: [660, 900], market: [540, 660], historic: [600, 780], viewpoint: [660, 780],
