@@ -877,13 +877,25 @@ export function buildReelCards(
 
     // If the NEXT day is merged with this one (same calendar day, city hop), skip meal gap observations —
     // the user will be eating in the next city that same day, so "no lunch" here is a false alarm.
+    // Build walkable detour scenic cards — inserted after origin stop, excluded from group tray.
+    // Build the map by matching obs.id against `walkable-detour-${a.id}-${b.id}` directly
+    // (don't split the id string — stop IDs can contain hyphens).
+    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0);
+    const detourByOriginStopId = new Map<string, DayIntelObservation>();
+    for (let di = 0; di < sortedStops.length - 1; di++) {
+      const a = sortedStops[di];
+      const b = sortedStops[di + 1];
+      const matched = detourObsList.find(o => o.id === `walkable-detour-${a.id}-${b.id}`);
+      if (matched) detourByOriginStopId.set(a.id, matched);
+    }
+
     const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
     const allObservations: DayIntelObservation[] = [
       ...engineObservations,
       ...(nextDayMergesIn ? [] : buildMealObservations(sortedStops, day.city)),
       ...buildPersonaObservations(sortedStops, persona, day.city, weights),
       ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0)),
-      ...buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0),
+      // walkable_detour observations are now full-screen scenic cards — excluded from group tray
       ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryObservations(sortedStops, day.city)),
     ];
     // Deduplicate by trigger
@@ -989,6 +1001,44 @@ export function buildReelCards(
       // Scenic walk card after this stop (if the next stop is within walking distance)
       const scenicCard = scenicByStopId.get(stop.id);
       if (scenicCard) cards.push(scenicCard);
+
+      // Walkable detour scenic card (for non-walk personas) — placed after origin stop.
+      // DayIntelObservation does NOT carry detourKm/detourMin — recompute from coordinates.
+      const matchedDetour = detourByOriginStopId.get(stop.id);
+      if (matchedDetour && !scenicCard) {
+        const nextStop = sortedStops[si + 1];
+        if (nextStop) {
+          const distKm = haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
+          const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
+          const distLabel = distKm < 1 ? `${Math.round(distKm * 1000)} m walk` : `${distKm.toFixed(1)} km walk`;
+          cards.push({
+            type:        'scenic',
+            sceneType:   'walk',
+            accent:      '#c4b5fd',
+            cardType:    'WALKABLE DETOUR',
+            pos:         1,
+            total:       1,
+            timing:      minutesToTime(timeToMinutes(stop.time) + (stop.durationMin ?? 60)),
+            metaRight:   `${distLabel} · ~${walkMins} min`,
+            place:       `${stop.title} → ${nextStop.title}`,
+            from:        stop.area ?? stop.title,
+            to:          nextStop.area ?? nextStop.title,
+            modeIcon:    'walk',
+            tag:         'Worth the walk',
+            vizType:     'route',
+            persona,
+            personaDisplay: persona.split(/[\s_]+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            personaIcon: 'walk',
+            why:         matchedDetour.why,
+            sensory:     'See more between stops than you would from a ride.',
+            sensoryIcon: 'directions_walk',
+            reelPos:     `Between Stop ${globalStopNumber} and Stop ${globalStopNumber + 1}`,
+            photoUrl:    stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 600) : null),
+            detourKm:    Math.round(distKm * 10) / 10,
+            detourMin:   walkMins,
+          } as ReelScenicCard);
+        }
+      }
     }
 
     totalObsCount += dedupedObservations.length;
