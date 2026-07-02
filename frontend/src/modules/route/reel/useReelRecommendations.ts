@@ -66,10 +66,14 @@ export function useReelRecommendations(
         setLoading(false);
 
         // Fetch photo for top-scoring place, with one fallback attempt
-        for (const p of data.slice(0, 2)) {
-          const url = await api.placeImage(p.name, card.nearbyCity);
-          if (cancelled) return;
-          if (url) { setPhotoUrl(url); return; }
+        try {
+          for (const p of data.slice(0, 2)) {
+            const url = await api.placeImage(p.name, card.nearbyCity);
+            if (cancelled) return;
+            if (url) { setPhotoUrl(url); return; }
+          }
+        } catch {
+          // photo fetch failed — card renders without photo, not an error
         }
       })
       .catch(() => {
@@ -80,6 +84,8 @@ export function useReelRecommendations(
         setError(true);
       });
 
+    // Do NOT reset fetched.current in cleanup — that would re-trigger on every
+    // parent re-render since existingPlaceIds is a new array ref each time.
     return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [active, card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
