@@ -33,4 +33,46 @@ describe('useReelRecommendations', () => {
     });
     expect(result.current.places).toEqual([]);
   });
+
+  it('photoUrl is set from first place when placeImage resolves', async () => {
+    vi.spyOn(apiModule.api, 'reelReco').mockResolvedValue([
+      { placeId: 'p1', name: 'Saravana Bhavan', lat: 12.97, lon: 77.59, category: 'restaurant', rating: 4.5, priceLevel: 1, distanceM: 120, affinityScore: 0.9, matchReasons: [] },
+    ]);
+    vi.spyOn(apiModule.api, 'placeImage').mockResolvedValue('https://example.com/photo.jpg');
+
+    const { result } = renderHook(() =>
+      useReelRecommendations(CARD, 'explorer', [], true));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.photoUrl).toBe('https://example.com/photo.jpg');
+    });
+  });
+
+  it('photoUrl falls back to second place when first placeImage returns null', async () => {
+    vi.spyOn(apiModule.api, 'reelReco').mockResolvedValue([
+      { placeId: 'p1', name: 'Place One', lat: 12.97, lon: 77.59, category: 'restaurant', rating: 4.0, priceLevel: 1, distanceM: 100, affinityScore: 0.8, matchReasons: [] },
+      { placeId: 'p2', name: 'Place Two', lat: 12.97, lon: 77.59, category: 'restaurant', rating: 4.3, priceLevel: 2, distanceM: 200, affinityScore: 0.7, matchReasons: [] },
+    ]);
+    vi.spyOn(apiModule.api, 'placeImage')
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue('https://example.com/second.jpg');
+
+    const { result } = renderHook(() =>
+      useReelRecommendations(CARD, 'explorer', [], true));
+
+    await waitFor(() => {
+      expect(result.current.photoUrl).toBe('https://example.com/second.jpg');
+    });
+  });
+
+  it('photoUrl is null when no places found', async () => {
+    vi.spyOn(apiModule.api, 'reelReco').mockResolvedValue([]);
+
+    const { result } = renderHook(() =>
+      useReelRecommendations(CARD, 'explorer', [], true));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.photoUrl).toBeNull();
+  });
 });
