@@ -52,8 +52,6 @@ const CROWD_PEAK: Record<string, [number, number]> = {
 export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
   const w = signal.weights;
   const { pace, isFamily, trip } = signal;
-  // timeToMin is already defined at module scope in this file — no redefinition needed
-
   // Clip meal/activity targets based on arrival/departure constraints
   const arrivalMin  = trip.isFirstDay  && trip.arrivalTime   ? timeToMin(trip.arrivalTime)   : null;
   const departureMin = trip.isLastDay  && trip.departureTime ? timeToMin(trip.departureTime) : null;
@@ -61,9 +59,10 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
   // Lunch is unreachable if arriving after 15:00 (900)
   const hasLunchTarget = (arrivalMin !== null && arrivalMin > 900) ? 0 : 0.9;
 
-  // Dinner/evening are unreachable if departing before 17:00 (1020)
-  const dinnerBlocked   = departureMin !== null && departureMin < 1020;
-  const eveningBlocked  = departureMin !== null && departureMin < 1020;
+  // Dinner/evening blocked by early departure OR extremely late arrival (> 17:00)
+  const mealAndEveningBlocked =
+    (departureMin !== null && departureMin < 1020) ||
+    (arrivalMin !== null && arrivalMin > 1020);
 
   const baseDinnerTarget   = w.w_food_density * 0.8 + 0.2;
   const baseEveningTarget  = w.w_nightlife;
@@ -84,8 +83,8 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
 
   return {
     hasLunch:           hasLunchTarget,
-    hasDinner:          dinnerBlocked ? 0 : baseDinnerTarget,
-    hasEveningActivity: eveningBlocked ? 0 : baseEveningTarget,
+    hasDinner:          mealAndEveningBlocked ? 0 : baseDinnerTarget,
+    hasEveningActivity: mealAndEveningBlocked ? 0 : baseEveningTarget,
     hasCulture:         w.w_culture_depth,
     hasOutdoor:         w.w_scenic * 0.7 + (isFamily ? 0.3 : 0),
     hasRest:            Math.min(1, w.w_rest_need * 0.7 + (pace === 'slow' ? 0.3 : 0)),
