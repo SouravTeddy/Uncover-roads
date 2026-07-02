@@ -255,9 +255,9 @@ function SunRays() {
 // ── Shared chip style ─────────────────────────────────────────
 // All stk-body badge chips use this base — override color/bg/border per variant
 const chipBase: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 4,
-  padding: '5px 10px', borderRadius: 6,
-  fontSize: T.fsXs, fontWeight: 700,
+  display: 'inline-flex', alignItems: 'center', gap: 5,
+  padding: '7px 13px', borderRadius: 8,
+  fontSize: 14, fontWeight: 700,
   letterSpacing: '.07em', textTransform: 'uppercase',
   backdropFilter: 'blur(8px)',
 };
@@ -503,6 +503,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
+      <style>{`
+        @keyframes badgePopOrange {
+          0%, 60%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(224,120,64,0); }
+          30%            { transform: scale(1.08); box-shadow: 0 0 0 7px rgba(224,120,64,0.28); }
+        }
+        @keyframes badgePopBlue {
+          0%, 60%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(91,155,213,0); }
+          30%            { transform: scale(1.08); box-shadow: 0 0 0 7px rgba(91,155,213,0.24); }
+        }
+        @keyframes badgePopSage {
+          0%, 60%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(107,148,112,0); }
+          30%            { transform: scale(1.08); box-shadow: 0 0 0 7px rgba(107,148,112,0.24); }
+        }
+      `}</style>
 
       {/* Photo */}
       <ReelImg
@@ -644,8 +658,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
               {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
-              {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span><span style={{ color: '#d4a853' }}>Your pick</span></div>)}
-              {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
+              {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(224,120,64,.30)', border: '1.5px solid rgba(224,120,64,.60)', animation: 'badgePopOrange 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e07840' }}>bookmark</span><span style={{ color: '#e07840' }}>Your pick</span></div>)}
+              {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.28)', border: '1.5px solid rgba(91,155,213,.55)', animation: 'badgePopBlue 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
               {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
               {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
               {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
@@ -742,8 +756,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                 {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
-                {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(212,168,83,.22)', border: '1px solid rgba(212,168,83,.35)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#d4a853' }}>bookmark</span><span style={{ color: '#d4a853' }}>Your pick</span></div>)}
-                {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.18)', border: '1px solid rgba(91,155,213,.30)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
+                {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(224,120,64,.30)', border: '1.5px solid rgba(224,120,64,.60)', animation: 'badgePopOrange 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e07840' }}>bookmark</span><span style={{ color: '#e07840' }}>Your pick</span></div>)}
+                {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(107,148,112,.28)', border: '1.5px solid rgba(107,148,112,.55)', animation: 'badgePopSage 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6b9470' }}>auto_awesome</span><span style={{ color: '#6b9470' }}>We added this</span></div>)}
                 {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
                 {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
                 {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
