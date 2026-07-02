@@ -22,6 +22,7 @@ const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
   hidden_gem:        'point_of_interest',
   category_diversity:'attraction',
   weather:           'indoor_attraction',
+  local_food:        'restaurant',
 };
 
 const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; border: string; chipLabel: string; searchCategory: string }> = {
@@ -43,6 +44,7 @@ const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; bor
   budget_mismatch:   { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Budget',          searchCategory: '' },
   live_event:        { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Live event',      searchCategory: '' },
   hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Hidden gem',      searchCategory: '' },
+  local_food:        { icon: 'lunch_dining',    color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Local food',      searchCategory: 'restaurant' },
 };
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
