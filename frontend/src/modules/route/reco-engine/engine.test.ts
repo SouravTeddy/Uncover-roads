@@ -15,6 +15,7 @@ function makeSignal(overrides: Partial<RecoSignal> = {}): RecoSignal {
     trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-05-26' },
     weather: { condition: 'sunny', tempC: 22, isOutdoorFriendly: true },
     dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
     ...overrides,
   };
 }
@@ -88,6 +89,7 @@ describe('gapToCard — previously missing templates', () => {
     ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.5,
     trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Tokyo', currentDayDate: '2026-05-26' },
     weather: null, dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
   };
 
   function makeGap(dimension: keyof ItineraryProfile, direction: 'missing' | 'excess' = 'missing'): Gap {
@@ -134,6 +136,7 @@ describe('deriveRecos — persona floor reco', () => {
       trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-06-15' },
       weather: { condition: 'sunny', tempC: 22, isOutdoorFriendly: true },
       dismissedPinIds: new Set(), savedEvents: [],
+      liveEvents: [],
     };
   }
 
