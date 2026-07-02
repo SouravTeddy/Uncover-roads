@@ -1107,6 +1107,7 @@ export function MapScreen() {
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
+          hasExistingItinerary={!!state.engineItinerary}
           onBuild={handleBuild}
         />
       )}

@@ -133,7 +133,7 @@ export function ReelDayTransitionCard({ card, active }: Props) {
 
           <div style={{ ...fade('0s'), textAlign: 'center', marginBottom: 28 }}>
             <p style={{ fontSize: T.fsMicro, fontWeight: 700, letterSpacing: '.18em', textTransform: 'uppercase', color: T.text3, marginBottom: 4 }}>
-              Continuing today →
+              Continuing · Day {card.prevDay} →
             </p>
             <p style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsHero, fontWeight: 600, color: T.text1, lineHeight: 1.0, margin: 0 }}>
               {card.nextCity}
