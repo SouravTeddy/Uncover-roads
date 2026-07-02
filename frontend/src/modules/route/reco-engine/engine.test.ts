@@ -42,7 +42,7 @@ describe('deriveRecos', () => {
     expect(recos.every(r => r.trigger !== 'lunch')).toBe(true);
   });
 
-  it('returns empty array for well-balanced day (no significant gaps)', () => {
+  it('floor fires alongside gap recos on well-balanced sensory day', () => {
     const stops = [
       stop({ id: 's1', time: '09:00', category: 'museum', durationMin: 120 }),
       stop({ id: 's2', time: '12:30', category: 'restaurant', durationMin: 60 }),
@@ -162,6 +162,6 @@ describe('deriveRecos — persona floor reco', () => {
     const signal = makeSignal('cultural');
     const recos = deriveRecos(stops, signal);
     const cultureRecos = recos.filter(r => r.trigger === 'culture');
-    expect(cultureRecos.length).toBeLessThanOrEqual(1);
+    expect(cultureRecos.length).toBe(1);
   });
 });
