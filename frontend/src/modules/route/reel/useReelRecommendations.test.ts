@@ -75,4 +75,21 @@ describe('useReelRecommendations', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.photoUrl).toBeNull();
   });
+
+  it('does not enter error state when placeImage throws', async () => {
+    vi.spyOn(apiModule.api, 'reelReco').mockResolvedValue([
+      { placeId: 'p1', name: 'Cafe Nero', lat: 12.97, lon: 77.59, category: 'restaurant', rating: 4.2, priceLevel: 1, distanceM: 150, affinityScore: 0.85, matchReasons: [] },
+    ]);
+    vi.spyOn(apiModule.api, 'placeImage').mockRejectedValue(new Error('CDN error'));
+
+    const { result } = renderHook(() =>
+      useReelRecommendations(CARD, 'explorer', [], true));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.error).toBe(false);
+    expect(result.current.places).toHaveLength(1);
+    expect(result.current.photoUrl).toBeNull();
+  });
 });
