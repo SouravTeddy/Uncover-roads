@@ -26,6 +26,7 @@ import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard, ReelDayDividerCard as ReelDayDividerCardType } from './types';
+import { getLocalFoodFact } from './local-food-facts';
 
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
@@ -209,6 +210,25 @@ export function ItineraryReelScreen() {
             persona: signal.archetype,
             afterStopId: anchor.id,
             weightScore: 0.4,
+            stopLat: anchor.lat,
+            stopLon: anchor.lon,
+          });
+        }
+        // Local food reco: inject if city has editorial fact and no food reco already present
+        const hasFoodReco = recos.some(r => r.trigger === 'lunch' || r.trigger === 'dinner' || r.trigger === 'local_food');
+        const foodFact = getLocalFoodFact(day.city);
+        if (!hasFoodReco && foodFact && dayStops.length > 0) {
+          const anchor = dayStops[Math.floor(dayStops.length / 2)];
+          recos.push({
+            type: 'reco',
+            id: `local-food-${day.city}-${dayIdx}`,
+            trigger: 'local_food' as ReelRecoCardType['trigger'],
+            label: foodFact.dish,
+            consequence: `${foodFact.context} ${foodFact.where}.`,
+            nearbyCity: day.city,
+            persona: signal.archetype,
+            afterStopId: anchor.id,
+            weightScore: 0.45,
             stopLat: anchor.lat,
             stopLon: anchor.lon,
           });
@@ -656,6 +676,8 @@ export function ItineraryReelScreen() {
       social_gap:        { label: 'Social',          icon: 'people',          color: '#4f8fab' },
       density_sparse:    { label: 'Room to add',     icon: 'explore',         color: '#8b9e6a' },
       famous_spots:      { label: 'Landmarks',       icon: 'museum',          color: '#7b9fcf' },
+      local_food:        { label: 'Local food',      icon: 'lunch_dining',    color: '#c27c4a' },
+      photo_detour:      { label: 'Photo moment',    icon: 'camera',          color: '#9b8eb8' },
     };
 
     // Contextual fallback images — used when no real place photo is available.
