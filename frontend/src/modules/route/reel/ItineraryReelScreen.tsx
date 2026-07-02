@@ -24,8 +24,71 @@ import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
+import { computeGoldenHour } from './golden-hour';
+import type { ReelScenicCard, ReelDayDividerCard as ReelDayDividerCardType } from './types';
 
+function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+function formatGoldenHour(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
 
+async function enrichPhotoMomentCards(
+  built: import('./types').ReelCard[],
+): Promise<import('./types').ReelCard[]> {
+  const result = [...built];
+  for (let i = 0; i < result.length; i++) {
+    const card = result[i];
+    if (card.type !== 'stop') continue;
+    const PHOTO_CATS = new Set(['viewpoint', 'beach', 'park', 'observation_deck']);
+    if (!PHOTO_CATS.has(card.stop.category)) continue;
+    // Don't inject if a scenic card already follows this stop
+    const next = result[i + 1];
+    if (next?.type === 'scenic') continue;
+    const dayCard = built.find((c) => c.type === 'day_divider') as ReelDayDividerCardType | undefined;
+    const dateStr = card.visitDate ?? dayCard?.date ?? '';
+    if (!dateStr) continue;
+    const goldenHour = await computeGoldenHour(card.stop.lat, card.stop.lon, dateStr);
+    if (!goldenHour) continue;
+    const stopMin = timeToMin(card.stop.time);
+    const goldenMin = timeToMin(goldenHour);
+    const endMin = stopMin + (card.stop.durationMin ?? 60);
+    const windowEnd = goldenMin + 90;
+    if (endMin < goldenMin || stopMin > windowEnd) continue;
+    const goldenHourDisplay = formatGoldenHour(goldenHour);
+    const momentCard: ReelScenicCard = {
+      type:          'scenic',
+      sceneType:     'walk',
+      accent:        '#fbbf24',     // amber — photography / warm light
+      cardType:      'GOLDEN HOUR',
+      pos:           1,
+      total:         1,
+      timing:        goldenHourDisplay,
+      metaRight:     `Golden hour · ${goldenHourDisplay}`,
+      place:         card.stop.title,
+      from:          card.stop.area ?? card.stop.title,
+      to:            '',
+      modeIcon:      'walk',
+      tag:           'Photo moment',
+      vizType:       'route',
+      persona:       '',
+      personaDisplay:'',
+      personaIcon:   'camera',
+      why:           `${card.stop.title} is framed perfectly at golden hour (${goldenHourDisplay}).`,
+      sensory:       'The light will be perfect for photography during your visit.',
+      sensoryIcon:   'camera',
+      reelPos:       '',
+      photoUrl:      card.stop.imageUrl ?? null,
+      detourKm:      0,
+      detourMin:     0,
+    };
+    result.splice(i + 1, 0, momentCard);
+    i++; // skip the just-inserted card
+  }
+  return result;
+}
 
 function preloadImages(srcs: string[]): Promise<void> {
   if (srcs.length === 0) return Promise.resolve();
@@ -246,9 +309,13 @@ export function ItineraryReelScreen() {
 
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
-      enrichScenicCardsWithTransit(filtered, apiBase).then(enriched => {
-        if (!cancelled) setCards(enriched);
-      }).catch(() => { /* transit enrichment is best-effort */ });
+      enrichScenicCardsWithTransit(filtered, apiBase)
+        .then(enriched => enrichPhotoMomentCards(enriched))
+        .then(withMoments => {
+          if (cancelled) return;
+          setCards(withMoments);
+        })
+        .catch(() => { /* non-critical — show cards without photo moments */ });
 
       // Preload every image URL into the browser cache before revealing the reel
       const srcs: string[] = [];
