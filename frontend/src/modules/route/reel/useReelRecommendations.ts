@@ -7,15 +7,11 @@ interface Result {
   places: ReelRecoPlace[];
   loading: boolean;
   error: boolean;
+  photoUrl: string | null;
 }
 
 const FETCH_TIMEOUT_MS = 8000;
 
-/**
- * Fetches persona-scored nearby recommendations when a reco card becomes active.
- * Results are cached per card ID — re-activation doesn't re-fetch.
- * No AI text in the response — all scoring is deterministic (persona_affinity.py).
- */
 export function useReelRecommendations(
   card: ReelRecoCard,
   archetype: string,
@@ -26,9 +22,19 @@ export function useReelRecommendations(
   const [places, setPlaces] = useState<ReelRecoPlace[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const fetched = useRef(false);
+  const prevCardId = useRef<string>(card.id);
 
   useEffect(() => {
+    if (card.id !== prevCardId.current) {
+      fetched.current = false;
+      prevCardId.current = card.id;
+      setPlaces([]);
+      setError(false);
+      setPhotoUrl(null);
+    }
+
     if (!active || fetched.current) return;
     if (!card.stopLat || !card.stopLon) return;
 
@@ -53,24 +59,29 @@ export function useReelRecommendations(
       existingPlaceIds,
       category: category ?? undefined,
     })
-      .then(data => {
+      .then(async data => {
         if (cancelled) return;
         clearTimeout(timeoutId);
         setPlaces(data);
         setLoading(false);
+
+        // Fetch photo for top-scoring place, with one fallback attempt
+        for (const p of data.slice(0, 2)) {
+          const url = await api.placeImage(p.name, card.nearbyCity);
+          if (cancelled) return;
+          if (url) { setPhotoUrl(url); return; }
+        }
       })
       .catch(() => {
         if (cancelled) return;
         clearTimeout(timeoutId);
-        fetched.current = false; // allow retry on error
+        fetched.current = false;
         setLoading(false);
         setError(true);
       });
 
-    // Do NOT reset fetched.current in cleanup — that would re-trigger on every
-    // parent re-render (e.g. scroll events) since existingPlaceIds is a new array ref each time.
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [active, card.id]); // only re-fetch when the card itself or its active state changes
+  }, [active, card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { places, loading, error };
+  return { places, loading, error, photoUrl };
 }

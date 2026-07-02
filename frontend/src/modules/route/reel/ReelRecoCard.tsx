@@ -112,9 +112,10 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
 
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
-  const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
+  const { places, loading, error, photoUrl } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasPhoto = !!card.anchorPhotoUrl;
+  const resolvedPhotoUrl = photoUrl ?? card.anchorPhotoUrl ?? null;
+  const hasPhoto = !!resolvedPhotoUrl;
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -133,7 +134,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
       <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden' }}>
         {hasPhoto ? (
           <img
-            src={card.anchorPhotoUrl!}
+            src={resolvedPhotoUrl!}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
           />
