@@ -9,7 +9,8 @@ import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
-import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType } from './types';
+import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType, RecoTrigger } from './types';
+import { FOOD_CATS } from '../reco-engine/profile';
 import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
@@ -214,15 +215,20 @@ export function ItineraryReelScreen() {
             stopLon: anchor.lon,
           });
         }
-        // Local food reco: inject if city has editorial fact and no food reco already present
+        // Local food reco: inject if city has editorial fact, no food reco already present,
+        // the day contains at least one food-category stop (Fix 1), and that stop lacks rich
+        // editorial content — localTip absent or under 80 chars (Fix 2).
         const hasFoodReco = recos.some(r => r.trigger === 'lunch' || r.trigger === 'dinner' || r.trigger === 'local_food');
         const foodFact = getLocalFoodFact(day.city);
-        if (!hasFoodReco && foodFact && dayStops.length > 0) {
+        const hasLowRichnessFoodStop = dayStops.some(
+          s => FOOD_CATS.has(s.category) && (!s.localTip || s.localTip.length < 80),
+        );
+        if (!hasFoodReco && foodFact && hasLowRichnessFoodStop) {
           const anchor = dayStops[Math.floor(dayStops.length / 2)];
           recos.push({
             type: 'reco',
             id: `local-food-${day.city}-${dayIdx}`,
-            trigger: 'local_food' as ReelRecoCardType['trigger'],
+            trigger: 'local_food' as RecoTrigger,
             label: foodFact.dish,
             consequence: `${foodFact.context} ${foodFact.where}.`,
             nearbyCity: day.city,
