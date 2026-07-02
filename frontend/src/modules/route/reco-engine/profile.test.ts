@@ -22,7 +22,7 @@ function stop(overrides: Partial<EngineItineraryStop>): EngineItineraryStop {
 }
 
 describe('computeTargetProfile', () => {
-  it('hasLunch target is always 0.9', () => {
+  it('hasLunch target = 0.9 when arrivalTime is null', () => {
     const t = computeTargetProfile(makeSignal());
     expect(t.hasLunch).toBeCloseTo(0.9);
   });
@@ -166,6 +166,13 @@ it('hasEveningActivity target = 0 when departure before 17:00 on last day', () =
     trip: { ...makeSignal().trip, isFirstDay: false, isLastDay: true, arrivalTime: null, departureTime: '14:00' },
   });
   expect(computeTargetProfile(signal).hasEveningActivity).toBe(0);
+});
+
+it('hasDinner target = 0 when arrival is after 17:00 on first day', () => {
+  const signal = makeSignal({
+    trip: { ...makeSignal().trip, isFirstDay: true, isLastDay: false, arrivalTime: '18:30', departureTime: null },
+  });
+  expect(computeTargetProfile(signal).hasDinner).toBe(0);
 });
 
 it('densityScore target is reduced when arrival is late', () => {
