@@ -266,7 +266,7 @@ describe('walkable detour card', () => {
   }
 
   it('emits a scenic card for a walkable leg when persona is non-walk', () => {
-    const weights = { w_walk_affinity: 0.3, w_scenic: 0.7, w_efficiency: 0.5, w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.3, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.3, w_spontaneity: 0.3, w_rest_need: 0.3 };
+    const weights = { w_walk_affinity: 0.3, w_scenic: 0.2, w_efficiency: 0.5, w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.3, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.3, w_spontaneity: 0.3, w_rest_need: 0.3 };
     // Use the existing DAY and ITIN helpers defined at the top of this test file.
     const stops = [
       makeStop('s1', 48.860, 2.350, '09:00'),  // ~300m apart — walkable
@@ -283,6 +283,7 @@ describe('walkable detour card', () => {
     const cards = buildReelCards(itinerary, null, null, new Map(), 'explorer');
     const scenicCards = cards.filter(c => c.type === 'scenic');
     // Detour card for non-walk persona on a 0.33 km leg should appear
-    expect(scenicCards.length).toBeGreaterThan(0);
+    expect(scenicCards.length).toBe(1);
+    expect((scenicCards[0] as any).cardType).toBe('WALKABLE DETOUR');
   });
 });
