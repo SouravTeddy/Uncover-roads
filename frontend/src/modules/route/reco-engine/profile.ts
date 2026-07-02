@@ -51,18 +51,47 @@ const CROWD_PEAK: Record<string, [number, number]> = {
 
 export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
   const w = signal.weights;
-  const { pace, isFamily } = signal;
+  const { pace, isFamily, trip } = signal;
+  // timeToMin is already defined at module scope in this file — no redefinition needed
+
+  // Clip meal/activity targets based on arrival/departure constraints
+  const arrivalMin  = trip.isFirstDay  && trip.arrivalTime   ? timeToMin(trip.arrivalTime)   : null;
+  const departureMin = trip.isLastDay  && trip.departureTime ? timeToMin(trip.departureTime) : null;
+
+  // Lunch is unreachable if arriving after 15:00 (900)
+  const hasLunchTarget = (arrivalMin !== null && arrivalMin > 900) ? 0 : 0.9;
+
+  // Dinner/evening are unreachable if departing before 17:00 (1020)
+  const dinnerBlocked   = departureMin !== null && departureMin < 1020;
+  const eveningBlocked  = departureMin !== null && departureMin < 1020;
+
+  const baseDinnerTarget   = w.w_food_density * 0.8 + 0.2;
+  const baseEveningTarget  = w.w_nightlife;
+
+  // Density: scale by fraction of day available (baseline = 14h)
+  const BASE_DAY_HOURS = 14;
+  let densityMult = 1;
+  if (arrivalMin !== null) {
+    const availHours = Math.max(0, (22 * 60 - arrivalMin)) / 60;
+    densityMult = Math.min(1, availHours / BASE_DAY_HOURS);
+  }
+  if (departureMin !== null) {
+    const availHours = Math.max(0, (departureMin - 9 * 60)) / 60;
+    densityMult = Math.min(densityMult, availHours / BASE_DAY_HOURS);
+  }
+
+  const baseDensity = pace === 'slow' ? 0.35 : pace === 'fast' ? 0.75 : 0.55;
 
   return {
-    hasLunch:           0.9,
-    hasDinner:          w.w_food_density * 0.8 + 0.2,
-    hasEveningActivity: w.w_nightlife,
+    hasLunch:           hasLunchTarget,
+    hasDinner:          dinnerBlocked ? 0 : baseDinnerTarget,
+    hasEveningActivity: eveningBlocked ? 0 : baseEveningTarget,
     hasCulture:         w.w_culture_depth,
     hasOutdoor:         w.w_scenic * 0.7 + (isFamily ? 0.3 : 0),
     hasRest:            Math.min(1, w.w_rest_need * 0.7 + (pace === 'slow' ? 0.3 : 0)),
     hasSocialStop:      signal.social === 'solo' ? 0.2 : 0.6,
     hasHiddenGem:       signal.spontaneityBias * 0.6,
-    densityScore:       pace === 'slow' ? 0.35 : pace === 'fast' ? 0.75 : 0.55,
+    densityScore:       baseDensity * densityMult,
     walkIntensity:      w.w_walk_affinity * 0.7,
     categoryDiversity:  signal.spontaneityBias * 0.5 + 0.3,
     timeBalance:        pace === 'slow' ? 0.5 : 0.7,

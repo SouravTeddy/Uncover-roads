@@ -137,3 +137,44 @@ it('hasRest = 0 when only museums and restaurants', () => {
   ];
   expect(computeActualProfile(stops, makeSignal()).hasRest).toBe(0);
 });
+
+// --- Task 2 ---
+
+it('hasLunch target = 0 when arrival is after 15:00 on first day', () => {
+  const signal = makeSignal({
+    trip: { ...makeSignal().trip, isFirstDay: true, isLastDay: false, arrivalTime: '16:00', departureTime: null },
+  });
+  expect(computeTargetProfile(signal).hasLunch).toBe(0);
+});
+
+it('hasLunch target = 0.9 when arrival is 11:00 on first day (lunch still possible)', () => {
+  const signal = makeSignal({
+    trip: { ...makeSignal().trip, isFirstDay: true, isLastDay: false, arrivalTime: '11:00', departureTime: null },
+  });
+  expect(computeTargetProfile(signal).hasLunch).toBeCloseTo(0.9);
+});
+
+it('hasDinner target = 0 when departure before 17:00 on last day', () => {
+  const signal = makeSignal({
+    trip: { ...makeSignal().trip, isFirstDay: false, isLastDay: true, arrivalTime: null, departureTime: '11:00' },
+  });
+  expect(computeTargetProfile(signal).hasDinner).toBe(0);
+});
+
+it('hasEveningActivity target = 0 when departure before 17:00 on last day', () => {
+  const signal = makeSignal({
+    trip: { ...makeSignal().trip, isFirstDay: false, isLastDay: true, arrivalTime: null, departureTime: '14:00' },
+  });
+  expect(computeTargetProfile(signal).hasEveningActivity).toBe(0);
+});
+
+it('densityScore target is reduced when arrival is late', () => {
+  const baseSignal = makeSignal({ pace: 'moderate' });
+  const lateArrival = makeSignal({
+    pace: 'moderate',
+    trip: { ...makeSignal().trip, isFirstDay: true, isLastDay: false, arrivalTime: '18:00', departureTime: null },
+  });
+  const base = computeTargetProfile(baseSignal).densityScore!;
+  const late = computeTargetProfile(lateArrival).densityScore!;
+  expect(late).toBeLessThan(base);
+});
