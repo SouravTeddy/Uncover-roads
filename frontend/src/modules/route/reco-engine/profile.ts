@@ -44,6 +44,7 @@ const CULTURE_CATS  = new Set(['museum', 'gallery', 'historic', 'heritage', 'lib
 const OUTDOOR_CATS  = new Set(['park', 'viewpoint', 'beach', 'zoo', 'aquarium', 'amusement_park']);
 const SOCIAL_CATS   = new Set(['bar', 'nightlife', 'market', 'restaurant']);
 const FOOD_CATS     = new Set(['restaurant', 'cafe', 'bakery', 'street_food', 'market']);
+const REST_CATS     = new Set(['cafe', 'park']);
 const CROWD_PEAK: Record<string, [number, number]> = {
   museum: [600, 720], beach: [660, 900], market: [540, 660], historic: [600, 780], viewpoint: [660, 780],
 };
@@ -114,7 +115,6 @@ export function computeActualProfile(
   const hasOutdoor = sorted.some(s => OUTDOOR_CATS.has(s.category)) ? 1 : 0;
 
   // Rest: any cafe or park in the schedule counts, regardless of weather or neighbours
-  const REST_CATS = new Set(['cafe', 'park']);
   const hasRest = sorted.some(s => REST_CATS.has(s.category)) ? 1 : 0;
 
   // Social stop
