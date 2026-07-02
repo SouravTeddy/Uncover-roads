@@ -36,13 +36,14 @@ function formatGoldenHour(t: string): string {
 }
 
 async function enrichPhotoMomentCards(
-  built: import('./types').ReelCard[],
-): Promise<import('./types').ReelCard[]> {
+  built: ReelCard[],
+  isCancelled: () => boolean,
+): Promise<ReelCard[]> {
   const result = [...built];
+  const PHOTO_CATS = new Set(['viewpoint', 'beach', 'park']);
   for (let i = 0; i < result.length; i++) {
     const card = result[i];
     if (card.type !== 'stop') continue;
-    const PHOTO_CATS = new Set(['viewpoint', 'beach', 'park', 'observation_deck']);
     if (!PHOTO_CATS.has(card.stop.category)) continue;
     // Don't inject if a scenic card already follows this stop
     const next = result[i + 1];
@@ -51,6 +52,7 @@ async function enrichPhotoMomentCards(
     const dateStr = card.visitDate ?? dayCard?.date ?? '';
     if (!dateStr) continue;
     const goldenHour = await computeGoldenHour(card.stop.lat, card.stop.lon, dateStr);
+    if (isCancelled()) return result;
     if (!goldenHour) continue;
     const stopMin = timeToMin(card.stop.time);
     const goldenMin = timeToMin(goldenHour);
@@ -310,7 +312,7 @@ export function ItineraryReelScreen() {
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
       enrichScenicCardsWithTransit(filtered, apiBase)
-        .then(enriched => enrichPhotoMomentCards(enriched))
+        .then(enriched => enrichPhotoMomentCards(enriched, () => cancelled))
         .then(withMoments => {
           if (cancelled) return;
           setCards(withMoments);
