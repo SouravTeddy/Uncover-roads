@@ -717,6 +717,7 @@ export function ItineraryReelScreen() {
       famous_spots:      { label: 'Landmarks',       icon: 'museum',          color: '#7b9fcf' },
       local_food:        { label: 'Local food',      icon: 'lunch_dining',    color: '#c27c4a' },
       photo_detour:      { label: 'Photo moment',    icon: 'camera',          color: '#9b8eb8' },
+      walkable_detour:   { label: 'Worth the walk',    icon: 'directions_walk', color: '#8b9e6a' },
     };
 
     // Contextual fallback images — used when no real place photo is available.
@@ -751,6 +752,9 @@ export function ItineraryReelScreen() {
         _any:    u('1550159930-40066082a4fc'),    // narrow atmospheric alley
       },
       walking_gap: {
+        _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
+      },
+      walkable_detour: {
         _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
       },
       famous_spots: {

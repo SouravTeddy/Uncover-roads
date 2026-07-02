@@ -186,8 +186,24 @@ export function gapToCard(
     },
     hasHiddenGem: {
       trigger: 'hidden_gem',
-      label: 'A local spot worth knowing about',
-      consequence: `Close to your route — the kind of place most visitors walk past.`,
+      label: (() => {
+        const GROUP_LABEL: Record<string, string> = {
+          cultural: 'A lesser-known cultural gem',
+          sensory:  'A local haunt worth finding',
+          social:   'Where locals actually go',
+          explorer: 'Off the tourist trail',
+        };
+        return GROUP_LABEL[signal.archetypeGroup] ?? 'A local spot worth knowing about';
+      })(),
+      consequence: (() => {
+        const GROUP_COPY: Record<string, string> = {
+          cultural: `A spot near ${area} that locals visit but guidebooks miss.`,
+          sensory:  `A neighbourhood find near ${area} — the kind that rewards wandering.`,
+          social:   `Near ${area} — frequented by locals, rarely listed on review apps.`,
+          explorer: `Close to your route near ${area} — the kind of place most visitors walk past.`,
+        };
+        return GROUP_COPY[signal.archetypeGroup] ?? `Close to your route — the kind of place most visitors walk past.`;
+      })(),
     },
     categoryDiversity: {
       trigger: 'category_diversity',
