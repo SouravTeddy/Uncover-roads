@@ -96,3 +96,44 @@ describe('computeActualProfile', () => {
     expect(actual.liveEventOverlap).toBeGreaterThan(0);
   });
 });
+
+// --- Task 1 regression tests ---
+
+it('hasLunch = 1 when restaurant at 11:00 (below old 690 floor)', () => {
+  const stops = [stop({ id: 's1', time: '11:00', category: 'restaurant', durationMin: 60 })];
+  expect(computeActualProfile(stops, makeSignal()).hasLunch).toBe(1);
+});
+
+it('hasLunch = 1 when cafe at 15:00 (above old 870 ceiling)', () => {
+  const stops = [stop({ id: 's1', time: '15:00', category: 'cafe', durationMin: 60 })];
+  expect(computeActualProfile(stops, makeSignal()).hasLunch).toBe(1);
+});
+
+it('hasLunch = 0 when no food stop between 11:00–15:00', () => {
+  const stops = [stop({ id: 's1', time: '10:30', category: 'restaurant', durationMin: 60 })];
+  expect(computeActualProfile(stops, makeSignal()).hasLunch).toBe(0);
+});
+
+it('hasDinner = 1 when restaurant at 17:30', () => {
+  const stops = [stop({ id: 's1', time: '17:30', category: 'restaurant', durationMin: 90 })];
+  expect(computeActualProfile(stops, makeSignal()).hasDinner).toBe(1);
+});
+
+it('hasDinner = 0 when no food stop after 17:00', () => {
+  const stops = [stop({ id: 's1', time: '16:30', category: 'restaurant', durationMin: 60 })];
+  expect(computeActualProfile(stops, makeSignal()).hasDinner).toBe(0);
+});
+
+it('hasRest = 1 when cafe present regardless of weather', () => {
+  const signal = makeSignal({ weather: { condition: 'rain', tempC: 12, isOutdoorFriendly: false } });
+  const stops = [stop({ id: 's1', time: '11:00', category: 'cafe', durationMin: 30 })];
+  expect(computeActualProfile(stops, signal).hasRest).toBe(1);
+});
+
+it('hasRest = 0 when only museums and restaurants', () => {
+  const stops = [
+    stop({ id: 's1', time: '09:00', category: 'museum', durationMin: 90 }),
+    stop({ id: 's2', time: '12:00', category: 'restaurant', durationMin: 60 }),
+  ];
+  expect(computeActualProfile(stops, makeSignal()).hasRest).toBe(0);
+});

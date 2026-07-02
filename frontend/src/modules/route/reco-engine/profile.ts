@@ -92,16 +92,16 @@ export function computeActualProfile(
   const sorted = [...stops].sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
   const roles = sorted.map(s => computeStopSemantics(s, sorted, signal));
 
-  // Lunch: food category or food-role in 11:30–14:30 window (690–870 min)
-  const hasLunch = sorted.some((s, i) => {
+  // Lunch: food category in 11:00–15:00 window (660–900 min)
+  const hasLunch = sorted.some((s) => {
     const m = timeToMin(s.time);
-    return m >= 690 && m <= 870 && (FOOD_CATS.has(s.category) || roles[i] === 'fuel_stop' || roles[i] === 'scenic_rest' || roles[i] === 'evening_wind');
+    return m >= 660 && m <= 900 && FOOD_CATS.has(s.category);
   }) ? 1 : 0;
 
-  // Dinner: food role after 18:00 (1080 min)
-  const hasDinner = sorted.some((s, i) => {
+  // Dinner: food category after 17:00 (1020 min)
+  const hasDinner = sorted.some((s) => {
     const m = timeToMin(s.time);
-    return m >= 1080 && (roles[i] === 'evening_wind' || roles[i] === 'fuel_stop');
+    return m >= 1020 && FOOD_CATS.has(s.category);
   }) ? 1 : 0;
 
   // Evening activity: any stop after 20:00
@@ -113,8 +113,9 @@ export function computeActualProfile(
   // Outdoor
   const hasOutdoor = sorted.some(s => OUTDOOR_CATS.has(s.category)) ? 1 : 0;
 
-  // Rest (uses semantic role)
-  const hasRest = roles.some(r => r === 'scenic_rest') ? 1 : 0;
+  // Rest: any cafe or park in the schedule counts, regardless of weather or neighbours
+  const REST_CATS = new Set(['cafe', 'park']);
+  const hasRest = sorted.some(s => REST_CATS.has(s.category)) ? 1 : 0;
 
   // Social stop
   const hasSocialStop = sorted.some(s => SOCIAL_CATS.has(s.category)) ? 1 : 0;
