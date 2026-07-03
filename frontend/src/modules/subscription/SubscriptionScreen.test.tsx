@@ -70,6 +70,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     recoInteractions: [],
     cityCountries: {},
     recoFocusPlaces: null,
+    liveEvents: [],
     ...overrides,
   };
 }

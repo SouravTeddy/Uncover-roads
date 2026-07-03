@@ -8,7 +8,7 @@ const BASE: RecoSignal = {
   pace: 'moderate', social: 'solo', isFamily: false, ritualStrength: 0.5,
   sensoryIntensity: 0.5, spontaneityBias: 0.5,
   trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-05-26' },
-  weather: null, dismissedPinIds: new Set(), savedEvents: [],
+  weather: null, dismissedPinIds: new Set(), savedEvents: [], liveEvents: [],
 };
 
 describe('getDimensionWeight', () => {
