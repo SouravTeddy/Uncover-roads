@@ -130,7 +130,7 @@ describe('deriveRecos — persona floor reco', () => {
 
   function makeSignal(archetypeGroup: string): RecoSignal {
     return {
-      weights: BASE_WEIGHTS, archetype: 'slowscholar', archetypeGroup: archetypeGroup as any,
+      weights: BASE_WEIGHTS, archetype: 'slowscholar', archetypeGroup: archetypeGroup as any, // string param to test non-union archetype values
       archetypeConfidence: 1.0, pace: 'slow', social: 'solo', isFamily: false,
       ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.3,
       trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-06-15' },
