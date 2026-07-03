@@ -104,6 +104,7 @@ export interface AppState {
   activeCityIndex: number              // index into cityContexts — which city is active
   engineMessages: EngineMessage[]      // current session engine decision banners (transient)
   engineItinerary: EngineItinerary | null  // current engine-built itinerary
+  hasBuiltThisSession: boolean         // true after first build; resets on page load (not persisted)
   itineraryHistory: EngineItinerary[]  // previous generations — max 10
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
@@ -335,6 +336,7 @@ export const initialState: AppState = {
   activeCityIndex: 0,
   engineMessages: [],
   engineItinerary: ssGet<EngineItinerary>('ur_ss_engine_itin') ?? null,
+  hasBuiltThisSession: false,
   itineraryHistory: ssGet<EngineItinerary[]>('ur_ss_itin_history') ?? [],
   activePinId: null,
   mapFilter: 'all' as MapFilterChip,
@@ -824,13 +826,13 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_ENGINE_ITINERARY':
       ssSave('ur_ss_engine_itin', action.itinerary)
-      return { ...state, engineItinerary: action.itinerary }
+      return { ...state, engineItinerary: action.itinerary, hasBuiltThisSession: true }
 
     case 'PUSH_ITINERARY_HISTORY': {
       const history = [action.itinerary, ...state.itineraryHistory].slice(0, 10)
       ssSave('ur_ss_engine_itin', action.itinerary)
       ssSave('ur_ss_itin_history', history)
-      return { ...state, engineItinerary: action.itinerary, itineraryHistory: history }
+      return { ...state, engineItinerary: action.itinerary, itineraryHistory: history, hasBuiltThisSession: true }
     }
 
     // ── Phase 3: map UI cases ───────────────────────────────────
