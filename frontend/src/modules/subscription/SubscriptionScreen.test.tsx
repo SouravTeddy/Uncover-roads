@@ -60,6 +60,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     activeCityIndex: 0,
     engineMessages: [],
     engineItinerary: null,
+    hasBuiltThisSession: false,
     itineraryHistory: [],
     activePinId: null,
     mapFilter: 'all',

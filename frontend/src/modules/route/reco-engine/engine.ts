@@ -17,7 +17,8 @@ export interface Gap {
 }
 
 const CONFIDENCE_THRESHOLD_BOOST = 0.15;
-const BASE_THRESHOLD = 0.20;
+export const L1_THRESHOLD = 0.10;   // softer gate — more recos surface at L1
+export const L2_THRESHOLD = 0.25;   // significance floor for persona-amplified L2 copy
 const MAX_RECOS = 3;
 const CONFLICT_BOOST = 1.4;
 
@@ -25,12 +26,20 @@ const OB_MAPPED: Partial<Record<keyof ItineraryProfile, boolean>> = {
   densityScore: true, hasRest: true, hasCulture: true, hasOutdoor: true,
 };
 
+// Which profile dimensions align with each archetype group for L2 tagging
+const L2_ALIGNED: Partial<Record<'cultural' | 'sensory' | 'social' | 'explorer', Array<keyof ItineraryProfile>>> = {
+  cultural: ['hasCulture', 'hasHiddenGem'],
+  sensory:  ['hasRest', 'hasLunch', 'hasDinner'],
+  social:   ['hasSocialStop'],
+  explorer: ['hasHiddenGem', 'walkIntensity'],
+};
+
 export function detectGaps(
   target: ItineraryProfile,
   actual: ItineraryProfile,
   signal: RecoSignal,
 ): Gap[] {
-  const threshold = BASE_THRESHOLD + (signal.archetypeConfidence < 0.5 ? CONFIDENCE_THRESHOLD_BOOST : 0);
+  const threshold = L1_THRESHOLD + (signal.archetypeConfidence < 0.5 ? CONFIDENCE_THRESHOLD_BOOST : 0);
   const gaps: Gap[] = [];
 
   for (const dim of Object.keys(target) as Array<keyof ItineraryProfile>) {
@@ -224,22 +233,89 @@ export function gapToCard(
     },
   };
 
+  // Determine reco level: L2 if significance exceeds L2 threshold AND dimension aligns with archetype
+  const l2Dimensions = L2_ALIGNED[signal.archetypeGroup as keyof typeof L2_ALIGNED] ?? [];
+  const isL2 = gap.significance >= L2_THRESHOLD && l2Dimensions.includes(gap.dimension);
+  const recoLevel: 'l1' | 'l2' = isL2 ? 'l2' : 'l1';
+
+  // Persona-amplified copy for L2 recos — bolder, persona-named
+  const l2Consequence: Partial<Record<keyof ItineraryProfile, string>> = {
+    hasCulture: `A day without culture is something a historian notices. There's a spot near ${area} that earns your time — not on the tourist circuit.`,
+    hasHiddenGem: signal.archetypeGroup === 'explorer'
+      ? `You don't need the guidebook version of ${area}. There's a place nearby that most people never find — it's yours if you look.`
+      : `A neighbourhood find near ${area} worth seeking out — the kind that rewards the curious.`,
+    hasRest: `Your pace is intentional — protect it. Find a quiet spot near ${area} to sit and let the day settle.`,
+    hasLunch: `You're built for proper meals, not grab-and-go. This midday window near ${area} deserves a real sit-down.`,
+    hasDinner: `End the day the right way. There's good food near ${area} that fits your kind of evening.`,
+    hasSocialStop: `You're at your best in a crowd. Find somewhere near ${area} worth showing up to — locals know it, tourists don't.`,
+    walkIntensity: `You're built for longer stretches. This day has room — push the distance a bit near ${area}.`,
+  };
+
   const tmpl = templates[gap.dimension];
   if (!tmpl) return null;
+
+  const consequence = (isL2 && l2Consequence[gap.dimension]) ? l2Consequence[gap.dimension]! : tmpl.consequence;
 
   return {
     type: 'reco',
     id: `${gap.dimension}-${afterStopId}${gap.conflictPresent ? '-conflict' : ''}`,
     trigger: tmpl.trigger as ReelRecoCard['trigger'],
     label: gap.conflictPresent ? `⚡ ${tmpl.label}` : tmpl.label,
-    consequence: tmpl.consequence,
+    consequence,
     nearbyCity: city,
     persona,
     afterStopId,
     weightScore: gap.significance,
+    recoLevel,
     stopLat: anchor?.lat,
     stopLon: anchor?.lon,
   };
+}
+
+function minutesFromTime(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m ?? 0);
+}
+
+export function suppressAdjacentL1(
+  recos: ReelRecoCard[],
+  stops: EngineItineraryStop[],
+): ReelRecoCard[] {
+  if (recos.length < 2 || stops.length === 0) return recos;
+
+  // Build stop index map (time-sorted)
+  const sorted = [...stops].sort((a, b) => minutesFromTime(a.time) - minutesFromTime(b.time));
+  const stopIdx = new Map<string, number>();
+  sorted.forEach((s, i) => stopIdx.set(s.id, i));
+
+  const toRemove = new Set<string>();
+
+  // Group recos by trigger
+  const byTrigger = new Map<string, ReelRecoCard[]>();
+  for (const r of recos) {
+    if (!byTrigger.has(r.trigger)) byTrigger.set(r.trigger, []);
+    byTrigger.get(r.trigger)!.push(r);
+  }
+
+  for (const [, cards] of byTrigger) {
+    if (cards.length < 2) continue;
+    const l1Cards = cards.filter(c => c.recoLevel === 'l1');
+    const l2Cards = cards.filter(c => c.recoLevel === 'l2');
+    if (l1Cards.length === 0 || l2Cards.length === 0) continue;
+
+    for (const l1 of l1Cards) {
+      const l1Idx = stopIdx.get(l1.afterStopId) ?? -1;
+      for (const l2 of l2Cards) {
+        const l2Idx = stopIdx.get(l2.afterStopId) ?? -1;
+        if (Math.abs(l1Idx - l2Idx) <= 1) {
+          toRemove.add(l1.id);
+          break;
+        }
+      }
+    }
+  }
+
+  return recos.filter(r => !toRemove.has(r.id));
 }
 
 const ARCHETYPE_FLOOR: Record<string, { dimension: keyof ItineraryProfile; trigger: string }> = {
@@ -275,14 +351,17 @@ export function deriveRecos(
         actual: actual[floor.dimension] as number ?? 0.5,
         delta: 0,
         dimensionWeight: 0.5,
-        significance: BASE_THRESHOLD + 0.01,
+        significance: L2_THRESHOLD + 0.01,   // floor is always persona-aligned → always L2
         direction: 'missing',
         conflictPresent: false,
       };
       const floorCard = gapToCard(floorGap, stops, signal);
-      if (floorCard) result.push(floorCard);
+      if (floorCard) {
+        floorCard.recoLevel = 'l2';
+        result.push(floorCard);
+      }
     }
   }
 
-  return result;
+  return suppressAdjacentL1(result, stops);
 }

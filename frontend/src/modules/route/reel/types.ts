@@ -134,6 +134,7 @@ export interface ReelRecoCard {
   persona: string;
   afterStopId: string;
   weightScore?: number;
+  recoLevel?: 'l1' | 'l2';
   // Coordinates of the anchor stop — used to fetch nearby recommendations
   stopLat?: number;
   stopLon?: number;
