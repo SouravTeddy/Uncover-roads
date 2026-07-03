@@ -381,20 +381,24 @@ function buildWalkingGapObservations(
 // Fires for non-walk personas when a walkable leg exists that they'd naturally skip.
 // Distinct from walking_gap (which warns about a stretch that's *too far*) — this
 // surfaces a stretch that's *worth walking* even for non-walkers.
-function buildWalkableDetourObservations(
+export function buildWalkableDetourObservations(
   stops: EngineItineraryStop[],
   city: string,
   weights: EngineWeights,
   walkBaseKm = 2.0,
+  persona?: string,
 ): DayIntelObservation[] {
-  // Only fire for users who are not walk-oriented — walk personas already get scenic cards
-  if (weights.w_walk_affinity >= 0.55) return [];
+  // L1 gate: raised from 0.55 to 0.80 so more personas get detour suggestions
+  if (weights.w_walk_affinity >= 0.80) return [];
 
-  // Detour window: 0.3 km – walkBaseKm (the full scenic ceiling, ignoring persona discount)
-  // This is wider than buildScenicCards uses, intentionally — we want to surface it even
-  // when the persona's threshold would have filtered it out.
+  const archetypeLower = (persona ?? '').toLowerCase().replace(/\s+/g, '');
+  const EXPLORER_ARCHETYPES = new Set(['wanderer', 'voyager', 'explorer', 'flaneur', 'drifter']);
+  const isExplorerL2 = EXPLORER_ARCHETYPES.has(archetypeLower) && weights.w_walk_affinity < 0.35;
+
+  // Detour window: 0.3 km – maxKm (the full scenic ceiling, ignoring persona discount)
+  // L2 explorer path: extend range up to 2× walkBaseKm (max 4km) for bolder suggestions
   const minKm = 0.3;
-  const maxKm = walkBaseKm;
+  const maxKm = isExplorerL2 ? Math.min(walkBaseKm * 2, 4.0) : walkBaseKm;
 
   const obs: DayIntelObservation[] = [];
 
@@ -409,12 +413,16 @@ function buildWalkableDetourObservations(
       ? `${Math.round(distKm * 1000)} m`
       : `${distKm.toFixed(1)} km`;
 
+    const consequence = isExplorerL2
+      ? `~${walkMins} min walk between stops — the kind of detour you'll remember. Take it.`
+      : "Worth the legs if you have time — you'll see more than from a ride.";
+
     obs.push({
       id: `walkable-detour-${a.id}-${b.id}`,
       trigger: 'walkable_detour',
       what: `${distLabel} walkable stretch`,
       why: `${a.title} to ${b.title} is short enough to walk — ~${walkMins} min on foot.`,
-      consequence: 'Worth the legs if you have time — you\'ll see more than from a ride.',
+      consequence,
       ctaLabel: triggerCTA('walkable_detour', city),
       stopLat: a.lat,
       stopLon: a.lon,
@@ -880,7 +888,7 @@ export function buildReelCards(
     // Build walkable detour scenic cards — inserted after origin stop, excluded from group tray.
     // Build the map by matching obs.id against `walkable-detour-${a.id}-${b.id}` directly
     // (don't split the id string — stop IDs can contain hyphens).
-    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0);
+    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, persona);
     const detourByOriginStopId = new Map<string, DayIntelObservation>();
     for (let di = 0; di < sortedStops.length - 1; di++) {
       const a = sortedStops[di];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildReelCards } from './reel-builder';
+import { buildReelCards, buildWalkableDetourObservations } from './reel-builder';
 import type { EngineItinerary, EngineItineraryDay, WeatherData, JourneyLeg, EngineItineraryStop } from '../../../shared/types';
 
 const DEFAULT_WEIGHTS = {
@@ -285,5 +285,69 @@ describe('walkable detour card', () => {
     // Detour card for non-walk persona on a 0.33 km leg should appear
     expect(scenicCards.length).toBe(1);
     expect((scenicCards[0] as any).cardType).toBe('WALKABLE DETOUR');
+  });
+});
+
+import type { EngineWeights } from '../../../shared/types';
+
+const BASE_WEIGHTS: EngineWeights = {
+  w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5,
+  w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.3,
+  w_budget_sensitivity: 0.5, w_crowd_aversion: 0.4, w_spontaneity: 0.5, w_rest_need: 0.5,
+};
+
+function makeDetourStop(id: string, lat: number, lon: number) {
+  return {
+    id, placeId: id, title: `Stop ${id}`, area: 'Centre', day: 1,
+    time: '10:00', durationMin: 60, category: 'museum' as const,
+    lat, lon, priceLevel: null, rating: null, weekdayText: null,
+    whyForYou: '', localTip: null, googleMapsUrl: null, website: null, photoRef: null,
+  };
+}
+
+// Two stops ~0.75 km apart (Paris centre)
+const STOP_A = makeDetourStop('a', 48.8566, 2.3522);
+const STOP_B = makeDetourStop('b', 48.8566, 2.3630);
+
+describe('buildWalkableDetourObservations — L1/L2 thresholds', () => {
+  it('fires for w_walk_affinity 0.70 (L1 gate raised to 0.80)', () => {
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.70 };
+    const obs = buildWalkableDetourObservations([STOP_A, STOP_B], 'Paris', weights, 2.0);
+    expect(obs.length).toBeGreaterThan(0);
+  });
+
+  it('does NOT fire for w_walk_affinity 0.85 (above L1 gate)', () => {
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.85 };
+    const obs = buildWalkableDetourObservations([STOP_A, STOP_B], 'Paris', weights, 2.0);
+    expect(obs.length).toBe(0);
+  });
+
+  it('old gate 0.55 — still fires at 0.50 (backward compat)', () => {
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.50 };
+    const obs = buildWalkableDetourObservations([STOP_A, STOP_B], 'Paris', weights, 2.0);
+    expect(obs.length).toBeGreaterThan(0);
+  });
+
+  it('L2 explorer path: fires for stops > 2km when persona is explorer and walk_affinity < 0.35', () => {
+    // Two stops ~2.95 km apart
+    const FAR_A = makeDetourStop('fa', 48.8566, 2.3522);
+    const FAR_B = makeDetourStop('fb', 48.8566, 2.3926);  // ~2.95 km east
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.30 };
+    const obs = buildWalkableDetourObservations([FAR_A, FAR_B], 'Paris', weights, 2.0, 'wanderer');
+    expect(obs.length).toBeGreaterThan(0);
+  });
+
+  it('L2 explorer copy is bolder than L1', () => {
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.25 };
+    const obs = buildWalkableDetourObservations([STOP_A, STOP_B], 'Paris', weights, 2.0, 'wanderer');
+    expect(obs[0]?.consequence.toLowerCase()).toMatch(/wander|detour|remember|yours/);
+  });
+
+  it('non-explorer persona does NOT get extended L2 range', () => {
+    const FAR_A = makeDetourStop('fa', 48.8566, 2.3522);
+    const FAR_B = makeDetourStop('fb', 48.8566, 2.3926);  // ~2.95 km — beyond L1 maxKm of 2.0
+    const weights = { ...BASE_WEIGHTS, w_walk_affinity: 0.30 };
+    const obs = buildWalkableDetourObservations([FAR_A, FAR_B], 'Paris', weights, 2.0, 'epicurean');
+    expect(obs.length).toBe(0);  // 2.95km > 2km walkBaseKm, no L2 extension for epicurean
   });
 });
