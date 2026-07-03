@@ -17,7 +17,7 @@ describe('resolveQ7Evening', () => {
   });
   it('returns default title when no signals match', () => {
     const out = resolveQ7Evening(partial());
-    expect(out.title).toBe("What does a good evening look like?");
+    expect(out.title).toBe("What makes an evening worth it?");
   });
 });
 
@@ -32,7 +32,7 @@ describe('resolveQ4DayOpen', () => {
   });
   it('returns default title', () => {
     const out = resolveQ4DayOpen(partial());
-    expect(out.title).toBe("How do you ease into the day?");
+    expect(out.title).toBe("How do you like to start the day?");
   });
 });
 
@@ -43,6 +43,6 @@ describe('resolveQ3Pace', () => {
   });
   it('returns default title', () => {
     const out = resolveQ3Pace(partial());
-    expect(out.title).toBe("How do you pace a day?");
+    expect(out.title).toBe("How do you move through a day?");
   });
 });

@@ -1,5 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { reducer, initialState } from '../../shared/store';
+
+let store: Record<string, string> = {};
+const localStorageMock = {
+  getItem: (k: string) => store[k] ?? null,
+  setItem: (k: string, v: string) => { store[k] = v; },
+  removeItem: (k: string) => { delete store[k]; },
+  clear: () => { store = {}; },
+};
+
+beforeEach(() => {
+  store = {};
+  vi.stubGlobal('localStorage', localStorageMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('UPDATE_CITY_LABEL', () => {
   it('updates city string without clearing places or cityGeo', () => {

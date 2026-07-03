@@ -1,13 +1,23 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { shouldShowInstallPrompt, recordVisit, dismissInstallPrompt, VISIT_KEY, DISMISSED_KEY } from './usePWAInstall';
 
+let store: Record<string, string> = {};
+const localStorageMock = {
+  getItem: (k: string) => store[k] ?? null,
+  setItem: (k: string, v: string) => { store[k] = v; },
+  removeItem: (k: string) => { delete store[k]; },
+  clear: () => { store = {}; },
+};
+
 beforeEach(() => {
-  localStorage.clear();
+  store = {};
+  vi.stubGlobal('localStorage', localStorageMock);
   vi.useFakeTimers();
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('recordVisit', () => {
