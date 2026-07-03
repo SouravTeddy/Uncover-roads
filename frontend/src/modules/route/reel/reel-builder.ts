@@ -888,7 +888,7 @@ export function buildReelCards(
     // Build walkable detour scenic cards — inserted after origin stop, excluded from group tray.
     // Build the map by matching obs.id against `walkable-detour-${a.id}-${b.id}` directly
     // (don't split the id string — stop IDs can contain hyphens).
-    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, persona);
+    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, itinerary.archetypeSnapshot as string | undefined);
     const detourByOriginStopId = new Map<string, DayIntelObservation>();
     for (let di = 0; di < sortedStops.length - 1; di++) {
       const a = sortedStops[di];
