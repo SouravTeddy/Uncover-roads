@@ -17,7 +17,8 @@ export interface Gap {
 }
 
 const CONFIDENCE_THRESHOLD_BOOST = 0.15;
-const BASE_THRESHOLD = 0.20;
+export const L1_THRESHOLD = 0.10;   // softer gate — more recos surface at L1
+export const L2_THRESHOLD = 0.25;   // significance floor for persona-amplified L2 copy
 const MAX_RECOS = 3;
 const CONFLICT_BOOST = 1.4;
 
@@ -30,7 +31,7 @@ export function detectGaps(
   actual: ItineraryProfile,
   signal: RecoSignal,
 ): Gap[] {
-  const threshold = BASE_THRESHOLD + (signal.archetypeConfidence < 0.5 ? CONFIDENCE_THRESHOLD_BOOST : 0);
+  const threshold = L1_THRESHOLD + (signal.archetypeConfidence < 0.5 ? CONFIDENCE_THRESHOLD_BOOST : 0);
   const gaps: Gap[] = [];
 
   for (const dim of Object.keys(target) as Array<keyof ItineraryProfile>) {
@@ -275,7 +276,7 @@ export function deriveRecos(
         actual: actual[floor.dimension] as number ?? 0.5,
         delta: 0,
         dimensionWeight: 0.5,
-        significance: BASE_THRESHOLD + 0.01,
+        significance: L2_THRESHOLD + 0.01,   // floor is always persona-aligned → always L2
         direction: 'missing',
         conflictPresent: false,
       };

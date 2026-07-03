@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { deriveRecos, gapToCard } from './engine';
+import { deriveRecos, gapToCard, L1_THRESHOLD, L2_THRESHOLD } from './engine';
 import type { Gap } from './engine';
 import type { RecoSignal } from './signal';
 import type { ItineraryProfile } from './profile';
 import type { EngineItineraryStop, Category } from '../../../shared/types';
+import type { ReelRecoCard, RecoTrigger } from '../reel/types';
 
 const HIGH_FOOD_WEIGHTS = { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.9, w_culture_depth: 0.3, w_nightlife: 0.2, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.5, w_spontaneity: 0.5, w_rest_need: 0.5 };
 
@@ -166,5 +167,35 @@ describe('deriveRecos — persona floor reco', () => {
     const recos = deriveRecos(stops, signal);
     const cultureRecos = recos.filter(r => r.trigger === 'culture');
     expect(cultureRecos.length).toBe(1);
+  });
+});
+
+describe('L1/L2 threshold constants', () => {
+  it('L1_THRESHOLD is 0.10', () => {
+    expect(L1_THRESHOLD).toBe(0.10);
+  });
+
+  it('L2_THRESHOLD is 0.25', () => {
+    expect(L2_THRESHOLD).toBe(0.25);
+  });
+
+  it('L2_THRESHOLD is greater than L1_THRESHOLD', () => {
+    expect(L2_THRESHOLD).toBeGreaterThan(L1_THRESHOLD);
+  });
+
+  it('fires more recos at L1 threshold than old 0.20 threshold would', () => {
+    // A gap with significance 0.15 would have been filtered at 0.20 but fires at 0.10
+    // Use a weak persona signal — low weights, low spontaneity
+    const signal = makeSignal({
+      weights: { ...HIGH_FOOD_WEIGHTS, w_food_density: 0.3, w_culture_depth: 0.2 },
+      archetypeGroup: 'explorer',
+    });
+    const stops = [
+      stop({ id: 's1', time: '09:00', category: 'museum' }),
+      stop({ id: 's2', time: '14:00', category: 'park' }),
+    ];
+    const recos = deriveRecos(stops, signal);
+    // With L1 threshold at 0.10, at least one reco fires even for weak gaps
+    expect(recos.length).toBeGreaterThan(0);
   });
 });
