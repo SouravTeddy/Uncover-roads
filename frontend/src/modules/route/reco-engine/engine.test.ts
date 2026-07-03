@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveRecos, gapToCard, L1_THRESHOLD, L2_THRESHOLD } from './engine';
+import { deriveRecos, gapToCard, suppressAdjacentL1, L1_THRESHOLD, L2_THRESHOLD } from './engine';
 import type { Gap } from './engine';
 import type { RecoSignal } from './signal';
 import type { ItineraryProfile } from './profile';
@@ -272,6 +272,74 @@ describe('gapToCard — L2 tagging and persona-amplified copy', () => {
     const floorReco = recos.find(r => r.trigger === 'culture');
     expect(floorReco).toBeDefined();
     expect(floorReco?.recoLevel).toBe('l2');
+  });
+});
+
+describe('suppressAdjacentL1', () => {
+  function makeReco(trigger: RecoTrigger, afterStopId: string, recoLevel: 'l1' | 'l2'): ReelRecoCard {
+    return {
+      type: 'reco', id: `${trigger}-${afterStopId}-${recoLevel}`,
+      trigger, label: 'test', consequence: 'test', nearbyCity: 'Paris',
+      persona: 'explorer', afterStopId, weightScore: 0.3, recoLevel,
+    };
+  }
+
+  function makeStop(id: string, time: string): EngineItineraryStop {
+    return { id, placeId: id, title: `Place ${id}`, area: 'Centre', day: 1, time, durationMin: 60, category: 'museum', lat: 0, lon: 0, priceLevel: null, rating: null, weekdayText: null, whyForYou: '', localTip: null, googleMapsUrl: null, website: null, photoRef: null };
+  }
+
+  const stops3 = [
+    makeStop('s1', '09:00'),
+    makeStop('s2', '12:00'),
+    makeStop('s3', '15:00'),
+  ];
+
+  it('suppresses L1 when L1 and L2 of same trigger have same afterStopId', () => {
+    // Both recos go after s1 — they'd be back-to-back
+    const recos = [
+      makeReco('culture', 's1', 'l1'),
+      makeReco('culture', 's1', 'l2'),
+    ];
+    const result = suppressAdjacentL1(recos, stops3);
+    expect(result).toHaveLength(1);
+    expect(result[0].recoLevel).toBe('l2');
+  });
+
+  it('suppresses L1 when L1 after s1 and L2 after s2 (consecutive stops)', () => {
+    const recos = [
+      makeReco('rest', 's1', 'l1'),
+      makeReco('rest', 's2', 'l2'),
+    ];
+    const result = suppressAdjacentL1(recos, stops3);
+    expect(result).toHaveLength(1);
+    expect(result[0].recoLevel).toBe('l2');
+  });
+
+  it('keeps both when L1 after s1 and L2 after s3 (gap of 2 stops)', () => {
+    const recos = [
+      makeReco('lunch', 's1', 'l1'),
+      makeReco('lunch', 's3', 'l2'),
+    ];
+    const result = suppressAdjacentL1(recos, stops3);
+    expect(result).toHaveLength(2);
+  });
+
+  it('never suppresses L1 of a different trigger even if adjacent', () => {
+    const recos = [
+      makeReco('rest', 's1', 'l1'),
+      makeReco('culture', 's1', 'l2'),
+    ];
+    const result = suppressAdjacentL1(recos, stops3);
+    expect(result).toHaveLength(2);
+  });
+
+  it('never suppresses L2', () => {
+    const recos = [
+      makeReco('culture', 's1', 'l1'),
+      makeReco('culture', 's1', 'l2'),
+    ];
+    const result = suppressAdjacentL1(recos, stops3);
+    expect(result.every(r => r.recoLevel !== 'l1')).toBe(true);
   });
 });
 

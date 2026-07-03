@@ -272,6 +272,52 @@ export function gapToCard(
   };
 }
 
+function minutesFromTime(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m ?? 0);
+}
+
+export function suppressAdjacentL1(
+  recos: ReelRecoCard[],
+  stops: EngineItineraryStop[],
+): ReelRecoCard[] {
+  if (recos.length < 2 || stops.length === 0) return recos;
+
+  // Build stop index map (time-sorted)
+  const sorted = [...stops].sort((a, b) => minutesFromTime(a.time) - minutesFromTime(b.time));
+  const stopIdx = new Map<string, number>();
+  sorted.forEach((s, i) => stopIdx.set(s.id, i));
+
+  const toRemove = new Set<string>();
+
+  // Group recos by trigger
+  const byTrigger = new Map<string, ReelRecoCard[]>();
+  for (const r of recos) {
+    if (!byTrigger.has(r.trigger)) byTrigger.set(r.trigger, []);
+    byTrigger.get(r.trigger)!.push(r);
+  }
+
+  for (const [, cards] of byTrigger) {
+    if (cards.length < 2) continue;
+    const l1Cards = cards.filter(c => c.recoLevel === 'l1');
+    const l2Cards = cards.filter(c => c.recoLevel === 'l2');
+    if (l1Cards.length === 0 || l2Cards.length === 0) continue;
+
+    for (const l1 of l1Cards) {
+      const l1Idx = stopIdx.get(l1.afterStopId) ?? -1;
+      for (const l2 of l2Cards) {
+        const l2Idx = stopIdx.get(l2.afterStopId) ?? -1;
+        if (Math.abs(l1Idx - l2Idx) <= 1) {
+          toRemove.add(l1.id);
+          break;
+        }
+      }
+    }
+  }
+
+  return recos.filter(r => !toRemove.has(r.id));
+}
+
 const ARCHETYPE_FLOOR: Record<string, { dimension: keyof ItineraryProfile; trigger: string }> = {
   cultural: { dimension: 'hasCulture',    trigger: 'culture'    },
   sensory:  { dimension: 'hasRest',       trigger: 'rest'       },
@@ -317,5 +363,5 @@ export function deriveRecos(
     }
   }
 
-  return result;
+  return suppressAdjacentL1(result, stops);
 }
