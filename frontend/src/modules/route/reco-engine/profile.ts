@@ -43,25 +43,54 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 const CULTURE_CATS  = new Set(['museum', 'gallery', 'historic', 'heritage', 'library', 'spiritual']);
 const OUTDOOR_CATS  = new Set(['park', 'viewpoint', 'beach', 'zoo', 'aquarium', 'amusement_park']);
 const SOCIAL_CATS   = new Set(['bar', 'nightlife', 'market', 'restaurant']);
-const FOOD_CATS     = new Set(['restaurant', 'cafe', 'bakery', 'street_food', 'market']);
+export const FOOD_CATS = new Set(['restaurant', 'cafe', 'bakery', 'street_food', 'market']);
+const REST_CATS     = new Set(['cafe', 'park']);
 const CROWD_PEAK: Record<string, [number, number]> = {
   museum: [600, 720], beach: [660, 900], market: [540, 660], historic: [600, 780], viewpoint: [660, 780],
 };
 
 export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
   const w = signal.weights;
-  const { pace, isFamily } = signal;
+  const { pace, isFamily, trip } = signal;
+  // Clip meal/activity targets based on arrival/departure constraints
+  const arrivalMin  = trip.isFirstDay  && trip.arrivalTime   ? timeToMin(trip.arrivalTime)   : null;
+  const departureMin = trip.isLastDay  && trip.departureTime ? timeToMin(trip.departureTime) : null;
+
+  // Lunch is unreachable if arriving after 15:00 (900)
+  const hasLunchTarget = (arrivalMin !== null && arrivalMin > 900) ? 0 : 0.9;
+
+  // Dinner/evening blocked by early departure OR extremely late arrival (> 17:00)
+  const mealAndEveningBlocked =
+    (departureMin !== null && departureMin < 1020) ||
+    (arrivalMin !== null && arrivalMin > 1020);
+
+  const baseDinnerTarget   = w.w_food_density * 0.8 + 0.2;
+  const baseEveningTarget  = w.w_nightlife;
+
+  // Density: scale by fraction of day available (baseline = 14h)
+  const BASE_DAY_HOURS = 14;
+  let densityMult = 1;
+  if (arrivalMin !== null) {
+    const availHours = Math.max(0, (22 * 60 - arrivalMin)) / 60;
+    densityMult = Math.min(1, availHours / BASE_DAY_HOURS);
+  }
+  if (departureMin !== null) {
+    const availHours = Math.max(0, (departureMin - 9 * 60)) / 60;
+    densityMult = Math.min(densityMult, availHours / BASE_DAY_HOURS);
+  }
+
+  const baseDensity = pace === 'slow' ? 0.35 : pace === 'fast' ? 0.75 : 0.55;
 
   return {
-    hasLunch:           0.9,
-    hasDinner:          w.w_food_density * 0.8 + 0.2,
-    hasEveningActivity: w.w_nightlife,
+    hasLunch:           hasLunchTarget,
+    hasDinner:          mealAndEveningBlocked ? 0 : baseDinnerTarget,
+    hasEveningActivity: mealAndEveningBlocked ? 0 : baseEveningTarget,
     hasCulture:         w.w_culture_depth,
     hasOutdoor:         w.w_scenic * 0.7 + (isFamily ? 0.3 : 0),
     hasRest:            Math.min(1, w.w_rest_need * 0.7 + (pace === 'slow' ? 0.3 : 0)),
     hasSocialStop:      signal.social === 'solo' ? 0.2 : 0.6,
     hasHiddenGem:       signal.spontaneityBias * 0.6,
-    densityScore:       pace === 'slow' ? 0.35 : pace === 'fast' ? 0.75 : 0.55,
+    densityScore:       baseDensity * densityMult,
     walkIntensity:      w.w_walk_affinity * 0.7,
     categoryDiversity:  signal.spontaneityBias * 0.5 + 0.3,
     timeBalance:        pace === 'slow' ? 0.5 : 0.7,
@@ -69,7 +98,7 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
     weatherAlignment:   signal.weather?.isOutdoorFriendly ? w.w_scenic * 0.7 + 0.3 : (1 - w.w_scenic) * 0.8,
     crowdOptimization:  w.w_crowd_aversion,
     budgetAlignment:    1 - w.w_budget_sensitivity * 0.8,
-    liveEventOverlap:   signal.savedEvents.length > 0 || signal.dismissedPinIds.size > 0 ? signal.spontaneityBias : null,
+    liveEventOverlap:   signal.savedEvents.length > 0 || signal.dismissedPinIds.size > 0 || signal.liveEvents.length > 0 ? signal.spontaneityBias : null,
     trendAlignment: null, localVelocity: null, curatedCoverage: null, routeScenicity: null,
   };
 }
@@ -92,16 +121,16 @@ export function computeActualProfile(
   const sorted = [...stops].sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
   const roles = sorted.map(s => computeStopSemantics(s, sorted, signal));
 
-  // Lunch: food category or food-role in 11:30–14:30 window (690–870 min)
-  const hasLunch = sorted.some((s, i) => {
+  // Lunch: food category in 11:00–15:00 window (660–900 min)
+  const hasLunch = sorted.some((s) => {
     const m = timeToMin(s.time);
-    return m >= 690 && m <= 870 && (FOOD_CATS.has(s.category) || roles[i] === 'fuel_stop' || roles[i] === 'scenic_rest' || roles[i] === 'evening_wind');
+    return m >= 660 && m <= 900 && FOOD_CATS.has(s.category);
   }) ? 1 : 0;
 
-  // Dinner: food role after 18:00 (1080 min)
-  const hasDinner = sorted.some((s, i) => {
+  // Dinner: food category after 17:00 (1020 min)
+  const hasDinner = sorted.some((s) => {
     const m = timeToMin(s.time);
-    return m >= 1080 && (roles[i] === 'evening_wind' || roles[i] === 'fuel_stop');
+    return m >= 1020 && FOOD_CATS.has(s.category);
   }) ? 1 : 0;
 
   // Evening activity: any stop after 20:00
@@ -113,8 +142,8 @@ export function computeActualProfile(
   // Outdoor
   const hasOutdoor = sorted.some(s => OUTDOOR_CATS.has(s.category)) ? 1 : 0;
 
-  // Rest (uses semantic role)
-  const hasRest = roles.some(r => r === 'scenic_rest') ? 1 : 0;
+  // Rest: any cafe or park in the schedule counts, regardless of weather or neighbours
+  const hasRest = sorted.some(s => REST_CATS.has(s.category)) ? 1 : 0;
 
   // Social stop
   const hasSocialStop = sorted.some(s => SOCIAL_CATS.has(s.category)) ? 1 : 0;
@@ -203,15 +232,21 @@ export function computeActualProfile(
 }
 
 function computeLiveEvent(stops: EngineItineraryStop[], signal: RecoSignal): number | null {
-  const { savedEvents, trip } = signal;
-  if (savedEvents.length === 0 && signal.dismissedPinIds.size === 0) return null;
+  const { savedEvents, liveEvents, trip } = signal;
+
+  if (savedEvents.length === 0 && signal.dismissedPinIds.size === 0 && liveEvents.length === 0) return null;
 
   const stopTitles = new Set(stops.map(s => s.title.toLowerCase()));
-  const unadded = savedEvents.filter(e => {
+
+  const unaddedSaved = savedEvents.filter(e => {
     const dateMatch = e.date === trip.currentDayDate ||
       (e.isAnnual && e.date?.slice(5) === trip.currentDayDate?.slice(5));
     return dateMatch && !stopTitles.has(e.title.toLowerCase());
   });
 
-  return unadded.length === 0 ? null : Math.min(1, unadded.length * 0.5);
+  // Live events fetched from API: date is '' (trip-wide fetch) so match on title absence only.
+  const unaddedLive = liveEvents.filter(e => !stopTitles.has(e.title.toLowerCase()));
+
+  const totalUnadded = unaddedSaved.length + unaddedLive.length;
+  return totalUnadded === 0 ? null : Math.min(1, totalUnadded * 0.5);
 }

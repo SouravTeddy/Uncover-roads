@@ -22,6 +22,8 @@ const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
   hidden_gem:        'point_of_interest',
   category_diversity:'attraction',
   weather:           'indoor_attraction',
+  local_food:        'restaurant',
+  photo_detour:      'scenic',
 };
 
 const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; border: string; chipLabel: string; searchCategory: string }> = {
@@ -43,6 +45,8 @@ const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; bor
   budget_mismatch:   { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Budget',          searchCategory: '' },
   live_event:        { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Live event',      searchCategory: '' },
   hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Hidden gem',      searchCategory: '' },
+  local_food:        { icon: 'lunch_dining',    color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Local food',      searchCategory: 'restaurant' },
+  photo_detour:      { icon: 'camera',          color: '#fbbf24', bg: 'rgba(251,191,36,.08)',  border: 'rgba(251,191,36,.2)',  chipLabel: 'Photo moment',    searchCategory: '' },
 };
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
@@ -112,9 +116,10 @@ function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; i
 
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
-  const { places, loading, error } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
+  const { places, loading, error, photoUrl } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasPhoto = !!card.anchorPhotoUrl;
+  const resolvedPhotoUrl = photoUrl ?? card.anchorPhotoUrl ?? null;
+  const hasPhoto = !!resolvedPhotoUrl;
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -133,7 +138,7 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
       <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden' }}>
         {hasPhoto ? (
           <img
-            src={card.anchorPhotoUrl!}
+            src={resolvedPhotoUrl!}
             alt=""
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
           />

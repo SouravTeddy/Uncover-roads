@@ -118,7 +118,7 @@ export interface ReelStopCard {
 export type RecoTrigger =
   | 'lunch' | 'dinner' | 'evening' | 'culture' | 'rest'
   | 'weather' | 'closing_conflict' | 'walking_gap' | 'crowd_peak'
-  | 'walkable_detour'
+  | 'walkable_detour' | 'photo_detour' | 'local_food'
   // New engine dimensions:
   | 'density_excess' | 'density_sparse' | 'geo_efficiency'
   | 'time_balance' | 'category_diversity' | 'social_gap'

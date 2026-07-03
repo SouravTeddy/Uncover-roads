@@ -39,10 +39,11 @@ export interface RecoSignal {
   weather: { condition: string; tempC: number; isOutdoorFriendly: boolean } | null;
   dismissedPinIds: Set<string>;
   savedEvents: AppState['savedEvents'];
+  liveEvents: import('../../../shared/types').LiveEvent[];
 }
 
 export function computeRecoSignal(
-  state: Pick<AppState, 'rawOBAnswers' | 'persona' | 'travelStartDate' | 'tripContext' | 'weather' | 'savedEvents' | 'dismissedPinIds' | 'pendingTripDetails' | 'journey'>,
+  state: Pick<AppState, 'rawOBAnswers' | 'persona' | 'travelStartDate' | 'tripContext' | 'weather' | 'savedEvents' | 'dismissedPinIds' | 'pendingTripDetails' | 'journey' | 'liveEvents'>,
   dayIdx: number,
   itinerary: EngineItinerary,
 ): RecoSignal {
@@ -135,5 +136,6 @@ export function computeRecoSignal(
     weather,
     dismissedPinIds: new Set(state.dismissedPinIds),
     savedEvents: state.savedEvents,
+    liveEvents: state.liveEvents ?? [],
   };
 }
