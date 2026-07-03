@@ -26,6 +26,14 @@ const OB_MAPPED: Partial<Record<keyof ItineraryProfile, boolean>> = {
   densityScore: true, hasRest: true, hasCulture: true, hasOutdoor: true,
 };
 
+// Which profile dimensions align with each archetype group for L2 tagging
+const L2_ALIGNED: Partial<Record<'cultural' | 'sensory' | 'social' | 'explorer', Array<keyof ItineraryProfile>>> = {
+  cultural: ['hasCulture', 'hasHiddenGem'],
+  sensory:  ['hasRest', 'hasLunch', 'hasDinner'],
+  social:   ['hasSocialStop'],
+  explorer: ['hasHiddenGem', 'walkIntensity'],
+};
+
 export function detectGaps(
   target: ItineraryProfile,
   actual: ItineraryProfile,
@@ -225,19 +233,40 @@ export function gapToCard(
     },
   };
 
+  // Determine reco level: L2 if significance exceeds L2 threshold AND dimension aligns with archetype
+  const l2Dimensions = L2_ALIGNED[signal.archetypeGroup as keyof typeof L2_ALIGNED] ?? [];
+  const isL2 = gap.significance >= L2_THRESHOLD && l2Dimensions.includes(gap.dimension);
+  const recoLevel: 'l1' | 'l2' = isL2 ? 'l2' : 'l1';
+
+  // Persona-amplified copy for L2 recos — bolder, persona-named
+  const l2Consequence: Partial<Record<keyof ItineraryProfile, string>> = {
+    hasCulture: `A day without culture is something a historian notices. There's a spot near ${area} that earns your time — not on the tourist circuit.`,
+    hasHiddenGem: signal.archetypeGroup === 'explorer'
+      ? `You don't need the guidebook version of ${area}. There's a place nearby that most people never find — it's yours if you look.`
+      : `A neighbourhood find near ${area} worth seeking out — the kind that rewards the curious.`,
+    hasRest: `Your pace is intentional — protect it. Find a quiet spot near ${area} to sit and let the day settle.`,
+    hasLunch: `You're built for proper meals, not grab-and-go. This midday window near ${area} deserves a real sit-down.`,
+    hasDinner: `End the day the right way. There's good food near ${area} that fits your kind of evening.`,
+    hasSocialStop: `You're at your best in a crowd. Find somewhere near ${area} worth showing up to — locals know it, tourists don't.`,
+    walkIntensity: `You're built for longer stretches. This day has room — push the distance a bit near ${area}.`,
+  };
+
   const tmpl = templates[gap.dimension];
   if (!tmpl) return null;
+
+  const consequence = (isL2 && l2Consequence[gap.dimension]) ? l2Consequence[gap.dimension]! : tmpl.consequence;
 
   return {
     type: 'reco',
     id: `${gap.dimension}-${afterStopId}${gap.conflictPresent ? '-conflict' : ''}`,
     trigger: tmpl.trigger as ReelRecoCard['trigger'],
     label: gap.conflictPresent ? `⚡ ${tmpl.label}` : tmpl.label,
-    consequence: tmpl.consequence,
+    consequence,
     nearbyCity: city,
     persona,
     afterStopId,
     weightScore: gap.significance,
+    recoLevel,
     stopLat: anchor?.lat,
     stopLon: anchor?.lon,
   };
@@ -281,7 +310,10 @@ export function deriveRecos(
         conflictPresent: false,
       };
       const floorCard = gapToCard(floorGap, stops, signal);
-      if (floorCard) result.push(floorCard);
+      if (floorCard) {
+        floorCard.recoLevel = 'l2';
+        result.push(floorCard);
+      }
     }
   }
 

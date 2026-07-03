@@ -170,6 +170,111 @@ describe('deriveRecos — persona floor reco', () => {
   });
 });
 
+describe('gapToCard — L2 tagging and persona-amplified copy', () => {
+  function makeGapAtLevel(
+    dimension: keyof ItineraryProfile,
+    significance: number,
+    direction: 'missing' | 'excess' = 'missing',
+  ): Gap {
+    return {
+      dimension, target: 1, actual: 0,
+      delta: direction === 'missing' ? 1 : -1,
+      dimensionWeight: 0.5,
+      significance,
+      direction,
+      conflictPresent: false,
+    };
+  }
+
+  const BASE_STOPS: EngineItineraryStop[] = [{
+    id: 's1', placeId: 'p1', title: 'Test Place', area: 'Shinjuku', day: 1,
+    time: '10:00', durationMin: 60, category: 'museum', lat: 35.6, lon: 139.7,
+    priceLevel: 2, rating: 4.2, weekdayText: null, whyForYou: '', localTip: null,
+    googleMapsUrl: null, website: null, photoRef: null,
+  }];
+
+  const BASE_SIGNAL: RecoSignal = {
+    weights: { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.5, w_culture_depth: 0.5, w_nightlife: 0.5, w_budget_sensitivity: 0.5, w_crowd_aversion: 0.5, w_spontaneity: 0.5, w_rest_need: 0.5 },
+    archetype: 'explorer', archetypeGroup: 'explorer', archetypeConfidence: 1.0,
+    pace: 'moderate', social: 'solo', isFamily: false,
+    ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.5,
+    trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Tokyo', currentDayDate: '2026-05-26' },
+    weather: null, dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
+  };
+
+  it('hasCulture at significance 0.30 with cultural archetype returns recoLevel l2', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'cultural',
+    };
+    const card = gapToCard(makeGapAtLevel('hasCulture', 0.30), BASE_STOPS, signal);
+    expect(card).not.toBeNull();
+    expect(card?.recoLevel).toBe('l2');
+  });
+
+  it('hasCulture at significance 0.15 with cultural archetype returns recoLevel l1', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'cultural',
+    };
+    const card = gapToCard(makeGapAtLevel('hasCulture', 0.15), BASE_STOPS, signal);
+    expect(card).not.toBeNull();
+    expect(card?.recoLevel).toBe('l1');
+  });
+
+  it('hasCulture at significance 0.30 with sensory archetype returns recoLevel l1 (wrong archetype)', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'sensory',
+    };
+    const card = gapToCard(makeGapAtLevel('hasCulture', 0.30), BASE_STOPS, signal);
+    expect(card).not.toBeNull();
+    expect(card?.recoLevel).toBe('l1');
+  });
+
+  it('hasRest at significance 0.30 with sensory archetype returns recoLevel l2', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'sensory',
+    };
+    const card = gapToCard(makeGapAtLevel('hasRest', 0.30), BASE_STOPS, signal);
+    expect(card).not.toBeNull();
+    expect(card?.recoLevel).toBe('l2');
+  });
+
+  it('L2 hasCulture consequence contains archetype reference', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'cultural',
+    };
+    const card = gapToCard(makeGapAtLevel('hasCulture', 0.30), BASE_STOPS, signal);
+    // L2 copy must reference persona/archetype ("historian" or "cultural" or "scholar" etc.)
+    expect(card?.consequence.toLowerCase()).toMatch(/historian|scholar|cultural|your kind|your taste/);
+  });
+
+  it('L2 hasRest consequence contains persona reference', () => {
+    const signal: RecoSignal = {
+      ...BASE_SIGNAL,
+      archetypeGroup: 'sensory',
+    };
+    const card = gapToCard(makeGapAtLevel('hasRest', 0.30), BASE_STOPS, signal);
+    expect(card?.consequence.toLowerCase()).toMatch(/pace|ritual|intentional|slow|sit|settle/);
+  });
+
+  it('floor reco is always tagged l2', () => {
+    const stops = [
+      stop({ id: 's1', time: '09:00', category: 'restaurant' }),
+      stop({ id: 's2', time: '14:00', category: 'park' }),
+    ];
+    const signal = makeSignal({ archetypeGroup: 'cultural' });
+    const recos = deriveRecos(stops, signal);
+    const floorReco = recos.find(r => r.trigger === 'culture');
+    expect(floorReco).toBeDefined();
+    expect(floorReco?.recoLevel).toBe('l2');
+  });
+});
+
 describe('L1/L2 threshold constants', () => {
   it('L1_THRESHOLD is 0.10', () => {
     expect(L1_THRESHOLD).toBe(0.10);
