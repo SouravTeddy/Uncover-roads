@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { AppProvider } from '../../shared/store';
 import { SavedScreen } from './SavedScreen';
 
-vi.mock('./TripsScreen', () => ({ TripsScreen: () => <div>Itineraries content</div> }));
+vi.mock('./TripsScreen', () => ({ TripsList: () => <div>Itineraries content</div> }));
 
 function renderInProvider() {
   return render(<AppProvider><SavedScreen /></AppProvider>);
