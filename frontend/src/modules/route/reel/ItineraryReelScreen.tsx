@@ -26,7 +26,7 @@ import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
-import type { ReelScenicCard, ReelDayDividerCard as ReelDayDividerCardType } from './types';
+import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
 import { getLocalFoodFact } from './local-food-facts';
 
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
@@ -62,7 +62,7 @@ async function enrichPhotoMomentCards(
     const windowEnd = goldenMin + 90;
     if (endMin < goldenMin || stopMin > windowEnd) continue;
     const goldenHourDisplay = formatGoldenHour(goldenHour);
-    const momentCard: ReelScenicCard = {
+    const momentCard: ReelScenicCardType = {
       type:          'scenic',
       sceneType:     'walk',
       accent:        '#fbbf24',     // amber — photography / warm light
