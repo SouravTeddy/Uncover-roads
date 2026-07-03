@@ -9,7 +9,8 @@ import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
-import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType } from './types';
+import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType, RecoTrigger } from './types';
+import { FOOD_CATS } from '../reco-engine/profile';
 import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
@@ -24,8 +25,74 @@ import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
+import { computeGoldenHour } from './golden-hour';
+import type { ReelScenicCard, ReelDayDividerCard as ReelDayDividerCardType } from './types';
+import { getLocalFoodFact } from './local-food-facts';
 
+function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+function formatGoldenHour(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
 
+async function enrichPhotoMomentCards(
+  built: ReelCard[],
+  isCancelled: () => boolean,
+): Promise<ReelCard[]> {
+  const result = [...built];
+  const PHOTO_CATS = new Set(['viewpoint', 'beach', 'park']);
+  for (let i = 0; i < result.length; i++) {
+    const card = result[i];
+    if (card.type !== 'stop') continue;
+    if (!PHOTO_CATS.has(card.stop.category)) continue;
+    // Don't inject if a scenic card already follows this stop
+    const next = result[i + 1];
+    if (next?.type === 'scenic') continue;
+    const dayCard = built.find((c) => c.type === 'day_divider') as ReelDayDividerCardType | undefined;
+    const dateStr = card.visitDate ?? dayCard?.date ?? '';
+    if (!dateStr) continue;
+    const goldenHour = await computeGoldenHour(card.stop.lat, card.stop.lon, dateStr);
+    if (isCancelled()) return result;
+    if (!goldenHour) continue;
+    const stopMin = timeToMin(card.stop.time);
+    const goldenMin = timeToMin(goldenHour);
+    const endMin = stopMin + (card.stop.durationMin ?? 60);
+    const windowEnd = goldenMin + 90;
+    if (endMin < goldenMin || stopMin > windowEnd) continue;
+    const goldenHourDisplay = formatGoldenHour(goldenHour);
+    const momentCard: ReelScenicCard = {
+      type:          'scenic',
+      sceneType:     'walk',
+      accent:        '#fbbf24',     // amber — photography / warm light
+      cardType:      'GOLDEN HOUR',
+      pos:           1,
+      total:         1,
+      timing:        goldenHourDisplay,
+      metaRight:     `Golden hour · ${goldenHourDisplay}`,
+      place:         card.stop.title,
+      from:          card.stop.area ?? card.stop.title,
+      to:            '',
+      modeIcon:      'walk',
+      tag:           'Photo moment',
+      vizType:       'route',
+      persona:       '',
+      personaDisplay:'',
+      personaIcon:   'camera',
+      why:           `${card.stop.title} is framed perfectly at golden hour (${goldenHourDisplay}).`,
+      sensory:       'The light will be perfect for photography during your visit.',
+      sensoryIcon:   'camera',
+      reelPos:       '',
+      photoUrl:      card.stop.imageUrl ?? null,
+      detourKm:      0,
+      detourMin:     0,
+    };
+    result.splice(i + 1, 0, momentCard);
+    i++; // skip the just-inserted card
+  }
+  return result;
+}
 
 function preloadImages(srcs: string[]): Promise<void> {
   if (srcs.length === 0) return Promise.resolve();
@@ -148,6 +215,30 @@ export function ItineraryReelScreen() {
             stopLon: anchor.lon,
           });
         }
+        // Local food reco: inject if city has editorial fact, no food reco already present,
+        // the day contains at least one food-category stop (Fix 1), and that stop lacks rich
+        // editorial content — localTip absent or under 80 chars (Fix 2).
+        const hasFoodReco = recos.some(r => r.trigger === 'lunch' || r.trigger === 'dinner' || r.trigger === 'local_food');
+        const foodFact = getLocalFoodFact(day.city);
+        const hasLowRichnessFoodStop = dayStops.some(
+          s => FOOD_CATS.has(s.category) && (!s.localTip || s.localTip.length < 80),
+        );
+        if (!hasFoodReco && foodFact && hasLowRichnessFoodStop) {
+          const anchor = dayStops[Math.floor(dayStops.length / 2)];
+          recos.push({
+            type: 'reco',
+            id: `local-food-${day.city}-${dayIdx}`,
+            trigger: 'local_food' as RecoTrigger,
+            label: foodFact.dish,
+            consequence: `${foodFact.context} ${foodFact.where}.`,
+            nearbyCity: day.city,
+            persona: signal.archetype,
+            afterStopId: anchor.id,
+            weightScore: 0.45,
+            stopLat: anchor.lat,
+            stopLon: anchor.lon,
+          });
+        }
         recosByDayIdx.set(dayIdx, recos);
       });
     }
@@ -244,11 +335,48 @@ export function ItineraryReelScreen() {
       );
       setCards(filtered);
 
+      // Fetch live events for all days in the trip.
+      // Clear stale events first so a city change doesn't carry over previous results.
+      dispatch({ type: 'SET_LIVE_EVENTS', events: [] });
+      if (activeItinerary.days.length > 0) {
+        const firstDay = activeItinerary.days[0];
+        const lastDay = activeItinerary.days[activeItinerary.days.length - 1];
+        const eventsCity = activeItinerary.city ?? activeItinerary.cities?.[0] ?? '';
+        if (eventsCity && firstDay.date && lastDay.date) {
+          api.events(eventsCity, firstDay.date, lastDay.date)
+            .then((places) => {
+              if (cancelled) return;
+              // Convert Place[] to LiveEvent[] shape.
+              // Place.title (not .name), Place.id is required, Place.lat/lon are non-nullable.
+              // No googleMapsUrl on Place — use place_id to build a Maps URL.
+              // date is left empty so computeLiveEvent matches on title presence, not specific date.
+              const events: import('../../../shared/types').LiveEvent[] = places.map(p => ({
+                id:         p.place_id ?? p.id,
+                title:      p.title,
+                lat:        p.lat,
+                lon:        p.lon,
+                venueName:  p.title,
+                date:       '',
+                time:       '',
+                genre:      p.category ?? '',
+                url:        p.place_id ? `https://www.google.com/maps/place/?q=place_id:${p.place_id}` : '',
+                imageUrl:   p.imageUrl ?? null,
+              }));
+              dispatch({ type: 'SET_LIVE_EVENTS', events });
+            })
+            .catch(() => { /* non-critical — events just won't show */ });
+        }
+      }
+
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
-      enrichScenicCardsWithTransit(filtered, apiBase).then(enriched => {
-        if (!cancelled) setCards(enriched);
-      }).catch(() => { /* transit enrichment is best-effort */ });
+      enrichScenicCardsWithTransit(filtered, apiBase)
+        .then(enriched => enrichPhotoMomentCards(enriched, () => cancelled))
+        .then(withMoments => {
+          if (cancelled) return;
+          setCards(withMoments);
+        })
+        .catch(() => { /* non-critical — show cards without photo moments */ });
 
       // Preload every image URL into the browser cache before revealing the reel
       const srcs: string[] = [];
@@ -587,6 +715,9 @@ export function ItineraryReelScreen() {
       social_gap:        { label: 'Social',          icon: 'people',          color: '#4f8fab' },
       density_sparse:    { label: 'Room to add',     icon: 'explore',         color: '#8b9e6a' },
       famous_spots:      { label: 'Landmarks',       icon: 'museum',          color: '#7b9fcf' },
+      local_food:        { label: 'Local food',      icon: 'lunch_dining',    color: '#c27c4a' },
+      photo_detour:      { label: 'Photo moment',    icon: 'camera',          color: '#9b8eb8' },
+      walkable_detour:   { label: 'Worth the walk',    icon: 'directions_walk', color: '#8b9e6a' },
     };
 
     // Contextual fallback images — used when no real place photo is available.
@@ -621,6 +752,9 @@ export function ItineraryReelScreen() {
         _any:    u('1550159930-40066082a4fc'),    // narrow atmospheric alley
       },
       walking_gap: {
+        _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
+      },
+      walkable_detour: {
         _any:    u('1477959858617-67f85cf4f1df'), // city walk street scene
       },
       famous_spots: {

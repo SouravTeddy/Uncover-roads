@@ -3,7 +3,7 @@ import { deriveRecos, gapToCard } from './engine';
 import type { Gap } from './engine';
 import type { RecoSignal } from './signal';
 import type { ItineraryProfile } from './profile';
-import type { EngineItineraryStop } from '../../../shared/types';
+import type { EngineItineraryStop, Category } from '../../../shared/types';
 
 const HIGH_FOOD_WEIGHTS = { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.9, w_culture_depth: 0.3, w_nightlife: 0.2, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.5, w_spontaneity: 0.5, w_rest_need: 0.5 };
 
@@ -15,6 +15,7 @@ function makeSignal(overrides: Partial<RecoSignal> = {}): RecoSignal {
     trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-05-26' },
     weather: { condition: 'sunny', tempC: 22, isOutdoorFriendly: true },
     dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
     ...overrides,
   };
 }
@@ -42,7 +43,7 @@ describe('deriveRecos', () => {
     expect(recos.every(r => r.trigger !== 'lunch')).toBe(true);
   });
 
-  it('returns empty array for well-balanced day (no significant gaps)', () => {
+  it('floor fires alongside gap recos on well-balanced sensory day', () => {
     const stops = [
       stop({ id: 's1', time: '09:00', category: 'museum', durationMin: 120 }),
       stop({ id: 's2', time: '12:30', category: 'restaurant', durationMin: 60 }),
@@ -51,7 +52,8 @@ describe('deriveRecos', () => {
     ];
     const signal = makeSignal({ weights: { ...HIGH_FOOD_WEIGHTS, w_food_density: 0.5, w_culture_depth: 0.5 } });
     const recos = deriveRecos(stops, signal);
-    expect(recos.length).toBeLessThanOrEqual(3);
+    // MAX_RECOS (3) + 1 conflict slot + 1 persona floor = 5 max; guard against reco floods
+    expect(recos.length).toBeLessThanOrEqual(5);
   });
 
   it('surfaces live_event reco when saved event matches current day', () => {
@@ -87,6 +89,7 @@ describe('gapToCard — previously missing templates', () => {
     ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.5,
     trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Tokyo', currentDayDate: '2026-05-26' },
     weather: null, dismissedPinIds: new Set(), savedEvents: [],
+    liveEvents: [],
   };
 
   function makeGap(dimension: keyof ItineraryProfile, direction: 'missing' | 'excess' = 'missing'): Gap {
@@ -115,5 +118,53 @@ describe('gapToCard — previously missing templates', () => {
     const card = gapToCard(makeGap('geoEfficiency'), BASE_STOPS, BASE_SIGNAL);
     expect(card).not.toBeNull();
     expect(card?.trigger).toBe('geo_efficiency');
+  });
+});
+
+describe('deriveRecos — persona floor reco', () => {
+  const BASE_WEIGHTS = { w_walk_affinity: 0.5, w_scenic: 0.5, w_efficiency: 0.5, w_food_density: 0.8, w_culture_depth: 0.9, w_nightlife: 0.2, w_budget_sensitivity: 0.3, w_crowd_aversion: 0.4, w_spontaneity: 0.3, w_rest_need: 0.3 };
+
+  function makeStop(id: string, time: string, category: Category): EngineItineraryStop {
+    return { id, placeId: id, title: `Place ${id}`, area: 'Centre', day: 1, time, durationMin: 90, category, lat: 0, lon: 0, priceLevel: null, rating: null, weekdayText: null, whyForYou: '', localTip: null, googleMapsUrl: null, website: null, photoRef: null };
+  }
+
+  function makeSignal(archetypeGroup: string): RecoSignal {
+    return {
+      weights: BASE_WEIGHTS, archetype: 'slowscholar', archetypeGroup: archetypeGroup as any, // string param to test non-union archetype values
+      archetypeConfidence: 1.0, pace: 'slow', social: 'solo', isFamily: false,
+      ritualStrength: 0.5, sensoryIntensity: 0.5, spontaneityBias: 0.3,
+      trip: { totalDays: 1, dayNumber: 1, isFirstDay: true, isLastDay: true, isWeekend: false, isLongHaul: false, startType: 'hotel', arrivalTime: null, departureTime: null, city: 'Paris', currentDayDate: '2026-06-15' },
+      weather: { condition: 'sunny', tempC: 22, isOutdoorFriendly: true },
+      dismissedPinIds: new Set(), savedEvents: [],
+      liveEvents: [],
+    };
+  }
+
+  it('injects culture floor reco for cultural archetype when plan already has full culture', () => {
+    // Plan is already culturally rich — no hasCulture gap
+    const stops = [
+      makeStop('s1', '09:00', 'museum'),
+      makeStop('s2', '11:00', 'gallery'),
+      makeStop('s3', '12:30', 'restaurant'),
+      makeStop('s4', '14:00', 'historic'),
+    ];
+    const signal = makeSignal('cultural');
+    const recos = deriveRecos(stops, signal);
+    // Floor reco for 'cultural' group should still appear if no culture reco already present
+    // In this case, hasCulture actual = 1.0 and target = 0.9, delta = -0.1, no gap → no culture reco from engine
+    // Floor injects one
+    expect(recos.some(r => r.trigger === 'culture')).toBe(true);
+  });
+
+  it('does NOT inject duplicate floor reco if engine already surfaced one for the archetype dimension', () => {
+    // Plan has no culture at all → engine will surface hasCulture gap → floor reco should not duplicate
+    const stops = [
+      makeStop('s1', '09:00', 'restaurant'),
+      makeStop('s2', '11:00', 'park'),
+    ];
+    const signal = makeSignal('cultural');
+    const recos = deriveRecos(stops, signal);
+    const cultureRecos = recos.filter(r => r.trigger === 'culture');
+    expect(cultureRecos.length).toBe(1);
   });
 });

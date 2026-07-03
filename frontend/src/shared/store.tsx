@@ -97,6 +97,7 @@ export interface AppState {
   cityFootprints: CityFootprint[];
   similarPinsState: { sourcePlaceId: string; similarIds: string[] } | null;
   savedEvents: SavedEvent[];
+  liveEvents: import('./types').LiveEvent[];
   cityCountries: Record<string, string> // city name → country name, built up as cities are selected
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: CityContext[]          // one per city in current multi-city trip
@@ -327,6 +328,7 @@ export const initialState: AppState = {
   cityFootprints: ssGet<CityFootprint[]>('ur_ss_footprints') ?? [],
   similarPinsState: null,
   savedEvents: ssGet<SavedEvent[]>('ur_ss_saved_events') ?? [],
+  liveEvents: [],
   cityCountries: {},
   // ── Phase 3: new architecture fields ─────────────────────────
   cityContexts: [],
@@ -402,6 +404,7 @@ export type Action =
   | { type: 'SET_THEME'; theme: 'dark' | 'light' }
   | { type: 'SAVE_EVENT'; event: SavedEvent }
   | { type: 'REMOVE_EVENT'; id: string }
+  | { type: 'SET_LIVE_EVENTS'; events: import('./types').LiveEvent[] }
   // ── Phase 3: city context actions ────────────────────────────
   | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
   | { type: 'ADD_CITY_CONTEXT'; context: CityContext }
@@ -851,6 +854,9 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_saved_events', updated);
       return { ...state, savedEvents: updated };
     }
+
+    case 'SET_LIVE_EVENTS':
+      return { ...state, liveEvents: action.events };
 
     case 'SET_REEL_SAVED_ID':
       return { ...state, reelSavedId: action.id };

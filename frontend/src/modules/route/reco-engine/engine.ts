@@ -186,8 +186,24 @@ export function gapToCard(
     },
     hasHiddenGem: {
       trigger: 'hidden_gem',
-      label: 'A local spot worth knowing about',
-      consequence: `Close to your route — the kind of place most visitors walk past.`,
+      label: (() => {
+        const GROUP_LABEL: Record<string, string> = {
+          cultural: 'A lesser-known cultural gem',
+          sensory:  'A local haunt worth finding',
+          social:   'Where locals actually go',
+          explorer: 'Off the tourist trail',
+        };
+        return GROUP_LABEL[signal.archetypeGroup] ?? 'A local spot worth knowing about';
+      })(),
+      consequence: (() => {
+        const GROUP_COPY: Record<string, string> = {
+          cultural: `A spot near ${area} that locals visit but guidebooks miss.`,
+          sensory:  `A neighbourhood find near ${area} — the kind that rewards wandering.`,
+          social:   `Near ${area} — frequented by locals, rarely listed on review apps.`,
+          explorer: `Close to your route near ${area} — the kind of place most visitors walk past.`,
+        };
+        return GROUP_COPY[signal.archetypeGroup] ?? `Close to your route — the kind of place most visitors walk past.`;
+      })(),
     },
     categoryDiversity: {
       trigger: 'category_diversity',
@@ -226,6 +242,13 @@ export function gapToCard(
   };
 }
 
+const ARCHETYPE_FLOOR: Record<string, { dimension: keyof ItineraryProfile; trigger: string }> = {
+  cultural: { dimension: 'hasCulture',    trigger: 'culture'    },
+  sensory:  { dimension: 'hasRest',       trigger: 'rest'       },
+  social:   { dimension: 'hasSocialStop', trigger: 'social_gap' },
+  explorer: { dimension: 'hasHiddenGem',  trigger: 'hidden_gem' },
+};
+
 export function deriveRecos(
   stops: EngineItineraryStop[],
   signal: RecoSignal,
@@ -237,8 +260,29 @@ export function deriveRecos(
 
   const maxRecos = resolved.some(g => g.conflictPresent) ? MAX_RECOS + 1 : MAX_RECOS;
 
-  return resolved
+  const result = resolved
     .slice(0, maxRecos)
     .map(g => gapToCard(g, stops, signal))
     .filter((c): c is ReelRecoCard => c !== null);
+
+  // Persona floor: inject one archetype-aligned reco if none already present and day has enough stops
+  if (stops.length >= 2) {
+    const floor = ARCHETYPE_FLOOR[signal.archetypeGroup];
+    if (floor && !result.some(r => r.trigger === floor.trigger)) {
+      const floorGap: Gap = {
+        dimension: floor.dimension,
+        target: target[floor.dimension] as number ?? 0.5,
+        actual: actual[floor.dimension] as number ?? 0.5,
+        delta: 0,
+        dimensionWeight: 0.5,
+        significance: BASE_THRESHOLD + 0.01,
+        direction: 'missing',
+        conflictPresent: false,
+      };
+      const floorCard = gapToCard(floorGap, stops, signal);
+      if (floorCard) result.push(floorCard);
+    }
+  }
+
+  return result;
 }
