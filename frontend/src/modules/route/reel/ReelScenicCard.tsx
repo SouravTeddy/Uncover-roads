@@ -257,7 +257,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
   const photoUrl = card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl;
 
   return (
-    <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: isHighWalk ? 'linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)' : 'linear-gradient(160deg,#120a18 0%,#1a0f22 40%,#100c15 100%)' }}>
+    <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: isHighWalk ? 'linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)' : '#0a0a0d' }}>
       {/* Background photo */}
       {photoUrl && (
         <img src={photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0 }} />
@@ -266,8 +266,10 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
       {photoUrl && (
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,.80) 100%)', zIndex: 1 }} />
       )}
-      {/* Subtle radial glow */}
-      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 280px 350px at 50% 35%,${isHighWalk ? 'rgba(79,143,171,.12)' : 'rgba(150,100,210,.08)'},transparent)`, pointerEvents: 'none', zIndex: 2 }} />
+      {/* Subtle radial glow — only for high-walk variant */}
+      {isHighWalk && (
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 280px 350px at 50% 35%,rgba(79,143,171,.12),transparent)', pointerEvents: 'none', zIndex: 2 }} />
+      )}
 
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 20px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 5 }}>
         {/* Spacer — pushes content to bottom */}

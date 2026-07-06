@@ -10,8 +10,8 @@ function renderInProvider() {
 describe('DestinationScreen', () => {
   it('renders the explore hero section', () => {
     renderInProvider();
-    // ExploreHero renders a greeting (Good morning/afternoon/evening/night)
-    expect(screen.getByText(/Good (morning|afternoon|evening|night), Traveller/i)).toBeTruthy();
+    // ExploreHero renders "The world won't wait, {userName}." with default userName = 'Traveller'
+    expect(screen.getByText(/The world won't wait/i)).toBeTruthy();
   });
 
   it('does not show calendar initially', () => {

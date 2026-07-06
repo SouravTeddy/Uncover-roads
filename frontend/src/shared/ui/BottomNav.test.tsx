@@ -26,12 +26,12 @@ function renderInProvider() {
 }
 
 describe('BottomNav', () => {
-  it('renders 3 tabs: Explore, Itinerary, Profile', async () => {
+  it('renders 3 tabs: Explore, Trips, Profile', async () => {
     renderInProvider();
     await waitFor(() => {
       expect(screen.getByText('Explore')).toBeTruthy();
     });
-    expect(screen.getByText('Itinerary')).toBeTruthy();
+    expect(screen.getByText('Trips')).toBeTruthy();
     expect(screen.queryByText('Community')).toBeNull();
     expect(screen.getByText('Profile')).toBeTruthy();
   });

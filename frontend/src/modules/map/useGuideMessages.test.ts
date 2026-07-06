@@ -64,8 +64,11 @@ describe('computeBuildReadinessText', () => {
     expect(computeBuildReadinessText(1, 1, 2)).toBeNull()
   })
 
-  it('returns null when days = 0', () => {
-    expect(computeBuildReadinessText(5, 0, 3)).toBeNull()
+  it('falls back to 1 day when days = 0, returns message when threshold met', () => {
+    // days=0 → effectiveDays=1; threshold=max(4, floor(1*3*0.8))=4; count=5 >= 4
+    const text = computeBuildReadinessText(5, 0, 3)
+    expect(text).not.toBeNull()
+    expect(text).toContain('1 day')
   })
 
   it('returns message containing day count when threshold met', () => {
@@ -77,8 +80,8 @@ describe('computeBuildReadinessText', () => {
   })
 
   it('uses singular "day" for 1-day trip', () => {
-    // 1 day × 3 stops × 0.8 = 2.4 → threshold = 2; count = 2
-    const text = computeBuildReadinessText(2, 1, 3)
+    // 1 day × 3 stops × 0.8 = 2.4 → threshold = max(4, 2) = 4; count = 4
+    const text = computeBuildReadinessText(4, 1, 3)
     expect(text).toContain('1 day')
     expect(text).not.toContain('days')
   })

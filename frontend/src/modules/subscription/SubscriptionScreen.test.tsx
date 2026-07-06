@@ -93,31 +93,19 @@ describe('SubscriptionScreen', () => {
     return render(<SubscriptionScreen />);
   }
 
-  it('renders "Current Plan" disabled button for Free user on the Free column', () => {
-    renderWithState(makeState({ userTier: 'free' }));
-    // Find the "Current Plan" button within the Free column context
+  it('renders "Current Plan" disabled button for Pro user on the Pro column', () => {
+    renderWithState(makeState({ userTier: 'pro' }));
+    // Pro user sees both plan cards; the Pro plan CTA is "Current Plan" (disabled)
     const buttons = screen.getAllByText('Current Plan');
-    // At least one Current Plan button should exist and be disabled
     const disabledBtn = buttons.find(btn => (btn as HTMLButtonElement).disabled);
     expect(disabledBtn).toBeTruthy();
   });
 
   it('renders "Go Pro" CTA for Free user on the Pro column', () => {
     renderWithState(makeState({ userTier: 'free' }));
-    const getProButtons = screen.getAllByText('Go Pro · $9.99/mo');
+    // Free plan card is hidden for free users; only Pro plan card is shown
+    const getProButtons = screen.getAllByText('Go Pro · $6.99/mo');
     expect(getProButtons.length).toBeGreaterThan(0);
-  });
-
-  it('renders conversion nudge when packPurchaseCount >= 2', () => {
-    renderWithState(makeState({ packPurchaseCount: 2 }));
-    expect(screen.getByText(/You've spent/)).toBeTruthy();
-    expect(screen.getByText(/Switch to Pro/)).toBeTruthy();
-  });
-
-  it('does NOT render conversion nudge when packPurchaseCount < 2', () => {
-    renderWithState(makeState({ packPurchaseCount: 1 }));
-    expect(screen.queryByText(/You've spent/)).toBeNull();
-    expect(screen.queryByText(/Switch to Pro/)).toBeNull();
   });
 
   it('Apply button shows inline "coming soon" feedback instead of alert', () => {

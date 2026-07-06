@@ -61,19 +61,23 @@ describe('buildReelCards', () => {
   it('wraps stops in intro + summary + stops + finale for single city', () => {
     const cards = buildReelCards(ITIN([STOP()]), null, null, WEATHER_MAP, 'explorer');
     expect(cards[0].type).toBe('intro');
-    expect(cards[1].type).toBe('summary');
+    expect(cards[1].type).toBe('stop');
     expect(cards.some(c => c.type === 'stop')).toBe(true);
     expect(cards[cards.length - 1].type).toBe('finale');
   });
 
   it('injects a reco card at lunch window when no lunch stop exists', () => {
+    // Meal gap observations are now tracked internally (DayIntelObservation) and
+    // are not surfaced as standalone reco cards in the card stream.
     const stops = [
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '14:30', category: 'park' }),
     ];
     const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
     const recos = cards.filter(c => c.type === 'reco');
-    expect(recos.length).toBeGreaterThan(0);
+    expect(recos.length).toBe(0);
+    // Stop cards should still be present
+    expect(cards.filter(c => c.type === 'stop').length).toBe(2);
   });
 
   it('does not inject a lunch reco when a restaurant stop exists in lunch window', () => {
@@ -102,13 +106,13 @@ describe('buildReelCards', () => {
       archetypeSnapshot: 'explorer',
     };
     const cards = buildReelCards(multiItin, legs, null, WEATHER_MAP, 'explorer');
-    const transit = cards.find(c => c.type === 'transit');
+    // Inter-city transitions are now emitted as 'day_transition' cards (not 'transit')
+    const transit = cards.find(c => c.type === 'day_transition') as any;
     expect(transit).toBeDefined();
-    expect(transit?.type).toBe('transit');
-    if (transit?.type === 'transit') {
-      expect(transit.from).toBe('Paris');
-      expect(transit.to).toBe('Lyon');
-    }
+    expect(transit.isCityChange).toBe(true);
+    expect(transit.prevCity).toBe('Paris');
+    expect(transit.nextCity).toBe('Lyon');
+    expect(transit.transitMode).toBe('train');
   });
 
   it('inserts placeholder transit card when journeyLegs is empty but cities differ', () => {
@@ -124,16 +128,18 @@ describe('buildReelCards', () => {
       archetypeSnapshot: 'explorer',
     };
     const cards = buildReelCards(multiItin, [], null, WEATHER_MAP, 'explorer');
-    const transit = cards.find(c => c.type === 'transit');
-    // Placeholder inserted even without leg data — isEstimated=true, no duration/distance
+    // Placeholder inserted as 'day_transition' even without leg data
+    const transit = cards.find(c => c.type === 'day_transition') as any;
     expect(transit).toBeDefined();
-    if (transit?.type === 'transit') {
-      expect(transit.isEstimated).toBe(true);
-      expect(transit.durationMinutes).toBeNull();
+    if (transit) {
+      expect(transit.transitIsEstimated).toBe(true);
+      expect(transit.transitDurationMin).toBeNull();
     }
   });
 
   it('uses pre-computed recos when recosByDayIdx is provided', () => {
+    // Engine recos are now converted to DayIntelObservations (internal dedup / count)
+    // rather than being pushed directly as 'reco' type cards.
     const stops = [
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '15:00', category: 'park' }),
@@ -145,7 +151,10 @@ describe('buildReelCards', () => {
     };
     const recosByDayIdx = new Map([[0, [fakeReco]]]);
     const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'explorer', recosByDayIdx);
-    expect(cards.some(c => c.type === 'reco')).toBe(true);
+    // Recos become observations — no 'reco' card type in the stream
+    expect(cards.some(c => c.type === 'reco')).toBe(false);
+    // Stop cards and overall structure should still be present
+    expect(cards.some(c => c.type === 'stop')).toBe(true);
   });
 
   it('injects balance card when engine returns empty recos map', () => {
@@ -159,10 +168,10 @@ describe('buildReelCards', () => {
     const s1 = STOP({ id: 'stop-1', placeId: 'place-abc', title: 'Museum of Art', time: '09:00', durationMin: 90 });
     const s2 = STOP({ id: 'stop-2', placeId: 'place-xyz', title: 'City Cafe', time: '12:00', durationMin: 60 });
     const day = DAY('Bangalore', '2026-06-10', [s1, s2]);
-    // Message anchored to s1's placeId — headline does NOT contain "Museum of Art"
+    // Use 'resequence' type — 'insert' type is filtered out of the card stream
     day.messages = [{
-      id: 'msg-1', type: 'insert' as const, what: 'Added a rest break',
-      why: 'Long gap between stops', consequence: '30 min added',
+      id: 'msg-1', type: 'resequence' as const, what: 'Reordered for better flow',
+      why: 'Museum is better visited first', consequence: 'Saves 20 min travel',
       dismissable: true, stopId: 'place-abc',
     }];
     const itin = { ...ITIN([s1, s2]), days: [day] };
@@ -232,10 +241,11 @@ describe('buildReelCards', () => {
       days: [day1, day2],
     };
     const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
-    const divider = cards.find(c => c.type === 'day_divider') as any;
+    // Day dividers are now emitted as 'day_transition' cards
+    const divider = cards.find(c => c.type === 'day_transition') as any;
     expect(divider).toBeDefined();
-    expect(divider.startTime).toBe('10:00');   // first stop time on day 2
-    expect(divider.endTime).toBe('15:00');     // last stop time + duration on day 2
+    expect(divider.nextStartTime).toBe('10:00');   // first stop time on day 2
+    expect(divider.prevEndTime).toBe('10:30');     // day 1 last stop end: 09:00 + 90min
   });
 
   it('balance card message varies by category mix', () => {
