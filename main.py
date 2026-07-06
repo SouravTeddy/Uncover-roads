@@ -25,6 +25,7 @@ from engine.types import EngineStop, EngineContext
 from engine.signals import compute_stop_signals, DaySignalState
 from city.data_model import load_city, CityData, _maybe_single_data
 from city.sync_job import start_scheduler as _start_sync_scheduler
+from city.trend_scheduler import start_trend_scheduler as _start_trend_scheduler, refresh_all_cities as _refresh_all_cities
 from city.persona_affinity import get_persona_affinity
 from pydantic import BaseModel
 
@@ -187,6 +188,14 @@ async def seed_cities_and_start_sync():
     # Start weekly City Intelligence Sync
     google_key = os.environ.get("GOOGLE_PLACES_API_KEY")
     _start_sync_scheduler(_supabase, google_key)
+    # Start weekly Trend Velocity Refresh (Sunday 03:00 UTC)
+    _start_trend_scheduler(
+        _supabase,
+        youtube_key=YOUTUBE_API_KEY,
+        foursquare_key=FOURSQUARE_API_KEY,
+        reddit_client_id=REDDIT_CLIENT_ID,
+        reddit_client_secret=REDDIT_CLIENT_SECRET,
+    )
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
@@ -5169,6 +5178,29 @@ def seed_place_trends(city_id: str = Query(...)):
         reddit_client_secret=REDDIT_CLIENT_SECRET,
     )
     return result
+
+
+@app.post("/api/places/seed-trends/all")
+async def seed_all_city_trends(background_tasks: BackgroundTasks):
+    """Trigger trend velocity refresh for every city in place_dynamic_profiles.
+
+    Runs in the background — returns immediately. Cities seeded within the
+    last 7 days are skipped automatically (staleness guard).
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    if not any([YOUTUBE_API_KEY, FOURSQUARE_API_KEY, REDDIT_CLIENT_ID]):
+        raise HTTPException(status_code=400, detail="no_trend_api_keys_configured")
+
+    background_tasks.add_task(
+        _refresh_all_cities,
+        supabase=_supabase,
+        youtube_key=YOUTUBE_API_KEY,
+        foursquare_key=FOURSQUARE_API_KEY,
+        reddit_client_id=REDDIT_CLIENT_ID,
+        reddit_client_secret=REDDIT_CLIENT_SECRET,
+    )
+    return {"status": "started", "message": "Trend refresh running in background for all cities"}
 
 
 # ── Phase 11: Surprise Me ────────────────────────────────────────────────────
