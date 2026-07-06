@@ -9,10 +9,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 
 from city.sync_job import scheduler  # reuse the shared AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
+
+
+def _to_slug(city_id: str) -> str:
+    """Normalise a city name or slug to the lowercase slug used in city_data.id."""
+    return re.sub(r'[^a-z0-9]+', '_', city_id.lower().strip()).strip('_')
 
 
 async def refresh_all_cities(
@@ -46,10 +52,17 @@ async def refresh_all_cities(
     total_fresh = 0
 
     for city_id in city_ids:
-        try:
-            city = load_city(city_id, supabase)
-        except Exception:
-            logger.warning("trend_refresh: could not load %s, skipping", city_id)
+        # place_dynamic_profiles.city_id may be a display name ("Paris") or slug ("paris")
+        slug = _to_slug(city_id)
+        city = None
+        for attempt in ([slug] if slug == city_id else [slug, city_id]):
+            try:
+                city = load_city(attempt, supabase)
+                break
+            except Exception:
+                pass
+        if city is None:
+            logger.warning("trend_refresh: could not load %s (tried slug=%s), skipping", city_id, slug)
             continue
 
         places = [
