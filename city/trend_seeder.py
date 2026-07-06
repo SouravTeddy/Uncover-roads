@@ -23,10 +23,16 @@ _W_REDDIT      = 0.15
 
 
 def _normalize(scores: list[float]) -> list[float]:
-    """Min-max normalise a list of floats to [0, 1]. Uniform input → 0.5."""
+    """Min-max normalise a list of floats to [0, 1].
+
+    All-zero input (no data from source) → 0.0 to avoid phantom trending scores.
+    Uniform non-zero input → 0.5.
+    """
     if len(scores) == 1:
         return [0.5]
     mn, mx = min(scores), max(scores)
+    if mx == 0.0:
+        return [0.0] * len(scores)
     if mx == mn:
         return [0.5] * len(scores)
     return [(s - mn) / (mx - mn) for s in scores]

@@ -13,6 +13,11 @@ def test_normalize_uniform_scores_returns_half():
     assert result == [0.5, 0.5, 0.5]
 
 
+def test_normalize_all_zeros_returns_zeros():
+    result = _normalize([0.0, 0.0, 0.0])
+    assert result == [0.0, 0.0, 0.0]
+
+
 def test_normalize_spreads_min_max():
     result = _normalize([0.0, 0.5, 1.0])
     assert result == [0.0, 0.5, 1.0]

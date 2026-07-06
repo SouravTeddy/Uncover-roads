@@ -5131,7 +5131,7 @@ async def seed_place_profiles(city_id: str = Query(...)):
 
 
 @app.post("/api/places/seed-trends")
-async def seed_place_trends(city_id: str = Query(...)):
+def seed_place_trends(city_id: str = Query(...)):
     """Seed real trend velocity scores for all places in a city.
 
     Fetches signals from YouTube, Wikimedia, Foursquare, and Reddit (if credentials
@@ -5152,6 +5152,9 @@ async def seed_place_trends(city_id: str = Query(...)):
     ]
     if not places:
         return {"updated": 0, "skipped": 0}
+
+    if not any([YOUTUBE_API_KEY, FOURSQUARE_API_KEY, REDDIT_CLIENT_ID]):
+        raise HTTPException(status_code=400, detail="no_trend_api_keys_configured")
 
     from city.trend_seeder import seed_trend_scores
     result = seed_trend_scores(
