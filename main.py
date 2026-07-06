@@ -5113,7 +5113,7 @@ async def seed_place_profiles(city_id: str = Query(...)):
         # Preserve trend-derived velocity_ratio if already computed (marked by trend_seeder)
         prev = existing_signals.get(ic.place_id, {})
         if prev.get("trend_seeded"):
-            signals["velocity_ratio"] = prev["velocity_ratio"]
+            signals["velocity_ratio"] = prev.get("velocity_ratio", signals["velocity_ratio"])
             signals["trend_seeded"] = True
         rows.append({
             "place_id":   ic.place_id,
