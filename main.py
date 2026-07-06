@@ -89,6 +89,10 @@ OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
 EVENTBRITE_API_KEY = os.environ.get("EVENTBRITE_API_KEY", "")
 YELP_API_KEY       = os.environ.get("YELP_API_KEY", "")
+YOUTUBE_API_KEY        = os.environ.get("YOUTUBE_API_KEY", "")
+REDDIT_CLIENT_ID       = os.environ.get("REDDIT_CLIENT_ID", "")
+REDDIT_CLIENT_SECRET   = os.environ.get("REDDIT_CLIENT_SECRET", "")
+FOURSQUARE_API_KEY     = os.environ.get("FOURSQUARE_API_KEY", "")
 
 # In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
 _events_cache: dict[str, tuple[float, list]] = {}
@@ -4596,7 +4600,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "velocityRatio": _sd.get("velocity_ratio"),
                 "transitFromPrev": _transit_from_prev,
                 "isUserAdded": s.is_user_added,
-                "isEngineAdded": (order_msg["type"] == "insert") if order_msg else False,
+                "isEngineAdded": not s.is_user_added,
             })
 
         _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
@@ -4870,7 +4874,7 @@ def ensure_city_seeded(city_id: str = Query(...)):
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
-async def cities_picks(city_id: str, lat: float = None, lon: float = None):
+async def cities_picks(city_id: str, lat: float = None, lon: float = None, background_tasks: BackgroundTasks = None):
     """Pro: curated picks with trend stage badges.
     Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
 
@@ -4932,6 +4936,26 @@ async def cities_picks(city_id: str, lat: float = None, lon: float = None):
                             "tier": 2, "country_code": "",
                             "data": _cd_dict,
                         }).execute()
+                        # Fire trend seeding in background — does not block picks response
+                        if background_tasks and YOUTUBE_API_KEY:
+                            from city.trend_seeder import seed_trend_scores as _seed_trends
+                            _trend_places = [
+                                {"place_id": ic.place_id, "name": ic.name,
+                                 "lat": ic.lat, "lon": ic.lon}
+                                for ic in _seeded.insert_candidates if ic.place_id
+                            ]
+                            background_tasks.add_task(
+                                _seed_trends,
+                                city_id=city_slug,
+                                places=_trend_places,
+                                city_name=_seeded.name,
+                                country_code="",
+                                supabase=_supabase,
+                                youtube_key=YOUTUBE_API_KEY,
+                                foursquare_key=FOURSQUARE_API_KEY,
+                                reddit_client_id=REDDIT_CLIENT_ID,
+                                reddit_client_secret=REDDIT_CLIENT_SECRET,
+                            )
                     except Exception as _db_err:
                         print(f"[cities_picks] DB upsert failed for {city_slug}: {_db_err}")
         except Exception as _e:
@@ -5065,6 +5089,17 @@ async def seed_place_profiles(city_id: str = Query(...)):
 
     details = _batch_place_details(_supabase, place_ids)
 
+    # Fetch existing profiles to preserve trend-derived velocity_ratio
+    existing_resp = (
+        _supabase.table("place_dynamic_profiles")
+        .select("place_id, signals")
+        .in_("place_id", place_ids)
+        .execute()
+    )
+    existing_signals: dict[str, dict] = {
+        r["place_id"]: (r.get("signals") or {}) for r in (existing_resp.data or [])
+    }
+
     rows = []
     for ic in city.insert_candidates:
         if not ic.place_id:
@@ -5075,6 +5110,11 @@ async def seed_place_profiles(city_id: str = Query(...)):
         # Fall back to IC rating if batch details didn't return one
         _rating = float(ic.rating or 0.0) if hasattr(ic, "rating") else 0.0
         stage, signals = _stage_and_signals(_rating, rating_count)
+        # Preserve trend-derived velocity_ratio if already computed (marked by trend_seeder)
+        prev = existing_signals.get(ic.place_id, {})
+        if prev.get("trend_seeded"):
+            signals["velocity_ratio"] = prev["velocity_ratio"]
+            signals["trend_seeded"] = True
         rows.append({
             "place_id":   ic.place_id,
             "city_id":    city_id,
@@ -5088,6 +5128,44 @@ async def seed_place_profiles(city_id: str = Query(...)):
 
     _supabase.table("place_dynamic_profiles").upsert(rows, on_conflict="place_id").execute()
     return {"seeded": len(rows)}
+
+
+@app.post("/api/places/seed-trends")
+async def seed_place_trends(city_id: str = Query(...)):
+    """Seed real trend velocity scores for all places in a city.
+
+    Fetches signals from YouTube, Wikimedia, Foursquare, and Reddit (if credentials
+    are set). Overwrites velocity_ratio in place_dynamic_profiles while preserving
+    stage and crowd_ratio. Safe to call repeatedly — idempotent.
+    """
+    if _supabase is None:
+        raise HTTPException(status_code=503, detail="database_unavailable")
+    try:
+        city = load_city(city_id, _supabase)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="city_not_found")
+
+    places = [
+        {"place_id": ic.place_id, "name": ic.name, "lat": ic.lat, "lon": ic.lon}
+        for ic in city.insert_candidates
+        if ic.place_id
+    ]
+    if not places:
+        return {"updated": 0, "skipped": 0}
+
+    from city.trend_seeder import seed_trend_scores
+    result = seed_trend_scores(
+        city_id=city_id,
+        places=places,
+        city_name=city.name,
+        country_code="",
+        supabase=_supabase,
+        youtube_key=YOUTUBE_API_KEY,
+        foursquare_key=FOURSQUARE_API_KEY,
+        reddit_client_id=REDDIT_CLIENT_ID,
+        reddit_client_secret=REDDIT_CLIENT_SECRET,
+    )
+    return result
 
 
 # ── Phase 11: Surprise Me ────────────────────────────────────────────────────
