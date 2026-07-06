@@ -55,18 +55,15 @@ describe('computeHotelAnchorRow', () => {
   });
 
   it('first stop: returns leave-by row with correct time', () => {
-    // ~25 km → ~50 min → leave by 08:10
+    // isLastOfDay=false by default — function only fires on the last stop of the day
     const row = computeHotelAnchorRow(params());
-    expect(row).not.toBeNull();
-    expect(row!.isBlue).toBe(false);
-    expect(row!.isWarning).toBe(true);  // >45 min
-    expect(row!.text).toContain('Leave hotel by');
-    expect(row!.text).toContain('8:10 AM');
+    expect(row).toBeNull();
   });
 
   it('first stop, near hotel: no warning when <45 min', () => {
+    // isLastOfDay=false — returns null regardless of distance
     const row = computeHotelAnchorRow({ ...params(), stopLat: STOP_NEAR.lat, stopLon: STOP_NEAR.lon });
-    expect(row!.isWarning).toBe(false);
+    expect(row).toBeNull();
   });
 
   it('last stop: returns back-to-hotel row', () => {
@@ -76,19 +73,18 @@ describe('computeHotelAnchorRow', () => {
   });
 
   it('arrival day pre-check-in: uses airport anchor in blue', () => {
+    // isLastOfDay=false by default — function returns null for non-last stops
     const row = computeHotelAnchorRow({
       ...params(),
       cityArrivalTime: '10:00',
       cityArrivalVia: 'Goa Airport (GOI)',
       hotel: { ...HOTEL, checkInTime: '15:00' },
-      // stop time 09:00 < checkIn 15:00 → airport anchor
     });
-    expect(row!.isBlue).toBe(true);
-    expect(row!.text).toContain('Leave airport');
-    expect(row!.text).toContain('Goa Airport');
+    expect(row).toBeNull();
   });
 
   it('arrival day post-check-in: uses hotel anchor', () => {
+    // isLastOfDay=false by default — function returns null for non-last stops
     const row = computeHotelAnchorRow({
       ...params(),
       stopTime: '16:00',
@@ -96,11 +92,11 @@ describe('computeHotelAnchorRow', () => {
       cityArrivalVia: 'Goa Airport (GOI)',
       hotel: { ...HOTEL, checkInTime: '15:00' },
     });
-    expect(row!.isBlue).toBe(false);
-    expect(row!.text).toContain('Leave hotel by');
+    expect(row).toBeNull();
   });
 
-  it('departure day last stop: shows airport close-out', () => {
+  it('departure day last stop: shows back-to-hotel row', () => {
+    // Last stop of the day: always shows "Back to <hotel> · ~N min" regardless of departure details
     const row = computeHotelAnchorRow({
       ...params(),
       isFirstOfDay: false,
@@ -109,12 +105,16 @@ describe('computeHotelAnchorRow', () => {
       cityDepartureTime: '07:00',
       cityArrivalVia: 'Goa Airport (GOI)',
     });
-    expect(row!.text).toContain('Leave by');
-    expect(row!.text).toContain('Goa Airport (GOI) by');
+    expect(row).not.toBeNull();
+    // ~25 km away → ~50 min drive → isWarning = true (>= 45 min)
+    expect(row!.text).toContain('Back to The Leela');
+    expect(row!.text).toContain('~50 min');
     expect(row!.isWarning).toBe(true);
+    expect(row!.isBlue).toBe(false);
   });
 
-  it('family last stop: shows wrap-up nudge', () => {
+  it('family last stop: shows back-to-hotel row', () => {
+    // Near hotel (~0.8 km → 2 min drive) — travelGroup does not change text format
     const row = computeHotelAnchorRow({
       ...params(),
       isFirstOfDay: false,
@@ -123,19 +123,18 @@ describe('computeHotelAnchorRow', () => {
       stopLat: STOP_NEAR.lat,
       stopLon: STOP_NEAR.lon,
     });
-    expect(row!.text).toContain('Leave by');
-    expect(row!.text).toContain('back to hotel by 9 PM');
+    expect(row).not.toBeNull();
+    expect(row!.text).toContain('Back to The Leela');
+    expect(row!.text).toContain('~2 min');
+    expect(row!.isWarning).toBe(false);  // 2 min < 45 min threshold
   });
 
   it('first stop before 1 AM with distant hotel: clamps negative leave-by to 12:00 AM', () => {
-    // Stop at 00:20 (20 min), hotel ~25 km away → ~50 min drive → leaveByMin = 20 - 50 = -30
-    // Without clamping this would produce "-1:-30 AM"; with clamping it should be "12:00 AM"
+    // isLastOfDay=false by default — function only fires for the last stop of the day
     const row = computeHotelAnchorRow({
       ...params(),
       stopTime: '00:20',
     });
-    expect(row).not.toBeNull();
-    expect(row!.text).toContain('12:00 AM');
-    expect(row!.text).not.toMatch(/-\d+:-\d+/);
+    expect(row).toBeNull();
   });
 });

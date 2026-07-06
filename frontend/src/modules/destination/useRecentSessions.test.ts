@@ -1,10 +1,23 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useRecentSessions } from './useRecentSessions'
 
+let store: Record<string, string> = {};
+const localStorageMock = {
+  getItem: (k: string) => store[k] ?? null,
+  setItem: (k: string, v: string) => { store[k] = v; },
+  removeItem: (k: string) => { delete store[k]; },
+  clear: () => { store = {}; },
+};
+
 beforeEach(() => {
-  localStorage.clear()
-})
+  store = {};
+  vi.stubGlobal('localStorage', localStorageMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('useRecentSessions', () => {
   it('returns empty sessions when storage is blank', () => {

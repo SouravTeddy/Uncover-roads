@@ -283,6 +283,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const expandedRef = useRef(false);
   const [pillDetail, setPillDetail] = useState<{ title: string; body: string } | null>(null);
   const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   // Keep expandedRef in sync so PanelControl.isExpanded() always reads current value
   const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
@@ -608,7 +609,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         {/* ── COLLAPSED — fades out on expand ──────────────────────── */}
         <div style={{
           position: 'absolute', inset: 0, padding: '0 20px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 84px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
           opacity: expanded ? 0 : 1,
           pointerEvents: expanded ? 'none' : 'auto',
           transition: 'opacity 0.15s ease',
@@ -647,11 +648,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
           )}
 
-          {/* Description — 2-line clamp */}
+          {/* Description — expandable 2-line clamp */}
           {(descriptionText || reasonText) && (
-            <p style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(242,237,230,.58)', margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {descriptionText || reasonText}
-            </p>
+            <div style={{ marginBottom: 10 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(242,237,230,.58)', margin: '0 0 4px',
+                ...(descExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' })
+              }}>
+                {descriptionText || reasonText}
+              </p>
+              {(descriptionText || reasonText || '').length > 100 && (
+                <button onClick={(e) => { e.stopPropagation(); setDescExpanded(v => !v); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, color: 'rgba(242,237,230,.35)' }}>
+                  <span className="ms" style={{ fontSize: 16, lineHeight: 1 }}>{descExpanded ? 'expand_less' : 'expand_more'}</span>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Identity chips */}

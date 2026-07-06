@@ -46,7 +46,7 @@ const baseCounts: Record<string, number> = {
 }
 
 describe('FilterBar component', () => {
-  it('renders the All button', () => {
+  it('renders category chips directly (no All button needed)', () => {
     render(
       <FilterBar
         active="all" activeCategories={[]} displayCount={50}
@@ -55,7 +55,8 @@ describe('FilterBar component', () => {
         onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
-    expect(screen.getByRole('button', { name: /All/i })).toBeTruthy()
+    // Chips are always visible — no All button required
+    expect(screen.getByText('Landmarks')).toBeTruthy()
   })
 
   it('shows count on Landmarks chip (historic 8 + tourism 5 = 13)', () => {
@@ -67,7 +68,7 @@ describe('FilterBar component', () => {
         onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    // Chips are always visible — no need to click All first
     expect(screen.getByText('Landmarks')).toBeTruthy()
     const el = document.body.textContent ?? ''
     expect(el).toContain('13')
@@ -82,7 +83,7 @@ describe('FilterBar component', () => {
         onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    // Chips with 0 count are filtered out
     expect(screen.queryByText('Spa')).toBeNull()
   })
 
@@ -96,7 +97,6 @@ describe('FilterBar component', () => {
         onSelect={noop} onCategoriesSelect={onCategoriesSelect} onQuickPickSelect={noopQP}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /All/i }))
     fireEvent.click(screen.getByText('Landmarks'))
     expect(onCategoriesSelect).toHaveBeenCalledWith(['historic', 'tourism'])
   })
@@ -110,7 +110,7 @@ describe('FilterBar component', () => {
         onSelect={noop} onCategoriesSelect={noop} onQuickPickSelect={noopQP}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /All/i }))
+    // Scroll row is always rendered — no click needed
     const scrollRow = document.querySelector('[data-testid="subcategory-scroll"]') as HTMLElement | null
     expect(scrollRow).not.toBeNull()
     expect(scrollRow!.style.maxWidth).toBe('calc(100vw - 32px)')

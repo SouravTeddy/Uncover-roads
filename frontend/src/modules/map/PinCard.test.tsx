@@ -63,12 +63,14 @@ describe('PinCard — trending/offbeat badge blocks', () => {
 
   it('shows badgeReason text in trending block', () => {
     render(<PinCard {...defaultProps} ourPickBadge="trending" badgeReason="Reviews up 3x this week" userTier="free" />)
-    expect(screen.getByText('Reviews up 3x this week')).toBeTruthy()
+    // badgeReason appears in both the top banner and the body block
+    expect(screen.getAllByText('Reviews up 3x this week').length).toBeGreaterThan(0)
   })
 
   it('shows badgeReason text in offbeat block', () => {
     render(<PinCard {...defaultProps} ourPickBadge="hidden_gem" badgeReason="Off the tourist trail" userTier="free" />)
-    expect(screen.getByText('Off the tourist trail')).toBeTruthy()
+    // badgeReason appears in both the top banner and the body block
+    expect(screen.getAllByText('Off the tourist trail').length).toBeGreaterThan(0)
   })
 
   it('locks trending block after 3 views for free user', () => {
