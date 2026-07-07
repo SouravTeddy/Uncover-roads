@@ -89,3 +89,22 @@ def test_ors_surface_score_unknown_is_neutral():
     response = {"routes": [{"extras": {"surface": {"values": [[0, 10, 0]]}}}]}
     score = _ors_surface_score(response)
     assert abs(score - 0.5) < 0.01  # unknown = 0.5
+
+
+def test_route_character_gate_skips_low_value_route():
+    from main import _should_run_overpass_for_route
+    # Both instruction score and surface score near zero → skip
+    assert _should_run_overpass_for_route(
+        instruction_scores={"natural": 0.0, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.1,
+                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.1},
+        ors_surface_score=0.15,
+    ) is False
+
+
+def test_route_character_gate_runs_for_natural_route():
+    from main import _should_run_overpass_for_route
+    assert _should_run_overpass_for_route(
+        instruction_scores={"natural": 0.6, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.0,
+                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.0},
+        ors_surface_score=0.3,
+    ) is True

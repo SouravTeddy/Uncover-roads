@@ -3060,6 +3060,91 @@ def _ors_surface_score(ors_response: dict) -> float:
     return weighted_sum / total_weight if total_weight > 0 else 0.5
 
 
+def _should_run_overpass_for_route(
+    instruction_scores: dict[str, float],
+    ors_surface_score: float,
+) -> bool:
+    """Gate: skip Overpass for low-value routes to conserve API quota."""
+    return max(instruction_scores.values(), default=0.0) + ors_surface_score > 0.4
+
+
+def _fetch_route_character(
+    points: list[tuple[float, float]],
+    instruction_scores: dict[str, float],
+    ors_surface_score: float,
+) -> dict:
+    """Query OSM Overpass for 7 character dimensions near sampled route points.
+
+    Returns character_scores dict (0–1 per dimension), named_features list,
+    and viewpoints list. Returns None-equivalent empty dict if gate fails.
+    """
+    if not _should_run_overpass_for_route(instruction_scores, ors_surface_score):
+        return {"character_scores": {d: 0.0 for d in _DIM_KEYWORDS}, "named_features": [], "viewpoints": []}
+
+    coords = " ".join(f"{lat},{lon}" for lat, lon in points)
+
+    query = f"""
+[out:json][timeout:25];
+(
+  way["natural"~"water|wood|beach|cliff|coastline"](around:120,{coords});
+  way["leisure"~"park|garden|nature_reserve|common"](around:120,{coords});
+  way["waterway"~"river|canal|stream"](around:80,{coords});
+  way["historic"](around:100,{coords});
+  relation["route"~"walking|hiking|historic"](around:100,{coords});
+  node["amenity"~"bar|restaurant|cafe|fast_food|market_place"](around:80,{coords});
+  node["shop"](around:80,{coords});
+  node["tourism"="artwork"](around:100,{coords});
+  way["tourism"="artwork"](around:100,{coords});
+  node["tourism"="viewpoint"](around:500,{coords});
+);
+out tags qt;
+"""
+    raw = fetch_overpass(query)
+    elements = raw.get("elements", []) if raw else []
+
+    scores: dict[str, float] = {d: 0.0 for d in _DIM_KEYWORDS}
+    named_features: list[str] = []
+    viewpoints: list[dict] = []
+
+    for el in elements:
+        tags = el.get("tags", {})
+        # Natural
+        if tags.get("natural") or tags.get("leisure") in ("park", "garden", "nature_reserve", "common"):
+            scores["natural"] = min(1.0, scores["natural"] + 0.15)
+        # Waterfront
+        if tags.get("waterway") or tags.get("natural") in ("coastline", "beach"):
+            scores["waterfront"] = min(1.0, scores["waterfront"] + 0.15)
+        # Historic
+        if tags.get("historic") or tags.get("route") in ("walking", "hiking", "historic"):
+            scores["historic"] = min(1.0, scores["historic"] + 0.15)
+            name = tags.get("name")
+            if name and name not in named_features:
+                named_features.append(name)
+        # Vibrant
+        if tags.get("amenity") in ("bar", "restaurant", "cafe", "fast_food", "market_place") or tags.get("shop"):
+            scores["vibrant"] = min(1.0, scores["vibrant"] + 0.08)
+        # Photogenic
+        if tags.get("tourism") == "artwork":
+            scores["photogenic"] = min(1.0, scores["photogenic"] + 0.2)
+            name = tags.get("name")
+            if name and name not in named_features:
+                named_features.append(name)
+        # Viewpoint
+        if tags.get("tourism") == "viewpoint":
+            scores["viewpoint"] = min(1.0, scores["viewpoint"] + 0.25)
+            lat = el.get("lat")
+            lon = el.get("lon")
+            if lat and lon:
+                viewpoints.append({"lat": lat, "lon": lon, "name": tags.get("name", ""), "direction": tags.get("direction")})
+        # Natural route names
+        name = tags.get("name", "")
+        if name and any(w in name.lower() for w in ("path", "trail", "walk", "promenade", "way")):
+            if name not in named_features:
+                named_features.append(name)
+
+    return {"character_scores": scores, "named_features": named_features[:6], "viewpoints": viewpoints}
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
