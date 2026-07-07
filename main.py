@@ -3060,89 +3060,74 @@ def _ors_surface_score(ors_response: dict) -> float:
     return weighted_sum / total_weight if total_weight > 0 else 0.5
 
 
-def _should_run_overpass_for_route(
-    instruction_scores: dict[str, float],
-    ors_surface_score: float,
-) -> bool:
-    """Gate: skip Overpass for low-value routes to conserve API quota."""
-    return max(instruction_scores.values(), default=0.0) + ors_surface_score > 0.4
-
-
 def _fetch_route_character(
-    points: list[tuple[float, float]],
-    instruction_scores: dict[str, float],
-    ors_surface_score: float,
-) -> dict:
-    """Query OSM Overpass for 7 character dimensions near sampled route points.
+    route_points: list[tuple[float, float]],
+    city_pop: int,
+) -> dict[str, float]:
+    """Query Overpass for amenities along a walking route and return 7 character dimension scores.
 
-    Returns character_scores dict (0–1 per dimension), named_features list,
-    and viewpoints list. Returns None-equivalent empty dict if gate fails.
+    Returns all-0.5 neutral dict if city_pop < 50_000 or on any Overpass error.
     """
-    if not _should_run_overpass_for_route(instruction_scores, ors_surface_score):
-        return {"character_scores": {d: 0.0 for d in _DIM_KEYWORDS}, "named_features": [], "viewpoints": []}
+    _neutral = {d: 0.5 for d in ("natural", "viewpoint", "historic", "vibrant", "photogenic", "waterfront", "local")}
 
-    coords = " ".join(f"{lat},{lon}" for lat, lon in points)
+    if city_pop < 50_000:
+        return _neutral
+    if not route_points:
+        return _neutral
 
-    query = f"""
-[out:json][timeout:25];
+    # Build bounding box with 0.05° buffer
+    lats = [p[0] for p in route_points]
+    lons = [p[1] for p in route_points]
+    s = min(lats) - 0.05
+    n = max(lats) + 0.05
+    w = min(lons) - 0.05
+    e = max(lons) + 0.05
+
+    query = f"""[out:json][timeout:15][bbox:{s},{w},{n},{e}];
 (
-  way["natural"~"water|wood|beach|cliff|coastline"](around:120,{coords});
-  way["leisure"~"park|garden|nature_reserve|common"](around:120,{coords});
-  way["waterway"~"river|canal|stream"](around:80,{coords});
-  way["historic"](around:100,{coords});
-  relation["route"~"walking|hiking|historic"](around:100,{coords});
-  node["amenity"~"bar|restaurant|cafe|fast_food|market_place"](around:80,{coords});
-  node["shop"](around:80,{coords});
-  node["tourism"="artwork"](around:100,{coords});
-  way["tourism"="artwork"](around:100,{coords});
-  node["tourism"="viewpoint"](around:500,{coords});
+  node["natural"~"wood|water|wetland|tree|grassland|scrub|beach"];
+  node["tourism"="viewpoint"];
+  node["historic"~"monument|memorial|castle|ruins|building"];
+  node["amenity"~"bar|nightclub|restaurant|cafe|marketplace"];
+  node["tourism"~"artwork|gallery|museum|attraction"];
+  node["waterway"~"river|stream|canal"];
+  node["amenity"~"community_centre|social_facility|library"];
 );
-out tags qt;
-"""
-    raw = fetch_overpass(query)
-    elements = raw.get("elements", []) if raw else []
+out tags;"""
 
-    scores: dict[str, float] = {d: 0.0 for d in _DIM_KEYWORDS}
-    named_features: list[str] = []
-    viewpoints: list[dict] = []
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": query},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        elements = resp.json().get("elements", [])
+    except Exception:
+        return _neutral
+
+    # Threshold for normalisation — scales with city size
+    threshold = max(5, min(50, city_pop // 100_000 * 5 + 5))
+
+    dim_counts: dict[str, int] = {d: 0 for d in _neutral}
+
+    _TAG_DIM_MAP = [
+        (("natural", ("wood", "water", "wetland", "tree", "grassland", "scrub", "beach")), "natural"),
+        (("tourism", ("viewpoint",)), "viewpoint"),
+        (("historic", ("monument", "memorial", "castle", "ruins", "building")), "historic"),
+        (("amenity", ("bar", "nightclub", "restaurant", "cafe", "marketplace")), "vibrant"),
+        (("tourism", ("artwork", "gallery", "museum", "attraction")), "photogenic"),
+        (("waterway", ("river", "stream", "canal")), "waterfront"),
+        (("amenity", ("community_centre", "social_facility", "library")), "local"),
+    ]
 
     for el in elements:
         tags = el.get("tags", {})
-        # Natural
-        if tags.get("natural") or tags.get("leisure") in ("park", "garden", "nature_reserve", "common"):
-            scores["natural"] = min(1.0, scores["natural"] + 0.15)
-        # Waterfront
-        if tags.get("waterway") or tags.get("natural") in ("coastline", "beach"):
-            scores["waterfront"] = min(1.0, scores["waterfront"] + 0.15)
-        # Historic
-        if tags.get("historic") or tags.get("route") in ("walking", "hiking", "historic"):
-            scores["historic"] = min(1.0, scores["historic"] + 0.15)
-            name = tags.get("name")
-            if name and name not in named_features:
-                named_features.append(name)
-        # Vibrant
-        if tags.get("amenity") in ("bar", "restaurant", "cafe", "fast_food", "market_place") or tags.get("shop"):
-            scores["vibrant"] = min(1.0, scores["vibrant"] + 0.08)
-        # Photogenic
-        if tags.get("tourism") == "artwork":
-            scores["photogenic"] = min(1.0, scores["photogenic"] + 0.2)
-            name = tags.get("name")
-            if name and name not in named_features:
-                named_features.append(name)
-        # Viewpoint
-        if tags.get("tourism") == "viewpoint":
-            scores["viewpoint"] = min(1.0, scores["viewpoint"] + 0.25)
-            lat = el.get("lat")
-            lon = el.get("lon")
-            if lat and lon:
-                viewpoints.append({"lat": lat, "lon": lon, "name": tags.get("name", ""), "direction": tags.get("direction")})
-        # Natural route names
-        name = tags.get("name", "")
-        if name and any(w in name.lower() for w in ("path", "trail", "walk", "promenade", "way")):
-            if name not in named_features:
-                named_features.append(name)
+        for (key, vals), dim in _TAG_DIM_MAP:
+            if tags.get(key) in vals:
+                dim_counts[dim] += 1
 
-    return {"character_scores": scores, "named_features": named_features[:6], "viewpoints": viewpoints}
+    return {d: min(1.0, dim_counts[d] / threshold) for d in dim_counts}
 
 
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
