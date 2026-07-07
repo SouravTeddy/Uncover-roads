@@ -2944,6 +2944,29 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
 
 # ── Transit corridor cache ──────────────────────────────────────────────────
 
+def _extract_walk_route_points(steps: list) -> list[tuple[float, float]]:
+    """Decode step polylines from Google Directions walking response, sample to 20 points.
+
+    Each step must have a ``polyline.points`` encoded polyline string (Google format).
+    Returns a list of (lat, lon) tuples sampled evenly along the full walking route.
+    """
+    import polyline as _pl
+    all_coords: list[list[float]] = []
+    for step in steps:
+        encoded = (step.get("polyline") or {}).get("points")
+        if not encoded:
+            continue
+        try:
+            decoded = _pl.decode(encoded)           # returns [(lat, lon), ...]
+            # Convert to [lon, lat] for _sample_linestring (GeoJSON convention)
+            all_coords.extend([[p[1], p[0]] for p in decoded])
+        except Exception:
+            continue
+    if not all_coords:
+        return []
+    return _sample_linestring(all_coords, n=20)
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
@@ -3073,6 +3096,9 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
             via = _extract_walk_via(walk_steps)
             if via:
                 result["walk_via"] = via
+            route_pts = _extract_walk_route_points(walk_steps)
+            if route_pts:
+                result["walk_route_points"] = route_pts
     except Exception as e:
         print(f"WALK PARSE: {e}")
 
