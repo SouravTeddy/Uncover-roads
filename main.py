@@ -1108,6 +1108,8 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                     return {k: r.get(k) for k in (
                         "distance_km", "duration_min", "elevation_gain_m", "elevation_loss_m",
                         "peak_elevation_m", "road_character", "sample_elevations",
+                        "character_scores", "top_character", "path_names",
+                        "landmark_peeks", "route_type",
                     )}
         except Exception as e:
             print(f"ROUTE PROFILE CACHE READ: {e}")
@@ -1117,6 +1119,8 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         "elevation_gain_m": None, "elevation_loss_m": None,
         "peak_elevation_m": None, "road_character": None,
         "sample_elevations": None,
+        "character_scores": None, "top_character": None, "path_names": None,
+        "landmark_peeks": None, "route_type": None,
     }
 
     route_json = None
@@ -1208,6 +1212,24 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
             print(f"ROUTE PROFILE CACHE WRITE: {e}")
 
     return result
+
+
+def _cache_route_character(corridor_key: str, scoring_result: dict) -> None:
+    """Write character scoring results to route_profile_cache."""
+    if not _supabase:
+        return
+    try:
+        _supabase.table("route_profile_cache").upsert({
+            "corridor_key":      corridor_key,
+            "character_scores":  scoring_result.get("character_scores"),
+            "top_character":     scoring_result.get("top_character"),
+            "path_names":        scoring_result.get("path_names"),
+            "landmark_peeks":    scoring_result.get("landmark_peeks"),
+            "route_type":        scoring_result.get("route_type"),
+            "route_computed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        print(f"ROUTE CHARACTER CACHE WRITE: {e}")
 
 
 @app.get("/route-profile")
