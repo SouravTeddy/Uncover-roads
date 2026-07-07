@@ -3131,85 +3131,76 @@ out tags;"""
 
 
 def _bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Compute compass bearing (0–360°) from point 1 to point 2."""
-    dlon = math.radians(lon2 - lon1)
-    lat1r = math.radians(lat1)
-    lat2r = math.radians(lat2)
-    x = math.sin(dlon) * math.cos(lat2r)
-    y = math.cos(lat1r) * math.sin(lat2r) - math.sin(lat1r) * math.cos(lat2r) * math.cos(dlon)
-    bearing = math.degrees(math.atan2(x, y))
-    return (bearing + 360) % 360
+    """Compass bearing in degrees 0–360 from (lat1,lon1) to (lat2,lon2)."""
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlon = lon2 - lon1
+    x = math.sin(dlon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
 
 
-def _resolve_landmark_coords(city_landmarks: list[str], supabase_client) -> dict[str, tuple[float, float]]:
-    """Look up lat/lon for each landmark name from map_data_cache or place_id_cache."""
-    coords: dict[str, tuple[float, float]] = {}
-    if not supabase_client:
-        return coords
-    for name in city_landmarks:
-        try:
-            row = supabase_client.table("map_data_cache").select("lat,lon").eq("name", name).limit(1).execute()
-            if row.data:
-                coords[name] = (row.data[0]["lat"], row.data[0]["lon"])
-        except Exception:
-            pass
-    return coords
+def _resolve_landmark_coords(stop: dict) -> tuple[float, float] | None:
+    """Extract (lat, lon) from a landmark stop dict. No DB calls."""
+    lat = stop.get("lat")
+    lon = stop.get("lon")
+    if lat is None or lon is None:
+        return None
+    try:
+        return (float(lat), float(lon))
+    except (TypeError, ValueError):
+        return None
 
 
 def _check_landmark_peeks(
-    points: list[tuple[float, float]],
-    viewpoints: list[dict],
-    landmark_coords: dict[str, tuple[float, float]],
-) -> list[dict]:
-    """Check if any viewpoint along the route faces a known city landmark.
+    route_points: list[tuple[float, float]],
+    landmarks: list[dict],
+) -> list[str]:
+    """Return names of landmarks visible from any route segment (within ±45° of travel direction).
 
-    A match: viewpoint within 500m of a route point, and viewpoint's direction tag
-    within ±45° of the bearing toward the landmark. If no direction tag, proximity
-    within 500m is sufficient.
+    landmark dict: {"name": str, "lat": float, "lon": float}
+    Returns at most 3 landmark names.
     """
-    peeks: list[dict] = []
+    if not route_points or not landmarks:
+        return []
 
-    def _haversine_m(lat1, lon1, lat2, lon2) -> float:
-        R = 6371000
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    hits: list[tuple[float, str]] = []  # (min_angle_diff, name) for sorting
 
-    for vp in viewpoints:
-        vp_lat, vp_lon = vp.get("lat"), vp.get("lon")
-        if vp_lat is None or vp_lon is None:
+    for lm in landmarks:
+        coords = _resolve_landmark_coords(lm)
+        if coords is None:
             continue
-        # Check proximity to any route point
-        close_point = None
-        for pt in points:
-            if _haversine_m(pt[0], pt[1], vp_lat, vp_lon) <= 500:
-                close_point = pt
-                break
-        if close_point is None:
+        lm_lat, lm_lon = coords
+        name = lm.get("name", "")
+        if not name:
             continue
 
-        for landmark_name, (lm_lat, lm_lon) in landmark_coords.items():
-            bearing_to_landmark = _bearing(vp_lat, vp_lon, lm_lat, lm_lon)
-            vp_direction = vp.get("direction")
+        for i in range(len(route_points) - 1):
+            a_lat, a_lon = route_points[i]
+            b_lat, b_lon = route_points[i + 1]
+            # Travel direction of this segment
+            travel_bearing = _bearing(a_lat, a_lon, b_lat, b_lon)
+            # Midpoint of segment
+            mid_lat = (a_lat + b_lat) / 2
+            mid_lon = (a_lon + b_lon) / 2
+            # Bearing from midpoint to landmark
+            to_lm_bearing = _bearing(mid_lat, mid_lon, lm_lat, lm_lon)
+            # Angular difference (shortest arc)
+            diff = abs(travel_bearing - to_lm_bearing) % 360
+            if diff > 180:
+                diff = 360 - diff
+            if diff <= 45:
+                hits.append((diff, name))
+                break  # count this landmark once
 
-            if vp_direction is not None:
-                try:
-                    dir_deg = float(str(vp_direction).split(";")[0].strip())
-                    diff = abs((bearing_to_landmark - dir_deg + 180) % 360 - 180)
-                    if diff > 45:
-                        continue
-                except (ValueError, TypeError):
-                    pass  # no valid direction tag — fall through to proximity-only match
-
-            peeks.append({
-                "landmark": landmark_name,
-                "at_coords": close_point,
-                "bearing_deg": int(bearing_to_landmark),
-                "viewpoint_name": vp.get("name", ""),
-            })
-
-    return peeks
+    # Sort by how directly ahead the landmark is; return top 3 names
+    hits.sort(key=lambda x: x[0])
+    seen: list[str] = []
+    for _, name in hits:
+        if name not in seen:
+            seen.append(name)
+        if len(seen) == 3:
+            break
+    return seen
 
 
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
