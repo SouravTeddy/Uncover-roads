@@ -322,14 +322,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
   // Lazy-fetch full TransitInfo from transit corridor cache when card is expanded
   const [fetchedTransit, setFetchedTransit] = useState<TransitInfo | null>(null);
+  const [transitLoading, setTransitLoading] = useState(false);
   useEffect(() => {
     if (!expanded || !card.prevStopLat || !card.prevStopLon || fetchedTransit) return;
+    if (card.transitInfo !== null && card.transitInfo !== undefined) return; // already have data
+    setTransitLoading(true);
     fetch(
       `${BASE}/transit-corridor?origin_lat=${card.prevStopLat}&origin_lon=${card.prevStopLon}&dest_lat=${stop.lat}&dest_lon=${stop.lon}`
     )
       .then(r => r.json())
-      .then((data: TransitInfo) => setFetchedTransit(data))
-      .catch(() => {});
+      .then((data: TransitInfo) => { setFetchedTransit(data); setTransitLoading(false); })
+      .catch(() => { setTransitLoading(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, card.prevStopLat, card.prevStopLon, stop.lat, stop.lon]);
 
@@ -370,7 +373,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
-  const rawDescriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
+  const rawDescriptionText = contentSig?.text ?? null;
   const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
   const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;
@@ -821,12 +824,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>
-                      From {card.prevStopTitle}
-                      {stop.transitFromPrev?.distanceKm != null
-                        ? ` · ~${stop.transitFromPrev.distanceKm} km`
-                        : ''}
-                    </div>
+                    <>
+                      {expanded && transitLoading && (
+                        <div style={{ height: 16, borderRadius: 4, background: 'rgba(255,255,255,.08)', margin: '4px 0', animation: 'pulse 1.4s ease-in-out infinite' }} />
+                      )}
+                      <div style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>
+                        From {card.prevStopTitle}
+                        {stop.transitFromPrev?.distanceKm != null
+                          ? ` · ~${stop.transitFromPrev.distanceKm} km`
+                          : ''}
+                      </div>
+                    </>
                   )}
                   {/* Transit row */}
                   {fetchedTransit?.has_transit && (
@@ -900,20 +908,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                   </div>
                 );
               })()}
-              {(reasonText || (stop.isEngineAdded && card.orderReason)) && (
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>Why this stop</div>
-                  {stop.isEngineAdded && card.orderReason && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, marginBottom: 9, fontSize: 13, fontStyle: 'italic', color: 'rgba(91,155,213,.50)', lineHeight: 1.45 }}>
-                      <span className="ms" style={{ fontSize: 13, color: 'rgba(91,155,213,.45)', flexShrink: 0 }}>subdirectory_arrow_right</span>
-                      We thought: {card.orderReason}
-                    </div>
-                  )}
-                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(212,168,83,.10)', borderLeft: '2px solid rgba(212,168,83,.38)', fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.80)' }}>
-                    {reasonText}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* ── Group 3b: Local insight ──────────────────────── */}
@@ -941,7 +935,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               <div data-group="why-added" style={grpSep}>
                 <div style={grpLabel('rgba(107,148,112,.55)')}>Why we added this</div>
                 {(() => {
-                  const whyText = card.orderConsequence || stop.whyForYou || '';
+                  const whyText = (card.orderReason && card.orderConsequence)
+                    ? card.orderConsequence
+                    : (stop.whyForYou ?? 'This stop fits well in your day.');
                   return (
                     <>
                       {whyText && (
@@ -967,7 +963,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               {card.nextLeg ? (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span className="ms" style={{ fontSize: 22, color: 'rgba(79,143,171,.75)', flexShrink: 0 }}>
-                    {card.nextLeg.mode === 'walk' ? 'directions_walk' : 'directions_car'}
+                    {card.nextLeg.mode === 'walk' ? 'directions_walk' : 'directions_transit'}
                   </span>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{card.nextLeg.nextStopTitle}</div>
