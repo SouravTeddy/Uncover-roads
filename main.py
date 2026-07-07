@@ -1084,6 +1084,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                     "coordinates": [[olon, olat], [dlon, dlat]],
                     "format": "geojson",
                     "instructions": True,
+                    "extra_info": ["surface", "waytypes", "suitability"],
                 },
                 timeout=15,
             ).json()
@@ -1099,6 +1100,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                         s for seg in props.get("segments", [])
                         for s in seg.get("steps", [])
                     ],
+                    "ors_extras": props.get("extras", {}),
                 }
         except Exception as e:
             print(f"ROUTE PROFILE ORS: {e}")
@@ -1130,6 +1132,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         result["distance_km"]  = route_json["distance_km"]
         result["duration_min"] = route_json["duration_min"]
         result["road_character"] = _road_character_score(route_json["steps"])
+        result["ors_surface_score"] = _ors_surface_score(route_json.get("ors_extras", {}))
 
         sample_pts = _sample_linestring(route_json["geom_coords"], n=20)
         elevations = _fetch_elevations(sample_pts)
@@ -3003,6 +3006,52 @@ def _score_instructions_by_dimension(steps: list[dict]) -> dict[str, float]:
                     break  # one match per step per dimension is enough
 
     return scores
+
+
+# ORS waytype values → pedestrian-friendliness weight
+_ORS_WAYTYPE_WEIGHT = {
+    5: 1.0,   # Footway — fully pedestrian
+    4: 0.8,   # Cycleway — shared path
+    3: 0.5,   # Street
+    2: 0.7,   # Path
+    1: 0.3,   # Road
+    0: 0.1,   # State road / motorway-like
+}
+# ORS surface values → scenic weight (unpaved/natural surfaces score higher)
+_ORS_SURFACE_WEIGHT = {
+    2: 0.9,   # Unpaved
+    3: 0.8,   # Gravel
+    4: 0.8,   # Dirt
+    5: 0.7,   # Stone
+    6: 0.5,   # Concrete
+    1: 0.3,   # Paved
+    0: 0.2,   # Unknown
+}
+
+def _ors_surface_score(extras: dict) -> float:
+    """Compute a scenic surface score (0–1) from ORS extras.surface and extras.waytypes.
+
+    Each segment in extras is [start_idx, end_idx, value]. Computes weighted average
+    by segment length (index units approximate distance segments).
+    """
+    if not extras:
+        return 0.0
+
+    def _weighted_avg(segments: list, weight_map: dict) -> float:
+        total_len = total_score = 0
+        for seg in segments:
+            if len(seg) < 3:
+                continue
+            length = seg[1] - seg[0]
+            total_len += length
+            total_score += weight_map.get(seg[2], 0.2) * length
+        return total_score / total_len if total_len else 0.0
+
+    wt_segs = (extras.get("waytypes") or {}).get("values", [])
+    sf_segs = (extras.get("surface") or {}).get("values", [])
+    waytype_score = _weighted_avg(wt_segs, _ORS_WAYTYPE_WEIGHT)
+    surface_score = _weighted_avg(sf_segs, _ORS_SURFACE_WEIGHT)
+    return round((waytype_score * 0.6 + surface_score * 0.4), 3)
 
 
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
