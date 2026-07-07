@@ -3428,13 +3428,13 @@ def _score_route_character(
 
 # Character dimension → accent colours for scenic cards
 _CHARACTER_LABELS: dict[str, str] = {
-    "natural":    "{path_name} walk",
-    "viewpoint":  "Catch {landmark} from here",
-    "historic":   "{path_name} heritage walk",
-    "vibrant":    "{path_name} strip",
-    "photogenic": "Street art corridor",
-    "waterfront": "Along the {path_name}",
-    "local":      "Through {neighbourhood}",
+    "natural":    "Through green spaces",
+    "viewpoint":  "Scenic viewpoint route",
+    "historic":   "Historic district walk",
+    "vibrant":    "Through the heart of the city",
+    "photogenic": "Photogenic route",
+    "waterfront": "Riverside path",
+    "local":      "Local neighbourhood walk",
 }
 
 
@@ -3484,7 +3484,7 @@ def _generate_scenic_card_for_corridor(
 
     haversine_km: float | None = (
         _hav_km(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
-        if (_orig_lat and _dest_lat) else None
+        if _orig_lat is not None and _dest_lat is not None and _orig_lon is not None and _dest_lon is not None else None
     )
 
     # Corridor midpoint
@@ -3535,16 +3535,7 @@ def _generate_scenic_card_for_corridor(
 
     # Build route label
     first_path = (path_names[0] if path_names else None) or dest.get("title", "this route")
-    first_landmark = landmark_peeks[0]["landmark"] if (landmark_peeks and isinstance(landmark_peeks[0], dict)) else None
-
-    if top_char == "viewpoint" and first_landmark:
-        route_label = f"Catch {first_landmark} from here"
-    elif top_char == "waterfront":
-        route_label = f"Along the {first_path}"
-    elif first_path:
-        route_label = f"{first_path} {mode}"
-    else:
-        route_label = f"{top_char.capitalize()} {mode}"
+    route_label = _CHARACTER_LABELS.get(top_char, "Scenic route")
 
     # Accent colour per dimension
     accent_map = {
@@ -3553,12 +3544,11 @@ def _generate_scenic_card_for_corridor(
     }
     accent = accent_map.get(top_char, "#6b9470")
 
-    # Condition note (UV / heat advisory)
+    # Condition note (harsh conditions advisory — derived from condition_multiplier)
     condition_note: str | None = None
     temp = (weather or {}).get("temp") or 20
-    uv_index = _fetch_uv_index(mid_lat, mid_lon) or 0.0
     has_canopy = "natural" in [d for d, s in scoring["character_scores"].items() if s > 0.4]
-    if temp > 32 and uv_index > 7:
+    if temp > 32 and condition_multiplier < 0.9:
         condition_note = (
             "High UV today — this route has shade cover." if has_canopy
             else "High UV today — consider sun protection."
