@@ -2981,13 +2981,12 @@ _DIM_KEYWORDS: dict[str, list[str]] = {
     "local":      ["lane", "alley", "neighbourhood", "neighborhood", "backstreet", "residential", "passage"],
 }
 
-def _score_instructions_by_dimension(steps: list) -> dict[str, float]:
+def _score_instructions_by_dimension(steps: list[dict]) -> dict[str, float]:
     """Score Google Directions walking steps against 7 character dimensions.
 
     Each keyword match in html_instructions is weighted by step distance so
     longer steps carry proportionally more signal. Returns 0–1 per dimension.
     """
-    import re
     scores: dict[str, float] = {dim: 0.0 for dim in _DIM_KEYWORDS}
     total_dist = sum(s.get("distance", {}).get("value", 0) for s in steps) or 1
 
@@ -2999,6 +2998,7 @@ def _score_instructions_by_dimension(steps: list) -> dict[str, float]:
         for dim, keywords in _DIM_KEYWORDS.items():
             for kw in keywords:
                 if kw in text:
+                    # weight by distance (km), multiply by 2.0 to map ~0.5 km average step → ~1.0 unit
                     scores[dim] = min(1.0, scores[dim] + dist_weight * 2.0)
                     break  # one match per step per dimension is enough
 
