@@ -167,9 +167,9 @@ describe('ReelStopCard — Group 3b: Local insight', () => {
   it('shows localTip text', () => {
     const card = { ...mockCard, stop: { ...mockStop, localTip: 'Best visited at dusk.' } };
     // @ts-ignore
-    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
-    // localTip appears in Group 3a (as description) and Group 3b (local insight)
-    expect(getAllByText('Best visited at dusk.').length).toBeGreaterThan(0);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
+    // localTip appears only in Group 3b (local insight) — not duplicated in Group 3a
+    expect(getByText('Best visited at dusk.')).toBeInTheDocument();
   });
 
   it('shows hotelAnchor text in local insight when localTip is present', () => {
@@ -200,9 +200,9 @@ describe('ReelStopCard — Group 3c: Why we added this', () => {
       stop: { ...mockStop, isEngineAdded: true },
     };
     // @ts-ignore
-    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
-    // orderConsequence appears in Group 3a "Why this stop" and Group 3c "Why we added this"
-    expect(getAllByText('Balances your afternoon with a cultural break.').length).toBeGreaterThan(0);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
+    // orderConsequence (with no orderReason) surfaces via reasonText in the collapsed view only
+    expect(getByText('Balances your afternoon with a cultural break.')).toBeInTheDocument();
   });
 
   it('falls back to whyForYou when no orderConsequence', () => {
@@ -212,9 +212,10 @@ describe('ReelStopCard — Group 3c: Why we added this', () => {
       stop: { ...mockStop, isEngineAdded: true, whyForYou: 'Great for slow mornings.' },
     };
     // @ts-ignore
-    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
-    // whyForYou text appears in Group 3a and Group 3c
-    expect(getAllByText('Great for slow mornings.').length).toBeGreaterThan(0);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
+    // whyForYou appears in both collapsed view and Group 3c; scope to Group 3c as regression guard
+    const group = container.querySelector('[data-group="why-added"]') as HTMLElement;
+    expect(within(group).getByText('Great for slow mornings.')).toBeInTheDocument();
   });
 
   it('shows timingAdjustment consequenceNote', () => {
