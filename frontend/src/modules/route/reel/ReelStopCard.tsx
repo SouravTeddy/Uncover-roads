@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, memo } from 'react';
-import type { ReelStopCard as ReelStopCardType } from './types';
+import type { ReelStopCard as ReelStopCardType, TransitInfo } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl, fetchPlaceDetails } from '../../../shared/api';
+import { getPlacePhotoUrl, fetchPlaceDetails, BASE } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -319,6 +319,19 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     [isThunder, stopSeed],
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
+
+  // Lazy-fetch full TransitInfo from transit corridor cache when card is expanded
+  const [fetchedTransit, setFetchedTransit] = useState<TransitInfo | null>(null);
+  useEffect(() => {
+    if (!expanded || !card.prevStopLat || !card.prevStopLon || fetchedTransit) return;
+    fetch(
+      `${BASE}/transit-corridor?origin_lat=${card.prevStopLat}&origin_lon=${card.prevStopLon}&dest_lat=${stop.lat}&dest_lon=${stop.lon}`
+    )
+      .then(r => r.json())
+      .then((data: TransitInfo) => setFetchedTransit(data))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, card.prevStopLat, card.prevStopLon, stop.lat, stop.lon]);
 
   const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
   const photoFetchAttempted = useRef(false);
@@ -791,30 +804,68 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {/* ── Group 1: Getting here ───────────────────────── */}
             <div data-group="getting-here" style={grpSep}>
               <div style={grpLabel('rgba(79,143,171,.5)')}>Getting here</div>
-              {/* Content filled in Task 4 */}
-              {card.nextLeg && (() => {
-                const leg = card.nextLeg!;
-                const isWalk = leg.mode === 'walk';
-                const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderRadius: 10, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 14, color: 'rgba(242,237,230,.58)', lineHeight: 1.4 }}>
-                    <span className="ms" style={{ fontSize: 20, color: T.sky, flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                    <span>{distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to <strong style={{ color: 'rgba(242,237,230,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</strong></span>
-                  </div>
-                );
-              })()}
+              {card.prevStopTitle ? (
+                <>
+                  {/* Walk row — show real data after lazy fetch, or a fallback line */}
+                  {fetchedTransit?.walk_distance_m != null ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 13, color: T.text2 }}>
+                      <span className="ms" style={{ fontSize: 16, color: T.sky, flexShrink: 0 }}>directions_walk</span>
+                      <span>
+                        {fetchedTransit.walk_duration_min} min walk from {card.prevStopTitle},{' '}
+                        {fetchedTransit.walk_distance_m >= 1000
+                          ? `${(fetchedTransit.walk_distance_m / 1000).toFixed(1)} km`
+                          : `${fetchedTransit.walk_distance_m} m`}
+                        {fetchedTransit.walk_via?.length
+                          ? ` via ${fetchedTransit.walk_via.slice(0, 2).join(' and ')}`
+                          : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>
+                      From {card.prevStopTitle}
+                      {stop.transitFromPrev?.distanceKm != null
+                        ? ` · ~${stop.transitFromPrev.distanceKm} km`
+                        : ''}
+                    </div>
+                  )}
+                  {/* Transit row */}
+                  {fetchedTransit?.has_transit && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 13, color: T.text2 }}>
+                      <span className="ms" style={{ fontSize: 16, color: T.sky, flexShrink: 0 }}>subway</span>
+                      <span>
+                        {fetchedTransit.duration_min} min ·{' '}
+                        {fetchedTransit.transit_type?.toLowerCase().replace('_', ' ') ?? 'transit'} ·{' '}
+                        board at {fetchedTransit.departure_stop}
+                      </span>
+                    </div>
+                  )}
+                  {/* Off-route note for engine-added detour stops */}
+                  {stop.isEngineAdded && (card.detourKm ?? 0) > 0 && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: T.text3 }}>
+                      <span className="ms" style={{ fontSize: 16, flexShrink: 0 }}>fork_right</span>
+                      <span>{card.detourKm} km off your direct route</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: T.text3 }}>Starting point for this day.</div>
+              )}
             </div>
 
             {/* ── Group 2: At this stop ───────────────────────── */}
             <div data-group="at-this-stop" style={grpSep}>
               <div style={grpLabel()}>At this stop</div>
-              {/* crowdNote with hyphen stripping added in Task 4 */}
-              {crowdRow && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
-                  <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
-                </div>
-              )}
+              {/* crowdNote with hyphen stripping */}
+              {crowdRow && (() => {
+                const cleanNote = crowdRow.text.replace(/ [—–] /g, '. ').replace(/^[—–] /, '').trim();
+                return (
+                  <div className="crowd-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
+                    <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
+                    {cleanNote && <span style={{ fontSize: 11, color: crowdRow.isBusy ? 'rgba(224,112,96,.7)' : 'rgba(107,148,112,.7)', marginLeft: 2 }}>{cleanNote}</span>}
+                  </div>
+                );
+              })()}
               {allPills.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                   {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
@@ -868,8 +919,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {/* ── Group 3b: Local insight ──────────────────────── */}
             {stop.localTip && (
               <div data-group="local-insight" style={grpSep}>
-                <div style={grpLabel('rgba(212,168,83,.55)')}>Local insight</div>
-                {/* Content filled in Task 4 */}
+                <div style={grpLabel('rgba(212,168,83,.55)')}>Local insight <span style={{ fontSize: 10 }}>✦</span></div>
+                <p style={{ fontSize: 13, lineHeight: 1.72, color: T.text2, margin: '0 0 8px' }}>{stop.localTip}</p>
+                {card.hotelAnchor && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, fontSize: 12, color: card.hotelAnchor.isBlue ? T.sky : card.hotelAnchor.isWarning ? T.gold : T.text3 }}>
+                    <span className="ms" style={{ fontSize: 14 }}>{card.hotelAnchor.icon}</span>
+                    <span>{card.hotelAnchor.text}</span>
+                  </div>
+                )}
+                {card.pairWith && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: T.text3 }}>
+                    <span className="ms" style={{ fontSize: 14 }}>link</span>
+                    <span>Pairs well with {card.pairWith.title}</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -877,14 +940,50 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {stop.isEngineAdded && (
               <div data-group="why-added" style={grpSep}>
                 <div style={grpLabel('rgba(107,148,112,.55)')}>Why we added this</div>
-                {/* Content filled in Task 4 */}
+                {(() => {
+                  const whyText = card.orderConsequence || stop.whyForYou || '';
+                  return (
+                    <>
+                      {whyText && (
+                        <p style={{ fontSize: 13, lineHeight: 1.72, color: T.text2, margin: '0 0 8px' }}>
+                          {whyText}
+                        </p>
+                      )}
+                      {card.timingAdjustment?.consequenceNote && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: T.text3 }}>
+                          <span className="ms" style={{ fontSize: 14 }}>schedule</span>
+                          <span>{card.timingAdjustment.consequenceNote}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 
             {/* ── Group 4: Next stop ───────────────────────────── */}
             <div data-group="next-stop" style={grpSep}>
               <div style={grpLabel('rgba(79,143,171,.5)')}>Next stop</div>
-              {/* Content filled in Task 4 */}
+              {card.nextLeg ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="ms" style={{ fontSize: 22, color: 'rgba(79,143,171,.75)', flexShrink: 0 }}>
+                    {card.nextLeg.mode === 'walk' ? 'directions_walk' : 'directions_car'}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{card.nextLeg.nextStopTitle}</div>
+                    <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>
+                      {card.nextLeg.durationMin} min {card.nextLeg.mode === 'walk' ? 'walk' : 'ride'}, {card.nextLeg.distKm} km
+                    </div>
+                  </div>
+                </div>
+              ) : card.hotelAnchor ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="ms" style={{ fontSize: 22, color: 'rgba(79,143,171,.75)', flexShrink: 0 }}>hotel</span>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{card.hotelAnchor.text}</div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: T.text3 }}>Last stop of the day.</div>
+              )}
             </div>
 
             {/* Explore nearby CTA */}
