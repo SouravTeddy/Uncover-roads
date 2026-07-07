@@ -5892,17 +5892,16 @@ def seed_place_trends(city_id: str = Query(...)):
     return result
 
 
-@app.post("/api/places/seed-trends/all")
+@app.api_route("/api/places/seed-trends/all", methods=["GET", "POST"])
 async def seed_all_city_trends(background_tasks: BackgroundTasks):
     """Trigger trend velocity refresh for every city in place_dynamic_profiles.
 
     Runs in the background — returns immediately. Cities seeded within the
     last 7 days are skipped automatically (staleness guard).
+    Accepts both GET (Railway/uptime cron) and POST.
     """
     if _supabase is None:
         raise HTTPException(status_code=503, detail="database_unavailable")
-    if not any([YOUTUBE_API_KEY, FOURSQUARE_API_KEY, REDDIT_CLIENT_ID]):
-        raise HTTPException(status_code=400, detail="no_trend_api_keys_configured")
 
     background_tasks.add_task(
         _refresh_all_cities,
