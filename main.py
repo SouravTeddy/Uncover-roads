@@ -1203,12 +1203,13 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
     except Exception as e:
         print(f"ROUTE PROFILE BUILD: {e}")
 
-    # Cache write
+    # Cache write — exclude ors_surface_score (no DB column)
     if _supabase:
         try:
+            result_to_cache = {k: v for k, v in result.items() if k != "ors_surface_score"}
             _supabase.table("route_profile_cache").upsert({
                 "corridor_key":    key,
-                **result,
+                **result_to_cache,
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             }).execute()
         except Exception as e:
@@ -3403,6 +3404,9 @@ def _score_route_character(
         elif top_character in ("natural", "waterfront", "local"):
             top_score = min(1.0, top_score * persona_adj.get("_night_natural_mult", 1.0))
             weighted_scores[top_character] = top_score
+        # Recompute top_character after night multipliers may have changed rankings
+        top_character = max(weighted_scores, key=weighted_scores.get)
+        top_score = weighted_scores[top_character]
 
     # Route type
     if mode == "drive":
@@ -3495,15 +3499,16 @@ def _generate_scenic_card_for_corridor(
     mid_lon = (_orig_lon + _dest_lon) / 2
 
     # Condition multiplier (always fresh — not cached)
-    _vt = visit_time or __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    _vt = visit_time or datetime.now(timezone.utc)
     condition_multiplier = _route_condition_multiplier(mid_lat, mid_lon, _vt)
     if condition_multiplier == 0.0:
         return None
 
     # Retrieve character scores from route profile cache if available
     cached_chars = route_profile.get("character_scores")
-    instruction_scores: dict[str, float] = {d: 0.0 for d in _DIM_KEYWORDS}
-    ors_surface_score = 0.0
+    walk_steps: list = route_profile.get("walk_steps", [])
+    instruction_scores: dict[str, float] = _score_instructions_by_dimension(walk_steps)
+    ors_surface_score: float = _ors_surface_score(route_profile.get("ors_response", {}))
     overpass_character: dict = {
         "character_scores": {d: 0.0 for d in _DIM_KEYWORDS},
         "named_features": [],
@@ -3533,6 +3538,11 @@ def _generate_scenic_card_for_corridor(
 
     if not scoring["passes_threshold"]:
         return None
+
+    # Persist character scoring so future calls can skip Overpass
+    _cache_route_character(
+        _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
+    )
 
     top_char = scoring["top_character"]
 
@@ -3587,8 +3597,8 @@ def _generate_scenic_card_for_corridor(
         "transitInfo": None,
         "routeLabel": route_label,
         "conditionNote": condition_note,
-        "characterDimensions": [d for d, s in scoring["character_scores"].items() if s > 0.4],
-        "landmarkPeek": landmark_peeks[0] if landmark_peeks else None,
+        "characterDimensions": {d: round(s, 3) for d, s in scoring["character_scores"].items() if s > 0.4},
+        "landmarkPeek": landmark_peeks if landmark_peeks else None,
         "topCharacter": top_char,
         "conditionMultiplier": condition_multiplier,
         "fromStop": origin.get("title", ""),
