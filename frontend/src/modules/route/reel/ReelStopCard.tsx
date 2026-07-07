@@ -872,10 +872,10 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               </div>
             )}
 
-            {/* ── Group 3c: Why it was added ──────────────────── */}
+            {/* ── Group 3c: Why we added this ──────────────────── */}
             {stop.isEngineAdded && (
               <div data-group="why-added" style={grpSep}>
-                <div style={grpLabel('rgba(107,148,112,.55)')}>Why it was added</div>
+                <div style={grpLabel('rgba(107,148,112,.55)')}>Why we added this</div>
                 {/* Content filled in Task 4 */}
               </div>
             )}

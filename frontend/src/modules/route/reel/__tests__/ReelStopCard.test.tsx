@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ReelStopCard } from '../ReelStopCard';
 
@@ -46,7 +46,8 @@ describe('ReelStopCard — provenance label', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
     // @ts-ignore
     const { getByText } = render(<ReelStopCard card={card} active={true} />);
-    expect(getByText(/we added this/i)).toBeInTheDocument();
+    // Use exact match to avoid matching "Why we added this" group label
+    expect(getByText('We added this', { exact: true })).toBeInTheDocument();
   });
 
   it('does not show provenance for stops with neither flag', () => {
@@ -76,5 +77,15 @@ describe('ReelStopCard — group structure', () => {
     // @ts-ignore
     const { container } = render(<ReelStopCard card={card} active={true} />);
     expect(container.querySelector('[data-group="why-added"]')).not.toBeNull();
+  });
+
+  it('displays "Why we added this" label within the group', () => {
+    const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
+    // @ts-ignore
+    const { container } = render(<ReelStopCard card={card} active={true} />);
+    const group = container.querySelector('[data-group="why-added"]');
+    expect(group).toBeTruthy();
+    const label = group?.firstElementChild;
+    expect(label?.textContent).toContain('Why we added this');
   });
 });
