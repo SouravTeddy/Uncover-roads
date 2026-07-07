@@ -417,9 +417,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   }
   const displayRating = stop.rating;
   if (displayRating != null && displayRating > 0) {
-    const mapsHref = stop.googleMapsUrl
-      ?? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(stop.placeId)}`;
-    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, href: mapsHref, color: T.gold });
+    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, color: T.gold });
   }
   const price = priceLabel(stop.priceLevel);
   if (price) {
@@ -706,7 +704,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           {/* Scroll area — everything below meta strip scrolls */}
           <div
             className="no-scrollbar"
-            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
+            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Title */}
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: T.text1, lineHeight: 1.14, margin: '0 0 7px' }}>
