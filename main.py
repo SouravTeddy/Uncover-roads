@@ -1214,19 +1214,19 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
     return result
 
 
-def _cache_route_character(corridor_key: str, scoring_result: dict) -> None:
+def _cache_route_character(corridor_key: str, scores: dict) -> None:
     """Write character scoring results to route_profile_cache."""
     if not _supabase:
         return
     try:
         _supabase.table("route_profile_cache").upsert({
             "corridor_key":      corridor_key,
-            "character_scores":  scoring_result.get("character_scores"),
-            "top_character":     scoring_result.get("top_character"),
-            "path_names":        scoring_result.get("path_names"),
-            "landmark_peeks":    scoring_result.get("landmark_peeks"),
-            "route_type":        scoring_result.get("route_type"),
-            "route_computed_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            "character_scores":  scores.get("character_scores"),
+            "top_character":     scores.get("top_character"),
+            "path_names":        scores.get("path_names"),
+            "landmark_peeks":    scores.get("landmark_peeks"),
+            "route_type":        scores.get("route_type"),
+            "route_computed_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
     except Exception as e:
         print(f"ROUTE CHARACTER CACHE WRITE: {e}")
