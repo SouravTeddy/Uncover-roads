@@ -33,3 +33,48 @@ describe('ReelStopCard — Maps CTA removal', () => {
     expect(mapLinks.length).toBe(0);
   });
 });
+
+describe('ReelStopCard — provenance label', () => {
+  it('shows "You added this" for isUserAdded stops', () => {
+    const card = { ...mockCard, stop: { ...mockStop, isUserAdded: true, isEngineAdded: false } };
+    // @ts-ignore
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
+    expect(getByText(/you added this/i)).toBeInTheDocument();
+  });
+
+  it('shows "We added this" for isEngineAdded stops', () => {
+    const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
+    // @ts-ignore
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
+    expect(getByText(/we added this/i)).toBeInTheDocument();
+  });
+
+  it('does not show provenance for stops with neither flag', () => {
+    // @ts-ignore
+    const { queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
+    expect(queryByText(/you added this/i)).not.toBeInTheDocument();
+    expect(queryByText(/we added this/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('ReelStopCard — group structure', () => {
+  it('renders Getting here group', () => {
+    // @ts-ignore
+    const { container } = render(<ReelStopCard card={mockCard} active={true} />);
+    expect(container.querySelector('[data-group="getting-here"]')).not.toBeNull();
+  });
+
+  it('hides Why we added this group for isUserAdded stops', () => {
+    const card = { ...mockCard, stop: { ...mockStop, isUserAdded: true, isEngineAdded: false } };
+    // @ts-ignore
+    const { container } = render(<ReelStopCard card={card} active={true} />);
+    expect(container.querySelector('[data-group="why-added"]')).toBeNull();
+  });
+
+  it('shows Why we added this group for isEngineAdded stops', () => {
+    const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
+    // @ts-ignore
+    const { container } = render(<ReelStopCard card={card} active={true} />);
+    expect(container.querySelector('[data-group="why-added"]')).not.toBeNull();
+  });
+});
