@@ -57,6 +57,14 @@ export interface ReelScenicCard {
   transitInfo?: TransitInfo | null;
   detourKm: number;
   detourMin: number;
+  conditionNote?: string | null;          // e.g. "High UV today — shaded route available"
+  characterDimensions?: string[];         // secondary dimensions with score > 0.4 e.g. ["natural", "viewpoint"]
+  landmarkPeek?: {
+    landmark: string;                     // e.g. "Mount Fuji"
+    atCoords: [number, number];           // [lat, lon] of the viewpoint on the route
+    bearingDeg: number;                   // compass bearing to look toward landmark
+  } | null;
+  routeLabel?: string;                    // character-based label e.g. "Sumida Riverside Walk"
 }
 
 export interface ReelIntroCard {
