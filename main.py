@@ -5658,7 +5658,7 @@ async def cities_picks(city_id: str, lat: float = None, lon: float = None, backg
                             "data": _cd_dict,
                         }).execute()
                         # Fire trend seeding in background — does not block picks response
-                        if background_tasks and YOUTUBE_API_KEY:
+                        if background_tasks:
                             from city.trend_seeder import seed_trend_scores as _seed_trends
                             _trend_places = [
                                 {"place_id": ic.place_id, "name": ic.name,
