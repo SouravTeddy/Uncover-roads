@@ -57,6 +57,10 @@ export interface ReelScenicCard {
   transitInfo?: TransitInfo | null;
   detourKm: number;
   detourMin: number;
+  conditionNote?: string | null;          // e.g. "High UV today — shaded route available"
+  characterDimensions?: Record<string, number> | null; // secondary dimensions with score > 0.4 e.g. {"natural": 0.8, "viewpoint": 0.6}
+  landmarkPeek?: string[] | null;         // landmark names visible from this scenic segment
+  routeLabel?: string | null;             // character-based label e.g. "Sumida Riverside Walk"
 }
 
 export interface ReelIntroCard {
@@ -107,6 +111,11 @@ export interface ReelStopCard {
   } | null;
   arrivalNote?: string | null;    // shown on Day 1 first stop: "Arriving this evening"
   departureNote?: string | null;  // shown on last-day stops: "Departure day · morning"
+  prevStopLat?: number | null;   // previous stop lat — used by component to fetch TransitInfo
+  prevStopLon?: number | null;   // previous stop lon
+  prevStopTitle?: string | null; // previous stop display name
+  detourKm?: number | null;      // extra km vs direct route, for engine-added stops only
+  transitInfo?: TransitInfo | null; // lazy-fetched full TransitInfo; null until component fetches it
   hotelAnchor?: {
     text: string;
     isWarning: boolean;

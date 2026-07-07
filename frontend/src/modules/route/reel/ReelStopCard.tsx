@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, memo } from 'react';
-import type { ReelStopCard as ReelStopCardType } from './types';
+import type { ReelStopCard as ReelStopCardType, TransitInfo } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl, fetchPlaceDetails } from '../../../shared/api';
+import { getPlacePhotoUrl, fetchPlaceDetails, BASE } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -320,6 +320,22 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   );
   const snowParticles = useMemo(() => makeSnowParticles(SNOW_SEED + stopSeed), [stopSeed]);
 
+  // Lazy-fetch full TransitInfo from transit corridor cache when card is expanded
+  const [fetchedTransit, setFetchedTransit] = useState<TransitInfo | null>(null);
+  const [transitLoading, setTransitLoading] = useState(false);
+  useEffect(() => {
+    if (!expanded || !card.prevStopLat || !card.prevStopLon || fetchedTransit) return;
+    if (card.transitInfo !== null && card.transitInfo !== undefined) return; // already have data
+    setTransitLoading(true);
+    fetch(
+      `${BASE}/transit-corridor?origin_lat=${card.prevStopLat}&origin_lon=${card.prevStopLon}&dest_lat=${stop.lat}&dest_lon=${stop.lon}`
+    )
+      .then(r => r.json())
+      .then((data: TransitInfo) => { setFetchedTransit(data); setTransitLoading(false); })
+      .catch(() => { setTransitLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, card.prevStopLat, card.prevStopLon, stop.lat, stop.lon]);
+
   const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
   const photoFetchAttempted = useRef(false);
   const photoUrl = stop.imageUrl
@@ -357,7 +373,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
-  const rawDescriptionText = stop.localTip ?? contentSig?.text ?? (card.orderReason || card.orderConsequence ? null : stop.whyForYou || null);
+  const rawDescriptionText = contentSig?.text ?? null;
   const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
   const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;
@@ -417,9 +433,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   }
   const displayRating = stop.rating;
   if (displayRating != null && displayRating > 0) {
-    const mapsHref = stop.googleMapsUrl
-      ?? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(stop.placeId)}`;
-    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, href: mapsHref, color: T.gold });
+    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, color: T.gold });
   }
   const price = priceLabel(stop.priceLevel);
   if (price) {
@@ -501,6 +515,12 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
       </div>
     );
   };
+
+  const grpSep: React.CSSProperties = { paddingTop: 14, paddingBottom: 14, borderTop: '1px solid rgba(255,255,255,.06)' };
+  const grpLabel = (accent: string = 'rgba(255,255,255,.28)'): React.CSSProperties => ({
+    fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase',
+    color: accent, marginBottom: 10,
+  });
 
   return (
     <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
@@ -588,7 +608,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           overflow: 'hidden',
           touchAction: 'none',
           // extend collapsed height past the nav bar so visible content = 224px above it
-          height: expanded ? '68dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
+          height: expanded ? '86dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
           transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
           display: 'flex', flexDirection: 'column',
         }}
@@ -665,11 +685,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           )}
 
           {/* Identity chips */}
-          {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+          {(stageLabel || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
               {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
-              {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(224,120,64,.30)', border: '1.5px solid rgba(224,120,64,.60)', animation: 'badgePopOrange 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e07840' }}>bookmark</span><span style={{ color: '#e07840' }}>Your pick</span></div>)}
-              {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(91,155,213,.28)', border: '1.5px solid rgba(91,155,213,.55)', animation: 'badgePopBlue 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6ab4f5' }}>auto_awesome</span><span style={{ color: '#6ab4f5' }}>We added this</span></div>)}
               {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
               {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
               {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
@@ -706,12 +724,26 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           {/* Scroll area — everything below meta strip scrolls */}
           <div
             className="no-scrollbar"
-            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
+            style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'], padding: '18px 20px', paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
           >
             {/* Title */}
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: T.text1, lineHeight: 1.14, margin: '0 0 7px' }}>
               {stop.title}
             </h2>
+
+            {/* Provenance label */}
+            {stop.isUserAdded && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(212,168,83,.72)' }}>
+                <span className="ms" style={{ fontSize: 14 }}>bookmark</span>
+                You added this
+              </div>
+            )}
+            {stop.isEngineAdded && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(79,143,171,.72)' }}>
+                <span className="ms" style={{ fontSize: 14 }}>auto_awesome</span>
+                We added this
+              </div>
+            )}
 
             {/* Time row — arrival → departure, with adjustment callout */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '3px 9px', borderRadius: 6, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.07)' }}>
@@ -763,102 +795,192 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             )}
 
             {/* Identity chips */}
-            {(stageLabel || stop.isUserAdded || stop.isEngineAdded || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+            {(stageLabel || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                 {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
-                {stop.isUserAdded && (<div style={{ ...chipBase, background: 'rgba(224,120,64,.30)', border: '1.5px solid rgba(224,120,64,.60)', animation: 'badgePopOrange 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e07840' }}>bookmark</span><span style={{ color: '#e07840' }}>Your pick</span></div>)}
-                {stop.isEngineAdded && (<div style={{ ...chipBase, background: 'rgba(107,148,112,.28)', border: '1.5px solid rgba(107,148,112,.55)', animation: 'badgePopSage 4s ease-in-out 1s infinite' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#6b9470' }}>auto_awesome</span><span style={{ color: '#6b9470' }}>We added this</span></div>)}
                 {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
                 {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
                 {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
               </div>
             )}
 
-            {/* Full description */}
-            {descriptionText && (
-              <p style={{ fontSize: 15, lineHeight: 1.68, color: 'rgba(242,237,230,.58)', margin: '0 0 0' }}>
-                {descriptionText}
-              </p>
-            )}
+            {/* ── Group 1: Getting here ───────────────────────── */}
+            <div data-group="getting-here" style={grpSep}>
+              <div style={grpLabel('rgba(79,143,171,.5)')}>Getting here</div>
+              {card.prevStopTitle ? (
+                <>
+                  {/* Walk row — show real data after lazy fetch, or a fallback line */}
+                  {fetchedTransit?.walk_distance_m != null ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 13, color: T.text2 }}>
+                      <span className="ms" style={{ fontSize: 16, color: T.sky, flexShrink: 0 }}>directions_walk</span>
+                      <span>
+                        {fetchedTransit.walk_duration_min} min walk from {card.prevStopTitle},{' '}
+                        {fetchedTransit.walk_distance_m >= 1000
+                          ? `${(fetchedTransit.walk_distance_m / 1000).toFixed(1)} km`
+                          : `${fetchedTransit.walk_distance_m} m`}
+                        {fetchedTransit.walk_via?.length
+                          ? ` via ${fetchedTransit.walk_via.slice(0, 2).join(' and ')}`
+                          : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      {expanded && transitLoading && (
+                        <div style={{ height: 16, borderRadius: 4, background: 'rgba(255,255,255,.08)', margin: '4px 0', animation: 'pulse 1.4s ease-in-out infinite' }} />
+                      )}
+                      <div style={{ fontSize: 13, color: T.text3, marginBottom: 8 }}>
+                        From {card.prevStopTitle}
+                        {stop.transitFromPrev?.distanceKm != null
+                          ? ` · ~${stop.transitFromPrev.distanceKm} km`
+                          : ''}
+                      </div>
+                    </>
+                  )}
+                  {/* Transit row */}
+                  {fetchedTransit?.has_transit && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8, fontSize: 13, color: T.text2 }}>
+                      <span className="ms" style={{ fontSize: 16, color: T.sky, flexShrink: 0 }}>subway</span>
+                      <span>
+                        {fetchedTransit.duration_min} min ·{' '}
+                        {fetchedTransit.transit_type?.toLowerCase().replace('_', ' ') ?? 'transit'} ·{' '}
+                        board at {fetchedTransit.departure_stop}
+                      </span>
+                    </div>
+                  )}
+                  {/* Off-route note for engine-added detour stops */}
+                  {stop.isEngineAdded && (card.detourKm ?? 0) > 0 && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: T.text3 }}>
+                      <span className="ms" style={{ fontSize: 16, flexShrink: 0 }}>fork_right</span>
+                      <span>{card.detourKm} km off your direct route</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ fontSize: 13, color: T.text3 }}>Starting point for this day.</div>
+              )}
+            </div>
 
-            {/* Hotel anchor */}
-            {card.hotelAnchor && (() => {
-              const anchor = card.hotelAnchor!;
-              const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
-              const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
-              const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
-              const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
-              return (
-                <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
-                  <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
-                  <span style={{ fontSize: 13, color: textColor, lineHeight: 1.45 }}>{anchor.text}</span>
-                </div>
-              );
-            })()}
-
-            {/* Divider */}
-            <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
-
-            {/* WHY THIS STOP */}
-            {(reasonText || (stop.isEngineAdded && card.orderReason)) && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>Why this stop</div>
-                {stop.isEngineAdded && card.orderReason && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, marginBottom: 9, fontSize: 13, fontStyle: 'italic', color: 'rgba(91,155,213,.50)', lineHeight: 1.45 }}>
-                    <span className="ms" style={{ fontSize: 13, color: 'rgba(91,155,213,.45)', flexShrink: 0 }}>subdirectory_arrow_right</span>
-                    We thought: {card.orderReason}
-                  </div>
-                )}
-                <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(212,168,83,.10)', borderLeft: '2px solid rgba(212,168,83,.38)', fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.80)' }}>
-                  {reasonText}
-                </div>
-              </div>
-            )}
-
-            {/* Divider */}
-            <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
-
-            {/* AT A GLANCE — all pills except stage (shown as chip above) */}
-            {allPills.length > 0 && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>At a glance</div>
-                {crowdRow && (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
+            {/* ── Group 2: At this stop ───────────────────────── */}
+            <div data-group="at-this-stop" style={grpSep}>
+              <div style={grpLabel()}>At this stop</div>
+              {/* crowdNote with hyphen stripping */}
+              {crowdRow && (() => {
+                const cleanNote = crowdRow.text.replace(/ [—–] /g, '. ').replace(/^[—–] /, '').trim();
+                return (
+                  <div className="crowd-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
                     <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
+                    {cleanNote && <span style={{ fontSize: 11, color: crowdRow.isBusy ? 'rgba(224,112,96,.7)' : 'rgba(107,148,112,.7)', marginLeft: 2 }}>{cleanNote}</span>}
                   </div>
-                )}
+                );
+              })()}
+              {allPills.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                   {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
                 </div>
-                {/* Pill detail */}
-                {pillDetail && (
-                  <div style={{ marginTop: 9, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 5 }}>{pillDetail.title}</div>
-                    <div style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.58)' }}>{pillDetail.body}</div>
+              )}
+              {pillDetail && (
+                <div style={{ marginTop: 9, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 5 }}>{pillDetail.title}</div>
+                  <div style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.58)' }}>{pillDetail.body}</div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Group 3a: About this place ───────────────────── */}
+            <div data-group="about-this-place" style={grpSep}>
+              <div style={grpLabel()}>About this place</div>
+              {descriptionText && (
+                <p style={{ fontSize: 15, lineHeight: 1.68, color: 'rgba(242,237,230,.58)', margin: '0 0 12px' }}>
+                  {descriptionText}
+                </p>
+              )}
+              {card.hotelAnchor && (() => {
+                const anchor = card.hotelAnchor!;
+                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
+                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
+                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
+                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
+                return (
+                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
+                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
+                    <span style={{ fontSize: 13, color: textColor, lineHeight: 1.45 }}>{anchor.text}</span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* ── Group 3b: Local insight ──────────────────────── */}
+            {stop.localTip && (
+              <div data-group="local-insight" style={grpSep}>
+                <div style={grpLabel('rgba(212,168,83,.55)')}>Local insight <span style={{ fontSize: 10 }}>✦</span></div>
+                <p style={{ fontSize: 13, lineHeight: 1.72, color: T.text2, margin: '0 0 8px' }}>{stop.localTip}</p>
+                {card.hotelAnchor && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, fontSize: 12, color: card.hotelAnchor.isBlue ? T.sky : card.hotelAnchor.isWarning ? T.gold : T.text3 }}>
+                    <span className="ms" style={{ fontSize: 14 }}>{card.hotelAnchor.icon}</span>
+                    <span>{card.hotelAnchor.text}</span>
+                  </div>
+                )}
+                {card.pairWith && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: T.text3 }}>
+                    <span className="ms" style={{ fontSize: 14 }}>link</span>
+                    <span>Pairs well with {card.pairWith.title}</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Divider + Getting here (next leg as transit block) */}
-            {card.nextLeg && (() => {
-              const leg = card.nextLeg!;
-              const isWalk = leg.mode === 'walk';
-              const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
-              return (
-                <>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
+            {/* ── Group 3c: Why we added this ──────────────────── */}
+            {stop.isEngineAdded && (
+              <div data-group="why-added" style={grpSep}>
+                <div style={grpLabel('rgba(107,148,112,.55)')}>Why we added this</div>
+                {(() => {
+                  const whyText = (card.orderReason && card.orderConsequence)
+                    ? card.orderConsequence
+                    : (stop.whyForYou ?? 'This stop fits well in your day.');
+                  return (
+                    <>
+                      {whyText && (
+                        <p style={{ fontSize: 13, lineHeight: 1.72, color: T.text2, margin: '0 0 8px' }}>
+                          {whyText}
+                        </p>
+                      )}
+                      {card.timingAdjustment?.consequenceNote && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: T.text3 }}>
+                          <span className="ms" style={{ fontSize: 14 }}>schedule</span>
+                          <span>{card.timingAdjustment.consequenceNote}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* ── Group 4: Next stop ───────────────────────────── */}
+            <div data-group="next-stop" style={grpSep}>
+              <div style={grpLabel('rgba(79,143,171,.5)')}>Next stop</div>
+              {card.nextLeg ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="ms" style={{ fontSize: 22, color: 'rgba(79,143,171,.75)', flexShrink: 0 }}>
+                    {card.nextLeg.mode === 'walk' ? 'directions_walk' : 'directions_transit'}
+                  </span>
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.20)', marginBottom: 11 }}>Getting here</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderRadius: 10, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 14, color: 'rgba(242,237,230,.58)', lineHeight: 1.4 }}>
-                      <span className="ms" style={{ fontSize: 20, color: T.sky, flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                      <span>{distStr} · ~{leg.durationMin} min {isWalk ? 'walk' : 'ride'} to <strong style={{ color: 'rgba(242,237,230,.6)', fontWeight: 600 }}>{leg.nextStopTitle}</strong></span>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{card.nextLeg.nextStopTitle}</div>
+                    <div style={{ fontSize: 12, color: T.text3, marginTop: 2 }}>
+                      {card.nextLeg.durationMin} min {card.nextLeg.mode === 'walk' ? 'walk' : 'ride'}, {card.nextLeg.distKm} km
                     </div>
                   </div>
-                </>
-              );
-            })()}
+                </div>
+              ) : card.hotelAnchor ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span className="ms" style={{ fontSize: 22, color: 'rgba(79,143,171,.75)', flexShrink: 0 }}>hotel</span>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: T.text1 }}>{card.hotelAnchor.text}</div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: T.text3 }}>Last stop of the day.</div>
+              )}
+            </div>
 
             {/* Explore nearby CTA */}
             {onExplore && (
