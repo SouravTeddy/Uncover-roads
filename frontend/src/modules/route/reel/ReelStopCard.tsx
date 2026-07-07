@@ -586,7 +586,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           overflow: 'hidden',
           touchAction: 'none',
           // extend collapsed height past the nav bar so visible content = 224px above it
-          height: expanded ? '68dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
+          height: expanded ? '86dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
           transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
           display: 'flex', flexDirection: 'column',
         }}
