@@ -179,3 +179,50 @@ def test_landmark_peek_max_3():
     landmarks = [{"name": f"L{i}", "lat": float(i+2), "lon": 0.0} for i in range(5)]
     result = _check_landmark_peeks(route, landmarks)
     assert len(result) <= 3
+
+
+def test_score_route_character_natural_walk():
+    from main import _score_route_character
+    result = _score_route_character(
+        mode="walk",
+        instruction_scores={"natural": 0.7, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.1,
+                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.0},
+        ors_surface_score=0.6,
+        overpass_character={"character_scores": {"natural": 0.6, "viewpoint": 0.0, "historic": 0.0,
+                                                  "vibrant": 0.1, "photogenic": 0.0, "waterfront": 0.0,
+                                                  "local": 0.0}, "named_features": ["Riverside Path"], "viewpoints": []},
+        road_character=0.0,
+        elevation_gain_m=0,
+        condition_multiplier=1.0,
+        landmark_peeks=[],
+        persona_snapshot={"w_scenic": 0.8, "w_walk_affinity": 0.7, "w_nightlife": 0.1,
+                          "w_culture_depth": 0.3, "w_food_density": 0.2, "w_efficiency": 0.2,
+                          "w_spontaneity": 0.5},
+        persona_attractions=["nature"],
+        persona_key="flaneur",
+        distance_km=1.8,
+    )
+    assert result["top_character"] == "natural"
+    assert result["route_type"] in ("walk", "coastal", "ridge")
+    assert "passes_threshold" in result
+    assert result["passes_threshold"] is True
+
+
+def test_score_route_character_fails_threshold_when_multiplier_zero():
+    from main import _score_route_character
+    result = _score_route_character(
+        mode="walk",
+        instruction_scores={"natural": 0.8, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.0,
+                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.0},
+        ors_surface_score=0.7,
+        overpass_character={"character_scores": {"natural": 0.9, "viewpoint": 0.0, "historic": 0.0,
+                                                  "vibrant": 0.0, "photogenic": 0.0, "waterfront": 0.0,
+                                                  "local": 0.0}, "named_features": [], "viewpoints": []},
+        road_character=0.0, elevation_gain_m=0, condition_multiplier=0.0,  # hard block
+        landmark_peeks=[],
+        persona_snapshot={"w_scenic": 1.0, "w_walk_affinity": 1.0, "w_nightlife": 0.0,
+                          "w_culture_depth": 0.0, "w_food_density": 0.0, "w_efficiency": 0.0,
+                          "w_spontaneity": 1.0},
+        persona_attractions=["nature"], persona_key="flaneur", distance_km=2.0,
+    )
+    assert result["passes_threshold"] is False
