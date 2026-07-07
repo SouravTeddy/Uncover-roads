@@ -20,6 +20,24 @@ const mockCard = {
   timingAdjustment: null,
 };
 
+// Mock engine-added stop with localTip for all-6-groups test
+const mockEngineAddedCardWithLocalTip = {
+  type: 'stop' as const,
+  stop: {
+    ...mockStop,
+    isEngineAdded: true,
+    localTip: 'A great local tip',
+  },
+  stopNumber: 1, totalStops: 3, day: 1, totalDays: 1,
+  orderReason: 'It complements your itinerary',
+  orderConsequence: null,
+  movedFrom: null,
+  weather: null,
+  nextLeg: null,
+  visitDate: '2026-07-10',
+  timingAdjustment: null,
+};
+
 // Suppress React act warnings for async state
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -87,5 +105,14 @@ describe('ReelStopCard — group structure', () => {
     expect(group).toBeTruthy();
     const label = group?.firstElementChild;
     expect(label?.textContent).toContain('Why we added this');
+  });
+
+  it('renders all 6 groups for an engine-added stop with localTip', () => {
+    // @ts-ignore
+    const { container } = render(<ReelStopCard card={mockEngineAddedCardWithLocalTip} active={true} />);
+    const groups = ['getting-here', 'at-this-stop', 'about-this-place', 'local-insight', 'why-added', 'next-stop'];
+    groups.forEach(g => {
+      expect(container.querySelector(`[data-group="${g}"]`)).toBeTruthy();
+    });
   });
 });
