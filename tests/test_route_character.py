@@ -42,3 +42,15 @@ def test_empty_steps_returns_all_zeros():
     from main import _score_instructions_by_dimension
     scores = _score_instructions_by_dimension([])
     assert all(v == 0.0 for v in scores.values())
+
+
+def test_score_caps_at_one():
+    from main import _score_instructions_by_dimension
+    # Many matching steps should still cap at 1.0
+    steps = [
+        {"html_instructions": f"Walk past river bank canal park", "distance": {"value": 1000}}
+        for _ in range(10)
+    ]
+    scores = _score_instructions_by_dimension(steps)
+    assert all(v <= 1.0 for v in scores.values()), "All dimension scores must be capped at 1.0"
+    assert scores["natural"] == 1.0, "Heavy natural content should hit 1.0 cap"
