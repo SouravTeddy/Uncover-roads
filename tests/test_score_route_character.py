@@ -247,6 +247,28 @@ def test_slow_scholar_threshold_delta():
     )
     assert "passes_threshold" in result_scholar
 
+    # Control case: same route without slowScholar should have lower/equal score or fail threshold
+    result_generic = _score_route_character(
+        mode="walk",
+        instruction_scores=instruction,
+        ors_surface_score=0.2,
+        overpass_character=_overpass(overpass),
+        road_character=0.0,
+        elevation_gain_m=0,
+        condition_multiplier=1.0,
+        landmark_peeks=[],
+        persona_snapshot={**_base_snapshot(), "w_spontaneity": 0.0},  # same snapshot
+        persona_attractions=["historic"],
+        persona_key=None,  # no persona key for generic comparison
+        distance_km=1.0,
+    )
+    # Verify slowScholar threshold delta is doing something:
+    # either generic fails threshold or has lower historic score
+    assert (
+        result_generic["passes_threshold"] is False or
+        result_scholar["character_scores"]["historic"] > result_generic["character_scores"]["historic"]
+    )
+
 
 # ---------------------------------------------------------------------------
 # 4. nightCreature vibrant multiplier applied after top_character determined
@@ -255,8 +277,10 @@ def test_slow_scholar_threshold_delta():
 def test_night_creature_vibrant_multiplier():
     """nightCreature: vibrant score gets ×1.5 when it is the top character."""
     from main import _score_route_character
-    instruction = {**_all_zero(), "vibrant": 0.6}
-    overpass = {**_all_zero(), "vibrant": 0.7}
+    # Use lower inputs to keep pre-multiplier vibrant score in ~0.4–0.65 range
+    # so the ×1.5 multiplier is observable (not capped at 1.0)
+    instruction = {**_all_zero(), "vibrant": 0.3}
+    overpass = {**_all_zero(), "vibrant": 0.4}
 
     result_night = _score_route_character(
         mode="walk",
@@ -287,8 +311,10 @@ def test_night_creature_vibrant_multiplier():
         distance_km=2.0,
     )
     assert result_night["top_character"] == "vibrant"
-    # nightCreature should have higher (or equal-capped) vibrant score
-    assert result_night["character_scores"]["vibrant"] >= result_generic["character_scores"]["vibrant"]
+    # nightCreature vibrant score should be meaningfully higher (×1.5 multiplier observable)
+    assert result_night["character_scores"]["vibrant"] > result_generic["character_scores"]["vibrant"]
+    # Check for meaningful margin (at least 0.05 difference, allowing for ×1.5 multiplier effect)
+    assert result_night["character_scores"]["vibrant"] - result_generic["character_scores"]["vibrant"] > 0.05
 
 
 def test_night_creature_natural_penalty():
