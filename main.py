@@ -3250,6 +3250,160 @@ def _check_landmark_peeks(
     return seen
 
 
+# Persona archetype → per-dimension adjustments
+# "_threshold_delta" lowers the 0.55 threshold; "_historic_conditional_threshold" means
+# threshold drops further only when historic > 0.4 (used by slowScholar).
+# "_night_vibrant_mult" / "_night_natural_mult" applied on top of condition_multiplier night boost.
+_PERSONA_ADJUSTMENTS: dict[str, dict[str, float]] = {
+    "flaneur":            {"local": 0.20, "_threshold_delta": -0.05},
+    "gastronaut":         {"vibrant": 0.20},
+    "slowScholar":        {"historic": 0.20, "_threshold_delta": -0.05, "_historic_conditional_threshold": -0.05},
+    "neighbourhoodLocal": {"local": 0.25, "vibrant": -0.10},
+    "aesthete":           {"photogenic": 0.20, "viewpoint": 0.15},
+    "nightCreature":      {"_night_vibrant_mult": 1.5, "_night_natural_mult": 0.3},
+    "ritualSeeker":       {"local": 0.15, "vibrant": 0.15},
+    "efficientExplorer":  {},   # efficiency handled via haversine comparison below
+}
+
+
+def _score_route_character(
+    mode: str,
+    instruction_scores: dict[str, float],
+    ors_surface_score: float,
+    overpass_character: dict,
+    road_character: float,
+    elevation_gain_m: float | None,
+    condition_multiplier: float,
+    landmark_peeks: list,
+    persona_snapshot: dict,
+    persona_attractions: list[str],
+    persona_key: str,
+    distance_km: float,
+    haversine_km: float | None = None,   # straight-line origin→dest; used for efficiency penalty
+) -> dict:
+    """Combine all signal sources into final character scores with user preference weighting.
+
+    Three-tier preference matching:
+      1. EngineWeights (persona_snapshot) — primary, multiplicative
+      2. Persona.attractions (onboarding answers) — secondary, additive
+      3. PersonaKey (archetype) — tertiary, per-dimension adjustments
+    """
+    overpass_scores = overpass_character.get("character_scores", {d: 0.0 for d in _DIM_KEYWORDS})
+    elevation_score = min(1.0, (elevation_gain_m or 0) / 500)
+    character_scores: dict[str, float] = {}
+
+    for dim in _DIM_KEYWORDS:
+        if mode == "walk":
+            raw = (
+                overpass_scores.get(dim, 0.0) * 0.45
+                + instruction_scores.get(dim, 0.0) * 0.35
+                + ors_surface_score * 0.20
+            )
+        else:  # drive
+            raw = (
+                overpass_scores.get(dim, 0.0) * 0.40
+                + road_character * 0.35
+                + elevation_score * 0.25
+            )
+        character_scores[dim] = round(min(1.0, raw), 3)
+
+    # Landmark peek bonus on Viewpoint dimension
+    if landmark_peeks:
+        character_scores["viewpoint"] = min(1.0, character_scores.get("viewpoint", 0.0) + 0.25)
+
+    # Named features → path_names
+    path_names = overpass_character.get("named_features", [])
+
+    # ── Tier 1: EngineWeights ──────────────────────────────────────────────────
+    w = persona_snapshot
+    user_weights: dict[str, float] = {
+        "natural":    1 + w.get("w_scenic", 0.5) * 0.6,
+        "viewpoint":  1 + w.get("w_scenic", 0.5) * 0.6,
+        "waterfront": 1 + w.get("w_scenic", 0.5) * 0.6,
+        "vibrant":    1 + w.get("w_nightlife", 0.4) * 0.8 + w.get("w_food_density", 0.4) * 0.5,
+        "historic":   1 + w.get("w_culture_depth", 0.5) * 0.6,
+        "photogenic": 1 + w.get("w_nightlife", 0.4) * 0.5,
+        "local":      1.0,
+    }
+    walk_mult = 1 + w.get("w_walk_affinity", 0.5) * 0.4 if mode == "walk" else 1.0
+    threshold = max(0.3, 0.55 - w.get("w_spontaneity", 0.5) * 0.10)
+
+    # w_efficiency penalty: multiplicative score penalty for very indirect routes
+    # score × (1 - w_efficiency * 0.3) when route_distance_km > haversine_distance_km * 2.0
+    efficiency_score_mult = 1.0
+    if haversine_km is not None and distance_km > haversine_km * 2.0:
+        efficiency_score_mult = max(0.3, 1.0 - w.get("w_efficiency", 0.5) * 0.3)
+
+    # ── Tier 2: attractions ────────────────────────────────────────────────────
+    attraction_boost: dict[str, float] = {}
+    for attr in (persona_attractions or []):
+        if attr == "nature":
+            attraction_boost["natural"]    = attraction_boost.get("natural", 0) + 0.15
+            attraction_boost["waterfront"] = attraction_boost.get("waterfront", 0) + 0.10
+        elif attr == "historic":
+            attraction_boost["historic"]   = attraction_boost.get("historic", 0) + 0.15
+        elif attr == "culture":
+            attraction_boost["historic"]   = attraction_boost.get("historic", 0) + 0.10
+            attraction_boost["photogenic"] = attraction_boost.get("photogenic", 0) + 0.10
+        elif attr == "markets":
+            attraction_boost["vibrant"]    = attraction_boost.get("vibrant", 0) + 0.15
+
+    # ── Tier 3: PersonaKey ────────────────────────────────────────────────────
+    persona_adj = _PERSONA_ADJUSTMENTS.get(persona_key, {})
+    threshold += persona_adj.get("_threshold_delta", 0)
+
+    # Apply all weights to character scores
+    weighted_scores: dict[str, float] = {}
+    for dim in _DIM_KEYWORDS:
+        score = character_scores[dim]
+        score *= user_weights.get(dim, 1.0) * walk_mult * efficiency_score_mult
+        score += attraction_boost.get(dim, 0.0)
+        # Skip private keys (prefixed with "_") from per-dimension additions
+        if not dim.startswith("_"):
+            score += persona_adj.get(dim, 0.0)
+        weighted_scores[dim] = round(min(1.0, score), 3)
+
+    top_character = max(weighted_scores, key=weighted_scores.get)
+    top_score = weighted_scores[top_character]
+
+    # slowScholar: additional threshold reduction when historic scores strongly
+    if persona_key == "slowScholar" and weighted_scores.get("historic", 0) > 0.4:
+        threshold += persona_adj.get("_historic_conditional_threshold", 0)
+
+    # nightCreature: apply persona-specific night multipliers on top of condition_multiplier
+    if persona_key == "nightCreature":
+        if top_character in ("vibrant", "photogenic"):
+            top_score = min(1.0, top_score * persona_adj.get("_night_vibrant_mult", 1.0))
+            weighted_scores[top_character] = top_score
+        elif top_character in ("natural", "waterfront", "local"):
+            top_score = min(1.0, top_score * persona_adj.get("_night_natural_mult", 1.0))
+            weighted_scores[top_character] = top_score
+
+    # Route type
+    if mode == "drive":
+        route_type = "ridge" if elevation_score > 0.4 else "drive"
+    elif top_character == "waterfront":
+        route_type = "coastal"
+    else:
+        route_type = "walk"
+
+    passes = (
+        top_score * condition_multiplier >= threshold
+        and distance_km >= 0.5
+        and condition_multiplier > 0.0
+    )
+
+    return {
+        "character_scores": weighted_scores,
+        "top_character":    top_character,
+        "condition_multiplier": condition_multiplier,
+        "landmark_peeks":   landmark_peeks,
+        "path_names":       path_names,
+        "route_type":       route_type,
+        "passes_threshold": passes,
+    }
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
