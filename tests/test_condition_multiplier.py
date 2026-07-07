@@ -1,74 +1,101 @@
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from datetime import datetime, timezone
+import pytest
 
 
-def _weather(condition="Clear", temp=22):
-    import time
-    sunrise = int(datetime(2026, 7, 6, 5, 0, tzinfo=timezone.utc).timestamp())
-    sunset  = int(datetime(2026, 7, 6, 19, 0, tzinfo=timezone.utc).timestamp())
-    return {"condition": condition, "temp": temp, "sunrise": sunrise, "sunset": sunset}
-
-
-def test_hard_block_thunderstorm():
+def test_sun_mult_golden_hour(monkeypatch):
+    """Sun alt ~10° → sun_mult = 1.2, UV neutral → overall ≈ 1.2."""
     from main import _route_condition_multiplier
-    mult = _route_condition_multiplier(
-        weather=_weather("Thunderstorm"), uv_index=5.0,
-        visit_time=datetime(2026, 7, 6, 14, 0, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="natural",
-    )
-    assert mult == 0.0
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 4.0)
+
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 10.0)
+
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 12, 0, tzinfo=timezone.utc))
+    assert abs(result - 1.2) < 0.01
 
 
-def test_hard_block_heavy_rain():
+def test_sun_mult_twilight(monkeypatch):
+    """Sun alt ~3° → sun_mult = 1.3."""
     from main import _route_condition_multiplier
-    mult = _route_condition_multiplier(
-        weather=_weather("Heavy Rain"), uv_index=2.0,
-        visit_time=datetime(2026, 7, 6, 10, 0, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="natural",
-    )
-    assert mult == 0.0
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 4.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 3.0)
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 4, 0, tzinfo=timezone.utc))
+    assert abs(result - 1.3) < 0.01
 
 
-def test_light_rain_penalty():
+def test_sun_mult_night(monkeypatch):
+    """Sun alt -5° → sun_mult = 0.7."""
     from main import _route_condition_multiplier
-    mult = _route_condition_multiplier(
-        weather=_weather("Rain", temp=18), uv_index=1.0,
-        visit_time=datetime(2026, 7, 6, 11, 0, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="natural",
-    )
-    assert abs(mult - 0.5) < 0.05
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 4.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: -5.0)
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 21, 0, tzinfo=timezone.utc))
+    assert abs(result - 0.7) < 0.01
 
 
-def test_night_vibrant_boost():
+def test_uv_low_pleasant(monkeypatch):
+    """uv=1 → uv_mult=1.1."""
     from main import _route_condition_multiplier
-    # After sunset visit — vibrant/photogenic dimensions get boosted
-    mult = _route_condition_multiplier(
-        weather=_weather("Clear"), uv_index=0.0,
-        visit_time=datetime(2026, 7, 6, 21, 0, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="vibrant",
-    )
-    assert mult > 1.0
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 1.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 30.0)  # golden hour
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 7, 0, tzinfo=timezone.utc))
+    assert abs(result - 1.2 * 1.1) < 0.02
 
 
-def test_night_natural_penalty():
+def test_uv_high_harsh(monkeypatch):
+    """uv=9 → uv_mult=0.85."""
     from main import _route_condition_multiplier
-    # After sunset — natural dimension is penalised
-    mult = _route_condition_multiplier(
-        weather=_weather("Clear"), uv_index=0.0,
-        visit_time=datetime(2026, 7, 6, 21, 0, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="natural",
-    )
-    assert mult < 1.0
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 9.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 50.0)  # peak day
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 12, 0, tzinfo=timezone.utc))
+    assert abs(result - 1.0 * 0.85) < 0.02
 
 
-def test_golden_hour_viewpoint_boost():
+def test_uv_none_neutral(monkeypatch):
+    """uv=None → uv_mult=1.0 (neutral)."""
     from main import _route_condition_multiplier
-    # Sunset is 19:00 UTC. Visit at 18:45 = within ±30 min → golden hour
-    mult = _route_condition_multiplier(
-        weather=_weather("Clear"), uv_index=3.0,
-        visit_time=datetime(2026, 7, 6, 18, 45, tzinfo=timezone.utc),
-        lat=35.7, lon=139.7, overpass_has_canopy=False, top_character="viewpoint",
-    )
-    assert mult > 1.0
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: None)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 10.0)  # golden hour
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 8, 0, tzinfo=timezone.utc))
+    assert abs(result - 1.2) < 0.02
+
+
+def test_clamp_lower_bound(monkeypatch):
+    """Result never goes below 0.5."""
+    from main import _route_condition_multiplier
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 99.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: -30.0)  # deep night
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 2, 0, tzinfo=timezone.utc))
+    assert result >= 0.5  # 0.7 * 0.85 = 0.595 > 0.5
+
+
+def test_clamp_upper_bound(monkeypatch):
+    """Result never exceeds 1.5."""
+    from main import _route_condition_multiplier
+    import main as m
+    monkeypatch.setattr(m, "_fetch_uv_index", lambda lat, lon: 0.0)
+    import pysolar.solar as sol
+    monkeypatch.setattr(sol, "get_altitude", lambda lat, lon, dt: 3.0)   # twilight
+    result = _route_condition_multiplier(35.6, 139.7, datetime(2024, 6, 21, 5, 0, tzinfo=timezone.utc))
+    assert result <= 1.5  # 1.3 * 1.1 = 1.43 ≤ 1.5
+
+
+def test_fetch_uv_index_returns_none_on_failure(monkeypatch):
+    """_fetch_uv_index returns None (not 0.0) when the request fails."""
+    import requests
+    from main import _fetch_uv_index
+    monkeypatch.setattr(requests, "get", lambda *a, **kw: (_ for _ in ()).throw(Exception("fail")))
+    result = _fetch_uv_index(35.6, 139.7)
+    assert result is None
