@@ -56,28 +56,36 @@ def test_score_caps_at_one():
     assert scores["natural"] == 1.0, "Heavy natural content should hit 1.0 cap"
 
 
-def test_ors_surface_score_footway():
+def test_ors_surface_score_missing_extras_returns_neutral():
     from main import _ors_surface_score
-    # waytype 5 = Footway, value per ORS extras format: [[start, end, value], ...]
-    extras = {
-        "waytypes": {"values": [[0, 10, 5], [10, 20, 5]]},   # all footway
-        "surface":  {"values": [[0, 10, 1], [10, 20, 2]]},   # paved + unpaved
-    }
-    score = _ors_surface_score(extras)
-    assert score > 0.5  # footway dominant → high score
+    assert _ors_surface_score({}) == 0.5
+    assert _ors_surface_score({"routes": []}) == 0.5
 
 
-def test_ors_surface_score_motorway():
+def test_ors_surface_score_all_grass():
     from main import _ors_surface_score
-    # waytype 0 = State road (motorway-like), surface 1 = paved
-    extras = {
-        "waytypes": {"values": [[0, 10, 0], [10, 20, 0]]},   # all state road
-        "surface":  {"values": [[0, 10, 1], [10, 20, 1]]},   # all paved
-    }
-    score = _ors_surface_score(extras)
-    assert score < 0.3
+    response = {"routes": [{"extras": {"surface": {"values": [[0, 10, 17]]}}}]}
+    score = _ors_surface_score(response)
+    assert abs(score - 1.0) < 0.01  # grass = 1.0
 
 
-def test_ors_surface_score_empty():
+def test_ors_surface_score_all_asphalt():
     from main import _ors_surface_score
-    assert _ors_surface_score({}) == 0.0
+    response = {"routes": [{"extras": {"surface": {"values": [[0, 10, 3]]}}}]}
+    score = _ors_surface_score(response)
+    assert abs(score - 0.2) < 0.01  # asphalt = 0.2
+
+
+def test_ors_surface_score_weighted_mix():
+    from main import _ors_surface_score
+    # 5 units asphalt (0.2) + 5 units grass (1.0) = 0.6 average
+    response = {"routes": [{"extras": {"surface": {"values": [[0, 5, 3], [5, 10, 17]]}}}]}
+    score = _ors_surface_score(response)
+    assert abs(score - 0.6) < 0.01
+
+
+def test_ors_surface_score_unknown_is_neutral():
+    from main import _ors_surface_score
+    response = {"routes": [{"extras": {"surface": {"values": [[0, 10, 0]]}}}]}
+    score = _ors_surface_score(response)
+    assert abs(score - 0.5) < 0.01  # unknown = 0.5
