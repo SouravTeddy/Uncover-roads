@@ -3426,6 +3426,184 @@ def _score_route_character(
     }
 
 
+# Character dimension → accent colours for scenic cards
+_CHARACTER_LABELS: dict[str, str] = {
+    "natural":    "{path_name} walk",
+    "viewpoint":  "Catch {landmark} from here",
+    "historic":   "{path_name} heritage walk",
+    "vibrant":    "{path_name} strip",
+    "photogenic": "Street art corridor",
+    "waterfront": "Along the {path_name}",
+    "local":      "Through {neighbourhood}",
+}
+
+
+def _generate_scenic_card_for_corridor(
+    origin: dict,
+    dest: dict,
+    route_profile: dict,
+    visit_time,
+    persona_snapshot: dict,
+    persona_attractions: list,
+    persona_key: str,
+    weather: dict,
+    city_landmarks: list,
+) -> dict | None:
+    """Generate a ReelScenicCard dict for the corridor, or None if threshold not met.
+
+    Assumes Phase 1 scheduling is complete (visit_time is authoritative).
+    Hard blocks: distance < 0.5 km; road_character < 0.4 on routes > 1 km.
+    """
+    distance_km = route_profile.get("distance_km") or 0
+    road_character = route_profile.get("road_character") or 0
+
+    # Hard block: distance < 0.5 km
+    if distance_km < 0.5:
+        return None
+
+    # Hard block: predominantly motorway (road_character < 0.4 on longer routes)
+    if road_character < 0.4 and distance_km > 1.0:
+        return None
+
+    # Mode heuristic
+    mode = "walk" if distance_km < 5 else "drive"
+
+    # Straight-line haversine for efficiency penalty
+    _orig_lat = origin.get("lat") or 0.0
+    _orig_lon = origin.get("lon") or 0.0
+    _dest_lat = dest.get("lat") or 0.0
+    _dest_lon = dest.get("lon") or 0.0
+
+    def _hav_km(la1: float, lo1: float, la2: float, lo2: float) -> float:
+        R = 6371
+        dlat = math.radians(la2 - la1)
+        dlon = math.radians(lo2 - lo1)
+        a = (math.sin(dlat / 2) ** 2
+             + math.cos(math.radians(la1)) * math.cos(math.radians(la2)) * math.sin(dlon / 2) ** 2)
+        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    haversine_km: float | None = (
+        _hav_km(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
+        if (_orig_lat and _dest_lat) else None
+    )
+
+    # Corridor midpoint
+    mid_lat = (_orig_lat + _dest_lat) / 2
+    mid_lon = (_orig_lon + _dest_lon) / 2
+
+    # Condition multiplier (always fresh — not cached)
+    _vt = visit_time or __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    condition_multiplier = _route_condition_multiplier(mid_lat, mid_lon, _vt)
+    if condition_multiplier == 0.0:
+        return None
+
+    # Retrieve character scores from route profile cache if available
+    cached_chars = route_profile.get("character_scores")
+    instruction_scores: dict[str, float] = {d: 0.0 for d in _DIM_KEYWORDS}
+    ors_surface_score = 0.0
+    overpass_character: dict = {
+        "character_scores": {d: 0.0 for d in _DIM_KEYWORDS},
+        "named_features": [],
+        "viewpoints": [],
+    }
+    landmark_peeks: list = route_profile.get("landmark_peeks") or []
+    path_names: list = route_profile.get("path_names") or []
+
+    if cached_chars:
+        overpass_character["character_scores"] = cached_chars
+
+    scoring = _score_route_character(
+        mode=mode,
+        instruction_scores=instruction_scores,
+        ors_surface_score=ors_surface_score,
+        overpass_character=overpass_character,
+        road_character=road_character,
+        elevation_gain_m=route_profile.get("elevation_gain_m"),
+        condition_multiplier=condition_multiplier,
+        landmark_peeks=landmark_peeks,
+        persona_snapshot=persona_snapshot,
+        persona_attractions=persona_attractions,
+        persona_key=persona_key,
+        distance_km=distance_km,
+        haversine_km=haversine_km,
+    )
+
+    if not scoring["passes_threshold"]:
+        return None
+
+    top_char = scoring["top_character"]
+
+    # Build route label
+    first_path = (path_names[0] if path_names else None) or dest.get("title", "this route")
+    first_landmark = landmark_peeks[0]["landmark"] if (landmark_peeks and isinstance(landmark_peeks[0], dict)) else None
+
+    if top_char == "viewpoint" and first_landmark:
+        route_label = f"Catch {first_landmark} from here"
+    elif top_char == "waterfront":
+        route_label = f"Along the {first_path}"
+    elif first_path:
+        route_label = f"{first_path} {mode}"
+    else:
+        route_label = f"{top_char.capitalize()} {mode}"
+
+    # Accent colour per dimension
+    accent_map = {
+        "natural": "#6b9470", "viewpoint": "#4f8fab", "historic": "#8b7355",
+        "vibrant": "#c87941", "photogenic": "#9b6b9e", "waterfront": "#4f8fab", "local": "#a08d80",
+    }
+    accent = accent_map.get(top_char, "#6b9470")
+
+    # Condition note (UV / heat advisory)
+    condition_note: str | None = None
+    temp = (weather or {}).get("temp") or 20
+    uv_index = _fetch_uv_index(mid_lat, mid_lon) or 0.0
+    has_canopy = "natural" in [d for d, s in scoring["character_scores"].items() if s > 0.4]
+    if temp > 32 and uv_index > 7:
+        condition_note = (
+            "High UV today — this route has shade cover." if has_canopy
+            else "High UV today — consider sun protection."
+        )
+
+    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}."
+
+    return {
+        "type": "scenic",
+        "sceneType": scoring["route_type"],
+        "accent": accent,
+        "cardType": f"{mode.upper()} · {top_char.upper()}",
+        "pos": 0,     # set by caller
+        "total": 0,   # set by caller
+        "timing": "",
+        "metaRight": f"{distance_km} km",
+        "place": first_path,
+        "from": origin.get("title", ""),
+        "to": dest.get("title", ""),
+        "modeIcon": "walk" if mode == "walk" else "car",
+        "tag": top_char.capitalize(),
+        "vizType": "corridor",
+        "persona": persona_key,
+        "personaDisplay": persona_key,
+        "personaIcon": "walk",
+        "why": why,
+        "sensory": "",
+        "sensoryIcon": "waves",
+        "reelPos": f"Between {origin.get('title', '')} and {dest.get('title', '')}",
+        "photoUrl": None,
+        "detourKm": round(distance_km, 1),
+        "detourMin": route_profile.get("duration_min") or 0,
+        "transitInfo": None,
+        "routeLabel": route_label,
+        "conditionNote": condition_note,
+        "characterDimensions": [d for d, s in scoring["character_scores"].items() if s > 0.4],
+        "landmarkPeek": landmark_peeks[0] if landmark_peeks else None,
+        "topCharacter": top_char,
+        "conditionMultiplier": condition_multiplier,
+        "fromStop": origin.get("title", ""),
+        "toStop": dest.get("title", ""),
+        "distanceKm": round(distance_km, 2),
+    }
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
@@ -5009,6 +5187,21 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             _stop_order_msg[sid] = m
 
 
+    # Build persona_snapshot here so it's available inside the days loop for scenic card insertion
+    weights = persona.get("weights", {})
+    persona_snapshot = {
+        "w_walk_affinity":      weights.get("w_walk_affinity", 0.5),
+        "w_scenic":             weights.get("w_scenic", 0.5),
+        "w_efficiency":         weights.get("w_efficiency", 0.5),
+        "w_food_density":       weights.get("w_food_density", 0.5),
+        "w_culture_depth":      weights.get("w_culture_depth", 0.5),
+        "w_nightlife":          weights.get("w_nightlife", 0.4),
+        "w_budget_sensitivity": weights.get("w_budget_sensitivity", 0.4),
+        "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
+        "w_spontaneity":        weights.get("w_spontaneity", 0.5),
+        "w_rest_need":          weights.get("w_rest_need", 0.4),
+    }
+
     # Assign messages to days based on stop_id match; day-level (stop_id=None) go to day 1
     is_first_non_travel_day = True
     days_out = []
@@ -5097,6 +5290,51 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "isEngineAdded": not s.is_user_added,
             })
 
+        # Insert scenic cards between consecutive stop pairs (Phase 2 enrichment)
+        scenic_pos = 0
+        enriched_stops_out: list[dict] = []
+        for _i, _s in enumerate(stops_out):
+            enriched_stops_out.append(_s)
+            if _i < len(stops_out) - 1:
+                _next_s = stops_out[_i + 1]
+                _orig_lat = _s.get("lat")
+                _orig_lon = _s.get("lon")
+                _dest_lat = _next_s.get("lat")
+                _dest_lon = _next_s.get("lon")
+                if all(v is not None for v in [_orig_lat, _orig_lon, _dest_lat, _dest_lon]):
+                    try:
+                        _rp = _fetch_route_profile(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
+                        _visit_time = None
+                        try:
+                            from datetime import date as _date
+                            _visit_date_str = day.date if (day.date and day.date != "unknown") else _date.today().isoformat()
+                            _time_str = _s.get("time", "09:00")
+                            _visit_time = datetime.fromisoformat(f"{_visit_date_str}T{_time_str}:00+00:00")
+                        except Exception:
+                            pass
+                        _scenic = _generate_scenic_card_for_corridor(
+                            origin=_s,
+                            dest=_next_s,
+                            route_profile=_rp,
+                            visit_time=_visit_time,
+                            persona_snapshot=persona_snapshot,
+                            persona_attractions=list(persona.get("attractions") or []),
+                            persona_key=persona.get("archetype", ""),
+                            weather=getattr(ctx, "weather_map", {}).get(day_city) or {},
+                            city_landmarks=getattr(city_data, "landmark_anchors", []),
+                        )
+                        if _scenic:
+                            scenic_pos += 1
+                            _scenic["pos"] = scenic_pos
+                            enriched_stops_out.append(_scenic)
+                    except Exception as _e:
+                        print(f"SCENIC CARD ERROR: {_e}")
+        # Stamp total count on all scenic cards now that we know the final count
+        for _card in enriched_stops_out:
+            if _card.get("type") == "scenic":
+                _card["total"] = scenic_pos
+        stops_out = enriched_stops_out
+
         _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
         days_out.append({
             "day": i + 1,
@@ -5107,20 +5345,6 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             "messages": day_messages,
             "walkBaseKm": _day_city_data.movement.get("walk_base_km", 2.0),
         })
-
-    weights = persona.get("weights", {})
-    persona_snapshot = {
-        "w_walk_affinity":      weights.get("w_walk_affinity", 0.5),
-        "w_scenic":             weights.get("w_scenic", 0.5),
-        "w_efficiency":         weights.get("w_efficiency", 0.5),
-        "w_food_density":       weights.get("w_food_density", 0.5),
-        "w_culture_depth":      weights.get("w_culture_depth", 0.5),
-        "w_nightlife":          weights.get("w_nightlife", 0.4),
-        "w_budget_sensitivity": weights.get("w_budget_sensitivity", 0.4),
-        "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
-        "w_spontaneity":        weights.get("w_spontaneity", 0.5),
-        "w_rest_need":          weights.get("w_rest_need", 0.4),
-    }
 
     # Re-order days to match body.cities order (TSP may cluster Melbourne before Sydney)
     if body.cities and len(body.cities) > 1:
