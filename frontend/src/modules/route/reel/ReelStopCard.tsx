@@ -717,7 +717,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
 
             {/* Provenance label */}
             {stop.isUserAdded && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(232,160,48,.72)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(212,168,83,.72)' }}>
                 <span className="ms" style={{ fontSize: 14 }}>bookmark</span>
                 You added this
               </div>
@@ -808,6 +808,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {/* ── Group 2: At this stop ───────────────────────── */}
             <div data-group="at-this-stop" style={grpSep}>
               <div style={grpLabel()}>At this stop</div>
+              {/* crowdNote with hyphen stripping added in Task 4 */}
               {crowdRow && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
                   <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
