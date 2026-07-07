@@ -1023,7 +1023,10 @@ def _route_condition_multiplier(lat: float, lon: float, visit_time: datetime) ->
         sun_mult = 0.7   # night penalty
 
     # UV index → multiplier
-    uv = _fetch_uv_index(lat, lon)
+    try:
+        uv = _fetch_uv_index(lat, lon)
+    except Exception:
+        uv = None
     if uv is None:
         uv_mult = 1.0    # unknown — neutral
     elif uv <= 3:
