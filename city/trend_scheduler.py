@@ -111,7 +111,6 @@ def start_trend_scheduler(
     scheduler.add_job(
         refresh_all_cities,
         "cron",
-        day_of_week="sun",
         hour=3,
         kwargs={
             "supabase": supabase,
@@ -123,4 +122,4 @@ def start_trend_scheduler(
         id="trend_velocity_refresh",
         replace_existing=True,
     )
-    logger.info("Trend Velocity Scheduler registered (weekly Sunday 03:00 UTC)")
+    logger.info("Trend Velocity Scheduler registered (daily 03:00 UTC)")
