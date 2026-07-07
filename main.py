@@ -2967,6 +2967,44 @@ def _extract_walk_route_points(steps: list) -> list[tuple[float, float]]:
     return _sample_linestring(all_coords, n=20)
 
 
+_DIM_KEYWORDS: dict[str, list[str]] = {
+    "natural":    ["canal", "riverside", "waterfront", "park", "garden", "trail", "forest",
+                   "woods", "promenade", "esplanade", "lakeside", "greenway"],
+    "viewpoint":  ["viewpoint", "overlook", "observatory", "panorama", "deck", "rooftop", "observation"],
+    "historic":   ["temple", "shrine", "palace", "castle", "heritage", "old town", "historic",
+                   "cathedral", "monastery", "ancient", "ruins"],
+    "vibrant":    ["market", "bazaar", "street food", "shopping", "arcade", "strip",
+                   "nightlife", "bar street", "food hall"],
+    "photogenic": ["mural", "street art", "gallery", "mosaic", "sculpture", "installation"],
+    "waterfront": ["harbour", "harbor", "port", "pier", "seafront", "bay", "beach",
+                   "embankment", "quay", "boardwalk"],
+    "local":      ["lane", "alley", "neighbourhood", "neighborhood", "backstreet", "residential", "passage"],
+}
+
+def _score_instructions_by_dimension(steps: list) -> dict[str, float]:
+    """Score Google Directions walking steps against 7 character dimensions.
+
+    Each keyword match in html_instructions is weighted by step distance so
+    longer steps carry proportionally more signal. Returns 0–1 per dimension.
+    """
+    import re
+    scores: dict[str, float] = {dim: 0.0 for dim in _DIM_KEYWORDS}
+    total_dist = sum(s.get("distance", {}).get("value", 0) for s in steps) or 1
+
+    for step in steps:
+        html = step.get("html_instructions", "")
+        text = re.sub(r"<[^>]+>", " ", html).lower()
+        dist_weight = step.get("distance", {}).get("value", 0) / total_dist
+
+        for dim, keywords in _DIM_KEYWORDS.items():
+            for kw in keywords:
+                if kw in text:
+                    scores[dim] = min(1.0, scores[dim] + dist_weight * 2.0)
+                    break  # one match per step per dimension is enough
+
+    return scores
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
