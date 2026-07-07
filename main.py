@@ -989,6 +989,100 @@ def _sample_linestring(coords: list[list[float]], n: int = 20) -> list[tuple[flo
     return [(coords[round(i * step)][1], coords[round(i * step)][0]) for i in range(n)]
 
 
+def _fetch_uv_index(lat: float, lon: float, visit_time) -> float:
+    """Fetch current UV index from Open-Meteo for a single coordinate at visit_time hour."""
+    try:
+        hour = visit_time.hour if hasattr(visit_time, "hour") else 12
+        resp = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "hourly": "uv_index",
+                "forecast_days": 1,
+                "timezone": "UTC",
+            },
+            timeout=8,
+        ).json()
+        uv_values = resp.get("hourly", {}).get("uv_index", [])
+        if uv_values and hour < len(uv_values):
+            return float(uv_values[hour] or 0)
+        return 0.0
+    except Exception:
+        return 0.0
+
+
+def _route_condition_multiplier(
+    weather: dict,
+    uv_index: float,
+    visit_time,
+    lat: float,
+    lon: float,
+    overpass_has_canopy: bool,
+    top_character: str,
+) -> float:
+    """Compute a real-time multiplier for the scenic route score based on conditions.
+
+    Returns 0.0 for hard blocks. Returns 0.3–1.3 for soft modifiers.
+    Never cached — always computed from Phase 1 visit_time.
+    """
+    condition = (weather.get("condition") or "").strip()
+
+    # Hard blocks — card never shown
+    if condition in ("Thunderstorm", "Heavy Rain"):
+        return 0.0
+
+    mult = 1.0
+    temp = weather.get("temp") or 20
+    sunset_ts = weather.get("sunset")
+    sunrise_ts = weather.get("sunrise")
+
+    try:
+        visit_ts = visit_time.timestamp()
+    except Exception:
+        visit_ts = None
+
+    # ── Darkness / golden-hour detection ─────────────────────────────────────
+    # Weather-provided sunrise/sunset timestamps are the primary authority.
+    # Pysolar is used only as a fallback when those timestamps are unavailable.
+    if sunset_ts and sunrise_ts and visit_ts:
+        is_night = visit_ts > sunset_ts + 1800
+        is_dawn = visit_ts < sunrise_ts - 1800
+        is_dark = bool(is_night or is_dawn)
+        is_golden_hour = abs(visit_ts - sunset_ts) <= 1800 and not is_dark
+    else:
+        # Fallback: derive from pysolar sun elevation
+        sun_elevation = None
+        try:
+            from pysolar.solar import get_altitude  # noqa: F401
+            sun_elevation = get_altitude(lat, lon, visit_time)
+        except Exception:
+            pass
+        is_dark = sun_elevation is not None and sun_elevation < -4
+        is_golden_hour = sun_elevation is not None and -4 <= sun_elevation <= 6
+
+    # ── Soft multipliers ──────────────────────────────────────────────────────
+    if condition in ("Rain", "Drizzle"):
+        mult *= 0.5
+
+    if temp > 32 and uv_index > 7:
+        if overpass_has_canopy:
+            mult *= 0.9
+        else:
+            mult *= 0.4
+
+    if is_dark:
+        if top_character in ("vibrant", "photogenic"):
+            mult *= 1.2
+        elif top_character in ("natural", "local", "waterfront"):
+            mult *= 0.4
+
+    if is_golden_hour and top_character == "viewpoint":
+        mult *= 1.3
+
+    return round(min(1.3, max(0.0, mult)), 3)
+
+
 def _fetch_elevations(points: list[tuple[float, float]]) -> list[int | None]:
     """Batch-query Open-Meteo for elevation at a list of (lat, lon) pairs."""
     if not points:
