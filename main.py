@@ -9,7 +9,13 @@ import time
 import os
 import json
 import uuid
+import logging
 import anthropic
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 from collections import defaultdict
 from time import time as _time
 from dotenv import load_dotenv
@@ -185,10 +191,11 @@ async def seed_cities_and_start_sync():
                     _supabase.table("city_data").insert({"id": city_id, "data": seed}).execute()
         except Exception as exc:
             print(f"[startup] Failed to seed {city_id}: {exc}")
-    # Start weekly City Intelligence Sync
+    # Start City Intelligence Sync
     google_key = os.environ.get("GOOGLE_PLACES_API_KEY")
     _start_sync_scheduler(_supabase, google_key)
-    # Start weekly Trend Velocity Refresh (Sunday 03:00 UTC)
+    print("[startup] City Intelligence Sync scheduler registered (weekly Sunday 02:00 UTC)")
+    # Start daily Trend Velocity Refresh (03:00 UTC)
     _start_trend_scheduler(
         _supabase,
         youtube_key=YOUTUBE_API_KEY,
@@ -196,6 +203,8 @@ async def seed_cities_and_start_sync():
         reddit_client_id=REDDIT_CLIENT_ID,
         reddit_client_secret=REDDIT_CLIENT_SECRET,
     )
+    yt_status = "YES" if YOUTUBE_API_KEY else "NO KEY SET"
+    print(f"[startup] Trend Velocity Scheduler registered (daily 03:00 UTC) — YouTube: {yt_status}")
 
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
