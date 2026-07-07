@@ -134,27 +134,48 @@ def test_fetch_route_character_scores_capped_at_one(monkeypatch):
 
 def test_bearing_north():
     from main import _bearing
-    # Point A at (0,0), Point B directly north at (1,0) → bearing should be ~0° (north)
-    b = _bearing(0.0, 0.0, 1.0, 0.0)
+    b = _bearing(0.0, 0.0, 1.0, 0.0)  # due north
     assert abs(b - 0.0) < 1.0 or abs(b - 360.0) < 1.0
-
 
 def test_bearing_east():
     from main import _bearing
-    # Point A at (0,0), Point B directly east at (0,1) → bearing should be ~90°
-    b = _bearing(0.0, 0.0, 0.0, 1.0)
+    b = _bearing(0.0, 0.0, 0.0, 1.0)  # due east
     assert abs(b - 90.0) < 1.0
 
+def test_resolve_landmark_coords_valid():
+    from main import _resolve_landmark_coords
+    assert _resolve_landmark_coords({"lat": 1.0, "lon": 2.0}) == (1.0, 2.0)
 
-def test_landmark_peek_matches_when_viewpoint_faces_landmark():
+def test_resolve_landmark_coords_missing():
+    from main import _resolve_landmark_coords
+    assert _resolve_landmark_coords({"lat": 1.0}) is None
+    assert _resolve_landmark_coords({}) is None
+
+def test_landmark_peek_directly_ahead():
     from main import _check_landmark_peeks
-    # Route point at (35.70, 139.70), viewpoint at (35.70, 139.705) — 500m east
-    # Landmark (Mt Fuji approx) at (35.36, 138.73) — bearing from viewpoint ~west
-    points = [(35.70, 139.70)]
-    viewpoints = [{"lat": 35.70, "lon": 139.705, "name": "Test viewpoint", "direction": "270"}]  # faces west
-    # Fake the landmark coord lookup by passing pre-resolved coords
-    # _check_landmark_peeks signature: (points, viewpoints, landmark_coords)
-    # landmark_coords is dict of {name: (lat, lon)}
-    landmark_coords = {"Mount Fuji": (35.36, 138.73)}
-    peeks = _check_landmark_peeks(points, viewpoints, landmark_coords)
-    assert isinstance(peeks, list)
+    # Route goes north (0, 0) → (1, 0); landmark also at (2, 0) — directly ahead
+    route = [(0.0, 0.0), (1.0, 0.0)]
+    landmarks = [{"name": "Tower", "lat": 2.0, "lon": 0.0}]
+    result = _check_landmark_peeks(route, landmarks)
+    assert "Tower" in result
+
+def test_landmark_peek_to_the_side_not_detected():
+    from main import _check_landmark_peeks
+    # Route goes north (0,0)→(1,0); landmark is due east at (0.5, 10.0) — ~90° off
+    route = [(0.0, 0.0), (1.0, 0.0)]
+    landmarks = [{"name": "SideBuilding", "lat": 0.5, "lon": 10.0}]
+    result = _check_landmark_peeks(route, landmarks)
+    assert "SideBuilding" not in result
+
+def test_landmark_peek_empty_inputs():
+    from main import _check_landmark_peeks
+    assert _check_landmark_peeks([], [{"name": "X", "lat": 1.0, "lon": 1.0}]) == []
+    assert _check_landmark_peeks([(0.0, 0.0), (1.0, 0.0)], []) == []
+
+def test_landmark_peek_max_3():
+    from main import _check_landmark_peeks
+    # 5 landmarks all directly ahead — should return at most 3
+    route = [(0.0, 0.0), (1.0, 0.0)]
+    landmarks = [{"name": f"L{i}", "lat": float(i+2), "lon": 0.0} for i in range(5)]
+    result = _check_landmark_peeks(route, landmarks)
+    assert len(result) <= 3
