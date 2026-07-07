@@ -3130,6 +3130,88 @@ out tags;"""
     return {d: min(1.0, dim_counts[d] / threshold) for d in dim_counts}
 
 
+def _bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Compute compass bearing (0–360°) from point 1 to point 2."""
+    dlon = math.radians(lon2 - lon1)
+    lat1r = math.radians(lat1)
+    lat2r = math.radians(lat2)
+    x = math.sin(dlon) * math.cos(lat2r)
+    y = math.cos(lat1r) * math.sin(lat2r) - math.sin(lat1r) * math.cos(lat2r) * math.cos(dlon)
+    bearing = math.degrees(math.atan2(x, y))
+    return (bearing + 360) % 360
+
+
+def _resolve_landmark_coords(city_landmarks: list[str], supabase_client) -> dict[str, tuple[float, float]]:
+    """Look up lat/lon for each landmark name from map_data_cache or place_id_cache."""
+    coords: dict[str, tuple[float, float]] = {}
+    if not supabase_client:
+        return coords
+    for name in city_landmarks:
+        try:
+            row = supabase_client.table("map_data_cache").select("lat,lon").eq("name", name).limit(1).execute()
+            if row.data:
+                coords[name] = (row.data[0]["lat"], row.data[0]["lon"])
+        except Exception:
+            pass
+    return coords
+
+
+def _check_landmark_peeks(
+    points: list[tuple[float, float]],
+    viewpoints: list[dict],
+    landmark_coords: dict[str, tuple[float, float]],
+) -> list[dict]:
+    """Check if any viewpoint along the route faces a known city landmark.
+
+    A match: viewpoint within 500m of a route point, and viewpoint's direction tag
+    within ±45° of the bearing toward the landmark. If no direction tag, proximity
+    within 500m is sufficient.
+    """
+    peeks: list[dict] = []
+
+    def _haversine_m(lat1, lon1, lat2, lon2) -> float:
+        R = 6371000
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    for vp in viewpoints:
+        vp_lat, vp_lon = vp.get("lat"), vp.get("lon")
+        if vp_lat is None or vp_lon is None:
+            continue
+        # Check proximity to any route point
+        close_point = None
+        for pt in points:
+            if _haversine_m(pt[0], pt[1], vp_lat, vp_lon) <= 500:
+                close_point = pt
+                break
+        if close_point is None:
+            continue
+
+        for landmark_name, (lm_lat, lm_lon) in landmark_coords.items():
+            bearing_to_landmark = _bearing(vp_lat, vp_lon, lm_lat, lm_lon)
+            vp_direction = vp.get("direction")
+
+            if vp_direction is not None:
+                try:
+                    dir_deg = float(str(vp_direction).split(";")[0].strip())
+                    diff = abs((bearing_to_landmark - dir_deg + 180) % 360 - 180)
+                    if diff > 45:
+                        continue
+                except (ValueError, TypeError):
+                    pass  # no valid direction tag — fall through to proximity-only match
+
+            peeks.append({
+                "landmark": landmark_name,
+                "at_coords": close_point,
+                "bearing_deg": int(bearing_to_landmark),
+                "viewpoint_name": vp.get("name", ""),
+            })
+
+    return peeks
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 

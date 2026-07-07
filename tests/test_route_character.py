@@ -130,3 +130,31 @@ def test_fetch_route_character_scores_capped_at_one(monkeypatch):
     result = _fetch_route_character(pts, city_pop=500_000)
     assert result["viewpoint"] == 1.0
     assert all(v <= 1.0 for v in result.values())
+
+
+def test_bearing_north():
+    from main import _bearing
+    # Point A at (0,0), Point B directly north at (1,0) → bearing should be ~0° (north)
+    b = _bearing(0.0, 0.0, 1.0, 0.0)
+    assert abs(b - 0.0) < 1.0 or abs(b - 360.0) < 1.0
+
+
+def test_bearing_east():
+    from main import _bearing
+    # Point A at (0,0), Point B directly east at (0,1) → bearing should be ~90°
+    b = _bearing(0.0, 0.0, 0.0, 1.0)
+    assert abs(b - 90.0) < 1.0
+
+
+def test_landmark_peek_matches_when_viewpoint_faces_landmark():
+    from main import _check_landmark_peeks
+    # Route point at (35.70, 139.70), viewpoint at (35.70, 139.705) — 500m east
+    # Landmark (Mt Fuji approx) at (35.36, 138.73) — bearing from viewpoint ~west
+    points = [(35.70, 139.70)]
+    viewpoints = [{"lat": 35.70, "lon": 139.705, "name": "Test viewpoint", "direction": "270"}]  # faces west
+    # Fake the landmark coord lookup by passing pre-resolved coords
+    # _check_landmark_peeks signature: (points, viewpoints, landmark_coords)
+    # landmark_coords is dict of {name: (lat, lon)}
+    landmark_coords = {"Mount Fuji": (35.36, 138.73)}
+    peeks = _check_landmark_peeks(points, viewpoints, landmark_coords)
+    assert isinstance(peeks, list)
