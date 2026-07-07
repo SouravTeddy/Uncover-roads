@@ -937,6 +937,21 @@ export function buildReelCards(
         nextLeg = { distKm: Math.round(distKm * 10) / 10, durationMin, mode: isWalk ? 'walk' : 'ride', nextStopTitle: nextStop.title };
       }
 
+      // Previous stop — needed for transit lazy-fetch and detourKm
+      const prevStop = si > 0 ? sortedStops[si - 1] : null;
+
+      // detourKm: extra distance when engine inserted this stop vs. going direct prev→next
+      let detourKm: number | null = null;
+      if (stop.isEngineAdded && prevStop && nextStop
+          && stop.lat != null && stop.lon != null
+          && prevStop.lat != null && prevStop.lon != null
+          && nextStop.lat != null && nextStop.lon != null) {
+        const directKm = haversineKm(prevStop.lat, prevStop.lon, nextStop.lat, nextStop.lon);
+        const viaKm = haversineKm(prevStop.lat, prevStop.lon, stop.lat, stop.lon)
+                    + haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
+        detourKm = Math.max(0, Math.round((viaKm - directKm) * 10) / 10);
+      }
+
       const stopCard: ReelStopCard = {
         type: 'stop',
         stop: effectiveStop,
@@ -956,6 +971,11 @@ export function buildReelCards(
           consequenceNote: adj.consequenceNote,
           isClosingConflict: adj.isClosingConflict,
         } : null,
+        prevStopLat: prevStop?.lat ?? null,
+        prevStopLon: prevStop?.lon ?? null,
+        prevStopTitle: prevStop?.title ?? null,
+        detourKm,
+        transitInfo: null,
       };
       // Hotel anchor row
       const cityName = day.city || (itinerary.cities?.[dayIdx] ?? '');

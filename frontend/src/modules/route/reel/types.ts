@@ -107,6 +107,11 @@ export interface ReelStopCard {
   } | null;
   arrivalNote?: string | null;    // shown on Day 1 first stop: "Arriving this evening"
   departureNote?: string | null;  // shown on last-day stops: "Departure day · morning"
+  prevStopLat?: number | null;   // previous stop lat — used by component to fetch TransitInfo
+  prevStopLon?: number | null;   // previous stop lon
+  prevStopTitle?: string | null; // previous stop display name
+  detourKm?: number | null;      // extra km vs direct route, for engine-added stops only
+  transitInfo?: TransitInfo | null; // lazy-fetched full TransitInfo; null until component fetches it
   hotelAnchor?: {
     text: string;
     isWarning: boolean;
