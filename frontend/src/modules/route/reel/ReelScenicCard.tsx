@@ -573,7 +573,7 @@ export default function ReelScenicCard({ card }: Props) {
 
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
             <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>visibility</span>
             <span>
               {card.landmarkPeek.slice(0, 2).map((lm, i) => (
