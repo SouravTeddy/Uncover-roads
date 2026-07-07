@@ -989,6 +989,56 @@ def _sample_linestring(coords: list[list[float]], n: int = 20) -> list[tuple[flo
     return [(coords[round(i * step)][1], coords[round(i * step)][0]) for i in range(n)]
 
 
+def _fetch_uv_index(lat: float, lon: float) -> float | None:
+    """Fetch current UV index. Returns None on any failure."""
+    try:
+        resp = requests.get(
+            "https://currentuvindex.com/api/v1/uvi",
+            params={"lat": lat, "lng": lon},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        return float(resp.json()["now"]["uvi"])
+    except Exception:
+        return None
+
+
+def _route_condition_multiplier(lat: float, lon: float, visit_time: datetime) -> float:
+    """Compute a real-time condition multiplier [0.5, 1.5] for scenic scoring.
+
+    Uses pysolar for sun altitude (primary) and UV index for comfort.
+    NEVER cached — always computed fresh.
+    """
+    from pysolar.solar import get_altitude
+
+    # Sun altitude → multiplier
+    sun_alt = get_altitude(lat, lon, visit_time)
+    if sun_alt >= 45:
+        sun_mult = 1.0   # peak day
+    elif sun_alt >= 6:
+        sun_mult = 1.2   # golden hour
+    elif sun_alt >= 0:
+        sun_mult = 1.3   # civil twilight — highest scenic boost
+    else:
+        sun_mult = 0.7   # night penalty
+
+    # UV index → multiplier
+    try:
+        uv = _fetch_uv_index(lat, lon)
+    except Exception:
+        uv = None
+    if uv is None:
+        uv_mult = 1.0    # unknown — neutral
+    elif uv <= 3:
+        uv_mult = 1.1    # pleasant
+    elif uv <= 6:
+        uv_mult = 1.0    # neutral
+    else:
+        uv_mult = 0.85   # harsh
+
+    return max(0.5, min(1.5, sun_mult * uv_mult))
+
+
 def _fetch_elevations(points: list[tuple[float, float]]) -> list[int | None]:
     """Batch-query Open-Meteo for elevation at a list of (lat, lon) pairs."""
     if not points:
@@ -1061,6 +1111,8 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                     return {k: r.get(k) for k in (
                         "distance_km", "duration_min", "elevation_gain_m", "elevation_loss_m",
                         "peak_elevation_m", "road_character", "sample_elevations",
+                        "character_scores", "top_character", "path_names",
+                        "landmark_peeks", "route_type",
                     )}
         except Exception as e:
             print(f"ROUTE PROFILE CACHE READ: {e}")
@@ -1070,6 +1122,8 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         "elevation_gain_m": None, "elevation_loss_m": None,
         "peak_elevation_m": None, "road_character": None,
         "sample_elevations": None,
+        "character_scores": None, "top_character": None, "path_names": None,
+        "landmark_peeks": None, "route_type": None,
     }
 
     route_json = None
@@ -1084,6 +1138,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                     "coordinates": [[olon, olat], [dlon, dlat]],
                     "format": "geojson",
                     "instructions": True,
+                    "extra_info": ["surface", "waytypes", "suitability"],
                 },
                 timeout=15,
             ).json()
@@ -1091,6 +1146,10 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                 feat    = ors_resp["features"][0]
                 props   = feat["properties"]
                 summary = props.get("summary", {})
+                # Store full ORS response for _ors_surface_score
+                ors_response_full = {
+                    "routes": [{"extras": props.get("extras", {})}]
+                }
                 route_json = {
                     "distance_km":  round(summary.get("distance", 0) / 1000, 1),
                     "duration_min": max(1, round(summary.get("duration", 0) / 60)),
@@ -1099,6 +1158,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
                         s for seg in props.get("segments", [])
                         for s in seg.get("steps", [])
                     ],
+                    "ors_response": ors_response_full,
                 }
         except Exception as e:
             print(f"ROUTE PROFILE ORS: {e}")
@@ -1130,6 +1190,7 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
         result["distance_km"]  = route_json["distance_km"]
         result["duration_min"] = route_json["duration_min"]
         result["road_character"] = _road_character_score(route_json["steps"])
+        result["ors_surface_score"] = _ors_surface_score(route_json.get("ors_response", {}))
 
         sample_pts = _sample_linestring(route_json["geom_coords"], n=20)
         elevations = _fetch_elevations(sample_pts)
@@ -1142,18 +1203,37 @@ def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> 
     except Exception as e:
         print(f"ROUTE PROFILE BUILD: {e}")
 
-    # Cache write
+    # Cache write — exclude ors_surface_score (no DB column)
     if _supabase:
         try:
+            result_to_cache = {k: v for k, v in result.items() if k != "ors_surface_score"}
             _supabase.table("route_profile_cache").upsert({
                 "corridor_key":    key,
-                **result,
+                **result_to_cache,
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             }).execute()
         except Exception as e:
             print(f"ROUTE PROFILE CACHE WRITE: {e}")
 
     return result
+
+
+def _cache_route_character(corridor_key: str, scores: dict) -> None:
+    """Write character scoring results to route_profile_cache."""
+    if not _supabase:
+        return
+    try:
+        _supabase.table("route_profile_cache").upsert({
+            "corridor_key":      corridor_key,
+            "character_scores":  scores.get("character_scores"),
+            "top_character":     scores.get("top_character"),
+            "path_names":        scores.get("path_names"),
+            "landmark_peeks":    scores.get("landmark_peeks"),
+            "route_type":        scores.get("route_type"),
+            "route_computed_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        print(f"ROUTE CHARACTER CACHE WRITE: {e}")
 
 
 @app.get("/route-profile")
@@ -2944,6 +3024,589 @@ def find_place_id(request: Request, name: str, lat: float, lon: float):
 
 # ── Transit corridor cache ──────────────────────────────────────────────────
 
+def _extract_walk_route_points(steps: list) -> list[tuple[float, float]]:
+    """Decode step polylines from Google Directions walking response, sample to 20 points.
+
+    Each step must have a ``polyline.points`` encoded polyline string (Google format).
+    Returns a list of (lat, lon) tuples sampled evenly along the full walking route.
+    """
+    import polyline as _pl
+    all_coords: list[list[float]] = []
+    for step in steps:
+        encoded = (step.get("polyline") or {}).get("points")
+        if not encoded:
+            continue
+        try:
+            decoded = _pl.decode(encoded)           # returns [(lat, lon), ...]
+            # Convert to [lon, lat] for _sample_linestring (GeoJSON convention)
+            all_coords.extend([[p[1], p[0]] for p in decoded])
+        except Exception:
+            continue
+    if not all_coords:
+        return []
+    return _sample_linestring(all_coords, n=20)
+
+
+_DIM_KEYWORDS: dict[str, list[str]] = {
+    "natural":    ["canal", "riverside", "waterfront", "park", "garden", "trail", "forest",
+                   "woods", "promenade", "esplanade", "lakeside", "greenway"],
+    "viewpoint":  ["viewpoint", "overlook", "observatory", "panorama", "deck", "rooftop", "observation"],
+    "historic":   ["temple", "shrine", "palace", "castle", "heritage", "old town", "historic",
+                   "cathedral", "monastery", "ancient", "ruins"],
+    "vibrant":    ["market", "bazaar", "street food", "shopping", "arcade", "strip",
+                   "nightlife", "bar street", "food hall"],
+    "photogenic": ["mural", "street art", "gallery", "mosaic", "sculpture", "installation"],
+    "waterfront": ["harbour", "harbor", "port", "pier", "seafront", "bay", "beach",
+                   "embankment", "quay", "boardwalk"],
+    "local":      ["lane", "alley", "neighbourhood", "neighborhood", "backstreet", "residential", "passage"],
+}
+
+def _score_instructions_by_dimension(steps: list[dict]) -> dict[str, float]:
+    """Score Google Directions walking steps against 7 character dimensions.
+
+    Each keyword match in html_instructions is weighted by step distance so
+    longer steps carry proportionally more signal. Returns 0–1 per dimension.
+    """
+    scores: dict[str, float] = {dim: 0.0 for dim in _DIM_KEYWORDS}
+    total_dist = sum(s.get("distance", {}).get("value", 0) for s in steps) or 1
+
+    for step in steps:
+        html = step.get("html_instructions", "")
+        text = re.sub(r"<[^>]+>", " ", html).lower()
+        dist_weight = step.get("distance", {}).get("value", 0) / total_dist
+
+        for dim, keywords in _DIM_KEYWORDS.items():
+            for kw in keywords:
+                if kw in text:
+                    # weight by distance (km), multiply by 2.0 to map ~0.5 km average step → ~1.0 unit
+                    scores[dim] = min(1.0, scores[dim] + dist_weight * 2.0)
+                    break  # one match per step per dimension is enough
+
+    return scores
+
+
+# ORS surface type codes → scenic quality score (0.0–1.0)
+_ORS_SURFACE_SCORES: dict[int, float] = {
+    0:  0.5,  # Unknown
+    1:  0.3,  # Paved
+    2:  0.7,  # Unpaved
+    3:  0.2,  # Asphalt
+    4:  0.3,  # Concrete
+    5:  0.5,  # Cobblestone
+    6:  0.4,  # Metal
+    7:  0.5,  # Wood
+    8:  0.8,  # Compacted gravel
+    9:  0.8,  # Fine gravel
+    10: 0.85, # Gravel
+    11: 0.85, # Dirt
+    12: 0.9,  # Ground
+    13: 0.3,  # Ice
+    14: 0.4,  # Paving stones
+    15: 0.6,  # Sand
+    16: 0.7,  # Woodchips
+    17: 1.0,  # Grass
+    18: 0.7,  # Grass paver
+}
+
+def _ors_surface_score(ors_response: dict) -> float:
+    """Return a scenic surface quality score 0.0–1.0 from an ORS walking route response.
+
+    Uses ORS extras.surface.values — each entry [from_idx, to_idx, surface_code].
+    Weighted average by segment length. Returns 0.5 if surface data unavailable.
+    """
+    try:
+        values = ors_response["routes"][0]["extras"]["surface"]["values"]
+    except (KeyError, IndexError, TypeError):
+        return 0.5  # neutral when data unavailable
+    if not values:
+        return 0.5
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for segment in values:
+        from_idx, to_idx, surface_code = segment[0], segment[1], segment[2]
+        length = to_idx - from_idx
+        if length <= 0:
+            continue
+        score = _ORS_SURFACE_SCORES.get(surface_code, 0.5)
+        weighted_sum += score * length
+        total_weight += length
+    return weighted_sum / total_weight if total_weight > 0 else 0.5
+
+
+def _fetch_route_character(
+    route_points: list[tuple[float, float]],
+    city_pop: int,
+) -> dict[str, float]:
+    """Query Overpass for amenities along a walking route and return 7 character dimension scores.
+
+    Returns all-0.5 neutral dict if city_pop < 50_000 or on any Overpass error.
+    """
+    _neutral = {d: 0.5 for d in ("natural", "viewpoint", "historic", "vibrant", "photogenic", "waterfront", "local")}
+
+    if city_pop < 50_000:
+        return _neutral
+    if not route_points:
+        return _neutral
+
+    # Build bounding box with 0.05° buffer
+    lats = [p[0] for p in route_points]
+    lons = [p[1] for p in route_points]
+    s = min(lats) - 0.05
+    n = max(lats) + 0.05
+    w = min(lons) - 0.05
+    e = max(lons) + 0.05
+
+    query = f"""[out:json][timeout:15][bbox:{s},{w},{n},{e}];
+(
+  node["natural"~"wood|water|wetland|tree|grassland|scrub|beach"];
+  node["tourism"="viewpoint"];
+  node["historic"~"monument|memorial|castle|ruins|building"];
+  node["amenity"~"bar|nightclub|restaurant|cafe|marketplace"];
+  node["tourism"~"artwork|gallery|museum|attraction"];
+  node["waterway"~"river|stream|canal"];
+  node["amenity"~"community_centre|social_facility|library"];
+);
+out tags;"""
+
+    try:
+        resp = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": query},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        elements = resp.json().get("elements", [])
+    except Exception:
+        return _neutral
+
+    # Threshold for normalisation — scales with city size
+    threshold = max(5, min(50, city_pop // 100_000 * 5 + 5))
+
+    dim_counts: dict[str, int] = {d: 0 for d in _neutral}
+
+    _TAG_DIM_MAP = [
+        (("natural", ("wood", "water", "wetland", "tree", "grassland", "scrub", "beach")), "natural"),
+        (("tourism", ("viewpoint",)), "viewpoint"),
+        (("historic", ("monument", "memorial", "castle", "ruins", "building")), "historic"),
+        (("amenity", ("bar", "nightclub", "restaurant", "cafe", "marketplace")), "vibrant"),
+        (("tourism", ("artwork", "gallery", "museum", "attraction")), "photogenic"),
+        (("waterway", ("river", "stream", "canal")), "waterfront"),
+        (("amenity", ("community_centre", "social_facility", "library")), "local"),
+    ]
+
+    for el in elements:
+        tags = el.get("tags", {})
+        for (key, vals), dim in _TAG_DIM_MAP:
+            if tags.get(key) in vals:
+                dim_counts[dim] += 1
+
+    return {d: min(1.0, dim_counts[d] / threshold) for d in dim_counts}
+
+
+def _bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Compass bearing in degrees 0–360 from (lat1,lon1) to (lat2,lon2)."""
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlon = lon2 - lon1
+    x = math.sin(dlon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+
+def _resolve_landmark_coords(stop: dict) -> tuple[float, float] | None:
+    """Extract (lat, lon) from a landmark stop dict. No DB calls."""
+    lat = stop.get("lat")
+    lon = stop.get("lon")
+    if lat is None or lon is None:
+        return None
+    try:
+        return (float(lat), float(lon))
+    except (TypeError, ValueError):
+        return None
+
+
+def _check_landmark_peeks(
+    route_points: list[tuple[float, float]],
+    landmarks: list[dict],
+) -> list[str]:
+    """Return names of landmarks visible from any route segment (within ±45° of travel direction).
+
+    landmark dict: {"name": str, "lat": float, "lon": float}
+    Returns at most 3 landmark names.
+    """
+    if not route_points or not landmarks:
+        return []
+
+    hits: list[tuple[float, str]] = []  # (min_angle_diff, name) for sorting
+
+    for lm in landmarks:
+        coords = _resolve_landmark_coords(lm)
+        if coords is None:
+            continue
+        lm_lat, lm_lon = coords
+        name = lm.get("name", "")
+        if not name:
+            continue
+
+        for i in range(len(route_points) - 1):
+            a_lat, a_lon = route_points[i]
+            b_lat, b_lon = route_points[i + 1]
+            # Travel direction of this segment
+            travel_bearing = _bearing(a_lat, a_lon, b_lat, b_lon)
+            # Midpoint of segment
+            mid_lat = (a_lat + b_lat) / 2
+            mid_lon = (a_lon + b_lon) / 2
+            # Bearing from midpoint to landmark
+            to_lm_bearing = _bearing(mid_lat, mid_lon, lm_lat, lm_lon)
+            # Angular difference (shortest arc)
+            diff = abs(travel_bearing - to_lm_bearing) % 360
+            if diff > 180:
+                diff = 360 - diff
+            if diff <= 45:
+                hits.append((diff, name))
+                break  # count this landmark once
+
+    # Sort by how directly ahead the landmark is; return top 3 names
+    hits.sort(key=lambda x: x[0])
+    seen: list[str] = []
+    for _, name in hits:
+        if name not in seen:
+            seen.append(name)
+        if len(seen) == 3:
+            break
+    return seen
+
+
+# Persona archetype → per-dimension adjustments
+# "_threshold_delta" lowers the 0.55 threshold; "_historic_conditional_threshold" means
+# threshold drops further only when historic > 0.4 (used by slowScholar).
+# "_night_vibrant_mult" / "_night_natural_mult" applied on top of condition_multiplier night boost.
+_PERSONA_ADJUSTMENTS: dict[str, dict[str, float]] = {
+    "flaneur":            {"local": 0.20, "_threshold_delta": -0.05},
+    "gastronaut":         {"vibrant": 0.20},
+    "slowScholar":        {"historic": 0.20, "_threshold_delta": -0.05, "_historic_conditional_threshold": -0.05},
+    "neighbourhoodLocal": {"local": 0.25, "vibrant": -0.10},
+    "aesthete":           {"photogenic": 0.20, "viewpoint": 0.15},
+    "nightCreature":      {"_night_vibrant_mult": 1.5, "_night_natural_mult": 0.3},
+    "ritualSeeker":       {"local": 0.15, "vibrant": 0.15},
+    "efficientExplorer":  {},   # efficiency handled via haversine comparison below
+}
+
+
+def _score_route_character(
+    mode: str,
+    instruction_scores: dict[str, float],
+    ors_surface_score: float,
+    overpass_character: dict,
+    road_character: float,
+    elevation_gain_m: float | None,
+    condition_multiplier: float,
+    landmark_peeks: list,
+    persona_snapshot: dict,
+    persona_attractions: list[str],
+    persona_key: str,
+    distance_km: float,
+    haversine_km: float | None = None,   # straight-line origin→dest; used for efficiency penalty
+) -> dict:
+    """Combine all signal sources into final character scores with user preference weighting.
+
+    Three-tier preference matching:
+      1. EngineWeights (persona_snapshot) — primary, multiplicative
+      2. Persona.attractions (onboarding answers) — secondary, additive
+      3. PersonaKey (archetype) — tertiary, per-dimension adjustments
+    """
+    overpass_scores = overpass_character.get("character_scores", {d: 0.0 for d in _DIM_KEYWORDS})
+    elevation_score = min(1.0, (elevation_gain_m or 0) / 500)
+    character_scores: dict[str, float] = {}
+
+    for dim in _DIM_KEYWORDS:
+        if mode == "walk":
+            raw = (
+                overpass_scores.get(dim, 0.0) * 0.45
+                + instruction_scores.get(dim, 0.0) * 0.35
+                + ors_surface_score * 0.20
+            )
+        else:  # drive
+            raw = (
+                overpass_scores.get(dim, 0.0) * 0.40
+                + road_character * 0.35
+                + elevation_score * 0.25
+            )
+        character_scores[dim] = round(min(1.0, raw), 3)
+
+    # Landmark peek bonus on Viewpoint dimension
+    if landmark_peeks:
+        character_scores["viewpoint"] = min(1.0, character_scores.get("viewpoint", 0.0) + 0.25)
+
+    # Named features → path_names
+    path_names = overpass_character.get("named_features", [])
+
+    # ── Tier 1: EngineWeights ──────────────────────────────────────────────────
+    w = persona_snapshot
+    user_weights: dict[str, float] = {
+        "natural":    1 + w.get("w_scenic", 0.5) * 0.6,
+        "viewpoint":  1 + w.get("w_scenic", 0.5) * 0.6,
+        "waterfront": 1 + w.get("w_scenic", 0.5) * 0.6,
+        "vibrant":    1 + w.get("w_nightlife", 0.4) * 0.8 + w.get("w_food_density", 0.4) * 0.5,
+        "historic":   1 + w.get("w_culture_depth", 0.5) * 0.6,
+        "photogenic": 1 + w.get("w_nightlife", 0.4) * 0.5,
+        "local":      1.0,
+    }
+    walk_mult = 1 + w.get("w_walk_affinity", 0.5) * 0.4 if mode == "walk" else 1.0
+    threshold = max(0.3, 0.55 - w.get("w_spontaneity", 0.5) * 0.10)
+
+    # w_efficiency penalty: multiplicative score penalty for very indirect routes
+    # score × (1 - w_efficiency * 0.3) when route_distance_km > haversine_distance_km * 2.0
+    efficiency_score_mult = 1.0
+    if haversine_km is not None and distance_km > haversine_km * 2.0:
+        efficiency_score_mult = max(0.3, 1.0 - w.get("w_efficiency", 0.5) * 0.3)
+
+    # ── Tier 2: attractions ────────────────────────────────────────────────────
+    attraction_boost: dict[str, float] = {}
+    for attr in (persona_attractions or []):
+        if attr == "nature":
+            attraction_boost["natural"]    = attraction_boost.get("natural", 0) + 0.15
+            attraction_boost["waterfront"] = attraction_boost.get("waterfront", 0) + 0.10
+        elif attr == "historic":
+            attraction_boost["historic"]   = attraction_boost.get("historic", 0) + 0.15
+        elif attr == "culture":
+            attraction_boost["historic"]   = attraction_boost.get("historic", 0) + 0.10
+            attraction_boost["photogenic"] = attraction_boost.get("photogenic", 0) + 0.10
+        elif attr == "markets":
+            attraction_boost["vibrant"]    = attraction_boost.get("vibrant", 0) + 0.15
+
+    # ── Tier 3: PersonaKey ────────────────────────────────────────────────────
+    persona_adj = _PERSONA_ADJUSTMENTS.get(persona_key, {})
+    threshold += persona_adj.get("_threshold_delta", 0)
+
+    # Apply all weights to character scores
+    weighted_scores: dict[str, float] = {}
+    for dim in _DIM_KEYWORDS:
+        score = character_scores[dim]
+        score *= user_weights.get(dim, 1.0) * walk_mult * efficiency_score_mult
+        score += attraction_boost.get(dim, 0.0)
+        # Skip private keys (prefixed with "_") from per-dimension additions
+        if not dim.startswith("_"):
+            score += persona_adj.get(dim, 0.0)
+        weighted_scores[dim] = round(min(1.0, score), 3)
+
+    top_character = max(weighted_scores, key=weighted_scores.get)
+    top_score = weighted_scores[top_character]
+
+    # slowScholar: additional threshold reduction when historic scores strongly
+    if persona_key == "slowScholar" and weighted_scores.get("historic", 0) > 0.4:
+        threshold += persona_adj.get("_historic_conditional_threshold", 0)
+
+    # nightCreature: apply persona-specific night multipliers on top of condition_multiplier
+    if persona_key == "nightCreature":
+        if top_character in ("vibrant", "photogenic"):
+            top_score = min(1.0, top_score * persona_adj.get("_night_vibrant_mult", 1.0))
+            weighted_scores[top_character] = top_score
+        elif top_character in ("natural", "waterfront", "local"):
+            top_score = min(1.0, top_score * persona_adj.get("_night_natural_mult", 1.0))
+            weighted_scores[top_character] = top_score
+        # Recompute top_character after night multipliers may have changed rankings
+        top_character = max(weighted_scores, key=weighted_scores.get)
+        top_score = weighted_scores[top_character]
+
+    # Route type
+    if mode == "drive":
+        route_type = "ridge" if elevation_score > 0.4 else "drive"
+    elif top_character == "waterfront":
+        route_type = "coastal"
+    else:
+        route_type = "walk"
+
+    passes = (
+        top_score * condition_multiplier >= threshold
+        and distance_km >= 0.5
+        and condition_multiplier > 0.0
+    )
+
+    return {
+        "character_scores": weighted_scores,
+        "top_character":    top_character,
+        "condition_multiplier": condition_multiplier,
+        "landmark_peeks":   landmark_peeks,
+        "path_names":       path_names,
+        "route_type":       route_type,
+        "passes_threshold": passes,
+    }
+
+
+# Character dimension → accent colours for scenic cards
+_CHARACTER_LABELS: dict[str, str] = {
+    "natural":    "Through green spaces",
+    "viewpoint":  "Scenic viewpoint route",
+    "historic":   "Historic district walk",
+    "vibrant":    "Through the heart of the city",
+    "photogenic": "Photogenic route",
+    "waterfront": "Riverside path",
+    "local":      "Local neighbourhood walk",
+}
+
+
+def _generate_scenic_card_for_corridor(
+    origin: dict,
+    dest: dict,
+    route_profile: dict,
+    visit_time,
+    persona_snapshot: dict,
+    persona_attractions: list,
+    persona_key: str,
+    weather: dict,
+    city_landmarks: list,
+) -> dict | None:
+    """Generate a ReelScenicCard dict for the corridor, or None if threshold not met.
+
+    Assumes Phase 1 scheduling is complete (visit_time is authoritative).
+    Hard blocks: distance < 0.5 km; road_character < 0.4 on routes > 1 km.
+    """
+    distance_km = route_profile.get("distance_km") or 0
+    road_character = route_profile.get("road_character") or 0
+
+    # Hard block: distance < 0.5 km
+    if distance_km < 0.5:
+        return None
+
+    # Hard block: predominantly motorway (road_character < 0.4 on longer routes)
+    if road_character < 0.4 and distance_km > 1.0:
+        return None
+
+    # Mode heuristic
+    mode = "walk" if distance_km < 5 else "drive"
+
+    # Straight-line haversine for efficiency penalty
+    _orig_lat = origin.get("lat") or 0.0
+    _orig_lon = origin.get("lon") or 0.0
+    _dest_lat = dest.get("lat") or 0.0
+    _dest_lon = dest.get("lon") or 0.0
+
+    def _hav_km(la1: float, lo1: float, la2: float, lo2: float) -> float:
+        R = 6371
+        dlat = math.radians(la2 - la1)
+        dlon = math.radians(lo2 - lo1)
+        a = (math.sin(dlat / 2) ** 2
+             + math.cos(math.radians(la1)) * math.cos(math.radians(la2)) * math.sin(dlon / 2) ** 2)
+        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    haversine_km: float | None = (
+        _hav_km(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
+        if _orig_lat is not None and _dest_lat is not None and _orig_lon is not None and _dest_lon is not None else None
+    )
+
+    # Corridor midpoint
+    mid_lat = (_orig_lat + _dest_lat) / 2
+    mid_lon = (_orig_lon + _dest_lon) / 2
+
+    # Condition multiplier (always fresh — not cached)
+    _vt = visit_time or datetime.now(timezone.utc)
+    condition_multiplier = _route_condition_multiplier(mid_lat, mid_lon, _vt)
+    if condition_multiplier == 0.0:
+        return None
+
+    # Retrieve character scores from route profile cache if available
+    cached_chars = route_profile.get("character_scores")
+    walk_steps: list = route_profile.get("walk_steps", [])
+    instruction_scores: dict[str, float] = _score_instructions_by_dimension(walk_steps)
+    ors_surface_score: float = _ors_surface_score(route_profile.get("ors_response", {}))
+    overpass_character: dict = {
+        "character_scores": {d: 0.0 for d in _DIM_KEYWORDS},
+        "named_features": [],
+        "viewpoints": [],
+    }
+    landmark_peeks: list = route_profile.get("landmark_peeks") or []
+    path_names: list = route_profile.get("path_names") or []
+
+    if cached_chars:
+        overpass_character["character_scores"] = cached_chars
+
+    scoring = _score_route_character(
+        mode=mode,
+        instruction_scores=instruction_scores,
+        ors_surface_score=ors_surface_score,
+        overpass_character=overpass_character,
+        road_character=road_character,
+        elevation_gain_m=route_profile.get("elevation_gain_m"),
+        condition_multiplier=condition_multiplier,
+        landmark_peeks=landmark_peeks,
+        persona_snapshot=persona_snapshot,
+        persona_attractions=persona_attractions,
+        persona_key=persona_key,
+        distance_km=distance_km,
+        haversine_km=haversine_km,
+    )
+
+    if not scoring["passes_threshold"]:
+        return None
+
+    # Persist character scoring so future calls can skip Overpass
+    _cache_route_character(
+        _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
+    )
+
+    top_char = scoring["top_character"]
+
+    # Build route label
+    first_path = (path_names[0] if path_names else None) or dest.get("title", "this route")
+    route_label = _CHARACTER_LABELS.get(top_char, "Scenic route")
+
+    # Accent colour per dimension
+    accent_map = {
+        "natural": "#6b9470", "viewpoint": "#4f8fab", "historic": "#8b7355",
+        "vibrant": "#c87941", "photogenic": "#9b6b9e", "waterfront": "#4f8fab", "local": "#a08d80",
+    }
+    accent = accent_map.get(top_char, "#6b9470")
+
+    # Condition note (harsh conditions advisory — derived from condition_multiplier)
+    condition_note: str | None = None
+    temp = (weather or {}).get("temp") or 20
+    has_canopy = "natural" in [d for d, s in scoring["character_scores"].items() if s > 0.4]
+    if temp > 32 and condition_multiplier < 0.9:
+        condition_note = (
+            "High UV today — this route has shade cover." if has_canopy
+            else "High UV today — consider sun protection."
+        )
+
+    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}."
+
+    return {
+        "type": "scenic",
+        "sceneType": scoring["route_type"],
+        "accent": accent,
+        "cardType": f"{mode.upper()} · {top_char.upper()}",
+        "pos": 0,     # set by caller
+        "total": 0,   # set by caller
+        "timing": "",
+        "metaRight": f"{distance_km} km",
+        "place": first_path,
+        "from": origin.get("title", ""),
+        "to": dest.get("title", ""),
+        "modeIcon": "walk" if mode == "walk" else "car",
+        "tag": top_char.capitalize(),
+        "vizType": "corridor",
+        "persona": persona_key,
+        "personaDisplay": persona_key,
+        "personaIcon": "walk",
+        "why": why,
+        "sensory": "",
+        "sensoryIcon": "waves",
+        "reelPos": f"Between {origin.get('title', '')} and {dest.get('title', '')}",
+        "photoUrl": None,
+        "detourKm": round(distance_km, 1),
+        "detourMin": route_profile.get("duration_min") or 0,
+        "transitInfo": None,
+        "routeLabel": route_label,
+        "conditionNote": condition_note,
+        "characterDimensions": {d: round(s, 3) for d, s in scoring["character_scores"].items() if s > 0.4},
+        "landmarkPeek": landmark_peeks if landmark_peeks else None,
+        "topCharacter": top_char,
+        "conditionMultiplier": condition_multiplier,
+        "fromStop": origin.get("title", ""),
+        "toStop": dest.get("title", ""),
+        "distanceKm": round(distance_km, 2),
+    }
+
+
 def _corridor_key(olat: float, olon: float, dlat: float, dlon: float) -> str:
     return f"{round(olat,4)}_{round(olon,4)}_{round(dlat,4)}_{round(dlon,4)}"
 
@@ -3073,6 +3736,9 @@ def _fetch_transit_corridor(olat: float, olon: float, dlat: float, dlon: float) 
             via = _extract_walk_via(walk_steps)
             if via:
                 result["walk_via"] = via
+            route_pts = _extract_walk_route_points(walk_steps)
+            if route_pts:
+                result["walk_route_points"] = route_pts
     except Exception as e:
         print(f"WALK PARSE: {e}")
 
@@ -4524,6 +5190,21 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             _stop_order_msg[sid] = m
 
 
+    # Build persona_snapshot here so it's available inside the days loop for scenic card insertion
+    weights = persona.get("weights", {})
+    persona_snapshot = {
+        "w_walk_affinity":      weights.get("w_walk_affinity", 0.5),
+        "w_scenic":             weights.get("w_scenic", 0.5),
+        "w_efficiency":         weights.get("w_efficiency", 0.5),
+        "w_food_density":       weights.get("w_food_density", 0.5),
+        "w_culture_depth":      weights.get("w_culture_depth", 0.5),
+        "w_nightlife":          weights.get("w_nightlife", 0.4),
+        "w_budget_sensitivity": weights.get("w_budget_sensitivity", 0.4),
+        "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
+        "w_spontaneity":        weights.get("w_spontaneity", 0.5),
+        "w_rest_need":          weights.get("w_rest_need", 0.4),
+    }
+
     # Assign messages to days based on stop_id match; day-level (stop_id=None) go to day 1
     is_first_non_travel_day = True
     days_out = []
@@ -4612,6 +5293,51 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "isEngineAdded": not s.is_user_added,
             })
 
+        # Insert scenic cards between consecutive stop pairs (Phase 2 enrichment)
+        scenic_pos = 0
+        enriched_stops_out: list[dict] = []
+        for _i, _s in enumerate(stops_out):
+            enriched_stops_out.append(_s)
+            if _i < len(stops_out) - 1:
+                _next_s = stops_out[_i + 1]
+                _orig_lat = _s.get("lat")
+                _orig_lon = _s.get("lon")
+                _dest_lat = _next_s.get("lat")
+                _dest_lon = _next_s.get("lon")
+                if all(v is not None for v in [_orig_lat, _orig_lon, _dest_lat, _dest_lon]):
+                    try:
+                        _rp = _fetch_route_profile(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
+                        _visit_time = None
+                        try:
+                            from datetime import date as _date
+                            _visit_date_str = day.date if (day.date and day.date != "unknown") else _date.today().isoformat()
+                            _time_str = _s.get("time", "09:00")
+                            _visit_time = datetime.fromisoformat(f"{_visit_date_str}T{_time_str}:00+00:00")
+                        except Exception:
+                            pass
+                        _scenic = _generate_scenic_card_for_corridor(
+                            origin=_s,
+                            dest=_next_s,
+                            route_profile=_rp,
+                            visit_time=_visit_time,
+                            persona_snapshot=persona_snapshot,
+                            persona_attractions=list(persona.get("attractions") or []),
+                            persona_key=persona.get("archetype", ""),
+                            weather=getattr(ctx, "weather_map", {}).get(day_city) or {},
+                            city_landmarks=getattr(city_data, "landmark_anchors", []),
+                        )
+                        if _scenic:
+                            scenic_pos += 1
+                            _scenic["pos"] = scenic_pos
+                            enriched_stops_out.append(_scenic)
+                    except Exception as _e:
+                        print(f"SCENIC CARD ERROR: {_e}")
+        # Stamp total count on all scenic cards now that we know the final count
+        for _card in enriched_stops_out:
+            if _card.get("type") == "scenic":
+                _card["total"] = scenic_pos
+        stops_out = enriched_stops_out
+
         _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
         days_out.append({
             "day": i + 1,
@@ -4622,20 +5348,6 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             "messages": day_messages,
             "walkBaseKm": _day_city_data.movement.get("walk_base_km", 2.0),
         })
-
-    weights = persona.get("weights", {})
-    persona_snapshot = {
-        "w_walk_affinity":      weights.get("w_walk_affinity", 0.5),
-        "w_scenic":             weights.get("w_scenic", 0.5),
-        "w_efficiency":         weights.get("w_efficiency", 0.5),
-        "w_food_density":       weights.get("w_food_density", 0.5),
-        "w_culture_depth":      weights.get("w_culture_depth", 0.5),
-        "w_nightlife":          weights.get("w_nightlife", 0.4),
-        "w_budget_sensitivity": weights.get("w_budget_sensitivity", 0.4),
-        "w_crowd_aversion":     weights.get("w_crowd_aversion", 0.5),
-        "w_spontaneity":        weights.get("w_spontaneity", 0.5),
-        "w_rest_need":          weights.get("w_rest_need", 0.4),
-    }
 
     # Re-order days to match body.cities order (TSP may cluster Melbourne before Sydney)
     if body.cities and len(body.cities) > 1:
@@ -4946,7 +5658,7 @@ async def cities_picks(city_id: str, lat: float = None, lon: float = None, backg
                             "data": _cd_dict,
                         }).execute()
                         # Fire trend seeding in background — does not block picks response
-                        if background_tasks and YOUTUBE_API_KEY:
+                        if background_tasks:
                             from city.trend_seeder import seed_trend_scores as _seed_trends
                             _trend_places = [
                                 {"place_id": ic.place_id, "name": ic.name,

@@ -9,3 +9,5 @@ apscheduler>=3.10
 pytest
 pytest-mock
 pytest-asyncio
+polyline
+pysolar

@@ -17,7 +17,7 @@ import type {
 } from './types';
 import { supabase } from './supabase';
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+export const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
