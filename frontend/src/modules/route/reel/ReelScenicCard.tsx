@@ -18,6 +18,43 @@ const MS: Record<string, string> = {
 
 function msName(key: string): string { return MS[key] ?? key; }
 
+// ── Dimension → icon/color map ────────────────────────────────────────────────
+const DIMENSION_MAP: Record<string, { icon: string; color: string }> = {
+  natural:    { icon: 'park',            color: '#6b9470' },
+  viewpoint:  { icon: 'visibility',      color: '#4f8fab' },
+  historic:   { icon: 'account_balance', color: '#d4a853' },
+  vibrant:    { icon: 'nightlife',       color: 'rgba(212,168,83,1)' },
+  photogenic: { icon: 'photo_camera',    color: '#4f8fab' },
+  waterfront: { icon: 'water',           color: '#4f8fab' },
+  local:      { icon: 'storefront',      color: '#c0b0a4' },
+};
+
+// ── "Along the way" pills ─────────────────────────────────────────────────────
+function AlongTheWay({ dims }: { dims: Record<string, number> }) {
+  const top = Object.entries(dims)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([key]) => key);
+  if (!top.length) return null;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.35)', marginBottom: 7 }}>Along the way</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {top.map(dim => {
+          const meta = DIMENSION_MAP[dim] ?? { icon: 'explore', color: '#c0b0a4' };
+          const label = dim.charAt(0).toUpperCase() + dim.slice(1);
+          return (
+            <div key={dim} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 99, background: `${meta.color}18`, border: `1px solid ${meta.color}35` }}>
+              <span className="ms" style={{ fontSize: 13, color: meta.color, lineHeight: 1 }}>{meta.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: meta.color }}>{label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Small shared atoms ────────────────────────────────────────────────────────
 const LF: React.CSSProperties = { fontFamily: "'DM Sans',sans-serif" };
 
@@ -271,19 +308,37 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 280px 350px at 50% 35%,rgba(79,143,171,.12),transparent)', pointerEvents: 'none', zIndex: 2 }} />
       )}
 
+      {/* Mode chip topbar */}
+      <div className="rsc-topbar" style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,.09)', fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.82)', whiteSpace: 'nowrap' }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: card.accent, boxShadow: `0 0 5px ${card.accent}` }} />
+          <span>{card.modeIcon === 'walk' ? 'Walk' : 'Drive'}</span>
+          <span style={{ width: 1, height: 9, background: 'rgba(255,255,255,.14)', margin: '0 3px', display: 'inline-block' }} />
+          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,.45)' }}>{card.detourKm} km · {card.detourMin} min</span>
+        </div>
+      </div>
+
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 20px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 5 }}>
         {/* Spacer — pushes content to bottom */}
         <div style={{ flex: 1 }} />
 
-        {/* Route title + subtitle */}
+        {/* Route label heading + breadcrumb */}
         <div style={{ marginBottom: 8 }}>
+          {card.routeLabel && (
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1, margin: '0 0 4px' }}>
+              {card.routeLabel}
+            </h2>
+          )}
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
             {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
           </div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1 }}>
-            {card.from}
-            <span style={{ fontSize: isHighWalk ? 22 : 18, color: 'rgba(255,255,255,.35)', margin: '0 6px' }}>→</span>
-            {card.to}
+          {/* Breadcrumb row */}
+          <div style={{ fontSize: 12, color: '#a08d80', marginBottom: 4 }}>
+            <span style={{ color: '#a08d80' }}>{card.from}</span>
+            {' → '}
+            <span style={{ color: '#a08d80' }}>{card.to}</span>
+            {' · '}
+            {card.detourMin} min {card.modeIcon === 'walk' ? 'walk' : 'drive'}
           </div>
           {!isHighWalk && (
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
@@ -377,6 +432,37 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
             </>
           )}
         </div>
+
+        {/* Along the way — characterDimensions pills */}
+        {card.characterDimensions && !Array.isArray(card.characterDimensions) && (
+          <div style={{ marginTop: 12 }}>
+            <AlongTheWay dims={card.characterDimensions} />
+          </div>
+        )}
+
+        {/* Landmark peek */}
+        {card.landmarkPeek && card.landmarkPeek.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
+            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>visibility</span>
+            <span>
+              {card.landmarkPeek.slice(0, 2).map((lm, i) => (
+                <span key={lm}>
+                  {i > 0 && <span style={{ color: 'rgba(255,255,255,.25)', margin: '0 4px' }}>·</span>}
+                  Glimpse of {lm}
+                </span>
+              ))}
+              <span style={{ color: '#726559', marginLeft: 5 }}>✦</span>
+            </span>
+          </div>
+        )}
+
+        {/* Condition note */}
+        {card.conditionNote && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 10, fontSize: 12, color: 'rgba(212,168,83,.8)', background: 'rgba(212,168,83,.07)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(212,168,83,.15)' }}>
+            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>wb_sunny</span>
+            <span>{card.conditionNote}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -448,7 +534,7 @@ export default function ReelScenicCard({ card }: Props) {
         {/* Headline + route */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 34, fontWeight: 700,
-            lineHeight: 1.08, margin: 0, color: '#f2ede6', letterSpacing: '-.005em' }}>{card.place}</h2>
+            lineHeight: 1.08, margin: 0, color: '#f2ede6', letterSpacing: '-.005em' }}>{card.routeLabel ?? card.place}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className="ms fill" style={{ fontSize: 15, color: a, lineHeight: 1 }}>{msName(card.modeIcon)}</span>
             <span style={{ ...LF, fontSize: 13, color: 'rgba(242,237,230,.7)' }}>{card.from}</span>
@@ -479,6 +565,35 @@ export default function ReelScenicCard({ card }: Props) {
           <span className="ms" style={{ fontSize: 16, color: 'rgba(242,237,230,.5)', lineHeight: 1, marginTop: 1 }}>{msName(card.sensoryIcon)}</span>
           <p style={{ ...LF, fontSize: 13, lineHeight: 1.5, color: 'rgba(242,237,230,.62)', margin: 0 }}>{card.sensory}</p>
         </div>
+
+        {/* Along the way — characterDimensions pills */}
+        {card.characterDimensions && !Array.isArray(card.characterDimensions) && (
+          <AlongTheWay dims={card.characterDimensions} />
+        )}
+
+        {/* Landmark peek */}
+        {card.landmarkPeek && card.landmarkPeek.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
+            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>visibility</span>
+            <span>
+              {card.landmarkPeek.slice(0, 2).map((lm, i) => (
+                <span key={lm}>
+                  {i > 0 && <span style={{ color: 'rgba(255,255,255,.25)', margin: '0 4px' }}>·</span>}
+                  Glimpse of {lm}
+                </span>
+              ))}
+              <span style={{ color: '#726559', marginLeft: 5 }}>✦</span>
+            </span>
+          </div>
+        )}
+
+        {/* Condition note */}
+        {card.conditionNote && (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 12, color: 'rgba(212,168,83,.8)', background: 'rgba(212,168,83,.07)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(212,168,83,.15)' }}>
+            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>wb_sunny</span>
+            <span>{card.conditionNote}</span>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
