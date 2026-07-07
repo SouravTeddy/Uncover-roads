@@ -91,20 +91,42 @@ def test_ors_surface_score_unknown_is_neutral():
     assert abs(score - 0.5) < 0.01  # unknown = 0.5
 
 
-def test_route_character_gate_skips_low_value_route():
-    from main import _should_run_overpass_for_route
-    # Both instruction score and surface score near zero → skip
-    assert _should_run_overpass_for_route(
-        instruction_scores={"natural": 0.0, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.1,
-                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.1},
-        ors_surface_score=0.15,
-    ) is False
+def test_fetch_route_character_small_city_returns_neutral():
+    from main import _fetch_route_character
+    pts = [(1.0, 1.0), (1.1, 1.1)]
+    result = _fetch_route_character(pts, city_pop=40_000)
+    assert result == {d: 0.5 for d in ("natural","viewpoint","historic","vibrant","photogenic","waterfront","local")}
 
+def test_fetch_route_character_empty_points_returns_neutral():
+    from main import _fetch_route_character
+    result = _fetch_route_character([], city_pop=500_000)
+    assert all(v == 0.5 for v in result.values())
 
-def test_route_character_gate_runs_for_natural_route():
-    from main import _should_run_overpass_for_route
-    assert _should_run_overpass_for_route(
-        instruction_scores={"natural": 0.6, "viewpoint": 0.0, "historic": 0.0, "vibrant": 0.0,
-                            "photogenic": 0.0, "waterfront": 0.0, "local": 0.0},
-        ors_surface_score=0.3,
-    ) is True
+def test_fetch_route_character_overpass_failure_returns_neutral(monkeypatch):
+    import requests
+    from main import _fetch_route_character
+    def mock_post(*a, **kw): raise requests.exceptions.Timeout()
+    monkeypatch.setattr(requests, "post", mock_post)
+    pts = [(1.0, 1.0), (1.1, 1.1)]
+    result = _fetch_route_character(pts, city_pop=500_000)
+    assert all(v == 0.5 for v in result.values())
+
+def test_fetch_route_character_returns_all_7_dimensions():
+    from main import _fetch_route_character
+    pts = [(1.0, 1.0)]
+    result = _fetch_route_character(pts, city_pop=40_000)
+    assert set(result.keys()) == {"natural","viewpoint","historic","vibrant","photogenic","waterfront","local"}
+
+def test_fetch_route_character_scores_capped_at_one(monkeypatch):
+    import requests, json
+    from main import _fetch_route_character
+    # Return 1000 viewpoint nodes
+    elements = [{"tags": {"tourism": "viewpoint"}} for _ in range(1000)]
+    class FakeResp:
+        def raise_for_status(self): pass
+        def json(self): return {"elements": elements}
+    monkeypatch.setattr(requests, "post", lambda *a, **kw: FakeResp())
+    pts = [(1.0, 1.0), (1.1, 1.1)]
+    result = _fetch_route_character(pts, city_pop=500_000)
+    assert result["viewpoint"] == 1.0
+    assert all(v <= 1.0 for v in result.values())
