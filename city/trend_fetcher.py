@@ -102,26 +102,31 @@ def fetch_foursquare_score(place_name: str, lat: float, lon: float, api_key: str
         return 0.0
 
 
+def _reddit_token(client_id: str, client_secret: str) -> str | None:
+    """Obtain a Reddit OAuth2 client-credentials token. Returns None on failure."""
+    try:
+        resp = requests.post(
+            "https://www.reddit.com/api/v1/access_token",
+            auth=requests.auth.HTTPBasicAuth(client_id, client_secret),
+            data={"grant_type": "client_credentials"},
+            headers={"User-Agent": "uncover-roads-trends/1.0"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+    except Exception:
+        return None
+
+
 def fetch_reddit_score(
     place_name: str, city_name: str, client_id: str, client_secret: str
 ) -> float:
     """Reddit post mention count in last month. 30 posts → 1.0. Returns 0.0 if no credentials."""
     if not client_id or not client_secret:
         return 0.0
-    try:
-        auth = requests.auth.HTTPBasicAuth(client_id, client_secret)
-        token_resp = requests.post(
-            "https://www.reddit.com/api/v1/access_token",
-            auth=auth,
-            data={"grant_type": "client_credentials"},
-            headers={"User-Agent": "uncover-roads-trends/1.0"},
-            timeout=10,
-        )
-        token_resp.raise_for_status()
-        token = token_resp.json()["access_token"]
-    except Exception:
+    token = _reddit_token(client_id, client_secret)
+    if not token:
         return 0.0
-
     try:
         search_resp = requests.get(
             "https://oauth.reddit.com/search",
@@ -143,3 +148,58 @@ def fetch_reddit_score(
         return min(1.0, len(posts) / 30.0)
     except Exception:
         return 0.0
+
+
+def fetch_reddit_photo_snippets(
+    place_name: str, city_name: str, client_id: str, client_secret: str,
+    max_posts: int = 25,
+) -> list[dict]:
+    """Fetch Reddit posts about place_name+city_name that discuss photo spots or viewpoints.
+
+    Returns list of {"text": str, "url": str, "upvotes": int}.
+    Empty list on error or missing credentials.
+    """
+    if not client_id or not client_secret:
+        return []
+    token = _reddit_token(client_id, client_secret)
+    if not token:
+        return []
+    try:
+        resp = requests.get(
+            "https://oauth.reddit.com/search",
+            headers={
+                "Authorization": f"bearer {token}",
+                "User-Agent": "uncover-roads-trends/1.0",
+            },
+            params={
+                "q": f"{place_name} {city_name} (photo OR view OR angle OR spot OR shoot OR photograph)",
+                "sort": "top",
+                "t": "year",
+                "limit": max_posts,
+                "restrict_sr": "false",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        posts = resp.json().get("data", {}).get("children", [])
+    except Exception:
+        return []
+
+    snippets = []
+    for post in posts:
+        d = post.get("data", {})
+        title = d.get("title", "")
+        body = d.get("selftext", "")
+        # Skip removed / deleted posts
+        if body in ("[removed]", "[deleted]", ""):
+            text = title
+        else:
+            text = f"{title}. {body}".strip(". ")
+        if not text:
+            continue
+        snippets.append({
+            "text":    text,
+            "url":     f"https://reddit.com{d.get('permalink', '')}",
+            "upvotes": int(d.get("score", 0)),
+        })
+    return snippets
