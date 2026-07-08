@@ -8,7 +8,6 @@ import { ExploreHero } from './ExploreHero';
 import { ExploreSearchBar } from './ExploreSearchBar';
 import CuratedCityCards from './CuratedCityCards';
 import { DateRangeCalendar } from './DateRangeCalendar';
-import { BuildNotification } from './BuildNotification';
 
 export function DestinationScreen() {
   const { state, dispatch } = useAppStore();
@@ -81,7 +80,6 @@ export function DestinationScreen() {
       {!showCalendar && (
         <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'none', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}>
           <ExploreSearchBar onCitySelect={handleCitySelect} />
-          <BuildNotification activeBuild={state.activeBuild} />
           <CuratedCityCards
             persona={persona}
             onCitySelect={handleCitySelect}

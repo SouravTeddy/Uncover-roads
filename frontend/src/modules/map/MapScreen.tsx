@@ -1061,6 +1061,7 @@ export function MapScreen() {
           badgeReason={null}
           userTier={state.userTier}
           persona={state.persona ?? null}
+          isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
         />
       )}
 

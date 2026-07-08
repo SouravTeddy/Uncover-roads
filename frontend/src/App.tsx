@@ -24,6 +24,7 @@ import { ProfileScreen } from './modules/profile';
 import { TripsScreen, SavedScreen } from './modules/trips';
 import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
 import { InstallPrompt } from './modules/pwa/InstallPrompt';
+import { BuildNotification } from './modules/destination/BuildNotification';
 
 function ScreenRouter() {
   useBuildStatus();
@@ -221,6 +222,7 @@ function ScreenRouter() {
           {currentScreen === 'subscription' && <SubscriptionScreen />}
         </motion.div>
       </AnimatePresence>
+      <BuildNotification activeBuild={state.activeBuild} />
       <InstallPrompt />
       <BottomNav />
 
