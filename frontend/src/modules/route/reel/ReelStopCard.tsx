@@ -659,31 +659,31 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             {stop.title}
           </h2>
 
-          {/* Arrival → departure time */}
-          {stop.time && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, fontSize: 12, color: T.text3 }}>
-              <span className="ms" style={{ fontSize: 14 }}>schedule</span>
-              <span>~{fmt12h(stop.time)}</span>
-              {stop.durationMin > 0 && (
-                <><span style={{ opacity: 0.4 }}>→ leave</span><span>~{addMinutes(stop.time, stop.durationMin)}</span></>
-              )}
-            </div>
-          )}
-
-          {/* Provenance badge — collapsed */}
-          {(stop.isEngineAdded || stop.isUserAdded) && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 9px', borderRadius: 6,
-              background: stop.isEngineAdded ? T.skyBg : T.goldBg,
-              border: `1px solid ${stop.isEngineAdded ? T.skyBdr : T.goldBdr}`,
-            }}>
-              <span className="ms" style={{ fontSize: 13, color: stop.isEngineAdded ? T.sky : T.gold }}>
-                {stop.isEngineAdded ? 'auto_awesome' : 'bookmark'}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: stop.isEngineAdded ? T.sky : T.gold }}>
-                {stop.isEngineAdded ? 'Our pick' : 'You added this'}
-              </span>
-            </div>
-          )}
+          {/* Time + provenance badge row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            {stop.time && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.text3 }}>
+                <span className="ms" style={{ fontSize: 14 }}>schedule</span>
+                <span>~{fmt12h(stop.time)}</span>
+                {stop.durationMin > 0 && (
+                  <><span style={{ opacity: 0.4 }}>→ leave</span><span>~{addMinutes(stop.time, stop.durationMin)}</span></>
+                )}
+              </div>
+            )}
+            {(stop.isEngineAdded || stop.isUserAdded) && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8, padding: '3px 9px', borderRadius: 6,
+                background: stop.isEngineAdded ? T.skyBg : T.goldBg,
+                border: `1px solid ${stop.isEngineAdded ? T.skyBdr : T.goldBdr}`,
+              }}>
+                <span className="ms" style={{ fontSize: 12, color: stop.isEngineAdded ? T.sky : T.gold }}>
+                  {stop.isEngineAdded ? 'auto_awesome' : 'bookmark'}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: stop.isEngineAdded ? T.sky : T.gold }}>
+                  {stop.isEngineAdded ? 'Our pick' : 'You added this'}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Description — expandable 2-line clamp */}
           {(descriptionText || reasonText) && (
@@ -701,10 +701,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
           )}
 
-          {/* Identity chips */}
-          {(stageLabel || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+          {/* Identity chips — arrival/departure/resequence notes only; stageLabel shown in expanded view */}
+          {(card.movedFrom != null || card.arrivalNote || card.departureNote) && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-              {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
               {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
               {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
               {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}

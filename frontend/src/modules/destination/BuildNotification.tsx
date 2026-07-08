@@ -39,17 +39,17 @@ export function BuildNotification({ activeBuild }: Props) {
     zIndex: 55,
     paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)',
     paddingBottom: '6px',
-    paddingLeft: '14px',
+    paddingLeft: '72px',
     paddingRight: '14px',
     pointerEvents: 'none',
   };
 
   const card: React.CSSProperties = {
     borderRadius: 20,
-    padding: '8px 16px',
+    padding: '12px 18px',
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     pointerEvents: 'auto',
     backdropFilter: 'blur(14px)',
     WebkitBackdropFilter: 'blur(14px)',
@@ -62,7 +62,7 @@ export function BuildNotification({ activeBuild }: Props) {
         <div style={outer}>
           <div style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(212,168,83,0.28)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-primary)', animation: 'buildPulse 1.4s ease-in-out infinite', flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--color-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ flex: 1, fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display', serif", color: 'var(--color-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Building your plan{countdown ? ` · ${countdown}` : ''}
             </span>
             <button
@@ -96,11 +96,11 @@ export function BuildNotification({ activeBuild }: Props) {
           }}
           style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(107,148,112,0.4)', cursor: 'pointer' }}
         >
-          <span style={{ fontSize: 14, flexShrink: 0 }}>✦</span>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#8fc49a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Your plan is ready
+          <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display', serif", color: '#8fc49a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            See plan
           </span>
-          <span style={{ fontSize: 14, color: '#6b9470', flexShrink: 0 }}>→</span>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#6b9470', flexShrink: 0 }}>→</span>
         </div>
       </div>
     );

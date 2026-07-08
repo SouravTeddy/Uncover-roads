@@ -282,7 +282,8 @@ function buildPersonaObservations(
   const lastStop = stops.at(-1)!;
   const lastEndMin = timeToMinutes(lastStop.time) + lastStop.durationMin;
 
-  const eveningThreshold = EVENING_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
+  // Always surface evening gap when day ends before 6 PM — that's 6+ free hours regardless of persona
+  const eveningThreshold = (EVENING_ARCHETYPES.includes(archetypeLower) || lastEndMin < 18 * 60) ? 0 : 0.55;
   if (weights.w_nightlife >= eveningThreshold && lastEndMin < 21 * 60) {
     obs.push({
       id: `evening-${lastStop.id}`,
@@ -298,7 +299,7 @@ function buildPersonaObservations(
     });
   }
 
-  const cultureThreshold = CULTURE_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
+  const cultureThreshold = CULTURE_ARCHETYPES.includes(archetypeLower) ? 0 : 0.30;
   if (weights.w_culture_depth >= cultureThreshold) {
     const hasCulture = stops.some(s =>
       s.category === 'museum' || s.category === 'gallery' || s.category === 'historic',
@@ -489,7 +490,7 @@ function buildScenicCards(
   walkBaseKm = 2.0,
 ): Array<ReelScenicCard & { _afterStopId: string }> {
   const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
-  const threshold = SCENIC_ARCHETYPES.has(archetypeLower) ? 0.2 : 0.4;
+  const threshold = SCENIC_ARCHETYPES.has(archetypeLower) ? 0.2 : 0.3;
   if (weights.w_scenic < threshold) return [];
 
   // Dynamic walk ceiling: city pedestrian density × walk affinity modifier

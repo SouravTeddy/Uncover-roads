@@ -1113,6 +1113,7 @@ export function MapScreen() {
           isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
           hasExistingItinerary={state.hasBuiltThisSession}
           onBuild={handleBuild}
+          onSeePlan={() => dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })}
         />
       )}
 
