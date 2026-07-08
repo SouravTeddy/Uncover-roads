@@ -43,7 +43,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...await authHeaders() },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`POST ${path} → ${res.status}`);
+  if (!res.ok) {
+    let detail: unknown;
+    try { detail = (await res.json()).detail; } catch { /* non-JSON body */ }
+    const err = Object.assign(new Error(`POST ${path} → ${res.status}`), { status: res.status, detail });
+    throw err;
+  }
   return res.json();
 }
 
