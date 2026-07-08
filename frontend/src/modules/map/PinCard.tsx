@@ -70,6 +70,7 @@ interface Props {
   badgeReason?: string | null
   userTier?: 'free' | 'pack' | 'pro'
   persona?: Persona | null
+  isBuildingActive?: boolean
 }
 
 const shimmerBase: React.CSSProperties = {
@@ -87,6 +88,7 @@ export function PinCard({
   badgeReason = null,
   userTier = 'free',
   persona = null,
+  isBuildingActive = false,
 }: Props) {
   const [visible, setVisible] = useState(false)
   const [hoursOpen, setHoursOpen] = useState(false)
@@ -1020,31 +1022,31 @@ export function PinCard({
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
             <button
-              onClick={onAdd}
+              onClick={isBuildingActive ? undefined : onAdd}
               style={{
                 width: '100%', padding: '13px 0', borderRadius: 14,
                 border: isSelected
                   ? '1px solid rgba(212,168,83,.35)'
-                  : trendingLocked ? '1px solid var(--color-border)' : 'none',
-                cursor: trendingLocked ? 'default' : 'pointer',
+                  : (trendingLocked || isBuildingActive) ? '1px solid var(--color-border)' : 'none',
+                cursor: (trendingLocked || isBuildingActive) ? 'default' : 'pointer',
                 fontSize: '0.9rem', fontWeight: 700, fontFamily: 'inherit',
                 background: isSelected
                   ? 'transparent'
-                  : trendingLocked
+                  : (trendingLocked || isBuildingActive)
                   ? 'var(--color-surface2)'
                   : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
                 color: isSelected
                   ? 'var(--color-primary)'
-                  : trendingLocked
+                  : (trendingLocked || isBuildingActive)
                   ? 'var(--color-text-3)'
                   : '#0f0d0c',
-                opacity: trendingLocked ? 0.35 : 1,
-                boxShadow: isSelected || trendingLocked ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
+                opacity: (trendingLocked || isBuildingActive) ? 0.45 : 1,
+                boxShadow: isSelected || trendingLocked || isBuildingActive ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
                 transition: 'all 0.15s ease',
-                pointerEvents: trendingLocked ? 'none' : 'auto',
+                pointerEvents: (trendingLocked || isBuildingActive) ? 'none' : 'auto',
               }}
             >
-              {isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
+              {isBuildingActive ? 'Build in progress…' : isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
             </button>
           )}
         </div>
