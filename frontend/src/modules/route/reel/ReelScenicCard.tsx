@@ -440,6 +440,20 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           </div>
         )}
 
+        {/* Trending badge */}
+        {card.isTrending && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 99,
+            background: 'rgba(212,168,83,0.12)',
+            border: '1px solid rgba(212,168,83,0.3)',
+            marginBottom: 8, alignSelf: 'flex-start',
+          }}>
+            <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
+          </div>
+        )}
+
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
@@ -569,6 +583,20 @@ export default function ReelScenicCard({ card }: Props) {
         {/* Along the way — characterDimensions pills */}
         {card.characterDimensions && !Array.isArray(card.characterDimensions) && (
           <AlongTheWay dims={card.characterDimensions} />
+        )}
+
+        {/* Trending badge */}
+        {card.isTrending && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 99,
+            background: 'rgba(212,168,83,0.12)',
+            border: '1px solid rgba(212,168,83,0.3)',
+            marginBottom: 8, alignSelf: 'flex-start',
+          }}>
+            <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
+          </div>
         )}
 
         {/* Landmark peek */}
