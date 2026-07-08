@@ -39,8 +39,9 @@ export function BuildNotification({ activeBuild }: Props) {
     right: 0,
     zIndex: 55,
     paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)',
-    padding: '6px 14px',
-    paddingTop: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+    paddingBottom: '6px',
+    paddingLeft: '14px',
+    paddingRight: '14px',
     pointerEvents: 'none',
   };
 
