@@ -40,7 +40,7 @@ def test_start_returns_202_with_build_id():
             )
     finally:
         app.dependency_overrides.pop(get_current_user, None)
-    assert response.status_code == 200
+    assert response.status_code == 202
     body = response.json()
     assert body["buildId"] == "build-123"
     assert body["status"] == "pending"

@@ -157,7 +157,7 @@ def test_integration_smoke_full_flow():
                 json=_SAMPLE_PAYLOAD,
                 headers=_AUTH_HEADERS,
             )
-            assert start_resp.status_code == 200, start_resp.text
+            assert start_resp.status_code == 202, start_resp.text
             start_body = start_resp.json()
             assert start_body["status"] == "pending"
             build_id = start_body["buildId"]
