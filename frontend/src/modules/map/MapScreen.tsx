@@ -440,13 +440,14 @@ export function MapScreen() {
   }, [liveEvents, setActivePlace, fetchDetails, trackViewedCategory, dispatch])
 
   const executeBuild = useCallback(async () => {
-    if (buildLoading || selectedPlaces.length === 0) return
-    setBuildLoading(true)
-    setBuildError(null)
+    const buildActive = state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running';
+    if (buildActive || selectedPlaces.length === 0) return;
+    setBuildLoading(true);
+    setBuildError(null);
     try {
-      const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0]
+      const startDate = state.travelStartDate ?? new Date().toISOString().split('T')[0];
       const daysFromDates = computeTotalDays(state.travelStartDate, state.travelEndDate);
-      const days = daysFromDates > 0 ? daysFromDates : ((state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1)
+      const days = daysFromDates > 0 ? daysFromDates : ((state.tripContext?.days ?? 0) > 0 ? state.tripContext.days : 1);
 
       // Resolve the city for every selected place using _city (stamped at add time
       // via geocode). For any place still missing _city (geocode was in-flight when
@@ -483,13 +484,8 @@ export function MapScreen() {
         ...secondaryCities,
       ];
 
-      // Navigate to reel immediately so the loading animation shows while API call runs
-      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: null })
-      dispatch({ type: 'SET_REEL_SAVED_ID', id: null })
-      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })
-
-      const result = await api.engineItinerary({
-        city: city ?? '',
+      const res = await api.engineItinerary.start({
+        city: primaryCity,
         lat: cityGeo?.lat ?? 0,
         lon: cityGeo?.lon ?? 0,
         days,
@@ -501,21 +497,27 @@ export function MapScreen() {
         arrivalTime: state.pendingTripDetails?.arrivalTime ?? null,
         departureTime: state.pendingTripDetails?.departureTime ?? null,
         startType: state.tripContext.startType ?? 'hotel',
-      })
-      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: result })
-    } catch (err) {
-      console.error('[MapScreen] executeBuild failed:', err)
-      // Navigate back to map and show error
-      dispatch({ type: 'GO_TO', screen: 'map' })
-      setBuildError('Could not build itinerary — try again')
-      setTimeout(() => setBuildError(null), 4000)
+      });
+
+      dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending' } });
+    } catch (err: unknown) {
+      console.error('[MapScreen] executeBuild failed:', err);
+      // If build already in progress, reconnect to it
+      const detail = (err as { detail?: { code?: string; buildId?: string } }).detail;
+      if (detail?.code === 'build_in_progress' && detail.buildId) {
+        dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: detail.buildId, cityName: city ?? '', status: 'running' } });
+      } else {
+        setBuildError('Could not start build — try again');
+        setTimeout(() => setBuildError(null), 4000);
+      }
     } finally {
-      setBuildLoading(false)
+      setBuildLoading(false);
     }
-  }, [buildLoading, selectedPlaces, state, city, cityGeo, personaProfile, dispatch])
+  }, [state, selectedPlaces, city, cityGeo, personaProfile, dispatch])
 
   const handleBuild = useCallback(async () => {
-    if (buildLoading || selectedPlaces.length === 0) return;
+    const buildActive = state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running';
+    if (buildLoading || buildActive || selectedPlaces.length === 0) return;
     if (shouldShowPaywall(state)) {
       dispatch({ type: 'GO_TO', screen: 'subscription' });
       return;
@@ -1107,6 +1109,7 @@ export function MapScreen() {
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}
           buildLoading={buildLoading}
+          isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
           hasExistingItinerary={state.hasBuiltThisSession}
           onBuild={handleBuild}
         />
