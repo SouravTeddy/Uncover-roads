@@ -3549,6 +3549,12 @@ def _generate_scenic_card_for_corridor(
     if not scoring["passes_threshold"]:
         return None
 
+    # Persist character scoring so future calls can skip Overpass
+    # NOTE: Must cache BEFORE trend boost to avoid persisting inflated scores
+    _cache_route_character(
+        _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
+    )
+
     # ── Trend velocity boost ──────────────────────────────────────────────────
     _is_trending = (dest_velocity_ratio or 0) >= 0.7
     if _is_trending:
@@ -3561,11 +3567,6 @@ def _generate_scenic_card_for_corridor(
     _trend_note = (
         "Trending spot — locals and travellers are buzzing about this right now"
         if _is_trending else None
-    )
-
-    # Persist character scoring so future calls can skip Overpass
-    _cache_route_character(
-        _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
     )
 
     top_char = scoring["top_character"]
