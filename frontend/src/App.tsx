@@ -6,6 +6,7 @@ import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
+import { useBuildStatus } from './shared/useBuildStatus';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
 import {
@@ -25,6 +26,7 @@ import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
 import { InstallPrompt } from './modules/pwa/InstallPrompt';
 
 function ScreenRouter() {
+  useBuildStatus();
   const { state, dispatch } = useAppStore();
   const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 1024);
   const stackRef = React.useRef(state.screenStack);
