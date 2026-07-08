@@ -249,6 +249,29 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
 }
 
 // ── Walk corridor card — matches proto Card 4 / Card 5 ───────────────────────
+// ── Trending badge component ──────────────────────────────────────────────────
+function TrendingBadge({ card }: { card: ReelScenicCardType }) {
+  return (
+    <div style={{
+      display: 'inline-flex', flexDirection: 'column', gap: 2,
+      padding: '4px 10px', borderRadius: 99,
+      background: 'rgba(212,168,83,0.12)',
+      border: '1px solid rgba(212,168,83,0.3)',
+      marginBottom: 8, alignSelf: 'flex-start',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
+      </div>
+      {card.trendNote && (
+        <span style={{ fontSize: 10, color: 'rgba(212,168,83,.8)', fontWeight: 500, paddingLeft: 19 }}>
+          {card.trendNote}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function getTransitLabel(type: string | null | undefined, lineName: string | null | undefined): string {
   const name = lineName ?? '';
   switch (type) {
@@ -441,18 +464,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
         )}
 
         {/* Trending badge */}
-        {card.isTrending && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 99,
-            background: 'rgba(212,168,83,0.12)',
-            border: '1px solid rgba(212,168,83,0.3)',
-            marginBottom: 8, alignSelf: 'flex-start',
-          }}>
-            <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
-          </div>
-        )}
+        {card.isTrending && <TrendingBadge card={card} />}
 
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (
@@ -586,18 +598,7 @@ export default function ReelScenicCard({ card }: Props) {
         )}
 
         {/* Trending badge */}
-        {card.isTrending && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 99,
-            background: 'rgba(212,168,83,0.12)',
-            border: '1px solid rgba(212,168,83,0.3)',
-            marginBottom: 8, alignSelf: 'flex-start',
-          }}>
-            <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
-          </div>
-        )}
+        {card.isTrending && <TrendingBadge card={card} />}
 
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (
