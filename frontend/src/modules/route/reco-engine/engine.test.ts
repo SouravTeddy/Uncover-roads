@@ -141,8 +141,9 @@ describe('deriveRecos — persona floor reco', () => {
     };
   }
 
-  it('injects culture floor reco for cultural archetype when plan already has full culture', () => {
-    // Plan is already culturally rich — no hasCulture gap
+  it('does NOT inject culture floor reco when plan already covers culture (actual >= 0.5)', () => {
+    // Plan is already culturally rich — actual.hasCulture = 1.0
+    // Persona floor guard requires actual < 0.5 before injecting, so no floor reco fires.
     const stops = [
       makeStop('s1', '09:00', 'museum'),
       makeStop('s2', '11:00', 'gallery'),
@@ -151,10 +152,9 @@ describe('deriveRecos — persona floor reco', () => {
     ];
     const signal = makeSignal('cultural');
     const recos = deriveRecos(stops, signal);
-    // Floor reco for 'cultural' group should still appear if no culture reco already present
-    // In this case, hasCulture actual = 1.0 and target = 0.9, delta = -0.1, no gap → no culture reco from engine
-    // Floor injects one
-    expect(recos.some(r => r.trigger === 'culture')).toBe(true);
+    // actual.hasCulture = 1.0 → delta = -0.1 (excess, below GAP_FLOOR 0.20) → no gap from engine
+    // persona floor guard (< 0.5) also blocks injection → no culture reco expected
+    expect(recos.some(r => r.trigger === 'culture')).toBe(false);
   });
 
   it('does NOT inject duplicate floor reco if engine already surfaced one for the archetype dimension', () => {

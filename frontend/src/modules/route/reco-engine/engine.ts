@@ -16,11 +16,15 @@ export interface Gap {
   conflictPresent: boolean;
 }
 
-const CONFIDENCE_THRESHOLD_BOOST = 0.15;
-export const L1_THRESHOLD = 0.10;   // softer gate — more recos surface at L1
+export const L1_THRESHOLD = 0.10;   // significance floor for L1/L2 boundary in gapToCard
 export const L2_THRESHOLD = 0.25;   // significance floor for persona-amplified L2 copy
 const MAX_RECOS = 3;
 const CONFLICT_BOOST = 1.4;
+// Gate: minimum |delta| for a gap to surface regardless of persona weight.
+// Persona weight (dimensionWeight) ranks gaps, not gatekeeps them.
+// This prevents a low-weight dimension from blocking a genuine gap and a
+// high-weight dimension from surfacing a trivial one.
+const GAP_FLOOR = 0.20;
 
 const OB_MAPPED: Partial<Record<keyof ItineraryProfile, boolean>> = {
   densityScore: true, hasRest: true, hasCulture: true, hasOutdoor: true,
@@ -39,7 +43,6 @@ export function detectGaps(
   actual: ItineraryProfile,
   signal: RecoSignal,
 ): Gap[] {
-  const threshold = L1_THRESHOLD + (signal.archetypeConfidence < 0.5 ? CONFIDENCE_THRESHOLD_BOOST : 0);
   const gaps: Gap[] = [];
 
   for (const dim of Object.keys(target) as Array<keyof ItineraryProfile>) {
@@ -48,19 +51,24 @@ export function detectGaps(
     if (t === null || a === null) continue;
 
     const delta = (t as number) - (a as number);
+    const absDelta = Math.abs(delta);
     const dimensionWeight = getDimensionWeight(dim, signal);
 
-    // liveEventOverlap: actual > 0 means there are unadded saved events — always surface this
-    const rawSignificance = Math.abs(delta) * dimensionWeight;
+    // liveEventOverlap: actual > 0 means there are unadded saved events — always surface
     const isLiveEventGap = dim === 'liveEventOverlap' && (a as number) > 0;
-    const significance = isLiveEventGap
-      ? Math.max(rawSignificance, threshold + 0.01)
+
+    // Gate on delta magnitude — persona weight ranks gaps, not gatekeeps them.
+    // A historian skipping dinner is a real gap even if food weight is low.
+    if (!isLiveEventGap && absDelta < GAP_FLOOR) continue;
+
+    // Significance drives ranking and L1/L2 boundary in gapToCard.
+    // Live event gaps get a minimum significance so they always rank meaningfully.
+    const rawSignificance = absDelta * dimensionWeight;
+    const significance = isLiveEventGap && rawSignificance < L1_THRESHOLD
+      ? L1_THRESHOLD + 0.01
       : rawSignificance;
 
-    if (significance < threshold) continue;
-
-    const conflictPresent = !!OB_MAPPED[dim] && Math.abs(delta) > 0.4;
-    // For live event gaps, treat as 'missing' regardless of delta sign
+    const conflictPresent = !!OB_MAPPED[dim] && absDelta > 0.4;
     const direction: 'missing' | 'excess' = isLiveEventGap ? 'missing' : (delta > 0 ? 'missing' : 'excess');
 
     gaps.push({
