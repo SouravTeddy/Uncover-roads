@@ -5341,6 +5341,11 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             enriched_stops_out.append(_scenic)
                     except Exception as _e:
                         print(f"SCENIC CARD ERROR: {_e}")
+                        enriched_stops_out.append({
+                            "type": "scenic_pending",
+                            "from": _s.get("title", ""),
+                            "to":   _next_s.get("title", ""),
+                        })
         # Stamp total count on all scenic cards now that we know the final count
         for _card in enriched_stops_out:
             if _card.get("type") == "scenic":

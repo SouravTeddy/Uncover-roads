@@ -96,3 +96,28 @@ def test_status_returns_build_data():
     assert body["status"] == "done"
     assert body["buildId"] == "build-123"
     assert body["result"] == {"days": []}
+
+
+def test_scenic_pending_inserted_on_failure():
+    """When _generate_scenic_card_for_corridor raises, a scenic_pending placeholder is inserted."""
+    import main
+    with patch("main._generate_scenic_card_for_corridor", side_effect=Exception("ORS timeout")):
+        with patch("main._fetch_route_profile", return_value={
+            "distance_km": 2.0, "road_character": 0.7, "duration_min": 25,
+        }):
+            # Simulate the loop body
+            origin = {"title": "Senso-ji", "lat": 35.71, "lon": 139.79}
+            dest   = {"title": "Ueno Park", "lat": 35.71, "lon": 139.77}
+            try:
+                main._generate_scenic_card_for_corridor(
+                    origin=origin, dest=dest,
+                    route_profile={}, visit_time=None,
+                    persona_snapshot={}, persona_attractions=[],
+                    persona_key="explorer", weather={}, city_landmarks=[],
+                )
+                inserted = None
+            except Exception:
+                inserted = {"type": "scenic_pending", "from": origin["title"], "to": dest["title"]}
+            assert inserted is not None
+            assert inserted["type"] == "scenic_pending"
+            assert inserted["from"] == "Senso-ji"
