@@ -24,10 +24,16 @@ export interface TransitInfo {
   walk_via: string[] | null;        // street / path names extracted from walking steps
 }
 
-export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic' | 'day_transition';
+export type ReelCardType = 'intro' | 'summary' | 'stop' | 'reco' | 'intel' | 'transit' | 'finale' | 'day_divider' | 'balance' | 'scenic' | 'scenic_pending' | 'day_transition';
 
 export type ScenicSceneType = 'walk' | 'drive' | 'coastal' | 'ridge' | 'crowd' | 'forest';
 export type ScenicVizType   = 'corridor' | 'route' | 'sunset' | 'elevation' | 'quiet' | 'canopy';
+
+export interface ReelScenicPendingCard {
+  type: 'scenic_pending';
+  from: string;
+  to: string;
+}
 
 export interface ReelScenicCard {
   type: 'scenic';
@@ -310,6 +316,7 @@ export type ReelCard =
   | ReelDayDividerCard
   | ReelBalanceCard
   | ReelScenicCard
+  | ReelScenicPendingCard
   | ReelGroupCard
   | ReelDayTransitionCard
   | ReelDayIntelCard
