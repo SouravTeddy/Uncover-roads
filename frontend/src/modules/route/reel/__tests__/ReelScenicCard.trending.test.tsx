@@ -33,4 +33,12 @@ describe('ReelScenicCard trend badge', () => {
     const { queryByText } = render(<ReelScenicCard card={card} active={true} />);
     expect(queryByText(/trending now/i)).not.toBeInTheDocument();
   });
+
+  it('displays trendNote text when isTrending is true and trendNote is provided', () => {
+    const card = { ...baseCard, isTrending: true, trendNote: 'One of the most visited spots right now' };
+    // @ts-ignore minimal mock
+    const { getByText } = render(<ReelScenicCard card={card} active={true} />);
+    expect(getByText(/trending now/i)).toBeInTheDocument();
+    expect(getByText(/One of the most visited spots right now/)).toBeInTheDocument();
+  });
 });
