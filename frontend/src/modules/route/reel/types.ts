@@ -60,6 +60,8 @@ export interface ReelScenicCard {
   photoUrl?: string | null; // for walk/drive scenes — real destination photo
   originPhotoUrl?: string | null; // origin stop photo for dual-photo walk card
   destPhotoUrl?: string | null;   // destination stop photo for dual-photo walk card
+  originPlaceId?: string | null;  // for lazy-fetch when originPhotoUrl is absent
+  destPlaceId?: string | null;    // for lazy-fetch when destPhotoUrl is absent
   transitInfo?: TransitInfo | null;
   detourKm: number;
   detourMin: number;
@@ -67,8 +69,6 @@ export interface ReelScenicCard {
   characterDimensions?: Record<string, number> | null; // secondary dimensions with score > 0.4 e.g. {"natural": 0.8, "viewpoint": 0.6}
   landmarkPeek?: string[] | null;         // landmark names visible from this scenic segment
   routeLabel?: string | null;             // character-based label e.g. "Sumida Riverside Walk"
-  isTrending?: boolean;
-  trendNote?: string | null;
 }
 
 export interface ReelIntroCard {
