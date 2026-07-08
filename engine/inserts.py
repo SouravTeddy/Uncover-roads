@@ -127,12 +127,6 @@ def detect(
     has_lunch_today = _has_meal_in_window(11, 14)
     has_dinner_today = _has_meal_in_window(17, 21)
 
-    # Seed mins_since_rest from the last rest stop already in the plan
-    for s in stops:
-        if s.category in _REST_CATS or s.type in _REST_CATS:
-            mins_since_rest = 0
-        mins_since_rest += s.duration_min
-
     consecutive = 0
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
 
