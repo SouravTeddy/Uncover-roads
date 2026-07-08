@@ -1,9 +1,11 @@
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BuildNotification } from '../BuildNotification';
 
+const mockDispatch = vi.fn();
+
 vi.mock('../../../shared/store', () => ({
-  useAppStore: () => ({ state: {}, dispatch: vi.fn() }),
+  useAppStore: () => ({ state: {}, dispatch: mockDispatch }),
 }));
 
 describe('BuildNotification', () => {
@@ -19,6 +21,20 @@ describe('BuildNotification', () => {
       <BuildNotification activeBuild={{ id: 'b1', cityName: 'Tokyo', status: 'done' }} />
     );
     expect(getByText(/Your Tokyo plan is ready/)).toBeInTheDocument();
+  });
+
+  it('dispatches GO_TO and CLEAR_ACTIVE_BUILD on done state click', () => {
+    mockDispatch.mockClear();
+    const { getByRole } = render(
+      <BuildNotification activeBuild={{ id: 'b1', cityName: 'Tokyo', status: 'done' }} />
+    );
+
+    const button = getByRole('button');
+    fireEvent.click(button);
+
+    expect(mockDispatch).toHaveBeenCalledTimes(2);
+    expect(mockDispatch).toHaveBeenNthCalledWith(1, { type: 'GO_TO', screen: 'itinerary-reel' });
+    expect(mockDispatch).toHaveBeenNthCalledWith(2, { type: 'CLEAR_ACTIVE_BUILD' });
   });
 
   it('renders failed state', () => {

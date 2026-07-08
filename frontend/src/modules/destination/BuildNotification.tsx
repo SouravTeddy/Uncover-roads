@@ -43,8 +43,14 @@ export function BuildNotification({ activeBuild }: Props) {
       <div
         role="button"
         tabIndex={0}
-        onClick={() => dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })}
-        onKeyDown={e => e.key === 'Enter' && dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })}
+        onClick={() => {
+          dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+          dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
+        }}
+        onKeyDown={e => e.key === 'Enter' && (() => {
+          dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+          dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
+        })()}
         style={{
           ...base,
           background: 'linear-gradient(135deg, rgba(107,148,112,0.12), rgba(79,143,171,0.08))',
