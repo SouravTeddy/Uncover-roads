@@ -194,7 +194,11 @@ async def seed_cities_and_start_sync():
             print(f"[startup] Failed to seed {city_id}: {exc}")
     # Start City Intelligence Sync
     google_key = os.environ.get("GOOGLE_PLACES_API_KEY")
-    _start_sync_scheduler(_supabase, google_key)
+    _start_sync_scheduler(
+        _supabase, google_key,
+        reddit_client_id=REDDIT_CLIENT_ID,
+        reddit_client_secret=REDDIT_CLIENT_SECRET,
+    )
     print("[startup] City Intelligence Sync scheduler registered (weekly Sunday 02:00 UTC)")
     # Start daily Trend Velocity Refresh (03:00 UTC)
     _start_trend_scheduler(
