@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 def make_sb_with_city_cache(has_cache: bool, elements=None):
     """Supabase mock for city_osm_features table."""
     sb = MagicMock()
-    cache_data = [{"elements": elements or [], "cached_at": "2026-07-08T00:00:00Z"}] if has_cache else []
+    cache_data = [{"elements": elements or [], "cached_at": "2099-01-01T00:00:00Z"}] if has_cache else []
     (sb.table.return_value.select.return_value
        .eq.return_value.execute.return_value.data) = cache_data
     sb.table.return_value.upsert.return_value.execute.return_value.data = [{}]
