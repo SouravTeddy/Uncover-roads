@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks
+from fastapi.responses import JSONResponse
 from typing import Optional
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -3145,6 +3146,7 @@ def _ors_surface_score(ors_response: dict) -> float:
 def _fetch_route_character(
     route_points: list[tuple[float, float]],
     city_pop: int,
+    city_id: str = "",
 ) -> dict[str, float]:
     """Query Overpass for amenities along a walking route and return 7 character dimension scores.
 
@@ -3156,6 +3158,59 @@ def _fetch_route_character(
         return _neutral
     if not route_points:
         return _neutral
+
+    # ── Check city-level OSM cache ────────────────────────────────────────────
+    if city_id and _supabase:
+        try:
+            _cr = (
+                _supabase.table("city_osm_features")
+                .select("elements, cached_at")
+                .eq("city_id", city_id)
+                .execute()
+            )
+            _city_rows = _cr.data or []
+            if _city_rows:
+                from datetime import datetime as _dt, timezone as _tz, timedelta as _tdd
+                _cached_at = _dt.fromisoformat(_city_rows[0]["cached_at"].replace("Z", "+00:00"))
+                _fresh = (_dt.now(_tz.utc) - _cached_at) < _tdd(days=7)
+                if _fresh:
+                    _all_elements = _city_rows[0].get("elements") or []
+                    # Filter elements to corridor bounding box
+                    lats = [p[0] for p in route_points]
+                    lons = [p[1] for p in route_points]
+                    _s = min(lats) - 0.05
+                    _n = max(lats) + 0.05
+                    _w = min(lons) - 0.05
+                    _e = max(lons) + 0.05
+                    _elements = [
+                        el for el in _all_elements
+                        if _s <= float(el.get("lat", 0)) <= _n
+                        and _w <= float(el.get("lon", 0)) <= _e
+                    ]
+                    # Reuse existing scoring logic with filtered elements
+                    threshold = max(5, min(50, city_pop // 100_000 * 5 + 5))
+                    dim_counts: dict[str, int] = {d: 0 for d in _neutral}
+                    for _el in _elements:
+                        tags = _el.get("tags") or {}
+                        nat = tags.get("natural", "")
+                        if nat in ("wood", "water", "wetland", "tree", "grassland", "scrub", "beach"):
+                            dim_counts["natural"] += 1
+                        if tags.get("tourism") == "viewpoint":
+                            dim_counts["viewpoint"] += 1
+                        if tags.get("historic") in ("monument", "memorial", "castle", "ruins", "building"):
+                            dim_counts["historic"] += 1
+                        if tags.get("amenity") in ("bar", "nightclub", "restaurant", "cafe", "marketplace"):
+                            dim_counts["vibrant"] += 1
+                        if tags.get("tourism") in ("artwork", "gallery", "museum", "attraction"):
+                            dim_counts["photogenic"] += 1
+                        if tags.get("waterway") in ("river", "stream", "canal"):
+                            dim_counts["waterfront"] += 1
+                        if tags.get("amenity") in ("community_centre", "social_facility", "library"):
+                            dim_counts["local"] += 1
+                    return {d: min(1.0, dim_counts[d] / threshold) for d in _neutral}
+        except Exception:
+            pass  # Fall through to live Overpass
+    # ── Live Overpass (cold cache fallback) ───────────────────────────────────
 
     # Build bounding box with 0.05° buffer
     lats = [p[0] for p in route_points]
@@ -3178,13 +3233,7 @@ def _fetch_route_character(
 out tags;"""
 
     try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data={"data": query},
-            timeout=20,
-        )
-        resp.raise_for_status()
-        elements = resp.json().get("elements", [])
+        elements = fetch_overpass(query).get("elements", [])
     except Exception:
         return _neutral
 
@@ -3464,6 +3513,7 @@ def _generate_scenic_card_for_corridor(
     persona_key: str,
     weather: dict,
     city_landmarks: list,
+    dest_velocity_ratio: float | None = None,
 ) -> dict | None:
     """Generate a ReelScenicCard dict for the corridor, or None if threshold not met.
 
@@ -3549,8 +3599,23 @@ def _generate_scenic_card_for_corridor(
         return None
 
     # Persist character scoring so future calls can skip Overpass
+    # NOTE: Must cache BEFORE trend boost to avoid persisting inflated scores
     _cache_route_character(
         _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
+    )
+
+    # ── Trend velocity boost ──────────────────────────────────────────────────
+    _is_trending = (dest_velocity_ratio or 0) >= 0.7
+    if _is_trending:
+        scoring["character_scores"]["vibrant"] = min(
+            1.0, scoring["character_scores"].get("vibrant", 0.0) + 0.15
+        )
+        scoring["character_scores"]["local"] = min(
+            1.0, scoring["character_scores"].get("local", 0.0) + 0.15
+        )
+    _trend_note = (
+        "Trending spot — locals and travellers are buzzing about this right now"
+        if _is_trending else None
     )
 
     top_char = scoring["top_character"]
@@ -3576,7 +3641,8 @@ def _generate_scenic_card_for_corridor(
             else "High UV today — consider sun protection."
         )
 
-    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}."
+    _trend_suffix = " Trending right now." if _is_trending else ""
+    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}.{_trend_suffix}"
 
     return {
         "type": "scenic",
@@ -3613,6 +3679,8 @@ def _generate_scenic_card_for_corridor(
         "fromStop": origin.get("title", ""),
         "toStop": dest.get("title", ""),
         "distanceKm": round(distance_km, 2),
+        "isTrending": _is_trending,
+        "trendNote": _trend_note,
     }
 
 
@@ -5324,6 +5392,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             _visit_time = datetime.fromisoformat(f"{_visit_date_str}T{_time_str}:00+00:00")
                         except Exception:
                             pass
+                        _dest_pid = _next_s.get("place_id", "")
+                        _dest_vr = (_stage_map.get(_dest_pid) or {}).get("velocity_ratio")
                         _scenic = _generate_scenic_card_for_corridor(
                             origin=_s,
                             dest=_next_s,
@@ -5334,6 +5404,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             persona_key=persona.get("archetype", ""),
                             weather=getattr(ctx, "weather_map", {}).get(day_city) or {},
                             city_landmarks=getattr(city_data, "landmark_anchors", []),
+                            dest_velocity_ratio=_dest_vr,
                         )
                         if _scenic:
                             scenic_pos += 1
@@ -5341,6 +5412,11 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             enriched_stops_out.append(_scenic)
                     except Exception as _e:
                         print(f"SCENIC CARD ERROR: {_e}")
+                        enriched_stops_out.append({
+                            "type": "scenic_pending",
+                            "from": _s.get("title", ""),
+                            "to":   _next_s.get("title", ""),
+                        })
         # Stamp total count on all scenic cards now that we know the final count
         for _card in enriched_stops_out:
             if _card.get("type") == "scenic":
@@ -5390,6 +5466,135 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         "days": days_out,
         "personaSnapshot": persona_snapshot,
         "archetypeSnapshot": archetype,
+    }
+
+
+# ── Background itinerary build ─────────────────────────────────────────────
+
+async def _run_itinerary_build(
+    build_id: str,
+    user_id: str,
+    body: "EngineItineraryPayload",
+) -> None:
+    """Run the full engine + scenic enrichment, writing status to itinerary_builds."""
+    from datetime import timezone as _tz
+
+    def _update(status: str, result=None, error: str | None = None) -> None:
+        if not _supabase:
+            return
+        patch: dict = {
+            "status": status,
+            "updated_at": datetime.now(_tz.utc).isoformat(),
+        }
+        if result is not None:
+            patch["result"] = result
+        if error is not None:
+            patch["error"] = error
+        try:
+            _supabase.table("itinerary_builds").update(patch).eq("id", build_id).execute()
+        except Exception as _e:
+            print(f"[build] status update failed for {build_id}: {_e}")
+
+    try:
+        _update("running")
+        # Reuse the full engine_itinerary logic by calling it directly.
+        # We construct a fake Request with just the client IP.
+        from fastapi import Request as _Req
+        from starlette.datastructures import Headers as _H
+        scope = {"type": "http", "headers": [], "client": ("127.0.0.1", 0)}
+        fake_request = _Req(scope)  # type: ignore[arg-type]
+
+        # Call the engine endpoint handler directly (it's an async function).
+        result_response = await engine_itinerary(body, fake_request, type("U", (), {"id": user_id})())
+        # engine_itinerary returns a JSONResponse or dict — extract the body
+        if hasattr(result_response, "body"):
+            import json as _json
+            result_dict = _json.loads(result_response.body)
+        else:
+            result_dict = result_response
+        _update("done", result=result_dict)
+    except Exception as _exc:
+        print(f"[build] failed for {build_id}: {_exc}")
+        _update("failed", error=str(_exc))
+
+
+@app.post("/engine-itinerary/start")
+async def engine_itinerary_start(
+    body: EngineItineraryPayload,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    user=Depends(get_current_user),
+):
+    """Start a background itinerary build. Returns {buildId, status} immediately (non-blocking)."""
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="rate_limit_exceeded")
+
+    if _is_restricted_city(body.city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
+
+    # Reject if user already has an active build
+    if _supabase:
+        try:
+            active = (
+                _supabase.table("itinerary_builds")
+                .select("id, status")
+                .eq("user_id", str(user.id))
+                .in_("status", ["pending", "running"])
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if active.data:
+                raise HTTPException(status_code=409, detail={
+                    "code": "build_in_progress",
+                    "buildId": active.data[0]["id"],
+                })
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # DB unavailable — proceed anyway
+
+    # Create build record
+    build_id: str = ""
+    if _supabase:
+        try:
+            row = _supabase.table("itinerary_builds").insert({
+                "user_id": str(user.id),
+                "status": "pending",
+                "city": body.city,
+            }).execute()
+            build_id = row.data[0]["id"]
+        except Exception as _e:
+            raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
+
+    background_tasks.add_task(_run_itinerary_build, build_id, str(user.id), body)
+    return JSONResponse(status_code=202, content={"buildId": build_id, "status": "pending"})
+
+
+@app.get("/engine-itinerary/status/{build_id}")
+async def engine_itinerary_status(build_id: str, user=Depends(get_current_user)):
+    """Poll build status. Returns status + full result once done."""
+    if not _supabase:
+        raise HTTPException(status_code=503, detail="DB unavailable")
+    try:
+        row = (
+            _supabase.table("itinerary_builds")
+            .select("id, status, result, error, updated_at")
+            .eq("id", build_id)
+            .eq("user_id", str(user.id))
+            .single()
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Build not found")
+    d = row.data
+    return {
+        "buildId": d["id"],
+        "status":  d["status"],
+        "result":  d.get("result"),
+        "error":   d.get("error"),
+        "updatedAt": d["updated_at"],
     }
 
 

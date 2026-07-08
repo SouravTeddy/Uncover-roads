@@ -683,6 +683,12 @@ export interface LiveEvent {
 }
 
 // ── Reel recommendation places ────────────────────────────────
+export interface ActiveBuild {
+  id: string;
+  cityName: string;
+  status: 'pending' | 'running' | 'done' | 'failed';
+}
+
 /** A persona-scored nearby place returned by /reel-reco. No AI text. */
 export interface ReelRecoPlace {
   placeId: string

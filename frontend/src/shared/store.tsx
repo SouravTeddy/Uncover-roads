@@ -29,6 +29,7 @@ import type {
   CityContext,
   EngineItinerary,
   SavedEvent,
+  ActiveBuild,
 } from './types';
 
 // ── State ─────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ export interface AppState {
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
   reelSavedId: string | null;
+  activeBuild: ActiveBuild | null;
   pendingTripDetails: import('./types').TripDetails | null;
   dismissedPinIds: string[];
   recoInteractions: Array<{
@@ -341,6 +343,7 @@ export const initialState: AppState = {
   activePinId: null,
   mapFilter: 'all' as MapFilterChip,
   reelSavedId: null,
+  activeBuild: ssGet<ActiveBuild>('ur_ss_active_build') ?? null,
   pendingTripDetails: null,
   dismissedPinIds: [],
   recoInteractions: [],
@@ -428,7 +431,9 @@ export type Action =
   | { type: 'DISMISS_PIN'; pinId: string }
   | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] }
   | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null }
-  | { type: 'UPDATE_PLACE_CITY'; id: string; city: string };
+  | { type: 'UPDATE_PLACE_CITY'; id: string; city: string }
+  | { type: 'SET_ACTIVE_BUILD'; build: ActiveBuild }
+  | { type: 'CLEAR_ACTIVE_BUILD' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -823,6 +828,13 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, engineMessages: [] }
 
     // ── Phase 3: engine itinerary cases ────────────────────────
+
+    case 'SET_ACTIVE_BUILD':
+      ssSave('ur_ss_active_build', action.build);
+      return { ...state, activeBuild: action.build };
+    case 'CLEAR_ACTIVE_BUILD':
+      ssSave('ur_ss_active_build', null);
+      return { ...state, activeBuild: null };
 
     case 'SET_ENGINE_ITINERARY':
       ssSave('ur_ss_engine_itin', action.itinerary)
