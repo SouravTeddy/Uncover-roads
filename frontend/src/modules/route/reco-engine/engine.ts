@@ -341,10 +341,12 @@ export function deriveRecos(
     .map(g => gapToCard(g, stops, signal))
     .filter((c): c is ReelRecoCard => c !== null);
 
-  // Persona floor: inject one archetype-aligned reco if none already present and day has enough stops
+  // Persona floor: inject one archetype-aligned reco only when the plan doesn't already cover
+  // the dimension (actual < 0.5). Prevents injecting a café reco when the plan already has one.
   if (stops.length >= 2) {
     const floor = ARCHETYPE_FLOOR[signal.archetypeGroup];
-    if (floor && !result.some(r => r.trigger === floor.trigger)) {
+    const floorActual = floor ? (actual[floor.dimension] as number ?? 0) : 0;
+    if (floor && floorActual < 0.5 && !result.some(r => r.trigger === floor.trigger)) {
       const floorGap: Gap = {
         dimension: floor.dimension,
         target: target[floor.dimension] as number ?? 0.5,
