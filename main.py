@@ -5497,21 +5497,33 @@ async def _run_itinerary_build(
 
     try:
         _update("running")
-        # Reuse the full engine_itinerary logic by calling it directly.
-        # We construct a fake Request with just the client IP.
+        # engine_itinerary uses synchronous `requests` calls (Overpass, ORS, elevation)
+        # throughout its call stack. Running it directly in this async background task
+        # blocks the entire event loop for the duration of the build (3-8 min for Tokyo).
+        # Fix: run the blocking engine in a thread pool so the event loop stays free to
+        # handle status polls and other requests while the build is in progress.
+        import asyncio as _asyncio
+
         from fastapi import Request as _Req
-        from starlette.datastructures import Headers as _H
         scope = {"type": "http", "headers": [], "client": ("127.0.0.1", 0)}
         fake_request = _Req(scope)  # type: ignore[arg-type]
+        fake_user = type("U", (), {"id": user_id})()
 
-        # Call the engine endpoint handler directly (it's an async function).
-        result_response = await engine_itinerary(body, fake_request, type("U", (), {"id": user_id})())
-        # engine_itinerary returns a JSONResponse or dict — extract the body
-        if hasattr(result_response, "body"):
-            import json as _json
-            result_dict = _json.loads(result_response.body)
-        else:
-            result_dict = result_response
+        def _run_engine_sync() -> dict:
+            """Run the async engine_itinerary in a fresh event loop inside a thread."""
+            loop = _asyncio.new_event_loop()
+            try:
+                result_response = loop.run_until_complete(
+                    engine_itinerary(body, fake_request, fake_user)
+                )
+                if hasattr(result_response, "body"):
+                    import json as _json
+                    return _json.loads(result_response.body)
+                return result_response  # type: ignore[return-value]
+            finally:
+                loop.close()
+
+        result_dict = await _asyncio.to_thread(_run_engine_sync)
         _update("done", result=result_dict)
     except Exception as _exc:
         print(f"[build] failed for {build_id}: {_exc}")
