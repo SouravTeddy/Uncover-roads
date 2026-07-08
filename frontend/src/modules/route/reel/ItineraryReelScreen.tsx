@@ -1077,6 +1077,33 @@ export function ItineraryReelScreen() {
               }}
             />
           );
+          else if (card.type === 'scenic_pending') child = (
+            <div style={{
+              background: 'var(--color-surface, #1a1714)',
+              borderRadius: 20,
+              padding: 24,
+              margin: '0 0 2px',
+              minHeight: 180,
+              display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(245,240,234,.3)' }}>
+                Between {card.from} and {card.to}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[120, 80, 100].map((w, i) => (
+                  <div key={i} style={{
+                    height: 12, borderRadius: 6,
+                    background: 'linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.05) 75%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.5s infinite',
+                    width: `${w}px`,
+                  }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(245,240,234,.3)' }}>Couldn't load scenic info for this stretch</div>
+              <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
+            </div>
+          );
           else if (card.type === 'scenic') child = <ReelScenicCard card={card} active={isActive} />;
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
