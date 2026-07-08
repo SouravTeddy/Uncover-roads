@@ -4,7 +4,6 @@ import type { ActiveBuild } from '../../shared/types';
 
 interface Props { activeBuild: ActiveBuild | null }
 
-// Estimate ~3 min build. Count down; under 60s show "Finishing up"
 function useCountdown(startedAt: number | null): string {
   const TOTAL_MS = 3 * 60 * 1000;
   const [elapsed, setElapsed] = useState(0);
@@ -47,7 +46,7 @@ export function BuildNotification({ activeBuild }: Props) {
 
   const card: React.CSSProperties = {
     borderRadius: 20,
-    padding: '8px 14px',
+    padding: '8px 16px',
     display: 'flex',
     alignItems: 'center',
     gap: 8,
@@ -68,7 +67,7 @@ export function BuildNotification({ activeBuild }: Props) {
             </span>
             <button
               onClick={() => dispatch({ type: 'CLEAR_ACTIVE_BUILD' })}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 17, lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 17, lineHeight: 1, padding: '2px 6px', flexShrink: 0 }}
               aria-label="Dismiss"
             >
               ×
@@ -89,17 +88,19 @@ export function BuildNotification({ activeBuild }: Props) {
             dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
             dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
           }}
-          onKeyDown={e => e.key === 'Enter' && (() => {
-            dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
-            dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
-          })()}
-          style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(107,148,112,0.35)', cursor: 'pointer' }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+              dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
+            }
+          }}
+          style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(107,148,112,0.4)', cursor: 'pointer' }}
         >
-          <span className="material-symbols-outlined" style={{ color: '#6b9470', fontSize: 16, flexShrink: 0 }}>auto_awesome</span>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Your plan is ready — tap to open ✦
+          <span style={{ fontSize: 14, flexShrink: 0 }}>✦</span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#8fc49a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Your plan is ready
           </span>
-          <span className="material-symbols-outlined" style={{ color: '#6b9470', fontSize: 15 }}>chevron_right</span>
+          <span style={{ fontSize: 14, color: '#6b9470', flexShrink: 0 }}>→</span>
         </div>
       </div>
     );
@@ -115,7 +116,7 @@ export function BuildNotification({ activeBuild }: Props) {
           onKeyDown={e => e.key === 'Enter' && dispatch({ type: 'CLEAR_ACTIVE_BUILD' })}
           style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(180,60,60,0.3)', cursor: 'pointer' }}
         >
-          <span className="material-symbols-outlined" style={{ color: '#c87070', fontSize: 16, flexShrink: 0 }}>error_outline</span>
+          <span style={{ fontSize: 13, flexShrink: 0 }}>⚠</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#c87070' }}>Build failed · tap to dismiss</span>
         </div>
       </div>
