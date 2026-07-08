@@ -5545,7 +5545,19 @@ async def engine_itinerary_start(
     if _is_restricted_city(body.city):
         raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
 
-    # Reject if user already has an active build
+    # Clean up any builds orphaned by dyno restarts (stuck pending/running > 15 min)
+    if _supabase:
+        try:
+            stale_cutoff = (datetime.now(timezone.utc) - timedelta(minutes=15)).isoformat()
+            _supabase.table("itinerary_builds").update({
+                "status": "failed",
+                "error": "Build timed out — server was restarted. Please try again.",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("user_id", str(user.id)).in_("status", ["pending", "running"]).lt("updated_at", stale_cutoff).execute()
+        except Exception:
+            pass  # Non-fatal
+
+    # Reject if user already has an active (non-stale) build
     if _supabase:
         try:
             active = (
