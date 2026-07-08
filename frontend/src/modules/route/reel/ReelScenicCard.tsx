@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import { useId, useState, useEffect, useRef } from 'react';
 import type { ReelScenicCard as ReelScenicCardType } from './types';
+import { fetchPlaceDetails, getPlacePhotoUrl } from '../../../shared/api';
 import {
   WalkSpineScene, SelfDriveScene, CoastalScene,
   RidgeScene, CrowdFreeScene, ForestScene,
@@ -249,28 +250,6 @@ function SceneFor({ card }: { card: ReelScenicCardType }) {
 }
 
 // ── Walk corridor card — matches proto Card 4 / Card 5 ───────────────────────
-// ── Trending badge component ──────────────────────────────────────────────────
-function TrendingBadge({ card }: { card: ReelScenicCardType }) {
-  return (
-    <div style={{
-      display: 'inline-flex', flexDirection: 'column', gap: 2,
-      padding: '4px 10px', borderRadius: 99,
-      background: 'rgba(212,168,83,0.12)',
-      border: '1px solid rgba(212,168,83,0.3)',
-      marginBottom: 8, alignSelf: 'flex-start',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <span className="ms" style={{ fontSize: 12, color: '#d4a853' }}>trending_up</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#d4a853', letterSpacing: '.06em' }}>Trending now</span>
-      </div>
-      {card.trendNote && (
-        <span style={{ fontSize: 10, color: 'rgba(212,168,83,.8)', fontWeight: 500, paddingLeft: 19 }}>
-          {card.trendNote}
-        </span>
-      )}
-    </div>
-  );
-}
 
 function getTransitLabel(type: string | null | undefined, lineName: string | null | undefined): string {
   const name = lineName ?? '';
@@ -285,7 +264,7 @@ function getTransitLabel(type: string | null | undefined, lineName: string | nul
   }
 }
 
-function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
+function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: boolean }) {
   const isHighWalk = card.persona.includes('walk') || card.persona.includes('hike') || card.persona.includes('slow');
 
   const ti = card.transitInfo;
@@ -314,7 +293,31 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
     ? `board at ${ti!.departure_stop}`
     : hasRealTransit ? 'nearest stop' : null;
 
-  const photoUrl = card.destPhotoUrl ?? card.originPhotoUrl ?? card.photoUrl;
+  // Lazy-fetch photos from placeId when originPhotoUrl/destPhotoUrl are absent
+  const [fallbackOriginUrl, setFallbackOriginUrl] = useState<string | null>(null);
+  const [fallbackDestUrl, setFallbackDestUrl] = useState<string | null>(null);
+  const fetchAttempted = useRef(false);
+
+  useEffect(() => {
+    if (!active) return;
+    const needsOrigin = !card.originPhotoUrl && !!card.originPlaceId;
+    const needsDest = !card.destPhotoUrl && !!card.destPlaceId;
+    if (!needsOrigin && !needsDest) return;
+    if (fetchAttempted.current) return;
+    fetchAttempted.current = true;
+    if (needsOrigin) {
+      fetchPlaceDetails(card.originPlaceId!).then(d => {
+        if (d?.photo_ref) setFallbackOriginUrl(getPlacePhotoUrl(d.photo_ref, 800, 600));
+      }).catch(() => {});
+    }
+    if (needsDest) {
+      fetchPlaceDetails(card.destPlaceId!).then(d => {
+        if (d?.photo_ref) setFallbackDestUrl(getPlacePhotoUrl(d.photo_ref, 800, 600));
+      }).catch(() => {});
+    }
+  }, [active, card.originPhotoUrl, card.destPhotoUrl, card.originPlaceId, card.destPlaceId]);
+
+  const photoUrl = (card.destPhotoUrl ?? fallbackDestUrl) ?? (card.originPhotoUrl ?? fallbackOriginUrl) ?? card.photoUrl;
 
   return (
     <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: isHighWalk ? 'linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)' : '#0a0a0d' }}>
@@ -331,8 +334,8 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 280px 350px at 50% 35%,rgba(79,143,171,.12),transparent)', pointerEvents: 'none', zIndex: 2 }} />
       )}
 
-      {/* Mode chip topbar */}
-      <div className="rsc-topbar" style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+      {/* Mode chip topbar — top matches stop card (below back button + safe area) */}
+      <div className="rsc-topbar" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 52px)', left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,.09)', fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.82)', whiteSpace: 'nowrap' }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: card.accent, boxShadow: `0 0 5px ${card.accent}` }} />
           <span>{card.modeIcon === 'walk' ? 'Walk' : 'Drive'}</span>
@@ -463,9 +466,6 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
           </div>
         )}
 
-        {/* Trending badge */}
-        {card.isTrending && <TrendingBadge card={card} />}
-
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
@@ -495,9 +495,9 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType }) {
 }
 
 // ── Main card ─────────────────────────────────────────────────────────────────
-export default function ReelScenicCard({ card }: Props) {
+export default function ReelScenicCard({ card, active }: Props) {
   if (card.sceneType === 'walk') {
-    return <WalkCorridorCard card={card} />;
+    return <WalkCorridorCard card={card} active={active} />;
   }
 
   const a = card.accent;
@@ -596,9 +596,6 @@ export default function ReelScenicCard({ card }: Props) {
         {card.characterDimensions && !Array.isArray(card.characterDimensions) && (
           <AlongTheWay dims={card.characterDimensions} />
         )}
-
-        {/* Trending badge */}
-        {card.isTrending && <TrendingBadge card={card} />}
 
         {/* Landmark peek */}
         {card.landmarkPeek && card.landmarkPeek.length > 0 && (

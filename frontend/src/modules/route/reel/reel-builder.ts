@@ -543,6 +543,8 @@ function buildScenicCards(
       photoUrl: null,
       originPhotoUrl: a.imageUrl ?? (a.photoRef ? getPlacePhotoUrl(a.photoRef, 800, 600) : null),
       destPhotoUrl: b.imageUrl ?? (b.photoRef ? getPlacePhotoUrl(b.photoRef, 800, 600) : null),
+      originPlaceId: a.placeId ?? null,
+      destPlaceId: b.placeId ?? null,
       detourKm: Math.round(distKm * 10) / 10,
       detourMin: walkMins,
       _afterStopId: a.id,
@@ -703,6 +705,10 @@ export function buildReelCards(
   // Case 1: same city, same calendar date (engine merged them because prev day ended before 4 PM)
   // Case 2: different cities, prev ends before 13:00, transit ≤ 3h or distance ≤ 300km
   const sameDayMergeSet = new Set<number>();
+  // Subset of sameDayMergeSet: only same-city same-date entries.
+  // These days get their stops merged into the first day of the group so stops sort globally by time
+  // rather than appearing in day-object order (which produces 10am, 12pm, 8am sequences).
+  const sameCityDateMergeSet = new Set<number>();
   for (let di = 1; di < itinerary.days.length; di++) {
     const prevD = itinerary.days[di - 1];
     const currD = itinerary.days[di];
@@ -714,6 +720,7 @@ export function buildReelCards(
     // Same city, same calendar date → engine already merged them as a same-day continuation
     if (prevCityKey && currCityKey && prevCityKey === currCityKey && prevD.date === currD.date) {
       sameDayMergeSet.add(di);
+      sameCityDateMergeSet.add(di);
       continue;
     }
 
@@ -741,6 +748,19 @@ export function buildReelCards(
   const logicalTotalDays = itinerary.days.length - sameDayMergeSet.size;
   let logicalDayNum = 0;
 
+  // Pre-merge stops for same-city same-date groups so all stops sort globally by time.
+  // Walk backward so chained merges (di-1 also merged) resolve correctly to the anchor day.
+  const effectiveStops: Map<number, EngineItineraryStop[]> = new Map(
+    itinerary.days.map((d, i) => [i, [...d.stops]])
+  );
+  for (let di = itinerary.days.length - 1; di >= 1; di--) {
+    if (!sameCityDateMergeSet.has(di)) continue;
+    let anchor = di - 1;
+    while (sameCityDateMergeSet.has(anchor) && anchor > 0) anchor--;
+    effectiveStops.set(anchor, [...(effectiveStops.get(anchor) ?? []), ...(effectiveStops.get(di) ?? [])]);
+    effectiveStops.set(di, []); // consumed — no stop cards emitted for this day
+  }
+
   let globalStopNumber = 0;
   const cascadeMap = new Map<string, CascadeAdj>();
 
@@ -748,6 +768,9 @@ export function buildReelCards(
     const day = itinerary.days[dayIdx];
     const isMergedWithPrev = sameDayMergeSet.has(dayIdx);
     if (!isMergedWithPrev) logicalDayNum++;
+
+    // Same-city same-date days had their stops merged into the anchor day — skip entirely.
+    if (sameCityDateMergeSet.has(dayIdx)) continue;
 
     // Single day-transition card between consecutive days — replaces wrap + transit + day-intro
     if (dayIdx > 0) {
@@ -838,21 +861,24 @@ export function buildReelCards(
 
       // Inter-city arrival: shift stops to start no earlier than arrival time (no buffer — times are suggested)
       if (tripDetails && isCityChange && transitArr) {
-        for (const adj of cascadeDay(day.stops, timeToMinutes(transitArr), day.date)) {
+        const stopsForCascade = effectiveStops.get(dayIdx) ?? day.stops;
+        for (const adj of cascadeDay(stopsForCascade, timeToMinutes(transitArr), day.date)) {
           cascadeMap.set(adj.stopId, adj);
         }
       }
     }
 
-    // Sort stops chronologically — engine may return them out of order
-    const sortedStops = [...day.stops].sort(
+    // Sort stops chronologically — use effectiveStops which may include stops merged from
+    // same-city same-date continuation days so they appear in true time order.
+    const dayStops = effectiveStops.get(dayIdx) ?? day.stops;
+    const sortedStops = [...dayStops].sort(
       (a, b) => timeToMinutes(a.time) - timeToMinutes(b.time),
     );
 
     // Day 0 arrival cascade: shift stops to start no earlier than arrival time (no arbitrary buffer)
     const arrivalDateMatchesDay0 = !day.date || !tripDetails?.arrivalDate || tripDetails.arrivalDate === day.date;
     if (tripDetails && dayIdx === 0 && arrivalDateMatchesDay0 && tripDetails.arrivalTime) {
-      for (const adj of cascadeDay(day.stops, timeToMinutes(tripDetails.arrivalTime), day.date ?? tripDetails.arrivalDate ?? '')) {
+      for (const adj of cascadeDay(dayStops, timeToMinutes(tripDetails.arrivalTime), day.date ?? tripDetails.arrivalDate ?? '')) {
         cascadeMap.set(adj.stopId, adj);
       }
     }

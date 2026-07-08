@@ -381,13 +381,13 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const hasConflict = isRaining && !!walkSig;
 
   const stageLabel = stop.stage === 'hidden_gem'
-    ? { text: 'Hidden gem',   icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
+    ? { text: 'Hidden gem',                    icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
     : stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0
-    ? { text: 'Trending now', icon: 'trending_up',  color: '#e07050',              bg: 'rgba(212,100,50,0.12)',     bdr: 'rgba(212,100,50,0.28)' }
+    ? { text: 'Getting noticed',               icon: 'trending_up',  color: '#e07050',              bg: 'rgba(212,100,50,0.12)',     bdr: 'rgba(212,100,50,0.28)' }
     : stop.stage === 'rising'
-    ? { text: 'Rising',       icon: 'north_east',   color: T.gold,                 bg: T.goldBg,                   bdr: T.goldBdr }
+    ? { text: 'People are noticing this',      icon: 'north_east',   color: T.gold,                 bg: T.goldBg,                   bdr: T.goldBdr }
     : stop.stage === 'mainstream'
-    ? { text: 'Popular here', icon: 'groups',       color: 'rgba(255,255,255,.5)', bg: 'rgba(255,255,255,.06)',     bdr: 'rgba(255,255,255,.10)' }
+    ? { text: 'Well-loved spot',               icon: 'groups',       color: 'rgba(255,255,255,.5)', bg: 'rgba(255,255,255,.06)',     bdr: 'rgba(255,255,255,.10)' }
     : null;
 
   const crowdRow: { text: string; icon: string; isBusy: boolean } | null =
@@ -606,7 +606,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
           overflow: 'hidden',
-          touchAction: 'none',
+          // collapsed: pan-y lets swipe-up gestures reach the scroll-snap container
+          // expanded: none so the inner scrollable area gets full control
+          touchAction: expanded ? 'none' : 'pan-y',
           // extend collapsed height past the nav bar so visible content = 224px above it
           height: expanded ? '86dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
           transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
@@ -629,7 +631,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         {/* ── COLLAPSED — fades out on expand ──────────────────────── */}
         <div style={{
           position: 'absolute', inset: 0, padding: '0 20px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 120px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
           opacity: expanded ? 0 : 1,
           pointerEvents: expanded ? 'none' : 'auto',
           transition: 'opacity 0.15s ease',
@@ -665,6 +667,21 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               {stop.durationMin > 0 && (
                 <><span style={{ opacity: 0.4 }}>→ leave</span><span>~{addMinutes(stop.time, stop.durationMin)}</span></>
               )}
+            </div>
+          )}
+
+          {/* Provenance badge — collapsed */}
+          {(stop.isEngineAdded || stop.isUserAdded) && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 9px', borderRadius: 6,
+              background: stop.isEngineAdded ? T.skyBg : T.goldBg,
+              border: `1px solid ${stop.isEngineAdded ? T.skyBdr : T.goldBdr}`,
+            }}>
+              <span className="ms" style={{ fontSize: 13, color: stop.isEngineAdded ? T.sky : T.gold }}>
+                {stop.isEngineAdded ? 'auto_awesome' : 'bookmark'}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: stop.isEngineAdded ? T.sky : T.gold }}>
+                {stop.isEngineAdded ? 'Our pick' : 'You added this'}
+              </span>
             </div>
           )}
 

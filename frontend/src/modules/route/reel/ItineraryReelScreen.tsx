@@ -243,9 +243,23 @@ export function ItineraryReelScreen() {
       });
     }
 
-    const built = buildReelCards(itinerary!, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current, state.rawOBAnswers?.group ?? 'solo');
+    // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
+    // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
+    const itineraryForBuild = stopImages.size === 0 ? itinerary! : {
+      ...itinerary!,
+      days: itinerary!.days.map(day => ({
+        ...day,
+        stops: day.stops.map(stop =>
+          (!stop.imageUrl && !stop.photoRef)
+            ? { ...stop, imageUrl: stopImages.get(stop.title) ?? null }
+            : stop
+        ),
+      })),
+    };
 
-    // Inject pre-fetched images for stops that had no photoRef at build time
+    const built = buildReelCards(itineraryForBuild, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current, state.rawOBAnswers?.group ?? 'solo');
+
+    // Also patch any stop cards that still have no image (title-lookup fallback)
     for (const card of built) {
       if (card.type === 'stop' && !card.stop.imageUrl && !card.stop.photoRef) {
         const url = stopImages.get(card.stop.title);
