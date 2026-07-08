@@ -13,8 +13,10 @@ _COFFEE_GAP_MIN = 180       # minutes since last rest stop before injecting a ca
                              # Calibrate: lower to 120 if users report "no café in long days"
 _REST_STOPS_MAX = 5         # absolute max consecutive stops before rest insert for any persona
                              # Calibrate: raise if users report too many unwanted café breaks
-_DINNER_MIN_HOUR = 18       # earliest hour for a dinner insert (minutes: 18*60 = 1080)
-_DINNER_MAX_HOUR = 21       # suppress post-loop dinner if day ends after this hour
+_DINNER_INJECT_FLOOR_HOUR = 16  # don't inject post-loop dinner if day ends before 16:00
+                                 # (day is too thin; other gaps should be addressed first)
+_DINNER_MAX_HOUR = 20           # don't inject post-loop dinner if day ends after 20:00
+                                 # (sequential scheduling would push dinner past 20:30)
 
 # Proper meals only — café/coffee are rest, not dining
 _DINING_CATS = {"restaurant", "food", "bakery", "street_food", "lunch", "dinner", "breakfast"}
@@ -227,22 +229,20 @@ def detect(
                 mins_since_rest = 0
                 consecutive = 0
 
-    # Post-loop: inject dinner if no meal was added and day ends before _DINNER_MAX_HOUR.
+    # Post-loop: inject dinner if no meal was added and day ends in a sensible evening window.
     # The in-loop dinner check can't fire if the last stop finishes before 18:00.
+    # No manual scheduled_time here — _split_into_days re-schedules all stops sequentially;
+    # it will place dinner at last_stop_end + buffer_min, which lands in a reasonable slot
+    # when last_end_min is between 16:00 and 20:00.
     if not has_dinner_today and result:
         last = result[-1]
         if last.scheduled_time:
             lh, lm = (int(x) for x in last.scheduled_time.split(":"))
             last_end_min = lh * 60 + lm + last.duration_min
-            if last_end_min < _DINNER_MAX_HOUR * 60:
+            if _DINNER_INJECT_FLOOR_HOUR * 60 <= last_end_min < _DINNER_MAX_HOUR * 60:
                 c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids)
                 if c:
-                    dinner_stop = _candidate_to_stop(c, city=last.city)
-                    # Schedule at the later of day-end or _DINNER_MIN_HOUR
-                    dinner_min = max(last_end_min, _DINNER_MIN_HOUR * 60)
-                    dh, dm = divmod(dinner_min, 60)
-                    dinner_stop.scheduled_time = f"{dh:02d}:{dm:02d}"
-                    result.append(dinner_stop)
+                    result.append(_candidate_to_stop(c, city=last.city))
                     messages.append(_make_insert_message(c, "No dinner in your plan — added one to close the evening."))
 
     return result, messages
