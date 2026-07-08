@@ -3145,6 +3145,7 @@ def _ors_surface_score(ors_response: dict) -> float:
 def _fetch_route_character(
     route_points: list[tuple[float, float]],
     city_pop: int,
+    city_id: str = "",
 ) -> dict[str, float]:
     """Query Overpass for amenities along a walking route and return 7 character dimension scores.
 
@@ -3156,6 +3157,59 @@ def _fetch_route_character(
         return _neutral
     if not route_points:
         return _neutral
+
+    # ── Check city-level OSM cache ────────────────────────────────────────────
+    if city_id and _supabase:
+        try:
+            _cr = (
+                _supabase.table("city_osm_features")
+                .select("elements, cached_at")
+                .eq("city_id", city_id)
+                .execute()
+            )
+            _city_rows = _cr.data or []
+            if _city_rows:
+                from datetime import datetime as _dt, timezone as _tz, timedelta as _tdd
+                _cached_at = _dt.fromisoformat(_city_rows[0]["cached_at"].replace("Z", "+00:00"))
+                _fresh = (_dt.now(_tz.utc) - _cached_at) < _tdd(days=7)
+                if _fresh:
+                    _all_elements = _city_rows[0].get("elements") or []
+                    # Filter elements to corridor bounding box
+                    lats = [p[0] for p in route_points]
+                    lons = [p[1] for p in route_points]
+                    _s = min(lats) - 0.05
+                    _n = max(lats) + 0.05
+                    _w = min(lons) - 0.05
+                    _e = max(lons) + 0.05
+                    _elements = [
+                        el for el in _all_elements
+                        if _s <= float(el.get("lat", 0)) <= _n
+                        and _w <= float(el.get("lon", 0)) <= _e
+                    ]
+                    # Reuse existing scoring logic with filtered elements
+                    threshold = max(5, min(50, city_pop // 100_000 * 5 + 5))
+                    dim_counts: dict[str, int] = {d: 0 for d in _neutral}
+                    for _el in _elements:
+                        tags = _el.get("tags") or {}
+                        nat = tags.get("natural", "")
+                        if nat in ("wood", "water", "wetland", "tree", "grassland", "scrub", "beach"):
+                            dim_counts["natural"] += 1
+                        if tags.get("tourism") == "viewpoint":
+                            dim_counts["viewpoint"] += 1
+                        if tags.get("historic") in ("monument", "memorial", "castle", "ruins", "building"):
+                            dim_counts["historic"] += 1
+                        if tags.get("amenity") in ("bar", "nightclub", "restaurant", "cafe", "marketplace"):
+                            dim_counts["vibrant"] += 1
+                        if tags.get("tourism") in ("artwork", "gallery", "museum", "attraction"):
+                            dim_counts["photogenic"] += 1
+                        if tags.get("waterway") in ("river", "stream", "canal"):
+                            dim_counts["waterfront"] += 1
+                        if tags.get("amenity") in ("community_centre", "social_facility", "library"):
+                            dim_counts["local"] += 1
+                    return {d: min(1.0, dim_counts[d] / threshold) for d in _neutral}
+        except Exception:
+            pass  # Fall through to live Overpass
+    # ── Live Overpass (cold cache fallback) ───────────────────────────────────
 
     # Build bounding box with 0.05° buffer
     lats = [p[0] for p in route_points]
@@ -3178,13 +3232,7 @@ def _fetch_route_character(
 out tags;"""
 
     try:
-        resp = requests.post(
-            "https://overpass-api.de/api/interpreter",
-            data={"data": query},
-            timeout=20,
-        )
-        resp.raise_for_status()
-        elements = resp.json().get("elements", [])
+        elements = fetch_overpass(query).get("elements", [])
     except Exception:
         return _neutral
 
