@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks
+from fastapi.responses import JSONResponse
 from typing import Optional
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -5568,7 +5569,7 @@ async def engine_itinerary_start(
             raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
 
     background_tasks.add_task(_run_itinerary_build, build_id, str(user.id), body)
-    return {"buildId": build_id, "status": "pending"}
+    return JSONResponse(status_code=202, content={"buildId": build_id, "status": "pending"})
 
 
 @app.get("/engine-itinerary/status/{build_id}")
