@@ -72,6 +72,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     cityCountries: {},
     recoFocusPlaces: null,
     liveEvents: [],
+    activeBuild: null,
     ...overrides,
   };
 }

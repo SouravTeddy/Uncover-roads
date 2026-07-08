@@ -4,19 +4,22 @@ interface Props {
   itineraryPlaces: Place[]
   days: number
   buildLoading: boolean
+  isBuildingActive?: boolean
   hasExistingItinerary: boolean
   onBuild: () => void
 }
 
 const MIN_PLACES = 2
 
-export function BottomActionTray({ itineraryPlaces, days, buildLoading, hasExistingItinerary, onBuild }: Props) {
+export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildingActive, hasExistingItinerary, onBuild }: Props) {
   const count = itineraryPlaces.length
   const canBuild = count >= MIN_PLACES
   const hasItinerary = count > 0
   const dayPart = days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''
   const verb = hasExistingItinerary ? 'Rebuild' : 'Build'
-  const buildLabel = buildLoading
+  const buildLabel = isBuildingActive
+    ? 'Building in progress'
+    : buildLoading
     ? 'Building…'
     : `${verb} itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
 
@@ -35,8 +38,8 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, hasExist
     >
       <div style={{ pointerEvents: 'auto' }}>
         <button
-          disabled={!canBuild || buildLoading}
-          onClick={canBuild && !buildLoading ? onBuild : undefined}
+          disabled={!canBuild || buildLoading || isBuildingActive}
+          onClick={canBuild && !buildLoading && !isBuildingActive ? onBuild : undefined}
           style={{
             width: '100%', padding: '13px 0', borderRadius: 14,
             border: 'none', cursor: canBuild ? 'pointer' : 'not-allowed',

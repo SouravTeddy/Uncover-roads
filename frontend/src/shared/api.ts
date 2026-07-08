@@ -11,7 +11,6 @@ import type {
   AutocompleteResult,
   PlaceDetails,
   NearbyResult,
-  EngineWeights,
   EngineItinerary,
   ReelRecoPlace,
 } from './types';
@@ -172,31 +171,17 @@ export const api = {
   aiItinerary: (body: ItineraryRequest) =>
     post<Itinerary>('/ai-itinerary', body),
 
-  engineItinerary: (body: {
-    city: string
-    lat: number
-    lon: number
-    days: number
-    startDate: string
-    selectedPlaces: Array<{
-      id: string
-      place_id?: string
-      title: string
-      lat: number
-      lon: number
-      category: string
-      rating?: number
-      photo_ref?: string
-      city?: string
-    }>
-    personaArchetype: string
-    engineWeights: EngineWeights | null
-    cities?: string[]
-    arrivalTime?: string | null
-    departureTime?: string | null
-    startType?: string | null
-  }) =>
-    post<EngineItinerary>('/engine-itinerary', body),
+  engineItinerary: {
+    // Legacy synchronous build — kept for fallback, not called from frontend anymore
+    build: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
+      post<EngineItinerary>('/engine-itinerary', body),
+    // Background build — returns immediately with buildId
+    start: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
+      post<{ buildId: string; status: string }>('/engine-itinerary/start', body),
+    // Poll build status
+    status: (buildId: string) =>
+      get<{ buildId: string; status: string; result: EngineItinerary | null; error: string | null; updatedAt: string }>(`/engine-itinerary/status/${buildId}`),
+  },
 
   surpriseMe: (body: {
     start_city_id: string
