@@ -420,7 +420,73 @@ def _walk_base_km_from_density(density: float) -> float:
     return min(6.0, max(1.0, math.log(1 + density) * 2.0))
 
 
-def build_city_seed(city_entry: dict) -> CityData:
+def fetch_overpass(query: str) -> dict:
+    """Minimal Overpass API wrapper — independently patchable for tests."""
+    resp = requests.post(
+        "https://overpass-api.de/api/interpreter",
+        data={"data": query},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _seed_city_osm_features(
+    city_id: str,
+    center_lat: float,
+    center_lon: float,
+    radius_km: float = 15.0,
+    supabase=None,
+) -> None:
+    """Fetch OSM features for the full city area and cache to city_osm_features.
+
+    Radius is 15 km — covers most city centres. Cache TTL is 7 days (checked
+    by _fetch_route_character before trusting the cache).
+    """
+    from datetime import datetime, timezone
+
+    # 1 degree ≈ 111 km
+    delta = radius_km / 111.0
+    s = center_lat - delta
+    n = center_lat + delta
+    w = center_lon - delta
+    e = center_lon + delta
+
+    query = f"""[out:json][timeout:30][bbox:{s},{w},{n},{e}];
+(
+  node["natural"~"wood|water|wetland|tree|grassland|scrub|beach"];
+  node["tourism"="viewpoint"];
+  node["historic"~"monument|memorial|castle|ruins|building"];
+  node["amenity"~"bar|nightclub|restaurant|cafe|marketplace"];
+  node["tourism"~"artwork|gallery|museum|attraction"];
+  node["waterway"~"river|stream|canal"];
+  node["amenity"~"community_centre|social_facility|library"];
+);
+out tags center;"""
+
+    try:
+        resp = fetch_overpass(query)
+        elements = resp.get("elements", [])
+    except Exception as exc:
+        print(f"[city_osm] seed failed for {city_id}: {exc}")
+        return
+
+    if not supabase or not elements:
+        return
+
+    try:
+        supabase.table("city_osm_features").upsert({
+            "city_id": city_id,
+            "elements": elements,
+            "bbox_s": s, "bbox_w": w, "bbox_n": n, "bbox_e": e,
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }, on_conflict="city_id").execute()
+        print(f"[city_osm] seeded {len(elements)} elements for {city_id}")
+    except Exception as exc:
+        print(f"[city_osm] upsert failed for {city_id}: {exc}")
+
+
+def build_city_seed(city_entry: dict, supabase=None) -> CityData:
     """Build a CityData from real external sources. ~3–4s on cold city.
 
     Args:
@@ -446,7 +512,7 @@ def build_city_seed(city_entry: dict) -> CityData:
     scenic_routes = _derive_scenic_routes(neighborhoods)
     walk_base_km = _walk_base_km_from_density(density)
 
-    return load_city_from_dict({
+    city_data = load_city_from_dict({
         "id": city_entry["city_id"],
         "name": city_entry["name"],
         "tier": city_entry["tier"],
@@ -488,3 +554,18 @@ def build_city_seed(city_entry: dict) -> CityData:
         "landmark_anchors": landmarks[:6],
         "hidden_gems": hidden_gems[:5],
     })
+
+    # Warm city-level OSM cache for fast corridor scoring
+    # (non-fatal: never blocks the city seed return)
+    if supabase and city_entry.get("lat") and city_entry.get("lon"):
+        try:
+            _seed_city_osm_features(
+                city_id=city_entry["city_id"],
+                center_lat=city_entry["lat"],
+                center_lon=city_entry["lon"],
+                supabase=supabase,
+            )
+        except Exception as _osm_err:
+            print(f"[city_osm] non-fatal seed error: {_osm_err}")
+
+    return city_data
