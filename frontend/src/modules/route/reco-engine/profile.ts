@@ -40,6 +40,57 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// City character scores normalised from CITY_PROFILES in ip_engine.py: 1→0, 2→0.5, 3→1.0
+// heritage floor applied to hasCulture target; nightlife floor applied to hasEveningActivity.
+// Unknown cities get 0.5/0.5 (neutral — no artificial pressure).
+const CITY_CHARACTER: Record<string, { heritage: number; nightlife: number }> = {
+  singapore:          { heritage: 0.5, nightlife: 0.5 },
+  dubai:              { heritage: 0.0, nightlife: 0.5 },
+  tokyo:              { heritage: 1.0, nightlife: 1.0 },
+  kyoto:              { heritage: 1.0, nightlife: 0.0 },
+  bangkok:            { heritage: 0.5, nightlife: 1.0 },
+  mumbai:             { heritage: 0.5, nightlife: 1.0 },
+  bengaluru:          { heritage: 0.5, nightlife: 0.5 },
+  delhi:              { heritage: 1.0, nightlife: 0.5 },
+  goa:                { heritage: 0.5, nightlife: 1.0 },
+  london:             { heritage: 1.0, nightlife: 1.0 },
+  paris:              { heritage: 1.0, nightlife: 1.0 },
+  barcelona:          { heritage: 1.0, nightlife: 1.0 },
+  rome:               { heritage: 1.0, nightlife: 0.5 },
+  amsterdam:          { heritage: 1.0, nightlife: 1.0 },
+  istanbul:           { heritage: 1.0, nightlife: 0.5 },
+  'new york':         { heritage: 0.5, nightlife: 1.0 },
+  'los angeles':      { heritage: 0.0, nightlife: 1.0 },
+  berlin:             { heritage: 1.0, nightlife: 1.0 },
+  sydney:             { heritage: 0.5, nightlife: 1.0 },
+  bali:               { heritage: 0.5, nightlife: 0.5 },
+  'hong kong':        { heritage: 0.5, nightlife: 1.0 },
+  'kuala lumpur':     { heritage: 0.5, nightlife: 0.5 },
+  seoul:              { heritage: 0.5, nightlife: 1.0 },
+  prague:             { heritage: 1.0, nightlife: 1.0 },
+  lisbon:             { heritage: 1.0, nightlife: 1.0 },
+  'mexico city':      { heritage: 1.0, nightlife: 1.0 },
+  'rio de janeiro':   { heritage: 0.5, nightlife: 1.0 },
+  'cape town':        { heritage: 0.5, nightlife: 0.5 },
+  marrakech:          { heritage: 1.0, nightlife: 0.0 },
+  cairo:              { heritage: 1.0, nightlife: 0.0 },
+  nairobi:            { heritage: 0.0, nightlife: 0.5 },
+  vienna:             { heritage: 1.0, nightlife: 0.5 },
+  zurich:             { heritage: 0.5, nightlife: 0.5 },
+  osaka:              { heritage: 0.5, nightlife: 1.0 },
+  milan:              { heritage: 1.0, nightlife: 1.0 },
+  athens:             { heritage: 1.0, nightlife: 1.0 },
+  kathmandu:          { heritage: 1.0, nightlife: 0.0 },
+  colombo:            { heritage: 0.5, nightlife: 0.5 },
+  'abu dhabi':        { heritage: 0.5, nightlife: 0.0 },
+  taipei:             { heritage: 0.5, nightlife: 1.0 },
+  hanoi:              { heritage: 0.5, nightlife: 0.5 },
+};
+
+function getCityCharacter(city: string): { heritage: number; nightlife: number } {
+  return CITY_CHARACTER[city.toLowerCase().trim()] ?? { heritage: 0.5, nightlife: 0.5 };
+}
+
 const CULTURE_CATS  = new Set(['museum', 'gallery', 'historic', 'heritage', 'library', 'spiritual']);
 const OUTDOOR_CATS  = new Set(['park', 'viewpoint', 'beach', 'zoo', 'aquarium', 'amusement_park']);
 const SOCIAL_CATS   = new Set(['bar', 'nightlife', 'market', 'restaurant']);
@@ -52,6 +103,8 @@ const CROWD_PEAK: Record<string, [number, number]> = {
 export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
   const w = signal.weights;
   const { pace, isFamily, trip } = signal;
+  const { heritage, nightlife } = getCityCharacter(trip.city);
+
   // Clip meal/activity targets based on arrival/departure constraints
   const arrivalMin  = trip.isFirstDay  && trip.arrivalTime   ? timeToMin(trip.arrivalTime)   : null;
   const departureMin = trip.isLastDay  && trip.departureTime ? timeToMin(trip.departureTime) : null;
@@ -64,8 +117,18 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
     (departureMin !== null && departureMin < 1020) ||
     (arrivalMin !== null && arrivalMin > 1020);
 
-  const baseDinnerTarget   = w.w_food_density * 0.8 + 0.2;
-  const baseEveningTarget  = w.w_nightlife;
+  // hasDinner: universal floor of 0.5 — everyone needs dinner regardless of food persona weight.
+  // Without this, a non-foodie historian gets target=0.36 and the gap (0.36 - 0 = 0.36) scores
+  // so low in significance that it never surfaces even when no dinner is planned.
+  const baseDinnerTarget = Math.max(w.w_food_density * 0.8 + 0.2, 0.5);
+
+  // hasEveningActivity: city nightlife floor — Bangkok/Paris/Berlin push min to 0.4 even for
+  // cultural archetypes, so a plan ending at 17:00 in a nightlife city is flagged.
+  const baseEveningTarget = Math.max(w.w_nightlife, nightlife * 0.4);
+
+  // hasCulture: city heritage floor — Rome/Kyoto/Delhi push min to 0.5 so any persona
+  // visiting a high-heritage city gets a culture gap if none is planned.
+  const baseCultureTarget = Math.max(w.w_culture_depth, heritage * 0.5);
 
   // Density: scale by fraction of day available (baseline = 14h)
   const BASE_DAY_HOURS = 14;
@@ -85,7 +148,7 @@ export function computeTargetProfile(signal: RecoSignal): ItineraryProfile {
     hasLunch:           hasLunchTarget,
     hasDinner:          mealAndEveningBlocked ? 0 : baseDinnerTarget,
     hasEveningActivity: mealAndEveningBlocked ? 0 : baseEveningTarget,
-    hasCulture:         w.w_culture_depth,
+    hasCulture:         baseCultureTarget,
     hasOutdoor:         w.w_scenic * 0.7 + (isFamily ? 0.3 : 0),
     hasRest:            Math.min(1, w.w_rest_need * 0.7 + (pace === 'slow' ? 0.3 : 0)),
     hasSocialStop:      signal.social === 'solo' ? 0.2 : 0.6,
