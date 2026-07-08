@@ -263,6 +263,16 @@ export function ItineraryReelScreen() {
   // Full rebuild + image preload — fetches ALL missing stop images before showing the reel
   useEffect(() => {
     if (!activeItinerary) return;
+
+    // Saved trips: open instantly — data is already in store. cityPhotoMap/weather
+    // arrive via their own effects (lines ~421-433) and rebuild cards in the background.
+    if (savedItem) {
+      setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap, resolvedStopImages));
+      setLoadingStep(1);
+      setImagesReady(true);
+      return;
+    }
+
     setImagesReady(false);
     setLoadingStep(0);
     let cancelled = false;
