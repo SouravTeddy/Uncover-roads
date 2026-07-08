@@ -1875,7 +1875,9 @@ Rules:
 
 
 # ── Persona scoring engine ─────────────────────────────────────────────────
-_ARCHETYPE_AFFINITY: dict[str, dict[str, float]] = {
+# Uses city/persona_affinity.py which covers all 15 archetypes.
+# _ARCHETYPE_AFFINITY below is kept for _pick_reason copy generation only (legacy 7 archetypes).
+_ARCHETYPE_AFFINITY_COPY: dict[str, dict[str, float]] = {
     'wanderer':      {'park': 0.9, 'historic': 0.8, 'museum': 0.7, 'tourism': 0.6, 'viewpoint': 0.8},
     'historian':     {'historic': 0.9, 'museum': 0.9, 'tourism': 0.7, 'gallery': 0.7, 'library': 0.6},
     'epicurean':     {'restaurant': 0.9, 'cafe': 0.8, 'bar': 0.7, 'market': 0.8, 'bakery': 0.7},
@@ -1886,18 +1888,21 @@ _ARCHETYPE_AFFINITY: dict[str, dict[str, float]] = {
 }
 
 def _score_place(place: dict, archetype: str, all_filters: list[str]) -> float:
+    from city.persona_affinity import get_persona_affinity
     cat = place.get("category", "")
     rating = place.get("rating")
-    affinity   = _ARCHETYPE_AFFINITY.get(archetype, {}).get(cat, 0.0)
+    # Full 15-archetype table; falls back to NEUTRAL (0.5) for unknown category
+    affinity   = get_persona_affinity(cat).get(archetype, 0.5)
     filter_hit = 1.0 if cat in all_filters else 0.0
     rating_val = (min(float(rating), 5.0) / 5.0) if rating is not None else 0.5
-    return affinity * 0.4 + filter_hit * 0.4 + rating_val * 0.2
+    # Affinity weighted higher than filter so persona fit beats tag matching
+    return affinity * 0.5 + filter_hit * 0.3 + rating_val * 0.2
 
 def _pick_reason(archetype: str, category: str, all_filters: list[str], score: float) -> str:
     if category in all_filters:
         label = category.replace("_", " ")
         return f"Matches your taste for {label}s"
-    affinity = _ARCHETYPE_AFFINITY.get(archetype, {}).get(category, 0.0)
+    affinity = _ARCHETYPE_AFFINITY_COPY.get(archetype, {}).get(category, 0.0)
     if affinity >= 0.8:
         label = category.replace("_", " ")
         return f"A top pick for {archetype} travellers — great {label}"
