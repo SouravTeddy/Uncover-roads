@@ -11,9 +11,10 @@ from city.data_model import InsertCandidate
 _MIN_GAP_INSERT = 15        # minutes — absolute floor for any insert
 _COFFEE_GAP_MIN = 180       # minutes since last rest stop before injecting a café break
                              # Calibrate: lower to 120 if users report "no café in long days"
-_LUNCH_GAP_MIN = 60         # gap within 12:00–14:30 window
 _REST_STOPS_MAX = 5         # absolute max consecutive stops before rest insert for any persona
                              # Calibrate: raise if users report too many unwanted café breaks
+_DINNER_MIN_HOUR = 18       # earliest hour for a dinner insert (minutes: 18*60 = 1080)
+_DINNER_MAX_HOUR = 21       # suppress post-loop dinner if day ends after this hour
 
 # Proper meals only — café/coffee are rest, not dining
 _DINING_CATS = {"restaurant", "food", "bakery", "street_food", "lunch", "dinner", "breakfast"}
@@ -125,7 +126,12 @@ def detect(
     has_breakfast_today = _has_meal_in_window(6, 10)
     has_lunch_today = _has_meal_in_window(11, 14)
     has_dinner_today = _has_meal_in_window(17, 21)
-    has_rest_today = any(s.category in _REST_CATS or s.type in _REST_CATS for s in stops)
+
+    # Seed mins_since_rest from the last rest stop already in the plan
+    for s in stops:
+        if s.category in _REST_CATS or s.type in _REST_CATS:
+            mins_since_rest = 0
+        mins_since_rest += s.duration_min
 
     consecutive = 0
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
@@ -134,7 +140,6 @@ def detect(
         result.append(stop)
         if stop.category in _REST_CATS or stop.type in _REST_CATS:
             mins_since_rest = 0
-            has_rest_today = True
         mins_since_rest += stop.duration_min
         consecutive += 1
 
@@ -148,9 +153,9 @@ def detect(
         mid_lat = (stop.lat + stops[i + 1].lat) / 2
         mid_lon = (stop.lon + stops[i + 1].lon) / 2
 
-        # Coffee/café insert — universal: fires for all personas when no rest in 3h.
-        # Deduped against existing rest stops so engine and persona floor don't both inject.
-        if mins_since_rest >= _COFFEE_GAP_MIN and not has_rest_today:
+        # Coffee/café insert — fires when no rest break in the last 3h.
+        # Uses time-window only; mins_since_rest resets naturally when a café is encountered.
+        if mins_since_rest >= _COFFEE_GAP_MIN:
             c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
@@ -158,12 +163,12 @@ def detect(
                 messages.append(_make_insert_message(c, coffee_reason))
                 seen_ids.add(c.place_id)
                 mins_since_rest = 0
-                has_rest_today = True
                 consecutive = 0
                 continue
 
-        # Scenic walk insert
-        if w_walk > 0.7 and gap >= 10 and ctx.city.scenic_routes:
+        # Scenic walk insert — threshold lowered to >= 0.6 to include slowtraveller,
+        # aesthete, slowscholar, explorer (was > 0.7 which silently cut slowtraveller=0.7)
+        if w_walk >= 0.6 and gap >= 10 and ctx.city.scenic_routes:
             route = next(
                 (r for r in ctx.city.scenic_routes
                  if r.get("from_neighborhood") == stop.neighborhood
@@ -226,7 +231,24 @@ def detect(
                 messages.append(_make_insert_message(c, f"You've visited {consecutive} stops without a break."))
                 seen_ids.add(c.place_id)
                 mins_since_rest = 0
-                has_rest_today = True
                 consecutive = 0
+
+    # Post-loop: inject dinner if no meal was added and day ends before _DINNER_MAX_HOUR.
+    # The in-loop dinner check can't fire if the last stop finishes before 18:00.
+    if not has_dinner_today and result:
+        last = result[-1]
+        if last.scheduled_time:
+            lh, lm = (int(x) for x in last.scheduled_time.split(":"))
+            last_end_min = lh * 60 + lm + last.duration_min
+            if last_end_min < _DINNER_MAX_HOUR * 60:
+                c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids)
+                if c:
+                    dinner_stop = _candidate_to_stop(c, city=last.city)
+                    # Schedule at the later of day-end or _DINNER_MIN_HOUR
+                    dinner_min = max(last_end_min, _DINNER_MIN_HOUR * 60)
+                    dh, dm = divmod(dinner_min, 60)
+                    dinner_stop.scheduled_time = f"{dh:02d}:{dm:02d}"
+                    result.append(dinner_stop)
+                    messages.append(_make_insert_message(c, "No dinner in your plan — added one to close the evening."))
 
     return result, messages
