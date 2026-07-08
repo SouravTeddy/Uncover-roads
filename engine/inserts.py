@@ -9,9 +9,16 @@ from engine.types import EngineStop, EngineContext, EngineMessage
 from city.data_model import InsertCandidate
 
 _MIN_GAP_INSERT = 15        # minutes — absolute floor for any insert
-_COFFEE_GAP_MIN = 180       # minutes since last coffee before injecting
+_COFFEE_GAP_MIN = 180       # minutes since last rest stop before injecting a café break
+                             # Calibrate: lower to 120 if users report "no café in long days"
 _LUNCH_GAP_MIN = 60         # gap within 12:00–14:30 window
-_REST_STOPS_THRESHOLD = 3   # consecutive stops before rest insert
+_REST_STOPS_MAX = 5         # absolute max consecutive stops before rest insert for any persona
+                             # Calibrate: raise if users report too many unwanted café breaks
+
+# Proper meals only — café/coffee are rest, not dining
+_DINING_CATS = {"restaurant", "food", "bakery", "street_food", "lunch", "dinner", "breakfast"}
+# Rest/break stops — these satisfy coffee inserts but NOT meal detection
+_REST_CATS = {"cafe", "coffee", "coffee_shop"}
 
 
 def _gap_minutes(a: EngineStop, b: EngineStop) -> int:
@@ -32,6 +39,14 @@ def _gap_minutes(a: EngineStop, b: EngineStop) -> int:
     return max(0, b_start - a_end)
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(a))
+
+
 def _best_candidate(
     type_: str, ctx: EngineContext, near_lat: float, near_lon: float,
     seen_ids: set[str] | None = None,
@@ -44,8 +59,10 @@ def _best_candidate(
         return None
     def _score(c: InsertCandidate) -> float:
         affinity = c.persona_affinity.get(archetype, 0.5)
-        dist = math.hypot(c.lat - near_lat, c.lon - near_lon)
-        return affinity - dist * 10
+        dist_km = _haversine_km(c.lat, c.lon, near_lat, near_lon)
+        # Max 0.4 penalty for distance; affinity dominates at 0.7
+        dist_penalty = min(1.0, dist_km / 5.0) * 0.4
+        return affinity * 0.7 + (1.0 - dist_penalty) * 0.3
     return max(candidates, key=_score)
 
 
@@ -83,42 +100,42 @@ def detect(
     stops: list[EngineStop], ctx: EngineContext
 ) -> tuple[list[EngineStop], list[EngineMessage]]:
     weights = ctx.persona.get("weights", {})
-    w_food = weights.get("w_food_density", 0.5)
     w_walk = weights.get("w_walk_affinity", 0.5)
     w_rest = weights.get("w_rest_need", 0.3)
 
+    # Rest threshold scales with w_rest: high-rest personas get breaks sooner.
+    # w_rest=0.8 → 3 stops, w_rest=0.3 → 5 stops.
+    rest_threshold = max(3, round(_REST_STOPS_MAX - w_rest * 2))
+
     result: list[EngineStop] = []
     messages: list[EngineMessage] = []
-    mins_since_coffee = 9999
-    _FOOD_TYPES = {"lunch", "dinner", "breakfast", "restaurant", "cafe", "coffee"}
-    _FOOD_CATS  = {"restaurant", "cafe", "food", "bakery"}
+    mins_since_rest = 9999
 
-    def _has_food_in_window(hour_from: int, hour_to: int) -> bool:
+    def _has_meal_in_window(hour_from: int, hour_to: int) -> bool:
+        """Returns True if a proper meal (not café) is scheduled in the time window."""
         for s in stops:
             if s.scheduled_time:
                 sh = int(s.scheduled_time.split(":")[0])
                 if hour_from <= sh <= hour_to:
-                    if s.type in _FOOD_TYPES or s.category in _FOOD_CATS:
+                    if s.type in _DINING_CATS or s.category in _DINING_CATS:
                         return True
         return False
 
-    has_breakfast_today = _has_food_in_window(6, 10)
-    has_lunch_today = (
-        any(s.type in {"lunch", "restaurant", "cafe"} for s in stops) or
-        _has_food_in_window(11, 14)
-    )
-    has_dinner_today = (
-        any(s.type in {"dinner", "restaurant", "cafe"} for s in stops) or
-        _has_food_in_window(17, 21)
-    )
+    # Café/coffee stops satisfy rest but NOT lunch/dinner detection
+    has_breakfast_today = _has_meal_in_window(6, 10)
+    has_lunch_today = _has_meal_in_window(11, 14)
+    has_dinner_today = _has_meal_in_window(17, 21)
+    has_rest_today = any(s.category in _REST_CATS or s.type in _REST_CATS for s in stops)
+
     consecutive = 0
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
 
     for i, stop in enumerate(stops):
         result.append(stop)
-        if stop.type == "coffee":
-            mins_since_coffee = 0
-        mins_since_coffee += stop.duration_min
+        if stop.category in _REST_CATS or stop.type in _REST_CATS:
+            mins_since_rest = 0
+            has_rest_today = True
+        mins_since_rest += stop.duration_min
         consecutive += 1
 
         if i == len(stops) - 1:
@@ -131,15 +148,17 @@ def detect(
         mid_lat = (stop.lat + stops[i + 1].lat) / 2
         mid_lon = (stop.lon + stops[i + 1].lon) / 2
 
-        # Coffee insert — fire when w_food >= 0.4 (catches explorer persona at exactly 0.5)
-        if mins_since_coffee >= _COFFEE_GAP_MIN and w_food >= 0.4:
+        # Coffee/café insert — universal: fires for all personas when no rest in 3h.
+        # Deduped against existing rest stops so engine and persona floor don't both inject.
+        if mins_since_rest >= _COFFEE_GAP_MIN and not has_rest_today:
             c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
-                coffee_reason = "No coffee yet today." if mins_since_coffee >= 600 else f"No coffee in the last {mins_since_coffee} minutes."
+                coffee_reason = "No break yet today." if mins_since_rest >= 600 else f"No break in the last {mins_since_rest // 60}h {mins_since_rest % 60}m."
                 messages.append(_make_insert_message(c, coffee_reason))
                 seen_ids.add(c.place_id)
-                mins_since_coffee = 0
+                mins_since_rest = 0
+                has_rest_today = True
                 consecutive = 0
                 continue
 
@@ -173,39 +192,41 @@ def detect(
                     consecutive = 0
                     continue
 
-        # Lunch insert (11:00–14:00 window)
+        # Lunch insert (11:00–14:00 window) — café stops do NOT satisfy this
         if not has_lunch_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 11 <= sh <= 14:
                 c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Lunch window reached with no lunch planned."))
+                    messages.append(_make_insert_message(c, "Lunch window reached with no meal planned."))
                     seen_ids.add(c.place_id)
                     has_lunch_today = True
                     consecutive = 0
                     continue
 
-        # Dinner insert (18:00–20:00 window)
+        # Dinner insert (18:00–20:00 window) — café stops do NOT satisfy this
         if not has_dinner_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 18 <= sh <= 20:
                 c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Evening dining window reached with no dinner planned."))
+                    messages.append(_make_insert_message(c, "Evening window reached with no dinner planned."))
                     seen_ids.add(c.place_id)
                     has_dinner_today = True
                     consecutive = 0
                     continue
 
-        # Rest insert
-        if w_rest > 0.7 and consecutive >= _REST_STOPS_THRESHOLD:
+        # Rest insert — fires for all personas; threshold is persona-scaled
+        if consecutive >= rest_threshold:
             c = _best_candidate("rest", ctx, mid_lat, mid_lon, seen_ids)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
                 messages.append(_make_insert_message(c, f"You've visited {consecutive} stops without a break."))
                 seen_ids.add(c.place_id)
+                mins_since_rest = 0
+                has_rest_today = True
                 consecutive = 0
 
     return result, messages
