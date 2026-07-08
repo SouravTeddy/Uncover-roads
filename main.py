@@ -5393,6 +5393,135 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
     }
 
 
+# ── Background itinerary build ─────────────────────────────────────────────
+
+async def _run_itinerary_build(
+    build_id: str,
+    user_id: str,
+    body: "EngineItineraryPayload",
+) -> None:
+    """Run the full engine + scenic enrichment, writing status to itinerary_builds."""
+    from datetime import timezone as _tz
+
+    def _update(status: str, result=None, error: str | None = None) -> None:
+        if not _supabase:
+            return
+        patch: dict = {
+            "status": status,
+            "updated_at": datetime.now(_tz.utc).isoformat(),
+        }
+        if result is not None:
+            patch["result"] = result
+        if error is not None:
+            patch["error"] = error
+        try:
+            _supabase.table("itinerary_builds").update(patch).eq("id", build_id).execute()
+        except Exception as _e:
+            print(f"[build] status update failed for {build_id}: {_e}")
+
+    try:
+        _update("running")
+        # Reuse the full engine_itinerary logic by calling it directly.
+        # We construct a fake Request with just the client IP.
+        from fastapi import Request as _Req
+        from starlette.datastructures import Headers as _H
+        scope = {"type": "http", "headers": [], "client": ("127.0.0.1", 0)}
+        fake_request = _Req(scope)  # type: ignore[arg-type]
+
+        # Call the engine endpoint handler directly (it's an async function).
+        result_response = await engine_itinerary(body, fake_request, type("U", (), {"id": user_id})())
+        # engine_itinerary returns a JSONResponse or dict — extract the body
+        if hasattr(result_response, "body"):
+            import json as _json
+            result_dict = _json.loads(result_response.body)
+        else:
+            result_dict = result_response
+        _update("done", result=result_dict)
+    except Exception as _exc:
+        print(f"[build] failed for {build_id}: {_exc}")
+        _update("failed", error=str(_exc))
+
+
+@app.post("/engine-itinerary/start")
+async def engine_itinerary_start(
+    body: EngineItineraryPayload,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    user=Depends(get_current_user),
+):
+    """Start a background itinerary build. Returns {buildId, status} immediately (non-blocking)."""
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="rate_limit_exceeded")
+
+    if _is_restricted_city(body.city):
+        raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
+
+    # Reject if user already has an active build
+    if _supabase:
+        try:
+            active = (
+                _supabase.table("itinerary_builds")
+                .select("id, status")
+                .eq("user_id", str(user.id))
+                .in_("status", ["pending", "running"])
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if active.data:
+                raise HTTPException(status_code=409, detail={
+                    "code": "build_in_progress",
+                    "buildId": active.data[0]["id"],
+                })
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # DB unavailable — proceed anyway
+
+    # Create build record
+    build_id: str = ""
+    if _supabase:
+        try:
+            row = _supabase.table("itinerary_builds").insert({
+                "user_id": str(user.id),
+                "status": "pending",
+                "city": body.city,
+            }).execute()
+            build_id = row.data[0]["id"]
+        except Exception as _e:
+            raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
+
+    background_tasks.add_task(_run_itinerary_build, build_id, str(user.id), body)
+    return {"buildId": build_id, "status": "pending"}
+
+
+@app.get("/engine-itinerary/status/{build_id}")
+async def engine_itinerary_status(build_id: str, user=Depends(get_current_user)):
+    """Poll build status. Returns status + full result once done."""
+    if not _supabase:
+        raise HTTPException(status_code=503, detail="DB unavailable")
+    try:
+        row = (
+            _supabase.table("itinerary_builds")
+            .select("id, status, result, error, updated_at")
+            .eq("id", build_id)
+            .eq("user_id", str(user.id))
+            .single()
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Build not found")
+    d = row.data
+    return {
+        "buildId": d["id"],
+        "status":  d["status"],
+        "result":  d.get("result"),
+        "error":   d.get("error"),
+        "updatedAt": d["updated_at"],
+    }
+
+
 # ── City search + map data (Phase 10) ────────────────────────────────────────
 
 class CitySearchResult(BaseModel):
