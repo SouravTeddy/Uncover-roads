@@ -471,7 +471,7 @@ out tags center;"""
         print(f"[city_osm] seed failed for {city_id}: {exc}")
         return
 
-    if not supabase or not elements:
+    if not supabase:
         return
 
     try:
