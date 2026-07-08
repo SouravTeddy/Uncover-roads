@@ -28,11 +28,11 @@ describe('useBuildStatus', () => {
 
   it('dispatches SET_ACTIVE_BUILD with status=done when API returns done', async () => {
     const dispatch = vi.fn();
-    (useAppStore as ReturnType<typeof vi.fn>).mockReturnValue({
+    (useAppStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       state: { activeBuild: { id: 'b1', cityName: 'Tokyo', status: 'pending' } },
       dispatch,
     });
-    (api.engineItinerary.status as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (api.engineItinerary.status as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       buildId: 'b1', status: 'done', result: { days: [] }, error: null, updatedAt: '2026-07-08T03:00Z',
     });
 
@@ -51,7 +51,7 @@ describe('useBuildStatus', () => {
 
   it('does not poll when activeBuild is null', async () => {
     const dispatch = vi.fn();
-    (useAppStore as ReturnType<typeof vi.fn>).mockReturnValue({
+    (useAppStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       state: { activeBuild: null },
       dispatch,
     });

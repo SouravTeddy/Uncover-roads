@@ -11,7 +11,6 @@ import type {
   AutocompleteResult,
   PlaceDetails,
   NearbyResult,
-  EngineWeights,
   EngineItinerary,
   ReelRecoPlace,
 } from './types';
