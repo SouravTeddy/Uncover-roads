@@ -1,10 +1,27 @@
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../shared/store';
 import type { ActiveBuild } from '../../shared/types';
 
 interface Props { activeBuild: ActiveBuild | null }
 
+function useElapsed(startedAt: number | null): string {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (startedAt == null) return;
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  if (startedAt == null) return '';
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 export function BuildNotification({ activeBuild }: Props) {
   const { dispatch } = useAppStore();
+  const elapsed = useElapsed(activeBuild?.startedAt ?? null);
 
   if (!activeBuild) return null;
 
@@ -12,14 +29,15 @@ export function BuildNotification({ activeBuild }: Props) {
   const isDone    = activeBuild.status === 'done';
   const isFailed  = activeBuild.status === 'failed';
 
+  // Position above BottomNav (z-index 30), well below any screen headers
   const outer: React.CSSProperties = {
     position: 'fixed',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 100,
+    zIndex: 31,
     padding: '8px 16px',
-    paddingTop: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+    paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 68px)',
     pointerEvents: 'none',
   };
 
@@ -45,7 +63,7 @@ export function BuildNotification({ activeBuild }: Props) {
                 Building your {activeBuild.cityName} plan
               </div>
               <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                Explore while we work
+                {elapsed ? `${elapsed} elapsed` : 'Starting…'}
               </div>
             </div>
             <button

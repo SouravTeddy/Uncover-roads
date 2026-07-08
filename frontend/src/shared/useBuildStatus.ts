@@ -23,8 +23,10 @@ export function useBuildStatus(): void {
     const poll = async () => {
       try {
         const res = await api.engineItinerary.status(activeBuild.id);
-        if (res.status === 'done' && res.result) {
-          dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: res.result });
+        if (res.status === 'done') {
+          if (res.result) {
+            dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: res.result });
+          }
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'done' } });
         } else if (res.status === 'failed') {
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
@@ -35,8 +37,12 @@ export function useBuildStatus(): void {
             dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
           }
         }
-      } catch {
-        // Ignore transient network errors — keep polling
+      } catch (err: unknown) {
+        // 404 means build row gone (server restart wiped memory or wrong ID) — treat as failed
+        if ((err as { status?: number }).status === 404) {
+          dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
+        }
+        // Other errors: transient network — keep polling
       }
     };
 

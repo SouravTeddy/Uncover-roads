@@ -33,7 +33,7 @@ export function getPlacePhotoUrl(photoRef: string, maxWidth = 800, maxHeight?: n
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`);
-  if (!res.ok) throw new Error(`GET ${path} → ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`GET ${path} → ${res.status}`), { status: res.status });
   return res.json();
 }
 

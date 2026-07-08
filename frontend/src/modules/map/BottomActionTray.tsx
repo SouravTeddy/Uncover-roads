@@ -42,14 +42,14 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildi
           onClick={canBuild && !buildLoading && !isBuildingActive ? onBuild : undefined}
           style={{
             width: '100%', padding: '13px 0', borderRadius: 14,
-            border: 'none', cursor: canBuild ? 'pointer' : 'not-allowed',
+            border: 'none', cursor: (canBuild && !isBuildingActive) ? 'pointer' : 'not-allowed',
             fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.01em',
-            background: canBuild
+            background: (canBuild && !isBuildingActive)
               ? 'linear-gradient(135deg, #d4a853, #b8893a)'
               : 'var(--color-border)',
-            color: canBuild ? '#0c0c0e' : 'var(--color-text-3)',
-            opacity: canBuild ? 1 : 0.7,
-            boxShadow: canBuild ? '0 6px 28px rgba(212,168,83,.25)' : 'none',
+            color: (canBuild && !isBuildingActive) ? '#0c0c0e' : 'var(--color-text-3)',
+            opacity: (canBuild && !isBuildingActive) ? 1 : 0.6,
+            boxShadow: (canBuild && !isBuildingActive) ? '0 6px 28px rgba(212,168,83,.25)' : 'none',
             backdropFilter: 'blur(16px)',
             transition: 'all 0.15s ease',
           }}

@@ -499,13 +499,13 @@ export function MapScreen() {
         startType: state.tripContext.startType ?? 'hotel',
       });
 
-      dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending' } });
+      dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending', startedAt: Date.now() } });
     } catch (err: unknown) {
       console.error('[MapScreen] executeBuild failed:', err);
       // If build already in progress, reconnect to it
       const detail = (err as { detail?: { code?: string; buildId?: string } }).detail;
       if (detail?.code === 'build_in_progress' && detail.buildId) {
-        dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: detail.buildId, cityName: city ?? '', status: 'running' } });
+        dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: detail.buildId, cityName: city ?? '', status: 'running', startedAt: Date.now() } });
       } else {
         setBuildError('Could not start build — try again');
         setTimeout(() => setBuildError(null), 4000);

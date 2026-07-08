@@ -687,6 +687,7 @@ export interface ActiveBuild {
   id: string;
   cityName: string;
   status: 'pending' | 'running' | 'done' | 'failed';
+  startedAt?: number; // Date.now() when build was started
 }
 
 /** A persona-scored nearby place returned by /reel-reco. No AI text. */
