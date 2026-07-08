@@ -3464,6 +3464,7 @@ def _generate_scenic_card_for_corridor(
     persona_key: str,
     weather: dict,
     city_landmarks: list,
+    dest_velocity_ratio: float | None = None,
 ) -> dict | None:
     """Generate a ReelScenicCard dict for the corridor, or None if threshold not met.
 
@@ -3548,6 +3549,20 @@ def _generate_scenic_card_for_corridor(
     if not scoring["passes_threshold"]:
         return None
 
+    # ── Trend velocity boost ──────────────────────────────────────────────────
+    _is_trending = (dest_velocity_ratio or 0) >= 0.7
+    if _is_trending:
+        scoring["character_scores"]["vibrant"] = min(
+            1.0, scoring["character_scores"].get("vibrant", 0.0) + 0.15
+        )
+        scoring["character_scores"]["local"] = min(
+            1.0, scoring["character_scores"].get("local", 0.0) + 0.15
+        )
+    _trend_note = (
+        "Trending spot — locals and travellers are buzzing about this right now"
+        if _is_trending else None
+    )
+
     # Persist character scoring so future calls can skip Overpass
     _cache_route_character(
         _corridor_key(_orig_lat, _orig_lon, _dest_lat, _dest_lon), scoring
@@ -3576,7 +3591,8 @@ def _generate_scenic_card_for_corridor(
             else "High UV today — consider sun protection."
         )
 
-    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}."
+    _trend_suffix = " Trending right now." if _is_trending else ""
+    why = f"A {top_char} {mode} from {origin.get('title', '')} to {dest.get('title', '')}.{_trend_suffix}"
 
     return {
         "type": "scenic",
@@ -3613,6 +3629,8 @@ def _generate_scenic_card_for_corridor(
         "fromStop": origin.get("title", ""),
         "toStop": dest.get("title", ""),
         "distanceKm": round(distance_km, 2),
+        "isTrending": _is_trending,
+        "trendNote": _trend_note,
     }
 
 
@@ -5324,6 +5342,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             _visit_time = datetime.fromisoformat(f"{_visit_date_str}T{_time_str}:00+00:00")
                         except Exception:
                             pass
+                        _dest_pid = _next_s.get("place_id", "")
+                        _dest_vr = (_stage_map.get(_dest_pid) or {}).get("velocity_ratio")
                         _scenic = _generate_scenic_card_for_corridor(
                             origin=_s,
                             dest=_next_s,
@@ -5334,6 +5354,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                             persona_key=persona.get("archetype", ""),
                             weather=getattr(ctx, "weather_map", {}).get(day_city) or {},
                             city_landmarks=getattr(city_data, "landmark_anchors", []),
+                            dest_velocity_ratio=_dest_vr,
                         )
                         if _scenic:
                             scenic_pos += 1
