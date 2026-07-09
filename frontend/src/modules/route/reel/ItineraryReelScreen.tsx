@@ -28,6 +28,7 @@ import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
 import { getLocalFoodFact } from './local-food-facts';
+import { detectIconicGap } from '../reco-engine/iconic';
 
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
@@ -196,24 +197,49 @@ export function ItineraryReelScreen() {
         );
         const dayStops = itinerary.days[dayIdx]?.stops ?? [];
         const recos = deriveRecos(dayStops, signal);
-        // Append famous spots reco if the day has no landmark/museum/historic stops
-        const LANDMARK_CATS = new Set(['museum', 'historic', 'tourism', 'gallery', 'amusement_park', 'zoo', 'aquarium']);
-        const hasLandmark = dayStops.some(s => LANDMARK_CATS.has(s.category));
-        if (!hasLandmark && dayStops.length > 0 && recos.length < 4) {
-          const anchor = dayStops[Math.floor(dayStops.length / 2)];
-          recos.push({
-            type: 'reco',
-            id: `famous-spots-${day.city}-${dayIdx}`,
-            trigger: 'famous_spots' as ReelRecoCardType['trigger'],
-            label: `Famous spots in ${day.city}`,
-            consequence: `You haven't added any of ${day.city}'s iconic landmarks — browse what's nearby.`,
-            nearbyCity: day.city,
-            persona: signal.archetype,
-            afterStopId: anchor.id,
-            weightScore: 0.4,
-            stopLat: anchor.lat,
-            stopLon: anchor.lon,
-          });
+        // Iconic gap: check if a city-specific must-see is missing from the ENTIRE plan.
+        // Checking all stops (not just this day's) avoids injecting a gap reco on day 1
+        // when the user has already added the iconic to day 2.
+        // Only surface on the first two days — beyond that the user has made their choice.
+        if (dayIdx <= 1 && dayStops.length > 0 && recos.length < 4) {
+          const allStops = (itinerary.days ?? []).flatMap(d => d.stops ?? []);
+          const iconicGap = detectIconicGap(allStops, day.city);
+          if (iconicGap) {
+            const anchor = dayStops[Math.floor(dayStops.length / 2)];
+            recos.push({
+              type: 'reco',
+              id: `iconic-gap-${day.city}-${dayIdx}`,
+              trigger: 'iconic_gap' as ReelRecoCardType['trigger'],
+              label: `${iconicGap.name} isn't in your plan`,
+              consequence: `One of ${day.city}'s most-visited landmarks — most people include it in the first day or two.`,
+              nearbyCity: day.city,
+              persona: signal.archetype,
+              afterStopId: anchor.id,
+              weightScore: 0.45,
+              stopLat: anchor.lat,
+              stopLon: anchor.lon,
+            });
+          } else {
+            // Fall back to generic famous-spots reco if no table entry for this city
+            const LANDMARK_CATS = new Set(['museum', 'historic', 'tourism', 'gallery', 'amusement_park', 'zoo', 'aquarium']);
+            const hasLandmark = dayStops.some(s => LANDMARK_CATS.has(s.category));
+            if (!hasLandmark) {
+              const anchor = dayStops[Math.floor(dayStops.length / 2)];
+              recos.push({
+                type: 'reco',
+                id: `famous-spots-${day.city}-${dayIdx}`,
+                trigger: 'famous_spots' as ReelRecoCardType['trigger'],
+                label: `Famous spots in ${day.city}`,
+                consequence: `You haven't added any of ${day.city}'s iconic landmarks — browse what's nearby.`,
+                nearbyCity: day.city,
+                persona: signal.archetype,
+                afterStopId: anchor.id,
+                weightScore: 0.4,
+                stopLat: anchor.lat,
+                stopLon: anchor.lon,
+              });
+            }
+          }
         }
         // Local food reco: inject if city has editorial fact, no food reco already present,
         // the day contains at least one food-category stop (Fix 1), and that stop lacks rich

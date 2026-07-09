@@ -373,6 +373,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
+  const photoSig     = serverSignals.find(s => s.type === 'photo');
   const rawDescriptionText = contentSig?.text ?? null;
   const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
@@ -423,6 +424,14 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
     } else {
       allPills.push({ icon: transitSig.icon ?? 'directions_walk', label: 'Transit info', urgent: false, detail: { title: 'Getting here', body: transitSig.text } });
     }
+  }
+  if (stop.photoSpot) {
+    const spotBody = stop.photoSpot.timing
+      ? `${stop.photoSpot.description} · Best time: ${stop.photoSpot.timing}`
+      : stop.photoSpot.description;
+    allPills.push({ icon: 'camera_alt', label: 'Best angle', urgent: false, detail: { title: 'Photo spot', body: spotBody } });
+  } else if (photoSig) {
+    allPills.push({ icon: 'camera_alt', label: 'Photo tip', urgent: false, detail: { title: 'Photo tip', body: photoSig.text } });
   }
   if (hoursStr) {
     allPills.push({ icon: 'door_open', label: hoursStr, urgent: false, detail: { title: 'Opening hours', body: hoursStr } });

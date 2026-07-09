@@ -606,6 +606,7 @@ export interface EngineItineraryStop {
   googleMapsUrl: string | null
   website: string | null
   photoRef: string | null     // Google Places photo reference
+  photoSpot?: { description: string; timing: string | null; confidence: number } | null
   city?: string               // city this stop belongs to (populated for multi-city trips)
   tags?: string[]
   // Reel-specific fields (set by itinerary engine ordering pass)

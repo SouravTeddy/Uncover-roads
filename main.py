@@ -171,6 +171,7 @@ class EngineItineraryPayload(BaseModel):
     arrivalTime: Optional[str] = None   # user's actual arrival time for day-1 adjustment
     departureTime: Optional[str] = None  # user's departure time on last day
     startType: Optional[str] = "hotel"  # 'airport' | 'hotel' | 'custom'
+    rawOBAnswers: Optional[dict] = None  # OB answers for Fix 8: OB weight blending
 
 
 # ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
@@ -4548,6 +4549,58 @@ async def build_itinerary_endpoint(
 
 # ── Frontend-facing build itinerary endpoint ─────────────────────────────────
 
+def _ob_direct_weights(ob_answers: dict) -> dict:
+    """Compute EngineWeights directly from raw OB answers.
+
+    Used for a 25% blend with the archetype base (Fix 8: OB weight blending).
+    Base is 0.5 per dimension (neutral midpoint); each OB signal nudges relevant
+    dimensions. Values are clamped to [0, 1].
+    """
+    w = {k: 0.5 for k in (
+        "w_walk_affinity", "w_scenic", "w_efficiency",
+        "w_food_density", "w_culture_depth", "w_nightlife",
+        "w_budget_sensitivity", "w_crowd_aversion", "w_spontaneity", "w_rest_need",
+    )}
+
+    def bump(dim: str, delta: float) -> None:
+        w[dim] = min(1.0, max(0.0, w[dim] + delta))
+
+    sensory = ob_answers.get("sensory") or ""
+    if sensory == "visual":   bump("w_scenic", 0.3); bump("w_walk_affinity", 0.1)
+    elif sensory == "taste":  bump("w_food_density", 0.4); bump("w_nightlife", 0.1)
+    elif sensory == "history": bump("w_culture_depth", 0.4)
+    elif sensory == "nature": bump("w_scenic", 0.3); bump("w_walk_affinity", 0.2)
+    elif sensory == "social": bump("w_nightlife", 0.2); bump("w_spontaneity", 0.2)
+    elif sensory == "solitude": bump("w_crowd_aversion", 0.3); bump("w_rest_need", 0.2)
+
+    pace = ob_answers.get("pace") or ""
+    if pace == "walking":     bump("w_walk_affinity", 0.3); bump("w_crowd_aversion", 0.1)
+    elif pace == "transit":   bump("w_efficiency", 0.1)
+    elif pace == "self":      bump("w_spontaneity", 0.2)
+
+    style = ob_answers.get("style") or ""
+    if style == "planner":       bump("w_efficiency", 0.2)
+    elif style == "spontaneous": bump("w_spontaneity", 0.4); bump("w_efficiency", -0.2)
+    elif style == "local":       bump("w_crowd_aversion", 0.2); bump("w_walk_affinity", 0.1); bump("w_rest_need", 0.1)
+
+    ritual = ob_answers.get("ritual") or ""
+    if ritual == "coffee":    bump("w_food_density", 0.1)
+    elif ritual == "tea":     bump("w_rest_need", 0.2)
+    elif ritual == "exercise": bump("w_walk_affinity", 0.2)
+    elif ritual == "alcohol": bump("w_nightlife", 0.2); bump("w_food_density", 0.1)
+
+    for attr in (ob_answers.get("attractions") or []):
+        if attr == "historic":   bump("w_culture_depth", 0.2)
+        elif attr == "museums":  bump("w_culture_depth", 0.15)
+        elif attr == "art":      bump("w_culture_depth", 0.15); bump("w_scenic", 0.1)
+        elif attr == "food":     bump("w_food_density", 0.2)
+        elif attr == "markets":  bump("w_food_density", 0.1); bump("w_spontaneity", 0.1)
+        elif attr == "nightlife": bump("w_nightlife", 0.3)
+        elif attr == "nature":   bump("w_scenic", 0.2); bump("w_walk_affinity", 0.1)
+
+    return w
+
+
 _ARCHETYPE_PERSONA: dict[str, dict] = {
     # ── Legacy archetypes ──────────────────────────────────────────────────────
     "explorer":           {"archetype": "explorer",           "day_buffer_min": 30, "weights": {"w_walk_affinity": 0.6, "w_scenic": 0.6, "w_efficiency": 0.5, "w_food_density": 0.5, "w_culture_depth": 0.7, "w_nightlife": 0.4, "w_budget_sensitivity": 0.4, "w_crowd_aversion": 0.5, "w_spontaneity": 0.6, "w_rest_need": 0.4}},
@@ -4997,6 +5050,20 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
     archetype = body.personaArchetype.lower().replace(" ", "").replace("-", "").replace("_", "")
     persona = dict(_ARCHETYPE_PERSONA.get(archetype, _ARCHETYPE_PERSONA["explorer"]))
 
+    # Fix 8: Blend archetype base weights (75%) with OB-derived direct weights (25%).
+    # Preserves archetype identity while letting individual signals fine-tune it
+    # (e.g. a historian who answered sensory=taste gets a nudge toward food density).
+    if body.rawOBAnswers:
+        _ob_direct = _ob_direct_weights(body.rawOBAnswers)
+        _base_w = persona.get("weights", {})
+        persona = {
+            **persona,
+            "weights": {
+                dim: round(_base_w.get(dim, 0.5) * 0.75 + _ob_direct.get(dim, 0.5) * 0.25, 4)
+                for dim in _base_w
+            },
+        }
+
     # Try to load city seed data; fall back to a minimal stub so the engine still runs
     city_slug = body.city.lower().replace(" ", "_")
     try:
@@ -5245,6 +5312,25 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
     }
     weights_for_why = persona.get("weights", {})
 
+    # Batch-fetch best photo spots (highest confidence per place_id)
+    _photo_spot_lookup: dict[str, dict] = {}
+    try:
+        _ps_resp = _supabase.table("place_photo_spots") \
+            .select("place_id, description, timing, confidence") \
+            .in_("place_id", list(all_place_ids)) \
+            .order("confidence", desc=True) \
+            .execute()
+        for _ps in (_ps_resp.data or []):
+            pid = _ps["place_id"]
+            if pid not in _photo_spot_lookup:
+                _photo_spot_lookup[pid] = {
+                    "description": _ps["description"],
+                    "timing":      _ps.get("timing"),
+                    "confidence":  _ps.get("confidence", 0.5),
+                }
+    except Exception:
+        pass
+
     # Deduplicate messages by (type, stop_id) — keep first occurrence
     _seen_msg_keys: set[tuple[str, str | None]] = set()
     _deduped_messages = []
@@ -5370,6 +5456,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                 "website": _pd.get("website") or None,
                 "photoRef": _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None,
+                "photoSpot": _photo_spot_lookup.get(s.place_id or "") or None,
                 "tags": s.tags or [],
                 "signals": _signals,
                 "stage": _sd.get("stage"),

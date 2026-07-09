@@ -68,7 +68,8 @@ def _compute_day_start(first_stop: "EngineStop", ctx: "EngineContext", date_str:
 
     Driven by the first stop's morning affinity (its category) and actual
     opening hours from Places data. Persona weights apply a ±45 min shift.
-    No city-level defaults — everything comes from what's actually pinned.
+    City meal times apply a further shift: late-lunch cities (ES, IT, GR)
+    push the whole day later so the plan's rhythm aligns with local habits.
     """
     from datetime import datetime as _dt
     morning_score = sequencer._first_stop_score(first_stop)
@@ -81,7 +82,17 @@ def _compute_day_start(first_stop: "EngineStop", ctx: "EngineContext", date_str:
     w_eff   = weights.get("w_efficiency", 0.5)
     delta = (w_rest - 0.5) * 1.5 + (w_night - 0.4) * 1.0 - (w_eff - 0.5) * 1.0
 
-    start_float = max(6.0, min(23.0, base + delta))
+    # City meal-time shift: 60% of how far the city's lunch deviates from noon.
+    # Barcelona (14:00) → +1.2 h; Tokyo (12:00) → 0; Vietnam (11:30) → -0.3 h.
+    # Capped at ±2 h so the adjustment never overwhelms the category/persona signal.
+    city_lunch_str = (ctx.city.culture or {}).get("meal_times", {}).get("lunch", "12:00")
+    try:
+        _cl_h, _cl_m = (int(x) for x in city_lunch_str.split(":"))
+        city_meal_shift = min(2.0, max(-2.0, (_cl_h + _cl_m / 60.0 - 12.0) * 0.6))
+    except (ValueError, AttributeError, TypeError):
+        city_meal_shift = 0.0
+
+    start_float = max(6.0, min(23.0, base + delta + city_meal_shift))
     start_min   = round(start_float * 60 / 15) * 15
 
     # Hard floor: don't schedule arrival before the first stop actually opens

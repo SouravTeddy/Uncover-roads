@@ -178,10 +178,10 @@ export const api = {
 
   engineItinerary: {
     // Legacy synchronous build — kept for fallback, not called from frontend anymore
-    build: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
+    build: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; rawOBAnswers?: Record<string, unknown> | null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
       post<EngineItinerary>('/engine-itinerary', body),
     // Background build — returns immediately with buildId
-    start: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
+    start: (body: { city: string; lat: number; lon: number; days: number; startDate: string; selectedPlaces: unknown[]; personaArchetype: string; engineWeights: null; rawOBAnswers?: Record<string, unknown> | null; cities?: string[]; arrivalTime: string | null; departureTime: string | null; startType: string }) =>
       post<{ buildId: string; status: string }>('/engine-itinerary/start', body),
     // Poll build status
     status: (buildId: string) =>

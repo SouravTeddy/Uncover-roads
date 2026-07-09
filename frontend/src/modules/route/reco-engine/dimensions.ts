@@ -31,5 +31,4 @@ export function getDimensionWeight(
 // Pairs of dimension keys that are logically incompatible — keep only the higher-scoring one
 export const CONFLICT_PAIRS: Array<[keyof ItineraryProfile, keyof ItineraryProfile]> = [
   ['densityScore', 'walkIntensity'],
-  ['hasLunch', 'hasDinner'],
 ];
