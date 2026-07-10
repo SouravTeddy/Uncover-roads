@@ -5107,10 +5107,19 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         except Exception as _seed_err:
             print(f"[engine_itinerary] on-demand seed failed for {body.city}: {_seed_err}")
 
-    # Build per-city city_data map for area lookup and insert_candidates merging
+    # Build per-city city_data map for area lookup and insert_candidates merging.
+    # For secondary cities missing dinner candidates, run build_city_seed synchronously
+    # (same as primary city above). Use selectedPlaces to derive each city's lat/lon.
     _city_data_map: dict[str, object] = {city_slug: city_data}
     if body.cities and len(body.cities) > 1:
         from dataclasses import replace as _dc_replace
+        # Build city → representative lat/lon from selected places
+        _city_latlon: dict[str, tuple[float, float]] = {}
+        for _p in body.selectedPlaces:
+            _pcity = (_p.city or "").lower().replace(" ", "_")
+            if _pcity and _pcity not in _city_latlon:
+                _city_latlon[_pcity] = (_p.lat, _p.lon)
+
         _all_ics = list(city_data.insert_candidates)
         _seen_pids = {ic.place_id for ic in _all_ics}
         for _other_city in body.cities:
@@ -5119,6 +5128,50 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 continue
             try:
                 _other_data = load_city(_other_slug, _supabase)
+                # Re-seed if missing dinner candidates (same logic as primary city)
+                _other_has_dinner = any(ic.type == "dinner" for ic in _other_data.insert_candidates)
+                if not _other_data.insert_candidates or not _other_has_dinner:
+                    _o_lat, _o_lon = _city_latlon.get(_other_slug, (body.lat, body.lon))
+                    try:
+                        _other_seeded = _build_city_seed({
+                            "city_id": _other_slug, "name": _other_city,
+                            "lat": _o_lat, "lon": _o_lon,
+                            "country_code": "", "timezone": "UTC", "tier": 2,
+                        })
+                        if _other_seeded.insert_candidates:
+                            _other_data = _other_seeded
+                            if _supabase:
+                                try:
+                                    _o_cd = {
+                                        "id": _other_slug, "name": _other_city, "tier": 2,
+                                        "center": [_o_lat, _o_lon], "timezone": "UTC",
+                                        "insert_candidates": [
+                                            {"place_id": ic.place_id, "name": ic.name,
+                                             "lat": ic.lat, "lon": ic.lon, "type": ic.type,
+                                             "time_cost_min": ic.time_cost_min,
+                                             "persona_affinity": ic.persona_affinity,
+                                             "trigger": ic.trigger,
+                                             "time_of_day_match": ic.time_of_day_match}
+                                            for ic in _other_seeded.insert_candidates
+                                        ],
+                                        "scenic_routes": _other_seeded.scenic_routes,
+                                        "engine_modifiers": _other_seeded.engine_modifiers,
+                                        "climate": _other_seeded.climate,
+                                        "movement": _other_seeded.movement,
+                                        "culture": _other_seeded.culture,
+                                        "neighborhoods": [
+                                            {"id": n.id, "name": n.name, "center": list(n.center),
+                                             "polygon": [list(p) for p in n.polygon],
+                                             "best_times": n.best_times, "crowd_index": n.crowd_index}
+                                            for n in _other_seeded.neighborhoods
+                                        ],
+                                        "landmark_anchors": [], "hidden_gems": [],
+                                    }
+                                    _supabase.table("city_data").upsert({"id": _other_slug, "data": _o_cd}).execute()
+                                except Exception:
+                                    pass
+                    except Exception as _e:
+                        print(f"[engine_itinerary] secondary seed failed for {_other_city}: {_e}")
                 _city_data_map[_other_slug] = _other_data
                 for ic in _other_data.insert_candidates:
                     if ic.place_id not in _seen_pids:

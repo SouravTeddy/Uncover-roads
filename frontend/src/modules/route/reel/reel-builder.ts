@@ -922,19 +922,8 @@ export function buildReelCards(
     for (const sc of (day.scenicCorridors ?? [])) {
       if (sc.originStopId) backendScenicByOriginId.set(sc.originStopId, sc);
     }
-    const useBackendScenic = backendScenicByOriginId.size > 0;
-
-    // Fallback: frontend walkable-detour heuristic (fires only when backend sent nothing)
+    // Only backend scenic corridors are shown — no frontend fallback heuristic
     const detourByOriginStopId = new Map<string, DayIntelObservation>();
-    if (!useBackendScenic) {
-      const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, itinerary.archetypeSnapshot as string | undefined);
-      for (let di = 0; di < sortedStops.length - 1; di++) {
-        const a = sortedStops[di];
-        const b = sortedStops[di + 1];
-        const matched = detourObsList.find(o => o.id === `walkable-detour-${a.id}-${b.id}`);
-        if (matched) detourByOriginStopId.set(a.id, matched);
-      }
-    }
 
     const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
     const allObservations: DayIntelObservation[] = [
