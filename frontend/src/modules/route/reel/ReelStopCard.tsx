@@ -606,11 +606,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
           background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
           borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
           overflow: 'hidden',
-          // collapsed: pan-y lets swipe-up gestures reach the scroll-snap container
-          // expanded: none so the inner scrollable area gets full control
           touchAction: expanded ? 'none' : 'pan-y',
-          // extend collapsed height past the nav bar so visible content = 224px above it
-          height: expanded ? '86dvh' : 'calc(224px + env(safe-area-inset-bottom, 0px) + 80px)',
+          // Expanded: fixed 86dvh; collapsed: auto so content dictates height
+          height: expanded ? '86dvh' : 'auto',
           transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
           display: 'flex', flexDirection: 'column',
         }}
@@ -628,13 +626,11 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         {/* ── Content wrapper — collapsed and expanded overlap here ── */}
         <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
 
-        {/* ── COLLAPSED — fades out on expand ──────────────────────── */}
+        {/* ── COLLAPSED — hidden when expanded (not absolute, so panel auto-sizes) ── */}
         <div style={{
-          position: 'absolute', inset: 0, padding: '0 20px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
-          opacity: expanded ? 0 : 1,
-          pointerEvents: expanded ? 'none' : 'auto',
-          transition: 'opacity 0.15s ease',
+          display: expanded ? 'none' : 'block',
+          padding: '0 20px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
         }}
           onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
         >
@@ -716,9 +712,12 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             const isWalk = leg.mode === 'walk';
             const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'rgba(255,255,255,.30)' }}>
-                <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.30)' }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                Then <strong style={{ color: 'rgba(242,237,230,.55)', fontWeight: 600, margin: '0 2px' }}>{distStr} · ~{leg.durationMin} min</strong> to {leg.nextStopTitle}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 13, color: 'rgba(255,255,255,.30)', marginTop: 2 }}>
+                <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.28)', marginTop: 1, flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
+                <div>
+                  <div><span style={{ color: 'rgba(242,237,230,.55)', fontWeight: 600 }}>{distStr} · ~{leg.durationMin} min</span></div>
+                  <div style={{ fontSize: 12, marginTop: 1 }}>to {leg.nextStopTitle}</div>
+                </div>
               </div>
             );
           })()}
@@ -953,9 +952,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               <div data-group="why-added" style={grpSep}>
                 <div style={grpLabel('rgba(107,148,112,.55)')}>Why we added this</div>
                 {(() => {
-                  const whyText = (card.orderReason && card.orderConsequence)
-                    ? card.orderConsequence
-                    : (stop.whyForYou ?? 'This stop fits well in your day.');
+                  // whyForYou = rich TOD/persona-aware copy from engine; prefer it over mechanical consequence
+                  const whyText = stop.whyForYou || card.orderReason || 'This stop fits well in your day.';
                   return (
                     <>
                       {whyText && (

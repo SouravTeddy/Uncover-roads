@@ -740,10 +740,14 @@ def map_data(
         except Exception:
             pass
 
-    # Auto-seed city_data for cities we haven't seen before
+    # Auto-seed city_data for cities we haven't seen before.
+    # For new cities: write a minimal stub synchronously then kick off a full
+    # build_city_seed in a background thread so insert_candidates are ready
+    # by the time the user taps Build (typically minutes later).
     if _supabase and city and clat is not None and clon is not None:
         import errno as _errno
         city_id = re.sub(r'[^a-z0-9]+', '_', city.lower().strip()).strip('_')
+        _is_new_city = False
         for _attempt in range(2):
             try:
                 existing = _supabase.table("city_data").select("id").eq("id", city_id).maybe_single().execute()
@@ -761,7 +765,8 @@ def map_data(
                         "id": city_id, "name": city, "tier": 2,
                         "country_code": "", "data": minimal,
                     }).execute()
-                    print(f"MAP DATA: auto-seeded city_data for {city_id}")
+                    _is_new_city = True
+                    print(f"MAP DATA: registered new city {city_id}, triggering background seed")
                 break
             except OSError as e:
                 if e.errno == _errno.EAGAIN and _attempt == 0:
@@ -772,6 +777,47 @@ def map_data(
             except Exception as e:
                 print(f"MAP DATA: city_data auto-seed skipped for {city}: {e}")
                 break
+
+        if _is_new_city:
+            import threading as _threading
+            def _bg_seed_city(cid: str, cname: str, lat: float, lon: float) -> None:
+                try:
+                    from city.seed_builder import build_city_seed as _build_city_seed
+                    _seeded = _build_city_seed({
+                        "city_id": cid, "name": cname, "lat": lat, "lon": lon,
+                        "country_code": "", "timezone": "UTC", "tier": 2,
+                    })
+                    if _seeded.insert_candidates and _supabase:
+                        _cd = {
+                            "id": cid, "name": cname, "tier": 2,
+                            "center": [lat, lon], "timezone": "UTC",
+                            "climate": _seeded.climate, "movement": _seeded.movement,
+                            "culture": _seeded.culture,
+                            "neighborhoods": [
+                                {"id": n.id, "name": n.name, "center": list(n.center),
+                                 "polygon": [list(p) for p in n.polygon],
+                                 "best_times": n.best_times, "crowd_index": n.crowd_index}
+                                for n in _seeded.neighborhoods
+                            ],
+                            "insert_candidates": [
+                                {"place_id": ic.place_id, "name": ic.name,
+                                 "lat": ic.lat, "lon": ic.lon, "type": ic.type,
+                                 "time_cost_min": ic.time_cost_min,
+                                 "persona_affinity": ic.persona_affinity,
+                                 "trigger": ic.trigger,
+                                 "time_of_day_match": ic.time_of_day_match}
+                                for ic in _seeded.insert_candidates
+                            ],
+                            "scenic_routes": _seeded.scenic_routes,
+                            "engine_modifiers": _seeded.engine_modifiers,
+                            "landmark_anchors": [],
+                            "hidden_gems": [],
+                        }
+                        _supabase.table("city_data").update({"data": _cd}).eq("id", cid).execute()
+                        print(f"MAP DATA BG: seeded {len(_seeded.insert_candidates)} candidates for {cid}")
+                except Exception as _e:
+                    print(f"MAP DATA BG: seed failed for {cid}: {_e}")
+            _threading.Thread(target=_bg_seed_city, args=(city_id, city, clat, clon), daemon=True).start()
 
     # No cache at all — first visit, must fetch synchronously
     if not _supabase:
