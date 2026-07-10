@@ -484,6 +484,7 @@ export function MapScreen() {
         ...secondaryCities,
       ];
 
+      dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: null });
       const res = await api.engineItinerary.start({
         city: primaryCity,
         lat: cityGeo?.lat ?? 0,

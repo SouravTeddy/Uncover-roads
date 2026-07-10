@@ -479,6 +479,8 @@ export function reducer(state: AppState, action: Action): AppState {
       ssSave('ur_ss_sel', []);
       ssSave('ur_ss_geo', null);
       ssSave('ur_ss_footprints', []);
+      ssSave('ur_ss_engine_itin', null);
+      ssSave('ur_ss_active_build', null);
       return {
         ...state,
         city: action.city,
@@ -488,6 +490,8 @@ export function reducer(state: AppState, action: Action): AppState {
         cityFootprints: [],
         cityContexts: [],
         activeCityIndex: 0,
+        engineItinerary: null,
+        activeBuild: null,
       };
 
     case 'UPDATE_CITY_LABEL':
