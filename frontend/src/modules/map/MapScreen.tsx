@@ -501,7 +501,8 @@ export function MapScreen() {
       });
 
       dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending', startedAt: Date.now() } });
-      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+      dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' });
+      dispatch({ type: 'GO_TO', screen: 'trips' });
     } catch (err: unknown) {
       console.error('[MapScreen] executeBuild failed:', err);
       // If build already in progress, reconnect to it
@@ -1115,7 +1116,7 @@ export function MapScreen() {
           isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
           hasExistingItinerary={state.hasBuiltThisSession}
           onBuild={handleBuild}
-          onSeePlan={() => dispatch({ type: 'GO_TO', screen: 'itinerary-reel' })}
+          onSeePlan={() => { dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' }); dispatch({ type: 'GO_TO', screen: 'trips' }); }}
         />
       )}
 

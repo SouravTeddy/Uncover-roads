@@ -66,6 +66,7 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     mapFilter: 'all',
     savedEvents: [],
     reelSavedId: null,
+    tripsActiveTab: 'saved' as const,
     pendingTripDetails: null,
     dismissedPinIds: [],
     recoInteractions: [],

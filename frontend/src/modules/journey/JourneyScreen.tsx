@@ -196,7 +196,8 @@ export function JourneyScreen() {
       },
     });
     dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
-    dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+    dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' });
+    dispatch({ type: 'GO_TO', screen: 'trips' });
   }
 
   const handleBuild = () => {

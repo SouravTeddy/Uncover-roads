@@ -1,11 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary, FavouritedPin } from '../../shared/types';
+import type { SavedItinerary } from '../../shared/types';
 import { getPlacePhotoUrl } from '../../shared/api';
 import { useCityPhoto } from '../destination/useCityPhoto';
 import { formatCityLabel } from '../../shared/cityPhoto';
 import { SmartUpdates } from './SmartUpdates';
 import { RecalibrationStack } from './RecalibrationStack';
+import { ItineraryReelScreen } from '../route/reel';
 
 // ── Utilities ────────────────────────────────────────────────
 
@@ -258,7 +259,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   function handlePlay() {
     setNudgeOpen(false);
     dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
-    dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
+    dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' });
   }
 
   const isPast = status === 'past';
@@ -413,223 +414,102 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   );
 }
 
-// ── Places Tab ───────────────────────────────────────────────
-
-const CATEGORY_GRADIENT: Record<string, string> = {
-  historic:   'linear-gradient(160deg, #3d2a1a, #1a130e)',
-  museum:     'linear-gradient(160deg, #3d2a1a, #1a130e)',
-  park:       'linear-gradient(160deg, #1e2f1a, #111a0e)',
-  restaurant: 'linear-gradient(160deg, #2d1c1c, #150f0f)',
-  cafe:       'linear-gradient(160deg, #2d1c1c, #150f0f)',
-  tourism:    'linear-gradient(160deg, #1a2535, #0f1620)',
-  beach:      'linear-gradient(160deg, #1a2535, #0f1620)',
-};
-
-interface PinGroup {
-  key: string;
-  city: string;
-  travelDate: string | null;
-  pins: FavouritedPin[];
-}
-
-function buildPinGroups(pins: FavouritedPin[]): PinGroup[] {
-  const map = new Map<string, PinGroup>();
-  for (const pin of pins) {
-    const key = `${pin.city}|${pin.travelDate ?? ''}`;
-    if (!map.has(key)) map.set(key, { key, city: pin.city, travelDate: pin.travelDate ?? null, pins: [] });
-    map.get(key)!.pins.push(pin);
-  }
-  return Array.from(map.values());
-}
-
-function PlaceCard({ pin, onRemove, onOpen }: { pin: FavouritedPin; onRemove: () => void; onOpen: () => void }) {
-  const photoUrl = pin.photoRef ? getPlacePhotoUrl(pin.photoRef, 400) : null;
-  const gradient = CATEGORY_GRADIENT[pin.category ?? ''] ?? 'linear-gradient(160deg, var(--color-surface2), var(--color-bg))';
-
-  return (
-    <div
-      onClick={onOpen}
-      style={{
-        position: 'relative', width: 130, height: 170, borderRadius: 16,
-        flexShrink: 0, overflow: 'hidden', cursor: 'pointer',
-        background: gradient, boxShadow: 'var(--shadow-md)',
-      }}
-    >
-      {photoUrl && (
-        <img
-          src={photoUrl} alt={pin.title}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-        />
-      )}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.18) 55%, transparent 100%)' }} />
-
-      <button
-        onClick={e => { e.stopPropagation(); onRemove(); }}
-        aria-label="Remove"
-        style={{
-          position: 'absolute', top: 8, right: 8,
-          width: 24, height: 24, borderRadius: '50%', border: 'none',
-          background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-        }}
-      >
-        <span className="ms" style={{ fontSize: 12, color: 'rgba(255,255,255,.8)' }}>close</span>
-      </button>
-
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 10px 10px' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: '#fff', lineHeight: 1.3, margin: 0 }}>{pin.title}</p>
-        {pin.category && (
-          <p style={{ fontSize: 9, color: 'rgba(255,255,255,.55)', marginTop: 2, textTransform: 'capitalize' }}>{pin.category}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PlacesTab() {
-  const { state, dispatch } = useAppStore();
-  const { favouritedPins } = state;
-
-  function handleRemove(pin: FavouritedPin) {
-    dispatch({ type: 'TOGGLE_FAVOURITE', pin });
-  }
-
-  function handleOpenMap(city: string) {
-    const pin = favouritedPins.find(p => p.city === city);
-    dispatch({ type: 'SET_CITY', city });
-    if (pin) {
-      dispatch({
-        type: 'SET_CITY_GEO',
-        geo: { lat: pin.lat, lon: pin.lon, bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15] },
-      });
-    }
-    dispatch({ type: 'GO_TO', screen: 'map' });
-  }
-
-  if (favouritedPins.length === 0) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 32px', textAlign: 'center', gap: 12 }}>
-        <span className="ms" style={{ fontSize: 44, color: 'var(--color-text-4)' }}>favorite_border</span>
-        <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 4 }}>No saved places yet</p>
-          <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Tap ❤ on any pin on the map to save it here.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const groups = buildPinGroups(favouritedPins);
-
-  return (
-    <div style={{ paddingBottom: 32, paddingTop: 8 }}>
-      {groups.map(group => {
-        const dateLabel = group.travelDate
-          ? new Date(group.travelDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-          : null;
-        return (
-          <div key={group.key} style={{ marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 16px 10px' }}>
-              <div>
-                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, color: 'var(--color-text-1)' }}>{group.city}</span>
-                {dateLabel && <span style={{ fontSize: 11, color: 'var(--color-text-3)', marginLeft: 8 }}>{dateLabel}</span>}
-              </div>
-              <button
-                onClick={() => handleOpenMap(group.city)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                <span className="ms" style={{ fontSize: 13 }}>map</span>
-                Open map
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', overflowY: 'hidden', padding: '0 16px 4px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
-              {group.pins.map(pin => (
-                <PlaceCard key={pin.placeId} pin={pin} onRemove={() => handleRemove(pin)} onOpen={() => handleOpenMap(group.city)} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Main Screen ──────────────────────────────────────────────
-
-type Tab = 'trips' | 'places';
 
 export function TripsScreen() {
   const { state, dispatch } = useAppStore();
-  const { savedItineraries, favouritedPins } = state;
-  const [activeTab, setActiveTab] = useState<Tab>('trips');
-  const touchStartX = useRef<number | null>(null);
+  const { savedItineraries, tripsActiveTab } = state;
+  const [tabBarHidden, setTabBarHidden] = useState(false);
 
   const sorted = [...savedItineraries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  }, []);
+  const setTab = useCallback((tab: 'current' | 'saved') => {
+    dispatch({ type: 'SET_TRIPS_TAB', tab });
+    setTabBarHidden(false);
+  }, [dispatch]);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 60) setActiveTab(dx < 0 ? 'places' : 'trips');
-    touchStartX.current = null;
-  }, []);
+  // Tab bar: blurred, theme-aware, hides when reel scrolls past card 1
+  const TAB_BAR: React.CSSProperties = {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    zIndex: 45,
+    paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)',
+    paddingLeft: 20, paddingRight: 20,
+    paddingBottom: 0,
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    background: 'rgba(var(--color-bg-raw, 15,13,12), 0.82)',
+    borderBottom: '1px solid var(--color-border)',
+    transform: tabBarHidden ? 'translateY(-110%)' : 'translateY(0)',
+    opacity: tabBarHidden ? 0 : 1,
+    transition: 'transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s',
+  };
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col"
-      style={{ background: 'var(--color-bg)', zIndex: 20 }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Header */}
-      <div style={{
-        flexShrink: 0,
-        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.25rem)',
-        paddingBottom: 0, paddingLeft: 20, paddingRight: 20,
-        borderBottom: '1px solid var(--color-divider)',
-      }}>
-        <div style={{ display: 'flex', gap: 0 }}>
-          {(['trips', 'places'] as Tab[]).map(tab => {
-            const isActive = activeTab === tab;
-            const count = tab === 'trips' ? sorted.length : favouritedPins.length;
+    <div className="fixed inset-0" style={{ background: 'var(--color-bg)', zIndex: 20 }}>
+
+      {/* ── Tab bar ── */}
+      <div style={TAB_BAR}>
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--color-divider)', paddingBottom: 0 }}>
+          {(['current', 'saved'] as const).map(tab => {
+            const isActive = tripsActiveTab === tab;
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => setTab(tab)}
                 style={{
-                  padding: '8px 4px', marginRight: 24, background: 'none', border: 'none', cursor: 'pointer',
-                  borderBottom: isActive ? '2.5px solid var(--color-primary)' : '2.5px solid transparent',
-                  transition: 'border-color 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '0 0 12px', marginRight: 28,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  position: 'relative', bottom: -1,
+                  transition: 'border-color .2s',
                 }}
               >
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 26, fontWeight: 700, color: isActive ? 'var(--color-text-1)' : 'var(--color-text-4)', transition: 'color 0.2s' }}>
-                  {tab === 'trips' ? 'Trips' : 'Places'}
+                <span style={{
+                  fontSize: 17, fontWeight: 600,
+                  color: isActive ? 'var(--color-text-1)' : 'var(--color-text-3)',
+                  fontFamily: 'var(--font-sans)',
+                  letterSpacing: '-.01em',
+                  transition: 'color .2s',
+                }}>
+                  {tab === 'current' ? 'Current' : 'Saved'}
                 </span>
-                {count > 0 && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-4)',
-                    background: isActive ? 'var(--color-primary-bg)' : 'var(--color-surface2)',
-                    padding: '1px 6px', borderRadius: 999, transition: 'color 0.2s, background 0.2s',
-                  }}>{count}</span>
-                )}
               </button>
             );
           })}
+          {/* Heart → saved places */}
+          <button
+            onClick={() => dispatch({ type: 'GO_TO', screen: 'saved' })}
+            style={{
+              marginLeft: 'auto', marginBottom: 12,
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#e05c7a', padding: 4,
+              display: 'flex', alignItems: 'center',
+              transition: 'transform .15s',
+            }}
+          >
+            <span className="ms fill" style={{ fontSize: 22 }}>favorite</span>
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' } as React.CSSProperties}>
-        {activeTab === 'trips' && (
-          sorted.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16, padding: '64px 32px', textAlign: 'center' }}>
+      {/* ── Current: reel ── */}
+      {tripsActiveTab === 'current' && (
+        <ItineraryReelScreen
+          key={state.reelSavedId ?? 'live'}
+          onTabBarScroll={setTabBarHidden}
+        />
+      )}
+
+      {/* ── Saved: trips list ── */}
+      {tripsActiveTab === 'saved' && (
+        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)' } as React.CSSProperties}
+          className="no-scrollbar"
+        >
+          {sorted.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, padding: '64px 32px', textAlign: 'center' }}>
               <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
               </div>
@@ -645,28 +525,23 @@ export function TripsScreen() {
               </button>
             </div>
           ) : sorted.length <= GROUP_THRESHOLD ? (
-            <div style={{ padding: '16px 16px 112px' }}>
-              {sorted.map((item, idx) => (
-                <TripCard key={item.id} item={item} index={idx} />
-              ))}
+            <div style={{ padding: '8px 16px 112px' }}>
+              {sorted.map((item, idx) => <TripCard key={item.id} item={item} index={idx} />)}
             </div>
           ) : (
-            <div style={{ padding: '16px 16px 112px' }}>
+            <div style={{ padding: '8px 16px 112px' }}>
               {buildMonthGroups(sorted).map(group => (
                 <div key={group.label}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
                     {group.label}
                   </div>
-                  {group.items.map((item, idx) => (
-                    <TripCard key={item.id} item={item} index={idx} />
-                  ))}
+                  {group.items.map((item, idx) => <TripCard key={item.id} item={item} index={idx} />)}
                 </div>
               ))}
             </div>
-          )
-        )}
-        {activeTab === 'places' && <PlacesTab />}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

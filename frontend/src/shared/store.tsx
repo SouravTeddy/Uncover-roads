@@ -110,6 +110,7 @@ export interface AppState {
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
   reelSavedId: string | null;
+  tripsActiveTab: 'current' | 'saved';
   activeBuild: ActiveBuild | null;
   pendingTripDetails: import('./types').TripDetails | null;
   dismissedPinIds: string[];
@@ -169,7 +170,7 @@ function getInitialScreen(): Screen {
         if (lastScreen) {
           const parsed = JSON.parse(lastScreen) as Screen;
           if (parsed === 'itinerary-reel' && localStorage.getItem('ur_ss_engine_itin')) {
-            return 'itinerary-reel';
+            return 'trips'; // reel is now inside the trips screen (Current tab)
           }
           if (parsed !== 'itinerary-reel' && parsed !== 'login') {
             return parsed;
@@ -343,6 +344,7 @@ export const initialState: AppState = {
   activePinId: null,
   mapFilter: 'all' as MapFilterChip,
   reelSavedId: null,
+  tripsActiveTab: 'saved',
   activeBuild: ssGet<ActiveBuild>('ur_ss_active_build') ?? null,
   pendingTripDetails: null,
   dismissedPinIds: [],
@@ -433,7 +435,8 @@ export type Action =
   | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null }
   | { type: 'UPDATE_PLACE_CITY'; id: string; city: string }
   | { type: 'SET_ACTIVE_BUILD'; build: ActiveBuild }
-  | { type: 'CLEAR_ACTIVE_BUILD' };
+  | { type: 'CLEAR_ACTIVE_BUILD' }
+  | { type: 'SET_TRIPS_TAB'; tab: 'current' | 'saved' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
@@ -839,6 +842,9 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'CLEAR_ACTIVE_BUILD':
       ssSave('ur_ss_active_build', null);
       return { ...state, activeBuild: null };
+
+    case 'SET_TRIPS_TAB':
+      return { ...state, tripsActiveTab: action.tab };
 
     case 'SET_ENGINE_ITINERARY':
       ssSave('ur_ss_engine_itin', action.itinerary)
