@@ -281,7 +281,12 @@ export function ItineraryReelScreen() {
     // Saved trips: open instantly — data is already in store. cityPhotoMap/weather
     // arrive via their own effects (lines ~421-433) and rebuild cards in the background.
     if (savedItem) {
-      setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap, resolvedStopImages));
+      try {
+        setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap, resolvedStopImages));
+      } catch (e) {
+        console.warn('[reel] buildFiltered failed for saved trip:', e);
+        setCards([]);
+      }
       setLoadingStep(1);
       setImagesReady(true);
       return;
@@ -714,6 +719,23 @@ export function ItineraryReelScreen() {
             }} />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Guard: imagesReady but cards is empty means buildFiltered failed on the saved itinerary
+  if (imagesReady && cards.length === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 32px', textAlign: 'center' }}>
+        <span className="ms fill" style={{ fontSize: 40, color: 'var(--color-text-4)' }}>error_outline</span>
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-2)', margin: 0 }}>Couldn't load this trip</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-4)', margin: 0 }}>The saved data may be incomplete. Try going back and opening it again.</p>
+        <button
+          onClick={() => dispatch({ type: 'GO_BACK' })}
+          style={{ marginTop: 8, padding: '10px 24px', borderRadius: 99, background: 'var(--color-surface)', border: '1px solid var(--color-border-m)', color: 'var(--color-text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Go back
+        </button>
       </div>
     );
   }
