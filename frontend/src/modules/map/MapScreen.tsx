@@ -861,8 +861,8 @@ export function MapScreen() {
         </div>
       </div>
 
-      {/* Right column — single-city only */}
-      {!isMultiCity && city && (
+      {/* Right column — city name (always show when city is set) */}
+      {city && (
         <span
           style={{
             position: 'absolute',
@@ -883,7 +883,7 @@ export function MapScreen() {
           {city}
         </span>
       )}
-      {!isMultiCity && state.travelStartDate && state.travelEndDate && (
+      {state.travelStartDate && state.travelEndDate && (
         <span
           style={{
             position: 'absolute',
