@@ -630,7 +630,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
         <div style={{
           display: expanded ? 'none' : 'block',
           padding: '0 20px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
         }}
           onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
         >
