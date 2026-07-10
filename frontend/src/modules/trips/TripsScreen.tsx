@@ -419,7 +419,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
 
 export function TripsScreen() {
   const { state, dispatch } = useAppStore();
-  const { savedItineraries, tripsActiveTab, engineItinerary, reelSavedId, favouritedPins, savedEvents } = state;
+  const { savedItineraries, tripsActiveTab, hasBuiltThisSession, reelSavedId, favouritedPins, savedEvents } = state;
   const [tabBarHidden, setTabBarHidden] = useState(false);
 
   const sorted = [...savedItineraries].sort(
@@ -514,7 +514,7 @@ export function TripsScreen() {
 
       {/* ── Current: reel or empty state ── */}
       {tripsActiveTab === 'current' && (
-        engineItinerary || reelSavedId ? (
+        hasBuiltThisSession || reelSavedId ? (
           <ItineraryReelScreen
             key={reelSavedId ?? 'live'}
             onTabBarScroll={setTabBarHidden}
