@@ -92,7 +92,7 @@ const DATE_CHIP: React.CSSProperties = {
   color: '#d4a853',
 };
 
-export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tripStartDate, tripEndDate, tripTimingNote }: Props) {
+export function ReelIntroCard({ card, active, onShowTripDetails: _onShowTripDetails, onInteract, tripStartDate, tripEndDate, tripTimingNote }: Props) {
   const dateRange = tripStartDate && tripEndDate ? formatDateRange(tripStartDate, tripEndDate) : null;
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -123,7 +123,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         </div>
       )}
 
-      {/* Trip details button */}
+      {/* Trip details button — hidden until feature is revisited
       <button
         onClick={onShowTripDetails}
         style={{ position: 'absolute', top: 48, right: 13, zIndex: 10, ...CHIP, padding: '10px 16px', cursor: 'pointer', background: 'rgba(212,168,83,.28)', border: '1px solid rgba(212,168,83,.75)', color: '#f5d060', fontSize: 15, fontWeight: 700, gap: 7, boxShadow: '0 2px 12px rgba(212,168,83,.25)' }}
@@ -131,6 +131,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails, onInteract, tri
         <span className="ms fill" style={{ fontSize: 17, color: '#f5d060' }}>edit_calendar</span>
         Add trip details
       </button>
+      */}
 
       {/* Gradient scrim */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
