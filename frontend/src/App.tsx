@@ -211,7 +211,7 @@ function ScreenRouter() {
           {/* Keep reel mounted while on map so back-navigation is instant (no rebuild) */}
           {(currentScreen === 'itinerary-reel' || currentScreen === 'map') && (
             <div style={currentScreen !== 'itinerary-reel' ? { display: 'none' } : undefined}>
-              <ItineraryReelScreen />
+              <ItineraryReelScreen key={state.reelSavedId ?? 'live'} />
             </div>
           )}
           {currentScreen === 'trips'       && <TripsScreen />}
