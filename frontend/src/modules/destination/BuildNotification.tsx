@@ -28,7 +28,6 @@ export function BuildNotification({ activeBuild }: Props) {
   if (!activeBuild) return null;
 
   const isActive = activeBuild.status === 'pending' || activeBuild.status === 'running';
-  const isDone   = activeBuild.status === 'done';
   const isFailed = activeBuild.status === 'failed';
 
   const outer: React.CSSProperties = {
@@ -75,34 +74,6 @@ export function BuildNotification({ activeBuild }: Props) {
           </div>
         </div>
       </>
-    );
-  }
-
-  if (isDone) {
-    return (
-      <div style={outer}>
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
-            dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
-          }}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
-              dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
-            }
-          }}
-          style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(107,148,112,0.4)', cursor: 'pointer' }}
-        >
-          <span style={{ fontSize: 16, flexShrink: 0 }}>✦</span>
-          <span style={{ flex: 1, fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display', serif", color: '#8fc49a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            See plan
-          </span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: '#6b9470', flexShrink: 0 }}>→</span>
-        </div>
-      </div>
     );
   }
 
