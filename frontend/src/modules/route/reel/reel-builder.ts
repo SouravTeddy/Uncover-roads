@@ -922,8 +922,7 @@ export function buildReelCards(
     for (const sc of (day.scenicCorridors ?? [])) {
       if (sc.originStopId) backendScenicByOriginId.set(sc.originStopId, sc);
     }
-    // Only backend scenic corridors are shown — no frontend fallback heuristic
-    const detourByOriginStopId = new Map<string, DayIntelObservation>();
+
 
     const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
     const allObservations: DayIntelObservation[] = [
@@ -1100,42 +1099,6 @@ export function buildReelCards(
         }
       }
 
-      // Fallback walkable detour (only when backend sent no scenic corridors for this day).
-      const matchedDetour = !useBackendScenic ? detourByOriginStopId.get(stop.id) : undefined;
-      if (matchedDetour && !scenicCard && !backendScenic) {
-        const nextStop = sortedStops[si + 1];
-        if (nextStop) {
-          const distKm = haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
-          const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
-          const distLabel = distKm < 1 ? `${Math.round(distKm * 1000)} m walk` : `${distKm.toFixed(1)} km walk`;
-          cards.push({
-            type:        'scenic',
-            sceneType:   'walk',
-            accent:      '#c4b5fd',
-            cardType:    'WALKABLE DETOUR',
-            pos:         1,
-            total:       1,
-            timing:      minutesToTime(timeToMinutes(stop.time) + (stop.durationMin ?? 60)),
-            metaRight:   `${distLabel} · ~${walkMins} min`,
-            place:       `${stop.title} → ${nextStop.title}`,
-            from:        stop.area ?? stop.title,
-            to:          nextStop.area ?? nextStop.title,
-            modeIcon:    'walk',
-            tag:         'Worth the walk',
-            vizType:     'route',
-            persona,
-            personaDisplay: persona.split(/[\s_]+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-            personaIcon: 'walk',
-            why:         matchedDetour.why,
-            sensory:     'See more between stops than you would from a ride.',
-            sensoryIcon: 'directions_walk',
-            reelPos:     `Between Stop ${globalStopNumber} and Stop ${globalStopNumber + 1}`,
-            photoUrl:    stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 600) : null),
-            detourKm:    Math.round(distKm * 10) / 10,
-            detourMin:   walkMins,
-          } as ReelScenicCard);
-        }
-      }
     }
 
     totalObsCount += dedupedObservations.length;
