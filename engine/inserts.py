@@ -17,6 +17,8 @@ _DINNER_INJECT_FLOOR_HOUR = 16  # don't inject post-loop dinner if day ends befo
                                  # (day is too thin; other gaps should be addressed first)
 _DINNER_MAX_HOUR = 20           # don't inject post-loop dinner if day ends after 20:00
                                  # (sequential scheduling would push dinner past 20:30)
+_EARLY_DAY_CUTOFF_HOUR = 15     # if day ends before this hour, fill the afternoon gap
+_EARLY_DAY_MAX_FILLS = 3        # max stops to inject when filling an early-ending day
 
 # Proper meals only — café/coffee are rest, not dining
 _DINING_CATS = {"restaurant", "food", "bakery", "street_food", "lunch", "dinner", "breakfast"}
@@ -50,6 +52,8 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * R * math.asin(math.sqrt(a))
 
 
+_DINNER_FALLBACK_TYPES = ("lunch", "restaurant", "food", "street_food", "bakery")
+
 def _best_candidate(
     type_: str, ctx: EngineContext, near_lat: float, near_lon: float,
     seen_ids: set[str] | None = None,
@@ -58,6 +62,11 @@ def _best_candidate(
     candidates = [c for c in ctx.city.insert_candidates if c.type == type_]
     if seen_ids:
         candidates = [c for c in candidates if c.place_id not in seen_ids]
+    # Dinner fallback: any food-capable place works if no dinner-tagged candidate exists
+    if not candidates and type_ == "dinner":
+        candidates = [c for c in ctx.city.insert_candidates if c.type in _DINNER_FALLBACK_TYPES]
+        if seen_ids:
+            candidates = [c for c in candidates if c.place_id not in seen_ids]
     if not candidates:
         return None
     def _score(c: InsertCandidate) -> float:
@@ -244,5 +253,50 @@ def detect(
                 if c:
                     result.append(_candidate_to_stop(c, city=last.city))
                     messages.append(_make_insert_message(c, "No dinner in your plan — added one to close the evening."))
+                    seen_ids.add(c.place_id)
+
+    # Early-day gap fill: if the day ends before _EARLY_DAY_CUTOFF_HOUR (15:00) and the user
+    # has added few stops, inject afternoon candidates to fill the empty hours rather than
+    # leaving the plan dead. We try: coffee break → afternoon attraction → then let the
+    # post-loop dinner check above handle evening. Cap at _EARLY_DAY_MAX_FILLS to avoid bloat.
+    if result:
+        last = result[-1]
+        if last.scheduled_time:
+            lh, lm = (int(x) for x in last.scheduled_time.split(":"))
+            last_end_min = lh * 60 + lm + last.duration_min
+            if last_end_min < _EARLY_DAY_CUTOFF_HOUR * 60:
+                fills = 0
+                # 1. Coffee/café break if no recent rest
+                if mins_since_rest >= _COFFEE_GAP_MIN and fills < _EARLY_DAY_MAX_FILLS:
+                    c = _best_candidate("coffee", ctx, last.lat, last.lon, seen_ids)
+                    if c:
+                        result.append(_candidate_to_stop(c, city=last.city))
+                        messages.append(_make_insert_message(c, "Added a break to fill your afternoon."))
+                        seen_ids.add(c.place_id)
+                        last = result[-1]
+                        fills += 1
+
+                # 2. Afternoon attraction (try scenic_walk, rest, then any available candidate)
+                for fill_type in ("scenic_walk", "rest", "coffee", "lunch"):
+                    if fills >= _EARLY_DAY_MAX_FILLS:
+                        break
+                    c = _best_candidate(fill_type, ctx, last.lat, last.lon, seen_ids)
+                    if c:
+                        result.append(_candidate_to_stop(c, city=last.city))
+                        messages.append(_make_insert_message(c, "Added an afternoon stop to fill your day."))
+                        seen_ids.add(c.place_id)
+                        last = result[-1]
+                        fills += 1
+
+                # 3. Dinner: re-evaluate now that the day is extended.
+                # Recompute last_end_min after fills.
+                if not has_dinner_today and last.scheduled_time:
+                    lh2, lm2 = (int(x) for x in last.scheduled_time.split(":"))
+                    last_end_min2 = lh2 * 60 + lm2 + last.duration_min
+                    if _DINNER_INJECT_FLOOR_HOUR * 60 <= last_end_min2 < _DINNER_MAX_HOUR * 60:
+                        c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids)
+                        if c:
+                            result.append(_candidate_to_stop(c, city=last.city))
+                            messages.append(_make_insert_message(c, "Added dinner to close your afternoon."))
 
     return result, messages

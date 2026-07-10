@@ -25,20 +25,7 @@ export function useBuildStatus(): void {
         const res = await api.engineItinerary.status(activeBuild.id);
         if (res.status === 'done') {
           if (res.result) {
-            // Strip scenic-route cards that the backend sometimes mixes into day.stops.
-            // They lack `time`/`title`/`id` and crash the reel builder's sort comparators.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const r = res.result as any;
-            const cleaned = {
-              ...r,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              days: (r.days ?? []).map((d: any) => ({
-                ...d,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                stops: (d.stops ?? []).filter((s: any) => s.type !== 'scenic'),
-              })),
-            };
-            dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: cleaned });
+            dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: res.result as import('./types').EngineItinerary });
           }
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'done' } });
         } else if (res.status === 'failed') {
