@@ -15,7 +15,8 @@ import { computeHotelAnchorRow } from './hotel-anchor';
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function timeToMinutes(t: string): number {
+function timeToMinutes(t: string | null | undefined): number {
+  if (!t) return 0;
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 }
@@ -28,7 +29,8 @@ function minutesToTime(m: number): string {
 
 // ── Timing cascade helpers ─────────────────────────────────────
 
-function fmt12h(time: string): string {
+function fmt12h(time: string | null | undefined): string {
+  if (!time) return '';
   const [h, m] = time.split(':').map(Number);
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;

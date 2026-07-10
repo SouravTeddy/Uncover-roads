@@ -245,15 +245,18 @@ export function ItineraryReelScreen() {
 
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
-    const itineraryForBuild = stopImages.size === 0 ? itinerary! : {
+    // Also strip any scenic-route cards the backend mixed into day.stops (they have no time/title).
+    const itineraryForBuild = {
       ...itinerary!,
       days: itinerary!.days.map(day => ({
         ...day,
-        stops: day.stops.map(stop =>
-          (!stop.imageUrl && !stop.photoRef)
-            ? { ...stop, imageUrl: stopImages.get(stop.title) ?? null }
-            : stop
-        ),
+        stops: day.stops
+          .filter(s => (s as { type?: string }).type !== 'scenic')
+          .map(stop =>
+            (stopImages.size > 0 && !stop.imageUrl && !stop.photoRef)
+              ? { ...stop, imageUrl: stopImages.get(stop.title) ?? null }
+              : stop
+          ),
       })),
     };
 
@@ -303,10 +306,10 @@ export function ItineraryReelScreen() {
         ].filter(Boolean) as string[]),
       ];
 
-      // Collect all stops that have no image yet
+      // Collect all stops that have no image yet (skip scenic cards mixed in by backend)
       const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
         (d.stops ?? [])
-          .filter(s => !s.imageUrl)
+          .filter(s => (s as { type?: string }).type !== 'scenic' && !s.imageUrl && s.title)
           .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
       );
 
