@@ -7,6 +7,7 @@ import { formatCityLabel } from '../../shared/cityPhoto';
 import { SmartUpdates } from './SmartUpdates';
 import { RecalibrationStack } from './RecalibrationStack';
 import { ItineraryReelScreen } from '../route/reel';
+import { SavedPlacesTab } from './SavedPlacesTab';
 
 // ── Utilities ────────────────────────────────────────────────
 
@@ -418,14 +419,14 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
 
 export function TripsScreen() {
   const { state, dispatch } = useAppStore();
-  const { savedItineraries, tripsActiveTab, engineItinerary, reelSavedId } = state;
+  const { savedItineraries, tripsActiveTab, engineItinerary, reelSavedId, favouritedPins, savedEvents } = state;
   const [tabBarHidden, setTabBarHidden] = useState(false);
 
   const sorted = [...savedItineraries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const setTab = useCallback((tab: 'current' | 'saved') => {
+  const setTab = useCallback((tab: 'current' | 'saved' | 'places') => {
     dispatch({ type: 'SET_TRIPS_TAB', tab });
     setTabBarHidden(false);
   }, [dispatch]);
@@ -453,44 +454,61 @@ export function TripsScreen() {
       {/* ── Tab bar ── */}
       <div style={TAB_BAR}>
         <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--color-divider)', paddingBottom: 0 }}>
-          {(['current', 'saved'] as const).map(tab => {
-            const isActive = tripsActiveTab === tab;
-            return (
+          {tripsActiveTab === 'places' ? (
+            /* Saved Places header */
+            <>
               <button
-                key={tab}
-                onClick={() => setTab(tab)}
+                onClick={() => setTab('saved')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px 12px 0', display: 'flex', alignItems: 'center', color: 'var(--color-text-3)' }}
+              >
+                <span className="ms" style={{ fontSize: 20 }}>arrow_back</span>
+              </button>
+              <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-text-1)', fontFamily: 'var(--font-sans)', paddingBottom: 12 }}>
+                Saved Places
+              </span>
+            </>
+          ) : (
+            /* Current / Saved tabs + heart */
+            <>
+              {(['current', 'saved'] as const).map(tab => {
+                const isActive = tripsActiveTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setTab(tab)}
+                    style={{
+                      padding: '0 0 12px', marginRight: 28,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
+                      position: 'relative', bottom: -1,
+                      transition: 'border-color .2s',
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 17, fontWeight: 600,
+                      color: isActive ? 'var(--color-text-1)' : 'var(--color-text-3)',
+                      fontFamily: 'var(--font-sans)',
+                      letterSpacing: '-.01em',
+                      transition: 'color .2s',
+                    }}>
+                      {tab === 'current' ? 'Current' : 'Saved'}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setTab('places')}
                 style={{
-                  padding: '0 0 12px', marginRight: 28,
+                  marginLeft: 'auto', marginBottom: 12,
                   background: 'none', border: 'none', cursor: 'pointer',
-                  borderBottom: isActive ? '2px solid var(--color-primary)' : '2px solid transparent',
-                  position: 'relative', bottom: -1,
-                  transition: 'border-color .2s',
+                  color: '#e05c7a', padding: 4,
+                  display: 'flex', alignItems: 'center',
                 }}
               >
-                <span style={{
-                  fontSize: 17, fontWeight: 600,
-                  color: isActive ? 'var(--color-text-1)' : 'var(--color-text-3)',
-                  fontFamily: 'var(--font-sans)',
-                  letterSpacing: '-.01em',
-                  transition: 'color .2s',
-                }}>
-                  {tab === 'current' ? 'Current' : 'Saved'}
-                </span>
+                <span className="ms fill heart-pulse" style={{ fontSize: 22 }}>favorite</span>
               </button>
-            );
-          })}
-          {/* Heart → saved places */}
-          <button
-            onClick={() => dispatch({ type: 'GO_TO', screen: 'saved' })}
-            style={{
-              marginLeft: 'auto', marginBottom: 12,
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: '#e05c7a', padding: 4,
-              display: 'flex', alignItems: 'center',
-            }}
-          >
-            <span className="ms fill heart-pulse" style={{ fontSize: 22 }}>favorite</span>
-          </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -518,6 +536,29 @@ export function TripsScreen() {
             </button>
           </div>
         )
+      )}
+
+      {/* ── Places: saved places ── */}
+      {tripsActiveTab === 'places' && (
+        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)', paddingBottom: 112 } as React.CSSProperties}
+          className="no-scrollbar"
+        >
+          <SavedPlacesTab
+            favouritedPins={favouritedPins}
+            savedEvents={savedEvents}
+            onOpenMap={(city) => {
+              const pin = favouritedPins.find(p => p.city === city);
+              dispatch({ type: 'SET_CITY', city });
+              if (pin) dispatch({ type: 'SET_CITY_GEO', geo: { lat: pin.lat, lon: pin.lon, bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15] } });
+              dispatch({ type: 'GO_TO', screen: 'map' });
+            }}
+            onRemovePin={(placeId) => {
+              const pin = favouritedPins.find(p => p.placeId === placeId);
+              if (pin) dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+            }}
+            onRemoveEvent={(id) => dispatch({ type: 'REMOVE_EVENT', id })}
+          />
+        </div>
       )}
 
       {/* ── Saved: trips list ── */}
