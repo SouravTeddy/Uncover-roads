@@ -351,9 +351,11 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
         </div>
       </div>
 
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 20px calc(88px + env(safe-area-inset-bottom, 0px))', zIndex: 5 }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 0 0', zIndex: 5 }}>
         {/* Spacer — pushes content to bottom */}
         <div style={{ flex: 1 }} />
+        {/* Dark panel — same treatment as stop card so text is always readable */}
+        <div style={{ background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none', padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* Route label heading + breadcrumb */}
         <div style={{ marginBottom: 8 }}>
@@ -496,6 +498,7 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
             <span>{card.conditionNote}</span>
           </div>
         )}
+        </div>{/* close dark panel */}
       </div>
     </div>
   );
