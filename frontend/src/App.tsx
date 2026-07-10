@@ -222,7 +222,7 @@ function ScreenRouter() {
           {currentScreen === 'subscription' && <SubscriptionScreen />}
         </motion.div>
       </AnimatePresence>
-      <BuildNotification activeBuild={state.activeBuild} />
+      {currentScreen !== 'itinerary-reel' && <BuildNotification activeBuild={state.activeBuild} />}
       <InstallPrompt />
       <BottomNav />
 

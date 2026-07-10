@@ -904,27 +904,14 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
             </div>
 
             {/* ── Group 3a: About this place ───────────────────── */}
-            <div data-group="about-this-place" style={grpSep}>
-              <div style={grpLabel()}>About this place</div>
-              {descriptionText && (
+            {descriptionText && (
+              <div data-group="about-this-place" style={grpSep}>
+                <div style={grpLabel()}>About this place</div>
                 <p style={{ fontSize: 15, lineHeight: 1.68, color: 'rgba(242,237,230,.58)', margin: '0 0 12px' }}>
                   {descriptionText}
                 </p>
-              )}
-              {card.hotelAnchor && (() => {
-                const anchor = card.hotelAnchor!;
-                const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
-                const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
-                const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
-                const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
-                return (
-                  <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
-                    <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
-                    <span style={{ fontSize: 13, color: textColor, lineHeight: 1.45 }}>{anchor.text}</span>
-                  </div>
-                );
-              })()}
-            </div>
+              </div>
+            )}
 
             {/* ── Group 3b: Local insight ──────────────────────── */}
             {stop.localTip && (
@@ -945,6 +932,21 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
                 )}
               </div>
             )}
+
+            {/* Hotel anchor fallback — shown when localTip is absent (else shown inline inside Local insight) */}
+            {!stop.localTip && card.hotelAnchor && (() => {
+              const anchor = card.hotelAnchor!;
+              const bg = anchor.isBlue ? 'rgba(91,155,213,.09)' : anchor.isWarning ? 'rgba(232,160,48,.09)' : 'rgba(212,168,83,.08)';
+              const border = anchor.isBlue ? 'rgba(91,155,213,.2)' : anchor.isWarning ? 'rgba(232,160,48,.2)' : 'rgba(212,168,83,.2)';
+              const textColor = anchor.isBlue ? 'rgba(91,155,213,.85)' : anchor.isWarning ? 'rgba(232,160,48,.85)' : 'rgba(212,168,83,.85)';
+              const iconColor = anchor.isBlue ? '#5b9bd5' : anchor.isWarning ? '#e8a030' : T.gold;
+              return (
+                <div style={{ ...grpSep, display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', borderRadius: 10, background: bg, border: `1px solid ${border}` }}>
+                  <span className="ms fill" style={{ fontSize: T.fsMd, color: iconColor, flexShrink: 0 }}>{anchor.icon}</span>
+                  <span style={{ fontSize: 13, color: textColor, lineHeight: 1.45 }}>{anchor.text}</span>
+                </div>
+              );
+            })()}
 
             {/* ── Group 3c: Why we added this ──────────────────── */}
             {stop.isEngineAdded && (

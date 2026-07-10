@@ -3540,8 +3540,10 @@ def _generate_scenic_card_for_corridor(
     if road_character < 0.4 and distance_km > 1.0:
         return None
 
-    # Mode heuristic
-    mode = "walk" if distance_km < 5 else "drive"
+    # Only generate scenic cards for walkable corridors
+    if distance_km >= 5:
+        return None
+    mode = "walk"
 
     # Straight-line haversine for efficiency penalty
     _orig_lat = origin.get("lat") or 0.0
@@ -5011,10 +5013,10 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             engine_modifiers={}, landmark_anchors=[], hidden_gems=[],
         )
 
-    # Auto-seed when city has no insert candidates, or is missing key food types
-    # (stale seeds from before the lunch-type fix may have only coffee/micro)
-    _has_food = any(ic.type in ("lunch", "dinner") for ic in city_data.insert_candidates)
-    if not city_data.insert_candidates or not _has_food:
+    # Auto-seed when city has no insert candidates, or is missing dinner candidates
+    # (stale seeds have only lunch-typed restaurants; seed_builder now emits both)
+    _has_dinner = any(ic.type == "dinner" for ic in city_data.insert_candidates)
+    if not city_data.insert_candidates or not _has_dinner:
         try:
             from city.seed_builder import build_city_seed as _build_city_seed
             _seeded = _build_city_seed({
