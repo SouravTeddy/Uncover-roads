@@ -418,7 +418,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
 
 export function TripsScreen() {
   const { state, dispatch } = useAppStore();
-  const { savedItineraries, tripsActiveTab } = state;
+  const { savedItineraries, tripsActiveTab, engineItinerary, reelSavedId } = state;
   const [tabBarHidden, setTabBarHidden] = useState(false);
 
   const sorted = [...savedItineraries].sort(
@@ -487,20 +487,37 @@ export function TripsScreen() {
               background: 'none', border: 'none', cursor: 'pointer',
               color: '#e05c7a', padding: 4,
               display: 'flex', alignItems: 'center',
-              transition: 'transform .15s',
             }}
           >
-            <span className="ms fill" style={{ fontSize: 22 }}>favorite</span>
+            <span className="ms fill heart-pulse" style={{ fontSize: 22 }}>favorite</span>
           </button>
         </div>
       </div>
 
-      {/* ── Current: reel ── */}
+      {/* ── Current: reel or empty state ── */}
       {tripsActiveTab === 'current' && (
-        <ItineraryReelScreen
-          key={state.reelSavedId ?? 'live'}
-          onTabBarScroll={setTabBarHidden}
-        />
+        engineItinerary || reelSavedId ? (
+          <ItineraryReelScreen
+            key={reelSavedId ?? 'live'}
+            onTabBarScroll={setTabBarHidden}
+          />
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '32px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 6 }}>No itinerary in progress</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Explore a city and build your<br />itinerary to see it here.</p>
+            </div>
+            <button
+              onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
+              style={{ padding: '10px 24px', borderRadius: 12, background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+            >
+              Start exploring
+            </button>
+          </div>
+        )
       )}
 
       {/* ── Saved: trips list ── */}
