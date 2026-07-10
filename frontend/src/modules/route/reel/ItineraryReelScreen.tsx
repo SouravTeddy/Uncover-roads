@@ -105,7 +105,11 @@ function preloadImages(srcs: string[]): Promise<void> {
   ).then(() => undefined);
 }
 
-export function ItineraryReelScreen() {
+interface ItineraryReelScreenProps {
+  onTabBarScroll?: (hidden: boolean) => void;
+}
+
+export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps = {}) {
   const { state, dispatch } = useAppStore();
   const {
     engineItinerary, reelSavedId, savedItineraries,
@@ -512,16 +516,28 @@ export function ItineraryReelScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary]);
 
-  // Scroll-based active card tracking
+  // Scroll-based active card tracking + tab bar hide/show for parent TripsScreen
   // NOTE: imagesReady is in the deps because the scroll container only mounts after
   // imagesReady=true. Without it, scrollRef.current is null when cards.length first
   // becomes non-zero, so the listener never gets registered and activeIdx stays 0.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || cards.length === 0) return;
+    let lastScrollTop = 0;
     const update = () => {
-      const idx = Math.round(el.scrollTop / el.clientHeight);
+      const scrollTop = el.scrollTop;
+      const cardH = el.clientHeight;
+      const idx = Math.round(scrollTop / cardH);
       setActiveIdx(Math.min(Math.max(idx, 0), cards.length - 1));
+      // Tell parent TripsScreen to hide/show tab bar based on scroll direction past card 0
+      if (onTabBarScroll) {
+        if (idx >= 1) {
+          onTabBarScroll(scrollTop > lastScrollTop + 4);
+        } else {
+          onTabBarScroll(false);
+        }
+      }
+      lastScrollTop = scrollTop;
     };
     // RAF-debounce collapses many scroll events per frame into one update,
     // preventing mid-snap re-renders that can cause iOS scroll-snap to get stuck
@@ -529,7 +545,8 @@ export function ItineraryReelScreen() {
     const handleScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => { el.removeEventListener('scroll', handleScroll); cancelAnimationFrame(rafId); };
-  }, [cards.length, imagesReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cards.length, imagesReady, onTabBarScroll]);
 
 
 

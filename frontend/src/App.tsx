@@ -18,7 +18,7 @@ import { DestinationScreen } from './modules/destination';
 import { MapScreen } from './modules/map';
 import { JourneyScreen } from './modules/journey';
 import { RouteScreen } from './modules/route';
-import { ItineraryReelScreen } from './modules/route/reel';
+
 import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen, SavedScreen } from './modules/trips';
@@ -84,7 +84,7 @@ function ScreenRouter() {
       try {
         const raw = localStorage.getItem('ur_ss_screen');
         const savedScreen = raw ? (JSON.parse(raw) as string) : null;
-        const midSessionScreens = ['map', 'route', 'destination', 'journey', 'saved', 'itinerary-reel'];
+        const midSessionScreens = ['map', 'route', 'destination', 'journey', 'saved', 'trips'];
         if (savedScreen && midSessionScreens.includes(savedScreen)) {
           dispatch({ type: 'GO_TO', screen: savedScreen as Screen });
           return;
@@ -208,12 +208,7 @@ function ScreenRouter() {
           {currentScreen === 'destination' && <DestinationScreen />}
           {currentScreen === 'journey'     && <JourneyScreen />}
           {currentScreen === 'route'          && <RouteScreen />}
-          {/* Keep reel mounted while on map so back-navigation is instant (no rebuild) */}
-          {(currentScreen === 'itinerary-reel' || currentScreen === 'map') && (
-            <div style={currentScreen !== 'itinerary-reel' ? { display: 'none' } : undefined}>
-              <ItineraryReelScreen key={state.reelSavedId ?? 'live'} />
-            </div>
-          )}
+          {/* itinerary-reel is now embedded inside TripsScreen (Current tab) */}
           {currentScreen === 'trips'       && <TripsScreen />}
           {currentScreen === 'saved'       && <SavedScreen />}
           {currentScreen === 'nav'         && <NavScreen />}

@@ -11,7 +11,7 @@ const NAV_ITEMS: { screen: Screen; icon: string; label: string }[] = [
 const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'ob2', 'ob3', 'ob4', 'ob5', 'ob6', 'ob7', 'ob8', 'ob9', 'persona', 'route', 'nav']);
 
 const EXPLORE_SCREENS    = new Set<Screen>(['destination', 'map']);
-const ITINERARY_SCREENS  = new Set<Screen>(['trips', 'itinerary-reel']);
+const ITINERARY_SCREENS  = new Set<Screen>(['trips']);
 
 export function BottomNav() {
   const { state, dispatch } = useAppStore();
