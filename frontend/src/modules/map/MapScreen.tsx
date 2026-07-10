@@ -128,13 +128,6 @@ export function MapScreen() {
 
   const isMultiCity = cityFootprints.length > 1 || isJourneyMode(selectedPlaces);
 
-  const categoryCounts = useMemo(() =>
-    places.reduce<Record<string, number>>((acc, p) => {
-      acc[p.category] = (acc[p.category] ?? 0) + 1;
-      return acc;
-    }, {}),
-  [places]);
-
   const neighborhoods = useNeighborhoods(city, places)
   const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null
   const heatmapSeeds = useHeatmapSeed(cityCenter, mapCenter)
@@ -205,6 +198,13 @@ export function MapScreen() {
       )
       .slice(0, PIN_CAP);
   }, [filteredPlaces, mapBbox]);
+
+  const categoryCounts = useMemo(() =>
+    viewportFilteredPlaces.reduce<Record<string, number>>((acc, p) => {
+      acc[p.category] = (acc[p.category] ?? 0) + 1;
+      return acc;
+    }, {}),
+  [viewportFilteredPlaces]);
 
   // Returns places filtered by the active category chips (no-op when no filter is active)
   const applyCategories = useCallback(
@@ -501,6 +501,7 @@ export function MapScreen() {
       });
 
       dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending', startedAt: Date.now() } });
+      dispatch({ type: 'GO_TO', screen: 'itinerary-reel' });
     } catch (err: unknown) {
       console.error('[MapScreen] executeBuild failed:', err);
       // If build already in progress, reconnect to it

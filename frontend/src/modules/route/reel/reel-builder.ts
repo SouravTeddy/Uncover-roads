@@ -6,6 +6,7 @@ import type {
   JourneyLeg,
   WeatherData,
   TripDetails,
+  ScenicCorridorCard,
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
@@ -913,16 +914,26 @@ export function buildReelCards(
 
     // If the NEXT day is merged with this one (same calendar day, city hop), skip meal gap observations —
     // the user will be eating in the next city that same day, so "no lunch" here is a false alarm.
-    // Build walkable detour scenic cards — inserted after origin stop, excluded from group tray.
-    // Build the map by matching obs.id against `walkable-detour-${a.id}-${b.id}` directly
-    // (don't split the id string — stop IDs can contain hyphens).
-    const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, itinerary.archetypeSnapshot as string | undefined);
+
+    // Build scenic corridor map from backend-generated cards (ORS + Overpass + pysolar).
+    // Keyed by originStopId so we can insert after the right stop in the loop below.
+    // Falls back to the frontend walkable-detour heuristic only when the backend produced nothing.
+    const backendScenicByOriginId = new Map<string, ScenicCorridorCard>();
+    for (const sc of (day.scenicCorridors ?? [])) {
+      if (sc.originStopId) backendScenicByOriginId.set(sc.originStopId, sc);
+    }
+    const useBackendScenic = backendScenicByOriginId.size > 0;
+
+    // Fallback: frontend walkable-detour heuristic (fires only when backend sent nothing)
     const detourByOriginStopId = new Map<string, DayIntelObservation>();
-    for (let di = 0; di < sortedStops.length - 1; di++) {
-      const a = sortedStops[di];
-      const b = sortedStops[di + 1];
-      const matched = detourObsList.find(o => o.id === `walkable-detour-${a.id}-${b.id}`);
-      if (matched) detourByOriginStopId.set(a.id, matched);
+    if (!useBackendScenic) {
+      const detourObsList = buildWalkableDetourObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0, itinerary.archetypeSnapshot as string | undefined);
+      for (let di = 0; di < sortedStops.length - 1; di++) {
+        const a = sortedStops[di];
+        const b = sortedStops[di + 1];
+        const matched = detourObsList.find(o => o.id === `walkable-detour-${a.id}-${b.id}`);
+        if (matched) detourByOriginStopId.set(a.id, matched);
+      }
     }
 
     const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
@@ -1058,10 +1069,51 @@ export function buildReelCards(
       const scenicCard = scenicByStopId.get(stop.id);
       if (scenicCard) cards.push(scenicCard);
 
-      // Walkable detour scenic card (for non-walk personas) — placed after origin stop.
-      // DayIntelObservation does NOT carry detourKm/detourMin — recompute from coordinates.
-      const matchedDetour = detourByOriginStopId.get(stop.id);
-      if (matchedDetour && !scenicCard) {
+      // Backend scenic corridor card — richer than the frontend heuristic (ORS + Overpass + pysolar).
+      // Only fires when the backend sent scenicCorridors; otherwise falls back to walkable detour below.
+      const backendScenic = backendScenicByOriginId.get(stop.id);
+      if (backendScenic && !scenicCard) {
+        if (backendScenic.type === 'scenic') {
+          const nextStop = sortedStops[si + 1];
+          cards.push({
+            ...backendScenic,
+            type:        'scenic',
+            sceneType:   (backendScenic.sceneType ?? 'walk') as ReelScenicCard['sceneType'],
+            accent:      backendScenic.accent ?? '#6b9470',
+            cardType:    backendScenic.cardType ?? 'SCENIC WALK',
+            pos:         backendScenic.pos ?? 1,
+            total:       backendScenic.total ?? 1,
+            timing:      minutesToTime(timeToMinutes(stop.time) + (stop.durationMin ?? 60)),
+            metaRight:   nextStop?.area ?? nextStop?.title ?? '',
+            place:       backendScenic.routeLabel ?? `${backendScenic.from ?? stop.title} → ${backendScenic.to ?? (nextStop?.title ?? '')}`,
+            from:        backendScenic.from ?? stop.area ?? stop.title,
+            to:          backendScenic.to ?? nextStop?.area ?? nextStop?.title ?? '',
+            modeIcon:    (backendScenic.modeIcon ?? 'walk') as ReelScenicCard['modeIcon'],
+            tag:         backendScenic.tag ?? 'Scenic route',
+            vizType:     (backendScenic.vizType ?? 'corridor') as ReelScenicCard['vizType'],
+            persona,
+            personaDisplay: persona.split(/[\s_]+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            personaIcon: 'walk',
+            why:         backendScenic.why ?? '',
+            sensory:     backendScenic.sensory ?? '',
+            sensoryIcon: backendScenic.sensoryIcon ?? 'directions_walk',
+            reelPos:     `Between Stop ${globalStopNumber} and Stop ${globalStopNumber + 1}`,
+            photoUrl:    stop.imageUrl ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 600) : null),
+            detourKm:    backendScenic.detourKm ?? 0,
+            detourMin:   backendScenic.detourMin ?? 0,
+            routeLabel:  backendScenic.routeLabel,
+            conditionNote: backendScenic.conditionNote,
+            isTrending:  backendScenic.isTrending,
+            trendNote:   backendScenic.trendNote,
+          } as ReelScenicCard);
+        } else if (backendScenic.type === 'scenic_pending') {
+          cards.push({ type: 'scenic_pending', from: backendScenic.from ?? '', to: backendScenic.to ?? '' } as unknown as ReelScenicCard);
+        }
+      }
+
+      // Fallback walkable detour (only when backend sent no scenic corridors for this day).
+      const matchedDetour = !useBackendScenic ? detourByOriginStopId.get(stop.id) : undefined;
+      if (matchedDetour && !scenicCard && !backendScenic) {
         const nextStop = sortedStops[si + 1];
         if (nextStop) {
           const distKm = haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);

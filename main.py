@@ -5379,11 +5379,13 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "isEngineAdded": not s.is_user_added,
             })
 
-        # Insert scenic cards between consecutive stop pairs (Phase 2 enrichment)
+        # Build scenic corridor cards keyed by origin stop id.
+        # Kept SEPARATE from stops_out so the frontend can insert them precisely
+        # between their stop pair without mixing them into the stop list (which
+        # caused the reel-builder to crash on missing time/title/id fields).
+        scenic_corridors_out: list[dict] = []
         scenic_pos = 0
-        enriched_stops_out: list[dict] = []
         for _i, _s in enumerate(stops_out):
-            enriched_stops_out.append(_s)
             if _i < len(stops_out) - 1:
                 _next_s = stops_out[_i + 1]
                 _orig_lat = _s.get("lat")
@@ -5418,19 +5420,23 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                         if _scenic:
                             scenic_pos += 1
                             _scenic["pos"] = scenic_pos
-                            enriched_stops_out.append(_scenic)
+                            # Tag with origin/dest stop ids so the reel-builder can
+                            # insert them between the right stop pair.
+                            _scenic["originStopId"] = _s.get("id", "")
+                            _scenic["destStopId"] = _next_s.get("id", "")
+                            scenic_corridors_out.append(_scenic)
                     except Exception as _e:
                         print(f"SCENIC CARD ERROR: {_e}")
-                        enriched_stops_out.append({
+                        scenic_corridors_out.append({
                             "type": "scenic_pending",
                             "from": _s.get("title", ""),
                             "to":   _next_s.get("title", ""),
+                            "originStopId": _s.get("id", ""),
+                            "destStopId": _next_s.get("id", ""),
                         })
-        # Stamp total count on all scenic cards now that we know the final count
-        for _card in enriched_stops_out:
+        for _card in scenic_corridors_out:
             if _card.get("type") == "scenic":
                 _card["total"] = scenic_pos
-        stops_out = enriched_stops_out
 
         _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
         days_out.append({
@@ -5439,6 +5445,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             "city": day_city,
             "isTravel": day.is_travel_day,
             "stops": stops_out,
+            "scenicCorridors": scenic_corridors_out,
             "messages": day_messages,
             "walkBaseKm": _day_city_data.movement.get("walk_base_km", 2.0),
         })

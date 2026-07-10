@@ -636,8 +636,38 @@ export interface EngineItineraryDay {
   city: string
   isTravel: boolean          // ✈️ travel day — no stops
   stops: EngineItineraryStop[]
+  scenicCorridors?: ScenicCorridorCard[]  // backend scenic cards, keyed by originStopId/destStopId
   messages: EngineMessage[]  // engine decision banners for this day
   walkBaseKm?: number        // city pedestrian infrastructure baseline (from Overpass)
+}
+
+// Scenic corridor from the backend pipeline (ORS + Overpass + pysolar scoring).
+// Kept separate from stops so the reel-builder can insert them between the right pair.
+export interface ScenicCorridorCard {
+  type: 'scenic' | 'scenic_pending'
+  originStopId: string
+  destStopId: string
+  // Full scenic card fields (present when type === 'scenic')
+  sceneType?: string
+  accent?: string
+  cardType?: string
+  pos?: number
+  total?: number
+  from?: string
+  to?: string
+  modeIcon?: string
+  tag?: string
+  vizType?: string
+  why?: string
+  sensory?: string
+  sensoryIcon?: string
+  detourKm?: number
+  detourMin?: number
+  routeLabel?: string
+  conditionNote?: string | null
+  characterDimensions?: Record<string, number>
+  isTrending?: boolean
+  trendNote?: string | null
 }
 
 /**
