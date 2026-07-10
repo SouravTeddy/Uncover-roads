@@ -110,7 +110,7 @@ export interface AppState {
   activePinId: string | null           // which pin card is currently shown
   mapFilter: MapFilterChip             // active filter chip in the map filter bar
   reelSavedId: string | null;
-  tripsActiveTab: 'current' | 'saved';
+  tripsActiveTab: 'current' | 'saved' | 'places';
   activeBuild: ActiveBuild | null;
   pendingTripDetails: import('./types').TripDetails | null;
   dismissedPinIds: string[];
@@ -172,7 +172,7 @@ function getInitialScreen(): Screen {
           if (parsed === 'itinerary-reel' && localStorage.getItem('ur_ss_engine_itin')) {
             return 'trips'; // reel is now inside the trips screen (Current tab)
           }
-          if (parsed !== 'itinerary-reel' && parsed !== 'login') {
+          if (parsed !== 'itinerary-reel' && parsed !== 'login' && parsed !== 'trips') {
             return parsed;
           }
         }
@@ -436,7 +436,7 @@ export type Action =
   | { type: 'UPDATE_PLACE_CITY'; id: string; city: string }
   | { type: 'SET_ACTIVE_BUILD'; build: ActiveBuild }
   | { type: 'CLEAR_ACTIVE_BUILD' }
-  | { type: 'SET_TRIPS_TAB'; tab: 'current' | 'saved' };
+  | { type: 'SET_TRIPS_TAB'; tab: 'current' | 'saved' | 'places' };
 
 // ── Reducer ───────────────────────────────────────────────────
 
