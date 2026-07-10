@@ -27,7 +27,7 @@ export function useBuildStatus(): void {
           if (res.result) {
             dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: res.result as import('./types').EngineItinerary });
           }
-          dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'done' } });
+          dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
         } else if (res.status === 'failed') {
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
         } else {
