@@ -108,6 +108,30 @@ def _make_insert_message(candidate: InsertCandidate, reason: str) -> EngineMessa
     )
 
 
+def _count_user_dining(stops: list[EngineStop], hour_from: int, hour_to: int) -> int:
+    """Count user-added dining stops whose scheduled_time falls in the given hour window.
+
+    When scheduled_time is absent we can't know the slot, so we fall back to
+    checking whether it's a dining type and the stop is user-added — in that
+    case we count it conservatively in *all* windows so the engine doesn't
+    double-book a meal the user already chose.
+    """
+    count = 0
+    for s in stops:
+        if not s.is_user_added:
+            continue
+        if not (s.type in _DINING_CATS or s.category in _DINING_CATS):
+            continue
+        if s.scheduled_time:
+            sh = int(s.scheduled_time.split(":")[0])
+            if hour_from <= sh <= hour_to:
+                count += 1
+        else:
+            # No scheduled time yet — conservatively assume this covers any meal slot
+            count += 1
+    return count
+
+
 def detect(
     stops: list[EngineStop], ctx: EngineContext
 ) -> tuple[list[EngineStop], list[EngineMessage]]:
@@ -133,12 +157,17 @@ def detect(
                         return True
         return False
 
+    # Reco displacement: if the user already added their own restaurants, suppress
+    # the engine's meal injections for those windows so we don't flood the day.
+    user_lunch_count  = _count_user_dining(stops, 11, 14)
+    user_dinner_count = _count_user_dining(stops, 17, 23)
+
     # Café/coffee stops satisfy rest but NOT lunch/dinner detection
     has_breakfast_today = _has_meal_in_window(6, 10)
-    has_lunch_today = _has_meal_in_window(11, 14)
-    # Dinner check: any dining stop in the evening window counts as dinner covered.
-    # We check the full stops list, not just result, so user-added restaurants are included.
-    has_dinner_today = _has_meal_in_window(17, 23)
+    # Suppress engine lunch if user already placed a dining stop in the lunch window
+    has_lunch_today  = _has_meal_in_window(11, 14) or user_lunch_count > 0
+    # Suppress engine dinner if user already placed a dining stop in the dinner window
+    has_dinner_today = _has_meal_in_window(17, 23) or user_dinner_count > 0
 
     consecutive = 0
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
