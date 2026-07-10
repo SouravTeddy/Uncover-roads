@@ -73,14 +73,17 @@ function VizCard({ label, value, accent, children }: { label: string; value: str
 }
 
 // ── Signature visuals ─────────────────────────────────────────────────────────
-function WalkCorridorViz({ accent, from, to }: { accent: string; from: string; to: string }) {
+function WalkCorridorViz({ accent, from, to, detourKm, detourMin }: { accent: string; from: string; to: string; detourKm?: number; detourMin?: number }) {
+  const distLabel = detourKm != null
+    ? (detourKm < 1 ? `${Math.round(detourKm * 1000)} m` : `${detourKm.toFixed(1)} km`)
+    : null;
   const dot = (filled: boolean) => (
     <div style={{ width: 12, height: 12, borderRadius: '50%', flexShrink: 0,
       background: filled ? accent : 'transparent', border: `2px solid ${accent}`,
       boxShadow: filled ? `0 0 10px ${accent}88` : 'none' }} />
   );
   return (
-    <VizCard label="WALK CORRIDOR" value="650 m connector" accent={accent}>
+    <VizCard label="WALK" value={distLabel ? `${distLabel} on foot` : 'walkable stretch'} accent={accent}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {dot(true)}
         <div style={{ flex: 1, position: 'relative', height: 2, background: `${accent}33`, borderRadius: 99 }}>
@@ -90,7 +93,7 @@ function WalkCorridorViz({ accent, from, to }: { accent: string; from: string; t
             display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 99,
             background: '#13131a', border: `1px solid ${accent}55` }}>
             <span className="ms fill" style={{ fontSize: 13, color: accent, lineHeight: 1 }}>directions_walk</span>
-            <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: '#f2ede6' }}>9 min</span>
+            {detourMin != null && <span style={{ ...LF, fontSize: 11, fontWeight: 700, color: '#f2ede6' }}>{detourMin} min</span>}
           </div>
         </div>
         {dot(false)}
@@ -227,7 +230,11 @@ function CanopyViz({ accent }: { accent: string }) {
 
 function VizFor({ card }: { card: ReelScenicCardType }) {
   switch (card.vizType) {
-    case 'corridor':  return <WalkCorridorViz accent={card.accent} from={card.from} to={card.to} />;
+    case 'corridor':
+      // Drive cards get the route overview; walk cards get the corridor animation
+      return card.modeIcon === 'car'
+        ? <RouteOverviewViz accent={card.accent} from={card.from} to={card.to} />
+        : <WalkCorridorViz accent={card.accent} from={card.from} to={card.to} detourKm={card.detourKm} detourMin={card.detourMin} />;
     case 'route':     return <RouteOverviewViz accent={card.accent} from={card.from} to={card.to} />;
     case 'sunset':    return <SunsetDialViz accent={card.accent} />;
     case 'elevation': return <ElevationViz accent={card.accent} from={card.from} to={card.to} />;

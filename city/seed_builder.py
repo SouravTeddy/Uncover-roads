@@ -323,6 +323,7 @@ def _build_insert_candidates(pois: list[dict]) -> list[InsertCandidate]:
         time_of_day = {
             "coffee": ["morning", "afternoon"],
             "lunch": ["afternoon"],
+            "dinner": ["evening"],
             "scenic_walk": ["morning", "afternoon", "evening"],
             "rest": ["afternoon", "evening"],
             "micro": ["morning", "afternoon", "evening"],
@@ -338,6 +339,20 @@ def _build_insert_candidates(pois: list[dict]) -> list[InsertCandidate]:
             trigger=None,
             time_of_day_match=time_of_day,
         ))
+        # Restaurants serve dinner too — emit a separate dinner candidate so lunch
+        # and dinner slots don't compete for the same seen_ids slot.
+        if poi["type"] == "lunch":
+            candidates.append(InsertCandidate(
+                place_id=f"{poi['place_id']}__dinner",
+                name=poi["name"],
+                lat=poi["lat"],
+                lon=poi["lon"],
+                type="dinner",
+                time_cost_min=poi["time_cost_min"],
+                persona_affinity=affinity,
+                trigger=None,
+                time_of_day_match=["evening"],
+            ))
     return candidates
 
 
