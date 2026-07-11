@@ -529,13 +529,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       const cardH = el.clientHeight;
       const idx = Math.round(scrollTop / cardH);
       setActiveIdx(Math.min(Math.max(idx, 0), cards.length - 1));
-      // Tell parent TripsScreen to hide/show tab bar based on scroll direction past card 0
+      // Hide tab bar whenever past the first card; show it only when back at card 0
       if (onTabBarScroll) {
-        if (idx >= 1) {
-          onTabBarScroll(scrollTop > lastScrollTop + 4);
-        } else {
-          onTabBarScroll(false);
-        }
+        onTabBarScroll(idx >= 1);
       }
       lastScrollTop = scrollTop;
     };
