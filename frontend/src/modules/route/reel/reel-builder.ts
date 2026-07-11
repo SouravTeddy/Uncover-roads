@@ -408,10 +408,15 @@ export function buildWalkableDetourObservations(
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
     const b = stops[i + 1];
-    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
+
+    // Use real Google Routes data when available, fall back to haversine
+    const realWalk = b.walkFromPrev;
+    const distKm = realWalk ? realWalk.distanceMeters / 1000 : haversineKm(a.lat, a.lon, b.lat, b.lon);
     if (distKm < minKm || distKm > maxKm) continue;
 
-    const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
+    const walkMins = realWalk
+      ? Math.max(1, Math.round(realWalk.durationSeconds / 60))
+      : Math.max(1, Math.round((distKm / 5) * 60));
     const distLabel = distKm < 1
       ? `${Math.round(distKm * 1000)} m`
       : `${distKm.toFixed(1)} km`;

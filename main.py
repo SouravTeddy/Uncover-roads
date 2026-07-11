@@ -108,6 +108,7 @@ _EVENTS_CACHE_TTL = 3600  # seconds
 
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+GOOGLE_ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
 ORS_API_KEY = os.getenv("ORS_API_KEY", "")
 ORS_DIRECTIONS_URL = "https://api.openrouteservice.org/v2/directions/driving-car"
@@ -1155,6 +1156,40 @@ def _road_character_score(steps: list[dict]) -> float:
         if t > 0 and (d / t) > 22.2:  # > 80 km/h → motorway/trunk
             highway_dist += d
     return round(1.0 - (highway_dist / total_dist), 3)
+
+
+def _fetch_walk_route(lat1: float, lon1: float, lat2: float, lon2: float) -> dict | None:
+    """Call Google Routes API for real walking distance and duration between two points.
+    Returns {distanceMeters, durationSeconds} or None on failure/no key."""
+    if not GOOGLE_PLACES_API_KEY:
+        return None
+    try:
+        resp = requests.post(
+            GOOGLE_ROUTES_URL,
+            headers={
+                "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+                "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+                "Content-Type": "application/json",
+            },
+            json={
+                "origin":      {"location": {"latLng": {"latitude": lat1, "longitude": lon1}}},
+                "destination": {"location": {"latLng": {"latitude": lat2, "longitude": lon2}}},
+                "travelMode": "WALK",
+            },
+            timeout=5,
+        )
+        if resp.status_code == 200:
+            routes = resp.json().get("routes", [])
+            if routes:
+                r = routes[0]
+                dist_m = r.get("distanceMeters", 0)
+                dur_str = r.get("duration", "0s")
+                dur_s = int(dur_str.rstrip("s")) if isinstance(dur_str, str) and dur_str.endswith("s") else 0
+                if dist_m > 0:
+                    return {"distanceMeters": dist_m, "durationSeconds": dur_s}
+    except Exception:
+        pass
+    return None
 
 
 def _fetch_route_profile(olat: float, olon: float, dlat: float, dlon: float) -> dict:
@@ -5440,6 +5475,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
 
             # transitFromPrev: distance + mode from previous stop
             _transit_from_prev = None
+            _walk_from_prev = None
             if s_idx > 0:
                 _prev = day.stops[s_idx - 1]
                 _dist_km = math.hypot(
@@ -5448,6 +5484,9 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 )
                 _mode = _prev.transition_to_next or "walk"
                 _transit_from_prev = {"mode": _mode, "distanceKm": round(_dist_km, 2)}
+                # Fetch real walking route from Google Routes API for walkable pairs (< 4 km)
+                if _dist_km < 4.0:
+                    _walk_from_prev = _fetch_walk_route(_prev.lat, _prev.lon, s.lat, s.lon)
 
             stops_out.append({
                 "id": str(uuid.uuid4()),
@@ -5476,6 +5515,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "stage": _sd.get("stage"),
                 "velocityRatio": _sd.get("velocity_ratio"),
                 "transitFromPrev": _transit_from_prev,
+                "walkFromPrev": _walk_from_prev,
                 "isUserAdded": s.is_user_added,
                 "isEngineAdded": not s.is_user_added,
             })
