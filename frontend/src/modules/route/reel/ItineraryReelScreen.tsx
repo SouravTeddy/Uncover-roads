@@ -523,7 +523,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || cards.length === 0) return;
-    let lastScrollTop = 0;
     const update = () => {
       const scrollTop = el.scrollTop;
       const cardH = el.clientHeight;
@@ -533,7 +532,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       if (onTabBarScroll) {
         onTabBarScroll(idx >= 1);
       }
-      lastScrollTop = scrollTop;
     };
     // RAF-debounce collapses many scroll events per frame into one update,
     // preventing mid-snap re-renders that can cause iOS scroll-snap to get stuck
