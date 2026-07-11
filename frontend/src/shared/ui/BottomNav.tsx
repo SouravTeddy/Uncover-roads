@@ -36,8 +36,9 @@ export function BottomNav() {
   function handleTap(screen: Screen) {
     // When tapping Explore while already in the explore group, do nothing — preserve map state.
     if (screen === 'destination' && EXPLORE_SCREENS.has(currentScreen)) return;
-    // Return to whichever explore screen the user was on before they left.
-    if (screen === 'destination' && lastExploreScreen.current === 'map') {
+    // After a build, always land on Explore (destination) so user isn't thrown back into
+    // the map mid-session. Before a build, return to the map they were on.
+    if (screen === 'destination' && lastExploreScreen.current === 'map' && !state.hasBuiltThisSession) {
       dispatch({ type: 'NAV_TAB', screen: 'map' });
       return;
     }

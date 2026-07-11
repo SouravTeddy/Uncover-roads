@@ -345,7 +345,15 @@ export const initialState: AppState = {
   mapFilter: 'all' as MapFilterChip,
   reelSavedId: null,
   tripsActiveTab: 'saved',
-  activeBuild: ssGet<ActiveBuild>('ur_ss_active_build') ?? null,
+  activeBuild: (() => {
+    const b = ssGet<ActiveBuild>('ur_ss_active_build');
+    // Discard builds older than 15 min — they either completed while the app
+    // was closed (result already in engineItinerary) or the Railway dyno died.
+    if (b && (b.status === 'pending' || b.status === 'running')) {
+      if (b.startedAt && Date.now() - b.startedAt > 15 * 60 * 1000) return null;
+    }
+    return b ?? null;
+  })(),
   pendingTripDetails: null,
   dismissedPinIds: [],
   recoInteractions: [],

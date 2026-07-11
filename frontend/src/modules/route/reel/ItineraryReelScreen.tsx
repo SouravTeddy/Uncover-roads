@@ -647,7 +647,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     }
 
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
         {/* Photo mosaic background */}
         {mosaicSrcs.length > 0 && (
           <div style={{ position: 'absolute', inset: '-12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: 3, filter: 'blur(14px) saturate(0.6)', overflow: 'hidden' }}>
@@ -743,7 +743,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // Guard: imagesReady but cards is empty means buildFiltered failed on the saved itinerary
   if (imagesReady && cards.length === 0) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 32px', textAlign: 'center' }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
         <span className="ms fill" style={{ fontSize: 40, color: 'var(--color-text-4)' }}>error_outline</span>
         <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-2)', margin: 0 }}>Couldn't load this trip</p>
         <p style={{ fontSize: 13, color: 'var(--color-text-4)', margin: 0 }}>The saved data may be incomplete. Try going back and opening it again.</p>
@@ -962,7 +962,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // Old-format saved trips (flat itinerary, no days) produce zero cards
   if (displayCards.length === 0) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center' }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
         <span style={{ fontSize: 44, lineHeight: 1 }}>🗺️</span>
         <div>
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,.85)', margin: '0 0 8px', lineHeight: 1.2 }}>
