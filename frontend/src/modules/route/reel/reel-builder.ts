@@ -512,7 +512,8 @@ function buildScenicCards(
 
     const a = stops[i];
     const b = stops[i + 1];
-    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
+    const realWalk = b.walkFromPrev;
+    const distKm = realWalk ? realWalk.distanceMeters / 1000 : haversineKm(a.lat, a.lon, b.lat, b.lon);
     if (distKm < 0.1 || distKm > walkThresholdKm) continue;
 
     // Fix 4: area label dedup — use title as fallback when both areas are the same
@@ -522,7 +523,9 @@ function buildScenicCards(
     const distLabel = distKm < 1
       ? `${Math.round(distKm * 1000)}m walk`
       : `${distKm.toFixed(1)} km walk`;
-    const walkMins = Math.max(1, Math.round((distKm / 5) * 60));
+    const walkMins = realWalk
+      ? Math.max(1, Math.round(realWalk.durationSeconds / 60))
+      : Math.max(1, Math.round((distKm / 5) * 60));
 
     results.push({
       type: 'scenic',
@@ -961,10 +964,15 @@ export function buildReelCards(
       const nextStop = sortedStops[si + 1] ?? null;
       let nextLeg: ReelStopCard['nextLeg'] = null;
       if (nextStop && stop.lat != null && stop.lon != null && nextStop.lat != null && nextStop.lon != null) {
-        const distKm = haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
+        const realWalk = nextStop.walkFromPrev;
+        const distKm = realWalk
+          ? realWalk.distanceMeters / 1000
+          : haversineKm(stop.lat, stop.lon, nextStop.lat, nextStop.lon);
         const isWalk = distKm < WALK_THRESHOLD_KM;
         const durationMin = isWalk
-          ? Math.max(1, Math.round(distKm / 5 * 60))
+          ? realWalk
+            ? Math.max(1, Math.round(realWalk.durationSeconds / 60))
+            : Math.max(1, Math.round(distKm / 5 * 60))
           : Math.max(3, Math.round(distKm / 25 * 60));
         nextLeg = { distKm: Math.round(distKm * 10) / 10, durationMin, mode: isWalk ? 'walk' : 'ride', nextStopTitle: nextStop.title };
       }
