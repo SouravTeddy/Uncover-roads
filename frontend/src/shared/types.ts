@@ -618,6 +618,8 @@ export interface EngineItineraryStop {
   signals?: { type: string; text: string; icon: string }[]
   // Transit context from the previous stop
   transitFromPrev?: { mode: string; distanceKm: number } | null
+  // Real walking route from Google Routes API (only present if pair is < 4 km)
+  walkFromPrev?: { distanceMeters: number; durationSeconds: number } | null
   // Discovery stage from place_dynamic_profiles
   stage?: 'hidden_gem' | 'rising' | 'mainstream' | null
   velocityRatio?: number | null
