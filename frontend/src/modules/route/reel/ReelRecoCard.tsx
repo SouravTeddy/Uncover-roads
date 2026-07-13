@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import type { ReelRecoCard as ReelRecoCardType } from './types';
-import type { ReelRecoPlace } from '../../../shared/types';
 import { useReelRecommendations } from './useReelRecommendations';
 
 interface Props {
@@ -13,253 +12,197 @@ interface Props {
 }
 
 const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
-  lunch:             'restaurant',
-  dinner:            'restaurant',
-  culture:           'museum',
-  rest:              'cafe',
-  evening:           'nightlife',
-  social_gap:        'bar',
-  hidden_gem:        'point_of_interest',
-  category_diversity:'attraction',
-  weather:           'indoor_attraction',
-  local_food:        'restaurant',
-  photo_detour:      'scenic',
+  lunch:              'restaurant',
+  dinner:             'restaurant',
+  culture:            'museum',
+  rest:               'cafe',
+  evening:            'nightlife',
+  social_gap:         'bar',
+  hidden_gem:         'point_of_interest',
+  category_diversity: 'attraction',
+  weather:            'indoor_attraction',
+  local_food:         'restaurant',
+  photo_detour:       'scenic',
+  famous_spots:       'tourism',
+  walking_gap:        'park',
 };
 
-const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; border: string; chipLabel: string; searchCategory: string }> = {
-  lunch:             { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Lunch window',    searchCategory: 'restaurant' },
-  dinner:            { icon: 'dinner_dining',   color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Dinner window',   searchCategory: 'restaurant' },
-  evening:           { icon: 'nightlight',      color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Evening',         searchCategory: 'bar' },
-  culture:           { icon: 'museum',          color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Culture',         searchCategory: 'museum' },
-  rest:              { icon: 'local_cafe',      color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Rest break',      searchCategory: 'cafe' },
-  weather:           { icon: 'wb_cloudy',       color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Weather alert',   searchCategory: '' },
-  closing_conflict:  { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Timing conflict', searchCategory: '' },
-  walking_gap:       { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Long walk',       searchCategory: '' },
-  crowd_peak:        { icon: 'groups',          color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Peak hours',      searchCategory: '' },
-  density_excess:    { icon: 'schedule',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Packed day',      searchCategory: '' },
-  density_sparse:    { icon: 'explore',         color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Room to add',     searchCategory: '' },
-  geo_efficiency:    { icon: 'route',           color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Route',           searchCategory: '' },
-  time_balance:      { icon: 'balance',         color: '#7c6f9f', bg: 'rgba(124,111,159,.08)', border: 'rgba(124,111,159,.2)', chipLabel: 'Time balance',    searchCategory: '' },
-  category_diversity:{ icon: 'grid_view',       color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Variety',         searchCategory: '' },
-  social_gap:        { icon: 'people',          color: '#4f8fab', bg: 'rgba(79,143,171,.08)',  border: 'rgba(79,143,171,.2)',  chipLabel: 'Social',          searchCategory: '' },
-  budget_mismatch:   { icon: 'payments',        color: '#d4a853', bg: 'rgba(212,168,83,.08)',  border: 'rgba(212,168,83,.2)',  chipLabel: 'Budget',          searchCategory: '' },
-  live_event:        { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Live event',      searchCategory: '' },
-  hidden_gem:        { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.08)', border: 'rgba(139,158,106,.2)', chipLabel: 'Hidden gem',      searchCategory: '' },
-  local_food:        { icon: 'lunch_dining',    color: '#c27c4a', bg: 'rgba(194,124,74,.08)',  border: 'rgba(194,124,74,.2)',  chipLabel: 'Local food',      searchCategory: 'restaurant' },
-  photo_detour:      { icon: 'camera',          color: '#fbbf24', bg: 'rgba(251,191,36,.08)',  border: 'rgba(251,191,36,.2)',  chipLabel: 'Photo moment',    searchCategory: '' },
+const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; border: string; chipLabel: string }> = {
+  lunch:              { icon: 'restaurant',      color: '#c27c4a', bg: 'rgba(194,124,74,.12)',  border: 'rgba(194,124,74,.3)',  chipLabel: 'Lunch'         },
+  dinner:             { icon: 'dinner_dining',   color: '#9b8eb8', bg: 'rgba(155,142,184,.12)', border: 'rgba(155,142,184,.3)', chipLabel: 'Dinner'        },
+  evening:            { icon: 'nightlight',      color: '#9b8eb8', bg: 'rgba(155,142,184,.12)', border: 'rgba(155,142,184,.3)', chipLabel: 'Evening'       },
+  culture:            { icon: 'museum',          color: '#8b9e6a', bg: 'rgba(139,158,106,.12)', border: 'rgba(139,158,106,.3)', chipLabel: 'Culture'       },
+  rest:               { icon: 'local_cafe',      color: '#d4a853', bg: 'rgba(212,168,83,.12)',  border: 'rgba(212,168,83,.3)',  chipLabel: 'Rest break'    },
+  walking_gap:        { icon: 'directions_walk', color: '#8b9e6a', bg: 'rgba(139,158,106,.12)', border: 'rgba(139,158,106,.3)', chipLabel: 'Walk'          },
+  social_gap:         { icon: 'people',          color: '#4f8fab', bg: 'rgba(79,143,171,.12)',  border: 'rgba(79,143,171,.3)',  chipLabel: 'Social'        },
+  hidden_gem:         { icon: 'auto_awesome',    color: '#8b9e6a', bg: 'rgba(139,158,106,.12)', border: 'rgba(139,158,106,.3)', chipLabel: 'Hidden gem'   },
+  local_food:         { icon: 'lunch_dining',    color: '#c27c4a', bg: 'rgba(194,124,74,.12)',  border: 'rgba(194,124,74,.3)',  chipLabel: 'Local food'    },
+  photo_detour:       { icon: 'camera',          color: '#fbbf24', bg: 'rgba(251,191,36,.12)',  border: 'rgba(251,191,36,.3)',  chipLabel: 'Photo spot'    },
+  famous_spots:       { icon: 'account_balance', color: '#7b9fcf', bg: 'rgba(123,159,207,.12)', border: 'rgba(123,159,207,.3)', chipLabel: 'Landmark'      },
+  category_diversity: { icon: 'grid_view',       color: '#8b9e6a', bg: 'rgba(139,158,106,.12)', border: 'rgba(139,158,106,.3)', chipLabel: 'Variety'       },
+  density_sparse:     { icon: 'explore',         color: '#8b9e6a', bg: 'rgba(139,158,106,.12)', border: 'rgba(139,158,106,.3)', chipLabel: 'Add a stop'    },
+  live_event:         { icon: 'event',           color: '#c27c4a', bg: 'rgba(194,124,74,.12)',  border: 'rgba(194,124,74,.3)',  chipLabel: 'Live event'    },
 };
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
-function PlaceRow({ place, idx, active, accentColor }: { place: ReelRecoPlace; idx: number; active: boolean; accentColor: string }) {
-  const delay = `${0.55 + idx * 0.1}s`;
-  const isFirst = idx === 0;
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-      padding: isFirst ? '11px 12px' : '10px 12px',
-      borderRadius: 11,
-      background: 'rgba(255,255,255,0.04)',
-      border: isFirst ? `1.5px solid ${accentColor}28` : '1px solid rgba(255,255,255,0.07)',
-      opacity: active ? 1 : 0,
-      transform: active ? 'translateY(0)' : 'translateY(8px)',
-      transition: `opacity .4s ${delay} ease, transform .4s ${delay} ease`,
-    }}>
-      {/* Rank */}
-      <div style={{
-        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-        background: isFirst ? `${accentColor}22` : 'rgba(255,255,255,0.06)',
-        border: isFirst ? `1px solid ${accentColor}55` : 'none',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 700,
-        color: isFirst ? accentColor : '#a09880',
-        marginTop: 1,
-      }}>
-        {idx + 1}
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, fontWeight: 600, color: '#f5f0ea', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {place.name}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {place.rating != null && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#a09880' }}>
-              <span className="ms fill" style={{ fontSize: 10, color: '#d4a853' }}>star</span>
-              {place.rating}
-            </span>
-          )}
-          {place.priceLevel != null && (
-            <span style={{ fontSize: 10, color: '#5a5248' }}>{PRICE_DOTS[place.priceLevel]}</span>
-          )}
-          <span style={{ fontSize: 10, color: '#5a5248' }}>
-            {place.distanceM < 1000 ? `${place.distanceM}m` : `${(place.distanceM / 1000).toFixed(1)}km`}
-          </span>
-        </div>
-        {place.matchReasons.length > 0 && (
-          <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-            {place.matchReasons.map(r => (
-              <span key={r} style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 999, background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)', color: '#d4a853' }}>{r}</span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Maps link */}
-      <a href={`https://www.google.com/maps/place/?q=place_id:${place.placeId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#5a5248', flexShrink: 0, marginTop: 1 }} onClick={e => e.stopPropagation()}>
-        <span className="ms" style={{ fontSize: 15, color: '#5a5248' }}>map</span>
-      </a>
-    </div>
-  );
-}
-
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
-  const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.lunch;
-  const { places, loading, error, photoUrl } = useReelRecommendations(card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger]);
-  const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resolvedPhotoUrl = photoUrl ?? card.anchorPhotoUrl ?? null;
-  const hasPhoto = !!resolvedPhotoUrl;
+  const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.rest;
+  const { places, loading, photoUrl } = useReelRecommendations(
+    card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger],
+  );
 
-  useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (active) {
-      lingerTimer.current = setTimeout(() => onInteract?.('lingered'), 3000);
-    } else {
-      if (lingerTimer.current) clearTimeout(lingerTimer.current);
-    }
-    return () => { if (lingerTimer.current) clearTimeout(lingerTimer.current); };
-  }, [active, onInteract]); // eslint-disable-line react-hooks/exhaustive-deps
+  const place  = places[0] ?? null;
+  const photo  = photoUrl ?? card.anchorPhotoUrl ?? null;
+  const isDone = !loading;
+
+  useEffect(() => { if (active) onInteract?.('viewed'); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // No place found after load — render invisible placeholder so snap scroll stays intact
+  if (isDone && !place) {
+    return <div className="reel-card" style={{ width: '100%', height: '100dvh', background: '#0c0d0e' }} />;
+  }
 
   return (
-    <div className="reel-card" style={{ width: '100%', height: '100dvh', background: '#0f0d0c', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="reel-card" style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden', background: '#0c0d0e' }}>
 
-      {/* Photo / visual top half */}
-      <div style={{ flex: '0 0 45%', position: 'relative', overflow: 'hidden' }}>
-        {hasPhoto ? (
-          <img
-            src={resolvedPhotoUrl!}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }}
-          />
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1714 0%, #0f0d0c 100%)' }} />
-        )}
-        {/* Scrim */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,13,12,0.1) 0%, rgba(15,13,12,0.9) 100%)', pointerEvents: 'none' }} />
+      {/* Full-bleed photo */}
+      {photo && (
+        <img
+          src={photo} alt=""
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: place ? 0.52 : 0.25 }}
+        />
+      )}
 
+      {/* Gradient — heavier at bottom so text is always legible */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(12,13,14,0.15) 0%, rgba(12,13,14,0.45) 35%, rgba(12,13,14,0.96) 72%)' }} />
+
+      {/* Top badges */}
+      <div style={{
+        position: 'absolute',
+        top: 'calc(env(safe-area-inset-top, 0px) + 18px)',
+        left: 20, right: 20,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        opacity: active ? 1 : 0, transition: 'opacity .35s ease',
+      }}>
         {/* Trigger chip */}
-        <div style={{
-          position: 'absolute', top: 20, left: 20,
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '4px 9px', borderRadius: 999,
-          background: cfg.bg, border: `1px solid ${cfg.color}26`,
-          opacity: active ? 1 : 0,
-          transition: 'opacity .4s .05s ease',
-        }}>
-          <span className="ms fill" style={{ fontSize: 12, color: cfg.color }}>{cfg.icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: cfg.bg, border: `1px solid ${cfg.border}`, backdropFilter: 'blur(8px)' }}>
+          <span className="ms fill" style={{ fontSize: 13, color: cfg.color }}>{cfg.icon}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
         </div>
 
-        {/* Label overlay at bottom of photo */}
-        <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24 }}>
-          <div style={{ color: '#a09880', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 6 }}>Nearby</div>
+        {/* Our Pick badge */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: 'rgba(212,168,83,0.14)', border: '1px solid rgba(212,168,83,0.4)', backdropFilter: 'blur(8px)' }}>
+          <span className="ms fill" style={{ fontSize: 12, color: '#d4a853' }}>star</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#d4a853' }}>Our Pick</span>
+        </div>
+      </div>
+
+      {/* Loading shimmer */}
+      {loading && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 120px' }}>
+          <div style={{ height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.07)', marginBottom: 14, width: '35%', animation: 'pulse 1.6s ease-in-out infinite' }} />
+          <div style={{ height: 38, borderRadius: 8, background: 'rgba(255,255,255,0.1)', marginBottom: 10, animation: 'pulse 1.6s ease-in-out infinite' }} />
+          <div style={{ height: 14, borderRadius: 6, background: 'rgba(255,255,255,0.05)', width: '55%', marginBottom: 28, animation: 'pulse 1.6s ease-in-out infinite' }} />
+          <div style={{ height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.6s ease-in-out infinite' }} />
+        </div>
+      )}
+
+      {/* Place content */}
+      {place && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          padding: '0 24px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
+        }}>
+
+          {/* Meta row: rating + distance + price */}
           <div style={{
-            color: '#f5f0ea', fontSize: 22,
-            fontFamily: "'Playfair Display', serif", fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
             opacity: active ? 1 : 0,
-            transform: active ? 'translateY(0)' : 'translateY(8px)',
-            transition: 'opacity .45s .17s ease, transform .45s .17s ease',
+            transform: active ? 'translateY(0)' : 'translateY(6px)',
+            transition: 'opacity .38s .08s ease, transform .38s .08s ease',
           }}>
-            {card.label}
+            {place.rating != null && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, fontWeight: 600, color: '#d4a853' }}>
+                <span className="ms fill" style={{ fontSize: 13 }}>star</span>
+                {place.rating.toFixed(1)}
+              </span>
+            )}
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+              {place.distanceM < 1000 ? `${place.distanceM}m away` : `${(place.distanceM / 1000).toFixed(1)}km away`}
+            </span>
+            {place.priceLevel != null && (
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{PRICE_DOTS[place.priceLevel]}</span>
+            )}
           </div>
+
+          {/* Place name */}
+          <h2 style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: 32, fontWeight: 700, color: '#f5f0ea', lineHeight: 1.1,
+            margin: '0 0 6px',
+            opacity: active ? 1 : 0,
+            transform: active ? 'translateY(0)' : 'translateY(10px)',
+            transition: 'opacity .45s .15s ease, transform .45s .15s ease',
+          }}>
+            {place.name}
+          </h2>
+
+          {/* City */}
+          <p style={{
+            fontSize: 13, color: 'rgba(255,255,255,0.45)', margin: '0 0 14px',
+            opacity: active ? 1 : 0, transition: 'opacity .4s .22s ease',
+          }}>
+            {card.nearbyCity}
+          </p>
+
+          {/* Match reason chips */}
+          {place.matchReasons.length > 0 && (
+            <div style={{
+              display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18,
+              opacity: active ? 1 : 0, transition: 'opacity .4s .28s ease',
+            }}>
+              {place.matchReasons.slice(0, 3).map(r => (
+                <span key={r} style={{
+                  fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
+                  background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)', color: '#d4a853',
+                }}>
+                  {r}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* CTA */}
+          <button
+            onClick={() => {
+              onInteract?.('tapped');
+              if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
+                onMapNavigate(card.stopLat, card.stopLon, [{
+                  id: place.placeId,
+                  title: place.name,
+                  category: place.category as import('../../../shared/types').Category,
+                  lat: place.lat,
+                  lon: place.lon,
+                  place_id: place.placeId,
+                  rating: place.rating ?? undefined,
+                }]);
+              }
+            }}
+            style={{
+              width: '100%', padding: '15px 20px', borderRadius: 13,
+              border: '1px solid rgba(212,168,83,0.45)',
+              background: 'rgba(212,168,83,0.12)',
+              color: '#d4a853', fontSize: 14, fontWeight: 700,
+              letterSpacing: '0.03em', cursor: 'pointer',
+              opacity: active ? 1 : 0, transition: 'opacity .4s .33s ease',
+            }}
+          >
+            See on map →
+          </button>
         </div>
-      </div>
-
-      {/* Info bottom half */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 20px 28px', gap: 12, overflowY: 'auto' }}>
-
-        {/* Consequence */}
-        <div style={{
-          color: '#a09880', fontSize: 13, lineHeight: 1.5,
-          opacity: active ? 1 : 0,
-          transition: 'opacity .45s .24s ease',
-        }}>
-          {card.consequence || `Explore ${card.label.toLowerCase()} near ${card.nearbyCity}`}
-        </div>
-
-        {/* Loading shimmer */}
-        {loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[0, 1, 2].map(i => (
-              <div key={i} style={{ height: 56, borderRadius: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', opacity: 0.5 - i * 0.1, animation: 'pulse 1.6s ease-in-out infinite' }} />
-            ))}
-          </div>
-        )}
-
-        {/* Error state */}
-        {!loading && error && (
-          <div style={{ padding: '14px 12px', borderRadius: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <p style={{ fontSize: 11, color: '#a09880', textAlign: 'center', margin: 0 }}>
-              Couldn't load nearby spots — check your connection.
-            </p>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && !error && places.length === 0 && (
-          <div style={{ padding: '14px 12px', borderRadius: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <p style={{ fontSize: 11, color: '#a09880', textAlign: 'center', margin: 0 }}>
-              No nearby spots found for this.
-            </p>
-          </div>
-        )}
-
-        {/* Place recommendations */}
-        {places.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {places.map((p, i) => (
-              <PlaceRow key={p.placeId} place={p} idx={i} active={active} accentColor={cfg.color} />
-            ))}
-          </div>
-        )}
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* Browse on map CTA */}
-        <button
-          onClick={() => {
-            onInteract?.('tapped');
-            if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
-              const mappedPlaces = places.map(p => ({
-                id: p.placeId, title: p.name, category: p.category as import('../../../shared/types').Category,
-                lat: p.lat, lon: p.lon, place_id: p.placeId, rating: p.rating ?? undefined, price_level: p.priceLevel ?? undefined,
-              }));
-              onMapNavigate(card.stopLat, card.stopLon, mappedPlaces);
-            }
-          }}
-          style={{
-            background: 'rgba(212,168,83,0.15)',
-            border: '1px solid rgba(212,168,83,0.5)',
-            borderRadius: 8,
-            padding: '14px 20px',
-            color: '#d4a853',
-            fontSize: 14,
-            fontWeight: 600,
-            letterSpacing: '0.04em',
-            cursor: 'pointer',
-            width: '100%',
-            textAlign: 'center',
-          }}
-        >
-          Browse on map →
-        </button>
-
-        <div style={{ color: '#5a5248', fontSize: 11, textAlign: 'center', letterSpacing: '0.08em' }}>
-          Near {card.nearbyCity}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
