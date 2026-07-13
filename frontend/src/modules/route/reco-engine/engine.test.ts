@@ -53,8 +53,8 @@ describe('deriveRecos', () => {
     ];
     const signal = makeSignal({ weights: { ...HIGH_FOOD_WEIGHTS, w_food_density: 0.5, w_culture_depth: 0.5 } });
     const recos = deriveRecos(stops, signal);
-    // MAX_RECOS (3) + 1 conflict slot + 1 persona floor = 5 max; guard against reco floods
-    expect(recos.length).toBeLessThanOrEqual(5);
+    // No hard cap on recos — all detected gaps surface. Guard: sanity ceiling.
+    expect(recos.length).toBeLessThanOrEqual(15);
   });
 
   it('surfaces live_event reco when saved event matches current day', () => {

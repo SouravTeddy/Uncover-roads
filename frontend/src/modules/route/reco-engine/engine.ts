@@ -371,21 +371,27 @@ export function deriveRecos(
   if (stops.length >= 2) {
     const floor = ARCHETYPE_FLOOR[signal.archetypeGroup];
     const floorActual = floor ? (actual[floor.dimension] as number ?? 0) : 0;
-    if (floor && floorActual < 0.5 && !result.some(r => r.trigger === floor.trigger)) {
-      const floorGap: Gap = {
-        dimension: floor.dimension,
-        target: target[floor.dimension] as number ?? 0.5,
-        actual: actual[floor.dimension] as number ?? 0.5,
-        delta: 0,
-        dimensionWeight: 0.5,
-        significance: L2_THRESHOLD + 0.01,   // floor is always persona-aligned → always L2
-        direction: 'missing',
-        conflictPresent: false,
-      };
-      const floorCard = gapToCard(floorGap, stops, signal);
-      if (floorCard) {
-        floorCard.recoLevel = 'l2';
-        result.push(floorCard);
+    if (floor && floorActual < 0.5) {
+      const existingIdx = result.findIndex(r => r.trigger === floor.trigger);
+      if (existingIdx >= 0) {
+        // Upgrade existing gap-based reco to L2 — archetype alignment always elevates it
+        result[existingIdx] = { ...result[existingIdx], recoLevel: 'l2' };
+      } else {
+        const floorGap: Gap = {
+          dimension: floor.dimension,
+          target: target[floor.dimension] as number ?? 0.5,
+          actual: actual[floor.dimension] as number ?? 0.5,
+          delta: 0,
+          dimensionWeight: 0.5,
+          significance: L2_THRESHOLD + 0.01,
+          direction: 'missing',
+          conflictPresent: false,
+        };
+        const floorCard = gapToCard(floorGap, stops, signal);
+        if (floorCard) {
+          floorCard.recoLevel = 'l2';
+          result.push(floorCard);
+        }
       }
     }
   }

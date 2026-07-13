@@ -11,7 +11,7 @@ import type {
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
 import { REC_RULES } from '../rec-rules';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation } from './types';
+import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, ReelDayNudgeCard, DayIntelObservation } from './types';
 import { computeHotelAnchorRow } from './hotel-anchor';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -1107,6 +1107,21 @@ export function buildReelCards(
 
     // Day-boundary transition cards are now emitted at the START of each day > 1 (above).
     // No separate wrap-up card needed.
+
+    // Sparse-day nudge: if this day has fewer than 4 stops, append a nudge card prompting
+    // the user to add more places. Skip travel days and the last day if it has any stops.
+    const NUDGE_THRESHOLD = 4;
+    if (!day.isTravel && sortedStops.length > 0 && sortedStops.length < NUDGE_THRESHOLD) {
+      const nudge: ReelDayNudgeCard = {
+        type: 'day_nudge',
+        id: `day-nudge-${dayIdx}`,
+        city: day.city || city || '',
+        day: logicalDayNum,
+        totalDays: logicalTotalDays,
+        stopCount: sortedStops.length,
+      };
+      cards.push(nudge);
+    }
   }
 
   // Balance card: engine ran, zero recos, and no observations — plan is genuinely well-balanced

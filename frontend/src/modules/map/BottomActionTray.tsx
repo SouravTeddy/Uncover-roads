@@ -7,26 +7,27 @@ interface Props {
   isBuildingActive?: boolean
   hasExistingItinerary: boolean
   onBuild: () => void
-  onSeePlan?: () => void
 }
 
 const MIN_PLACES = 2
 
-export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildingActive, hasExistingItinerary, onBuild, onSeePlan }: Props) {
+export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildingActive, hasExistingItinerary, onBuild }: Props) {
   const count = itineraryPlaces.length
   const canBuild = count >= MIN_PLACES
   const hasItinerary = count > 0
   const dayPart = days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''
 
-  const showSeePlan = hasExistingItinerary && !isBuildingActive && !buildLoading
+  if (!hasItinerary) return null;
 
-  const buildLabel = isBuildingActive
+  const isActive = canBuild && !buildLoading && !isBuildingActive
+
+  const label = isBuildingActive
     ? 'Building in progress'
     : buildLoading
     ? 'Building…'
+    : hasExistingItinerary
+    ? `Rebuild itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
     : `Build itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
-
-  if (!hasItinerary) return null;
 
   return (
     <div
@@ -40,57 +41,29 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildi
       }}
     >
       <div style={{ pointerEvents: 'auto' }}>
-        {showSeePlan ? (
-          <>
-            <button
-              onClick={onSeePlan}
-              style={{
-                width: '100%', padding: '13px 0', borderRadius: 14,
-                border: 'none', cursor: 'pointer',
-                fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.01em',
-                background: 'linear-gradient(135deg, #d4a853, #b8893a)',
-                color: '#0c0c0e',
-                boxShadow: '0 6px 28px rgba(212,168,83,.25)',
-                backdropFilter: 'blur(16px)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              See plan →
-            </button>
-            <p
-              onClick={canBuild ? onBuild : undefined}
-              style={{ textAlign: 'center', margin: '6px 0 0', fontSize: '0.72rem', color: 'var(--color-text-3)', cursor: canBuild ? 'pointer' : 'default', textDecoration: canBuild ? 'underline' : 'none' }}
-            >
-              Rebuild with current picks
-            </p>
-          </>
-        ) : (
-          <>
-            <button
-              disabled={!canBuild || buildLoading || isBuildingActive}
-              onClick={canBuild && !buildLoading && !isBuildingActive ? onBuild : undefined}
-              style={{
-                width: '100%', padding: '13px 0', borderRadius: 14,
-                border: 'none', cursor: (canBuild && !isBuildingActive) ? 'pointer' : 'not-allowed',
-                fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.01em',
-                background: (canBuild && !isBuildingActive)
-                  ? 'linear-gradient(135deg, #d4a853, #b8893a)'
-                  : 'var(--color-border)',
-                color: (canBuild && !isBuildingActive) ? '#0c0c0e' : 'var(--color-text-3)',
-                opacity: (canBuild && !isBuildingActive) ? 1 : 0.6,
-                boxShadow: (canBuild && !isBuildingActive) ? '0 6px 28px rgba(212,168,83,.25)' : 'none',
-                backdropFilter: 'blur(16px)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              {buildLabel} →
-            </button>
-            {!canBuild && (
-              <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.68rem', color: 'var(--color-text-3)' }}>
-                Add one more place to build
-              </p>
-            )}
-          </>
+        <button
+          disabled={!isActive}
+          onClick={isActive ? onBuild : undefined}
+          style={{
+            width: '100%', padding: '13px 0', borderRadius: 14,
+            border: 'none', cursor: isActive ? 'pointer' : 'not-allowed',
+            fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.01em',
+            background: isActive
+              ? 'linear-gradient(135deg, #d4a853, #b8893a)'
+              : 'var(--color-border)',
+            color: isActive ? '#0c0c0e' : 'var(--color-text-3)',
+            opacity: isActive ? 1 : 0.6,
+            boxShadow: isActive ? '0 6px 28px rgba(212,168,83,.25)' : 'none',
+            backdropFilter: 'blur(16px)',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {label} →
+        </button>
+        {!canBuild && (
+          <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.68rem', color: 'var(--color-text-3)' }}>
+            Add one more place to build
+          </p>
         )}
       </div>
     </div>

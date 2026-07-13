@@ -10,6 +10,23 @@ interface Result {
   photoUrl: string | null;
 }
 
+// If the primary category returns no places, try these fallbacks in order.
+const CATEGORY_FALLBACKS: Partial<Record<string, string[]>> = {
+  dinner:             ['restaurant', 'cafe', 'bar'],
+  lunch:              ['restaurant', 'cafe', 'market'],
+  evening:            ['bar', 'nightlife', 'viewpoint'],
+  culture:            ['museum', 'historic', 'gallery'],
+  rest:               ['cafe', 'park'],
+  social_gap:         ['bar', 'cafe', 'park'],
+  hidden_gem:         ['point_of_interest', 'cafe', 'viewpoint'],
+  category_diversity: ['attraction', 'museum', 'viewpoint'],
+  weather:            ['museum', 'cafe'],
+  local_food:         ['restaurant', 'market', 'cafe'],
+  photo_detour:       ['scenic', 'viewpoint', 'park'],
+  famous_spots:       ['tourism', 'historic', 'museum'],
+  walking_gap:        ['park', 'viewpoint'],
+};
+
 const FETCH_TIMEOUT_MS = 8000;
 
 export function useReelRecommendations(
@@ -51,14 +68,35 @@ export function useReelRecommendations(
       setError(true);
     }, FETCH_TIMEOUT_MS);
 
-    api.reelReco({
-      lat: card.stopLat,
-      lon: card.stopLon,
-      trigger: card.trigger,
-      archetype,
-      existingPlaceIds,
-      category: category ?? undefined,
-    })
+    // Build the full category chain: primary first, then fallbacks
+    const fallbackChain = CATEGORY_FALLBACKS[card.trigger] ?? [];
+    const categoryChain = category
+      ? [category, ...fallbackChain.filter(c => c !== category)]
+      : fallbackChain;
+
+    const tryFetch = async (catChain: string[]): Promise<ReelRecoPlace[]> => {
+      for (const cat of catChain) {
+        const data = await api.reelReco({
+          lat: card.stopLat!,
+          lon: card.stopLon!,
+          trigger: card.trigger,
+          archetype,
+          existingPlaceIds,
+          category: cat,
+        });
+        if (data.length > 0) return data;
+      }
+      // Last resort: no category filter
+      return api.reelReco({
+        lat: card.stopLat!,
+        lon: card.stopLon!,
+        trigger: card.trigger,
+        archetype,
+        existingPlaceIds,
+      });
+    };
+
+    tryFetch(categoryChain)
       .then(async data => {
         if (cancelled) return;
         clearTimeout(timeoutId);
@@ -84,8 +122,6 @@ export function useReelRecommendations(
         setError(true);
       });
 
-    // Do NOT reset fetched.current in cleanup — that would re-trigger on every
-    // parent re-render since existingPlaceIds is a new array ref each time.
     return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [active, card.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
