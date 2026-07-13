@@ -182,7 +182,7 @@ def derive_day_recos(
     evening_target = 0 if meal_evening_blocked else max(w.get("w_nightlife", 0.3), nightlife * 0.4)
     culture_target = max(w.get("w_culture_depth", 0.3), heritage * 0.5)
     rest_target    = min(1.0, w.get("w_rest_need", 0.3) * 0.7 + (0.3 if signal.pace == "slow" else 0))
-    social_target  = 0.2 if signal.archetype_group == "social" else 0.6
+    social_target  = 0.6 if signal.archetype_group == "social" else 0.2
     hidden_gem_target = w.get("w_spontaneity", 0.4) * 0.6
 
     # ── Gap → trigger ──────────────────────────────────────────────────
