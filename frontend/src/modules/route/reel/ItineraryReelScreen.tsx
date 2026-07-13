@@ -1056,11 +1056,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
               card={cardWithFixedNumbers} active={isActive} weather={weather}
               primaryCity={city || activeItinerary?.city || ''}
               isJustAdjusted={isJustAdjusted}
-              onExplore={() => {
-                const { lat, lon } = (card as ReelStopCardType).stop;
-                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.03, lat + 0.03, lon - 0.03, lon + 0.03] } });
-                dispatch({ type: 'GO_TO', screen: 'map' });
-              }}
               onRemove={() => {
                 const stop = (card as ReelStopCardType).stop;
                 if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -1082,12 +1077,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
                   archetype, state.rawOBAnswers?.pace?.[0] ?? 'moderate', null, 1, state.weather?.condition ?? null,
                 );
                 dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
-              }}
-              onMapNavigate={(lat, lon, places) => {
-                if (places.length > 0) dispatch({ type: 'SET_RECO_FOCUS_PLACES', places });
-                dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05] } });
-                dispatch({ type: 'SET_FILTER', filter: 'curated' });
-                dispatch({ type: 'GO_TO', screen: 'map' });
               }}
             />
           );
