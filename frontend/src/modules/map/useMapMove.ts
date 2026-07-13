@@ -35,7 +35,10 @@ export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
 
   const handleMoveEnd = useCallback(
     (center: [number, number], zoom: number) => {
+      // Cancel both the debounce and any pending prefetch — fast zoom/pan should
+      // only fire a fetch for where the user actually stops, not intermediate tiles
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (prefetchRef.current) clearTimeout(prefetchRef.current);
 
       debounceRef.current = setTimeout(() => {
         if (zoom < MIN_ZOOM) {
