@@ -856,7 +856,7 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'SET_ENGINE_ITINERARY':
       ssSave('ur_ss_engine_itin', action.itinerary)
-      return { ...state, engineItinerary: action.itinerary, hasBuiltThisSession: true }
+      return { ...state, engineItinerary: action.itinerary, hasBuiltThisSession: action.itinerary != null ? true : state.hasBuiltThisSession }
 
     case 'PUSH_ITINERARY_HISTORY': {
       const history = [action.itinerary, ...state.itineraryHistory].slice(0, 10)

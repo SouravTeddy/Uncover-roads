@@ -21,6 +21,8 @@ import { ReelGroupCard } from './ReelGroupCard';
 import { ReelDayIntelCard } from './ReelDayIntelCard';
 import { ReelGrowthCard } from './ReelGrowthCard';
 import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
+import { rebalanceItinerary } from './rebalance';
+import { ReelDayNudgeCard } from './ReelDayNudgeCard';
 import { syncRecoInteractions } from '../../../shared/userSync';
 import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
@@ -189,16 +191,20 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   ) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
+    // Rebalance stops across days before computing recos so that reco cards
+    // are also distributed proportionally (they're derived per-day from stops).
+    const balancedItinerary = itinerary ? rebalanceItinerary(itinerary) : itinerary;
+
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
-    if (itinerary) {
-      (itinerary.days ?? []).forEach((day, dayIdx) => {
+    if (balancedItinerary) {
+      (balancedItinerary.days ?? []).forEach((day, dayIdx) => {
         const cityWeather = wxByCity.get(day.city.toLowerCase()) ?? null;
         const signal = computeRecoSignal(
           { ...state, weather: cityWeather },
           dayIdx,
-          itinerary,
+          balancedItinerary,
         );
-        const dayStops = itinerary.days[dayIdx]?.stops ?? [];
+        const dayStops = balancedItinerary.days[dayIdx]?.stops ?? [];
         const recos = deriveRecos(dayStops, signal);
         // Append famous spots reco if the day has no landmark/museum/historic stops
         const LANDMARK_CATS = new Set(['museum', 'historic', 'tourism', 'gallery', 'amusement_park', 'zoo', 'aquarium']);
@@ -250,12 +256,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
     const itineraryForBuild = {
-      ...itinerary!,
-      days: itinerary!.days.map(day => ({
+      ...balancedItinerary!,
+      days: balancedItinerary!.days.map(day => ({
         ...day,
         stops: day.stops.map(stop =>
-          (stopImages.size > 0 && !stop.imageUrl && !stop.photoRef)
-            ? { ...stop, imageUrl: stopImages.get(stop.title) ?? null }
+          (stopImages.size > 0 && !stop.imageUrl && stopImages.has(stop.title))
+            ? { ...stop, imageUrl: stopImages.get(stop.title)! }
             : stop
         ),
       })),
@@ -265,7 +271,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
     // Also patch any stop cards that still have no image (title-lookup fallback)
     for (const card of built) {
-      if (card.type === 'stop' && !card.stop.imageUrl && !card.stop.photoRef) {
+      if (card.type === 'stop' && !card.stop.imageUrl) {
         const url = stopImages.get(card.stop.title);
         if (url) card.stop.imageUrl = url;
       }
@@ -328,7 +334,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         Promise.race([api.cityPhotos(allCities), raceTimeout.then(() => ({} as Record<string, string | null>))]),
         ...stopsNeedingImages.map(({ stop, city }) =>
           Promise.race([
-            api.placeImage(stop.title, city).then(url => ({ title: stop.title, url })),
+            api.placeImage(stop.title, city, stop.placeId ?? undefined).then(url => ({ title: stop.title, url })),
             raceTimeout.then(() => ({ title: stop.title, url: null as string | null })),
           ])
         ),
@@ -886,6 +892,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         flushGroup();
         result.push(card);
 
+      } else if (card.type === 'day_nudge') {
+        flushGroup();
+        result.push(card);
+
       } else if (card.type === 'intel') {
         // EXCLUDE transit-decision intel cards — these say "taking transit because distance > X km"
         // which directly contradicts walk/scenic cards in the same group and confuses the user.
@@ -1153,6 +1163,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
           else if (card.type === 'day_transition') child = <ReelDayTransitionCard card={card} active={isActive} />;
+          else if (card.type === 'day_nudge') child = (
+            <ReelDayNudgeCard
+              card={card}
+              onExplore={() => dispatch({ type: 'GO_TO', screen: 'map' })}
+            />
+          );
           else if (card.type === 'day_intel') child = (
             <ReelDayIntelCard
               card={card}

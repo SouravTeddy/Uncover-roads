@@ -48,25 +48,7 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
           >
             <div style={{ position: 'relative', width: size, height: size, cursor: 'pointer', overflow: 'visible' }}>
 
-              {/* dual ping rings — curated attention signal */}
-              <div style={{
-                position: 'absolute',
-                top: 0, right: 0, bottom: 0, left: 0,
-                borderRadius: '50%',
-                border: `1.5px solid ${mood.c}`,
-                animation: 'pinPulse 2.6s 0s cubic-bezier(.2,.6,.4,1) infinite',
-                pointerEvents: 'none',
-              }} />
-              <div style={{
-                position: 'absolute',
-                top: 0, right: 0, bottom: 0, left: 0,
-                borderRadius: '50%',
-                border: `1.5px solid ${mood.c}`,
-                animation: 'pinPulse 2.6s 1.3s cubic-bezier(.2,.6,.4,1) infinite',
-                pointerEvents: 'none',
-              }} />
-
-              {/* active ring */}
+              {/* active ring — only pulses when selected */}
               {isActive && (
                 <div style={{
                   position: 'absolute',

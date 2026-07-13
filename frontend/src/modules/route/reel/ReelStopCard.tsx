@@ -252,6 +252,21 @@ function SunRays() {
   );
 }
 
+// ── Description sanitizer ─────────────────────────────────────
+// Suppresses LLM-generated text that describes the wrong category context
+// (e.g. meal descriptions on scenic viewpoints, or walk descriptions on restaurants).
+const FOOD_CATS_SET = new Set(['restaurant', 'cafe', 'bar', 'nightlife', 'market', 'bakery']);
+const MEAL_TERMS = ['meal', 'eat ', 'eating', 'dinner', 'lunch', 'food', 'dine', 'dining', 'dish', 'bite ', 'bites', 'hungry', 'restaurant', 'café'];
+const OUTDOOR_WALK_TERMS = ['walking trail', 'hike', 'trekking', 'nature walk', 'forest trail'];
+
+function sanitizeReasonText(text: string | null | undefined, category: string): string | null {
+  if (!text) return null;
+  const lower = text.toLowerCase();
+  if (!FOOD_CATS_SET.has(category) && MEAL_TERMS.some(t => lower.includes(t))) return null;
+  if (FOOD_CATS_SET.has(category) && OUTDOOR_WALK_TERMS.some(t => lower.includes(t))) return null;
+  return text;
+}
+
 // ── Shared chip style ─────────────────────────────────────────
 // All stk-body badge chips use this base — override color/bg/border per variant
 const chipBase: React.CSSProperties = {
@@ -365,15 +380,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const hasServerSignals = serverSignals.length > 0;
   const crowd          = hasServerSignals ? null : crowdNote(stop.category, hour);
   const hoursStr       = visitHours(stop.weekdayText, card.visitDate);
-  const reasonText     = (stop.isEngineAdded && card.orderReason)
+
+  const rawReasonText  = (stop.isEngineAdded && card.orderReason)
     ? (card.orderConsequence ?? (stop.whyForYou || null))
     : (card.orderReason ?? card.orderConsequence ?? (stop.whyForYou || null));
+  const reasonText     = sanitizeReasonText(rawReasonText, stop.category);
 
   const contentSig   = serverSignals.find(s => s.type === 'content');
   const crowdSig     = serverSignals.find(s => s.type === 'crowd');
   const timingSig    = serverSignals.find(s => s.type === 'timing');
   const transitSig   = serverSignals.find(s => s.type === 'transit');
-  const rawDescriptionText = contentSig?.text ?? null;
+  const rawDescriptionText = sanitizeReasonText(contentSig?.text ?? null, stop.category);
   const descriptionText = rawDescriptionText && rawDescriptionText !== reasonText ? rawDescriptionText : null;
 
   const isRaining = condition.includes('rain') || condition.includes('drizzle') || isThunder;

@@ -199,12 +199,25 @@ export function MapScreen() {
       .slice(0, PIN_CAP);
   }, [filteredPlaces, mapBbox]);
 
+  // Count ALL viewport places by category (not just the active filter) so disabled chips
+  // still show correct counts when a category filter is active.
+  const viewportAllPlaces = useMemo(() => {
+    if (!mapBbox) return places.slice(0, PIN_CAP * 5);
+    const [minLat, maxLat, minLon, maxLon] = mapBbox;
+    const latPad = (maxLat - minLat) * 0.3;
+    const lonPad = (maxLon - minLon) * 0.3;
+    return places.filter(p =>
+      p.lat >= minLat - latPad && p.lat <= maxLat + latPad &&
+      p.lon >= minLon - lonPad && p.lon <= maxLon + lonPad
+    );
+  }, [places, mapBbox]);
+
   const categoryCounts = useMemo(() =>
-    viewportFilteredPlaces.reduce<Record<string, number>>((acc, p) => {
+    viewportAllPlaces.reduce<Record<string, number>>((acc, p) => {
       acc[p.category] = (acc[p.category] ?? 0) + 1;
       return acc;
     }, {}),
-  [viewportFilteredPlaces]);
+  [viewportAllPlaces]);
 
   // Returns places filtered by the active category chips (no-op when no filter is active)
   const applyCategories = useCallback(
@@ -483,7 +496,27 @@ export function MapScreen() {
         };
       }));
 
-      const uniqueCities = [...new Set(resolvedPlaces.map(p => p.city).filter(Boolean))];
+      // Interleave places from different geo areas so the backend spreads them across days
+      // instead of front-loading one area into Day 1.
+      const interleaved = (() => {
+        const grid = new Map<string, typeof resolvedPlaces>();
+        for (const p of resolvedPlaces) {
+          const key = `${Math.round(p.lat * 10)},${Math.round(p.lon * 10)}`;
+          if (!grid.has(key)) grid.set(key, []);
+          grid.get(key)!.push(p);
+        }
+        const buckets = [...grid.values()];
+        const out: typeof resolvedPlaces = [];
+        while (out.length < resolvedPlaces.length) {
+          for (const bucket of buckets) {
+            const item = bucket.shift();
+            if (item) out.push(item);
+          }
+        }
+        return out;
+      })();
+
+      const uniqueCities = [...new Set(interleaved.map(p => p.city).filter(Boolean))];
 
       // Order cities: primary city first, then secondaries in the order they appear
       // in resolvedPlaces (i.e. the order the user added them).
@@ -501,7 +534,7 @@ export function MapScreen() {
         lon: cityGeo?.lon ?? 0,
         days,
         startDate,
-        selectedPlaces: resolvedPlaces,
+        selectedPlaces: interleaved,
         personaArchetype: personaProfile?.archetype ?? 'explorer',
         engineWeights: null,
         cities: orderedCities.length > 1 ? orderedCities : undefined,
@@ -1125,7 +1158,6 @@ export function MapScreen() {
           isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
           hasExistingItinerary={state.hasBuiltThisSession}
           onBuild={handleBuild}
-          onSeePlan={() => { dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' }); dispatch({ type: 'GO_TO', screen: 'trips' }); }}
         />
       )}
 
