@@ -505,8 +505,6 @@ export function buildReelCards(
     return sum + buildScenicCards(sortedStops, persona, weights, day.walkBaseKm ?? 2.0).length;
   }, 0);
 
-  const totalRecoCards = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
-
   cards.push({
     type: 'intro',
     city: cityLabel,
