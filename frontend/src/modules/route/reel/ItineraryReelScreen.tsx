@@ -190,9 +190,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   ) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
-    // If an enriched itinerary exists (reco stops already injected), use it so that
-    // deriveRecos sees the filled gaps and does not re-generate ReelRecoCard stubs.
-    // We still rebalance below — rebalance is idempotent.
     const baseItinerary = itinerary;
 
     // Rebalance stops across days before computing recos so that reco cards
@@ -251,7 +248,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             stopLon: anchor.lon,
           });
         }
-        recosByDayIdx.set(dayIdx, recos);
+        recosByDayIdx.set(dayIdx, recos.filter(r => r.trigger !== 'walking_gap'));
       });
     }
 

@@ -512,7 +512,7 @@ export function buildReelCards(
     city: cityLabel,
     imageUrl: introImage,
     totalStops: stopCount,
-    totalRecos: totalRecoCards,
+    totalRecos: 0,
     totalDays: itinerary.days.length,
     totalDurationMin,
     totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
