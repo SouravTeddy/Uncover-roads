@@ -3961,10 +3961,8 @@ def place_details(request: Request, place_id: str):
         }
 
     client_ip = request.client.host if request.client else "unknown"
-    if not _check_rate_limit(client_ip):
-        raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
-    # 1. Check Supabase cache
+    # 1. Check Supabase cache — cache hits bypass rate limit entirely
     if _supabase:
         try:
             cached = (
@@ -3978,9 +3976,13 @@ def place_details(request: Request, place_id: str):
             if cached_row:
                 fetched_at = datetime.fromisoformat(cached_row["fetched_at"])
                 if datetime.now(timezone.utc) - fetched_at < timedelta(days=PLACE_CACHE_TTL_DAYS):
-                    return cached_row["data"]  # cache hit — no Google call
+                    return cached_row["data"]
         except Exception:
-            pass  # cache failure is non-fatal
+            pass
+
+    # Cache miss — check rate limit before calling Google
+    if not _check_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
     # 2. Cache miss — call Google
     params = {
