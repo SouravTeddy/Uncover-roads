@@ -505,11 +505,14 @@ export function buildReelCards(
     return sum + buildScenicCards(sortedStops, persona, weights, day.walkBaseKm ?? 2.0).length;
   }, 0);
 
+  const totalRecoCards = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
+
   cards.push({
     type: 'intro',
     city: cityLabel,
     imageUrl: introImage,
     totalStops: stopCount,
+    totalRecos: totalRecoCards,
     totalDays: itinerary.days.length,
     totalDurationMin,
     totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
@@ -714,8 +717,15 @@ export function buildReelCards(
     // Build reco lookup: afterStopId → ReelRecoCard[]
     // Recos are pushed directly to cards after their anchor stop (not converted to observations).
     const engineRecos = recosByDayIdx.get(dayIdx) ?? [];
+    // Deduplicate by trigger type per day — keep only the first reco for each trigger
+    const seenTriggers = new Set<string>();
+    const dedupedRecos = engineRecos.filter(r => {
+      if (seenTriggers.has(r.trigger)) return false;
+      seenTriggers.add(r.trigger);
+      return true;
+    });
     const recoByAfterStopId = new Map<string, ReelRecoCard[]>();
-    for (const reco of engineRecos) {
+    for (const reco of dedupedRecos) {
       const key = reco.afterStopId ?? '__end__';
       if (!recoByAfterStopId.has(key)) recoByAfterStopId.set(key, []);
       recoByAfterStopId.get(key)!.push(reco);

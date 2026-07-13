@@ -76,6 +76,7 @@ export interface ReelIntroCard {
   city: string;
   imageUrl: string | null;
   totalStops: number;
+  totalRecos?: number;
   totalDays: number;
   totalDurationMin: number;
   totalDistanceKm: number;

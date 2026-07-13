@@ -103,10 +103,10 @@ export function useReelRecommendations(
         setPlaces(data);
         setLoading(false);
 
-        // Fetch photo for top-scoring place, with one fallback attempt
+        // Fetch photo for top-scoring place using placeId for direct Google Places lookup
         try {
           for (const p of data.slice(0, 2)) {
-            const url = await api.placeImage(p.name, card.nearbyCity);
+            const url = await api.placeImage(p.name, card.nearbyCity, p.placeId);
             if (cancelled) return;
             if (url) { setPhotoUrl(url); return; }
           }
