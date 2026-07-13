@@ -883,20 +883,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         result.push(card);
 
       } else if (card.type === 'reco') {
-        const meta = TRIGGER_META[card.trigger] ?? { label: 'Nearby', icon: 'explore', color: '#d4a853' };
-        const recoImg = claimImg(card.anchorPhotoUrl, contextualImg(card.trigger));
-        // Capture first reco's coordinates as the group's map anchor
-        if (!groupAnchorLat && card.stopLat) { groupAnchorLat = card.stopLat; groupAnchorLon = card.stopLon ?? null; }
-        miniCards.push({
-          type: 'reco',
-          title: meta.label,
-          imageUrl: recoImg,
-          name: card.label,
-          data: card.consequence || '',
-          footer: `Near ${card.nearbyCity}`,
-          icon: meta.icon,
-          accent: meta.color,
-        });
+        flushGroup();
+        result.push(card);
 
       } else if (card.type === 'intel') {
         // EXCLUDE transit-decision intel cards — these say "taking transit because distance > X km"

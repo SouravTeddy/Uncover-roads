@@ -18,7 +18,6 @@ export interface Gap {
 
 export const L1_THRESHOLD = 0.10;   // significance floor for L1/L2 boundary in gapToCard
 export const L2_THRESHOLD = 0.25;   // significance floor for persona-amplified L2 copy
-const MAX_RECOS = 3;
 const CONFLICT_BOOST = 1.4;
 // Gate: minimum |delta| for a gap to surface regardless of persona weight.
 // Persona weight (dimensionWeight) ranks gaps, not gatekeeps them.
@@ -110,6 +109,11 @@ function anchorStop(
   return stops[Math.floor(stops.length / 2)] ?? stops[0];
 }
 
+// Dimensions where the reco belongs after the LAST stop (dinner, evening)
+const LAST_STOP_DIMS = new Set<keyof ItineraryProfile>(['hasDinner', 'hasEveningActivity']);
+// Dimensions where the reco belongs around midday (lunch)
+const NOON_STOP_DIMS = new Set<keyof ItineraryProfile>(['hasLunch']);
+
 export function gapToCard(
   gap: Gap,
   stops: EngineItineraryStop[],
@@ -117,7 +121,23 @@ export function gapToCard(
 ): ReelRecoCard | null {
   const city = signal.trip.city;
   const persona = signal.archetype;
-  const anchor = anchorStop(stops);
+
+  // Place dinner/evening recos after the last stop; lunch after the stop
+  // ending closest to noon; everything else at the middle stop.
+  let anchor: EngineItineraryStop | null;
+  if (LAST_STOP_DIMS.has(gap.dimension)) {
+    anchor = stops.at(-1) ?? anchorStop(stops);
+  } else if (NOON_STOP_DIMS.has(gap.dimension)) {
+    anchor = stops.reduce<EngineItineraryStop | null>((best, s) => {
+      const endMin = minutesFromTime(s.time) + (s.durationMin ?? 60);
+      if (!best) return s;
+      const bestEnd = minutesFromTime(best.time) + (best.durationMin ?? 60);
+      return Math.abs(endMin - 720) < Math.abs(bestEnd - 720) ? s : best;
+    }, null) ?? anchorStop(stops);
+  } else {
+    anchor = anchorStop(stops);
+  }
+
   const afterStopId = anchor?.id ?? stops.at(-1)?.id ?? 'intro';
   const area = anchor?.area ?? city;
 
@@ -342,10 +362,7 @@ export function deriveRecos(
   const gaps = detectGaps(target, actual, signal);
   const resolved = resolveConflicts(gaps);
 
-  const maxRecos = resolved.some(g => g.conflictPresent) ? MAX_RECOS + 1 : MAX_RECOS;
-
   const result = resolved
-    .slice(0, maxRecos)
     .map(g => gapToCard(g, stops, signal))
     .filter((c): c is ReelRecoCard => c !== null);
 

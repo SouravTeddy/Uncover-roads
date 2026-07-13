@@ -651,8 +651,7 @@ export function buildReelCards(
   const getWeatherForCity = (cityName: string): WeatherData | null =>
     weatherByCity.get(cityName.toLowerCase()) ?? null;
 
-  // Trip-level observation count (used to gate reco fallback card)
-  let totalObsCount = 0;
+
 
   const weights: EngineWeights = itinerary.personaSnapshot ?? DEFAULT_WEIGHTS;
   const cards: ReelCard[] = [];
@@ -902,52 +901,21 @@ export function buildReelCards(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
 
-    // Build day intel observations — one card per day, placed after the last stop
+    // Build reco lookup: afterStopId → ReelRecoCard[]
+    // Recos are pushed directly to cards after their anchor stop (not converted to observations).
     const engineRecos = recosByDayIdx.get(dayIdx) ?? [];
-    const engineTriggers = new Set(engineRecos.map(r => r.trigger));
-
-    // Convert engine recos (ReelRecoCard) to DayIntelObservation
-    const engineObservations: DayIntelObservation[] = engineRecos.map(r => ({
-      id: r.id,
-      trigger: r.trigger,
-      what: r.label,
-      why: r.consequence,
-      consequence: '',
-      ctaLabel: triggerCTA(r.trigger, r.nearbyCity),
-      stopLat: r.stopLat ?? null,
-      stopLon: r.stopLon ?? null,
-      searchCategory: TRIGGER_SEARCH[r.trigger] ?? '',
-      anchorCity: r.nearbyCity,
-    }));
-
-    // If the NEXT day is merged with this one (same calendar day, city hop), skip meal gap observations —
-    // the user will be eating in the next city that same day, so "no lunch" here is a false alarm.
+    const recoByAfterStopId = new Map<string, ReelRecoCard[]>();
+    for (const reco of engineRecos) {
+      const key = reco.afterStopId ?? '__end__';
+      if (!recoByAfterStopId.has(key)) recoByAfterStopId.set(key, []);
+      recoByAfterStopId.get(key)!.push(reco);
+    }
 
     // Build scenic corridor map from backend-generated cards (ORS + Overpass + pysolar).
-    // Keyed by originStopId so we can insert after the right stop in the loop below.
-    // Falls back to the frontend walkable-detour heuristic only when the backend produced nothing.
     const backendScenicByOriginId = new Map<string, ScenicCorridorCard>();
     for (const sc of (day.scenicCorridors ?? [])) {
       if (sc.originStopId) backendScenicByOriginId.set(sc.originStopId, sc);
     }
-
-
-    const nextDayMergesIn = sameDayMergeSet.has(dayIdx + 1);
-    const allObservations: DayIntelObservation[] = [
-      ...engineObservations,
-      ...(nextDayMergesIn ? [] : buildMealObservations(sortedStops, day.city)),
-      ...buildPersonaObservations(sortedStops, persona, day.city, weights),
-      ...(engineTriggers.has('walking_gap') ? [] : buildWalkingGapObservations(sortedStops, day.city, weights, day.walkBaseKm ?? 2.0)),
-      // walkable_detour observations are now full-screen scenic cards — excluded from group tray
-      ...(engineTriggers.has('hidden_gem') ? [] : buildDiscoveryObservations(sortedStops, day.city)),
-    ];
-    // Deduplicate by trigger
-    const seenTriggers = new Set<string>();
-    const dedupedObservations = allObservations.filter(o => {
-      if (seenTriggers.has(o.trigger)) return false;
-      seenTriggers.add(o.trigger);
-      return true;
-    });
 
     for (let si = 0; si < sortedStops.length; si++) {
       const stop = sortedStops[si];
@@ -1070,6 +1038,13 @@ export function buildReelCards(
       const scenicCard = scenicByStopId.get(stop.id);
       if (scenicCard) cards.push(scenicCard);
 
+      // Reco cards anchored to this stop — pushed as full ReelRecoCard objects
+      const stopRecos = recoByAfterStopId.get(stop.id);
+      if (stopRecos) {
+        for (const reco of stopRecos) cards.push(reco);
+        recoByAfterStopId.delete(stop.id);
+      }
+
       // Backend scenic corridor card — richer than the frontend heuristic (ORS + Overpass + pysolar).
       // Only fires when the backend sent scenicCorridors; otherwise falls back to walkable detour below.
       const backendScenic = backendScenicByOriginId.get(stop.id);
@@ -1114,7 +1089,10 @@ export function buildReelCards(
 
     }
 
-    totalObsCount += dedupedObservations.length;
+    // Flush any recos whose afterStopId wasn't found in this day's stops
+    for (const recos of recoByAfterStopId.values()) {
+      for (const reco of recos) cards.push(reco);
+    }
 
     // Remaining intel cards not matched to a specific stop — push after all stops
     const intelAnchorStop = sortedStops.at(-1);
@@ -1133,7 +1111,7 @@ export function buildReelCards(
 
   // Balance card: engine ran, zero recos, and no observations — plan is genuinely well-balanced
   const allRecosCount = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
-  if (recosByDayIdx.size > 0 && allRecosCount === 0 && totalObsCount < 2) {
+  if (recosByDayIdx.size > 0 && allRecosCount === 0) {
     const allCategories = new Set(allStops.map(s => s.category));
     cards.push({
       type: 'balance',
