@@ -26,7 +26,6 @@ interface Props {
   primaryCity?: string;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
   isJustAdjusted?: boolean;
-  onExplore?: () => void;
   onRemove?: () => void;
   onRegisterPanelControl?: (ctrl: PanelControl | null) => void;
 }
@@ -292,7 +291,7 @@ interface CardPill {
 }
 
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onExplore, onRemove, onRegisterPanelControl }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onRemove, onRegisterPanelControl }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
@@ -1015,19 +1014,6 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
               )}
             </div>
 
-            {/* Explore nearby CTA */}
-            {onExplore && (
-              <>
-                <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
-                <button
-                  onClick={onExplore}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '14px 16px', marginTop: 6, borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${T.gold} 0%, #c08535 100%)`, cursor: 'pointer', color: '#0a080a', fontSize: 15, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <span className="ms" style={{ fontSize: 18 }}>explore</span>
-                  Explore nearby
-                </button>
-              </>
-            )}
 
           </div>
         </div>

@@ -8,7 +8,6 @@ interface Props {
   archetype: string;
   existingPlaceIds: string[];
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered' | 'added_to_plan') => void;
-  onMapNavigate?: (lat: number, lon: number, places: import('../../../shared/types').Place[]) => void;
 }
 
 const TRIGGER_CATEGORY: Partial<Record<string, string>> = {
@@ -48,7 +47,7 @@ const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$
 
 const GOLD = '#d4a853';
 
-export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
+export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.rest;
   const { places, loading, photoUrl } = useReelRecommendations(
     card, archetype, existingPlaceIds, active, TRIGGER_CATEGORY[card.trigger],
@@ -218,30 +217,6 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
                       ))}
                     </div>
                   )}
-
-                  {/* Explore nearby CTA */}
-                  <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onInteract?.('tapped');
-                      if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
-                        onMapNavigate(card.stopLat, card.stopLon, [{
-                          id: place.placeId,
-                          title: place.name,
-                          category: place.category as import('../../../shared/types').Category,
-                          lat: place.lat,
-                          lon: place.lon,
-                          place_id: place.placeId,
-                          rating: place.rating ?? undefined,
-                        }]);
-                      }
-                    }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '14px 16px', marginTop: 6, borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${GOLD} 0%, #c08535 100%)`, cursor: 'pointer', color: '#0a080a', fontSize: 15, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    <span className="ms" style={{ fontSize: 18 }}>explore</span>
-                    Explore nearby
-                  </button>
                 </>
               )}
             </div>
