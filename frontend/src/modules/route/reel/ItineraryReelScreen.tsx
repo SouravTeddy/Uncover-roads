@@ -29,8 +29,6 @@ import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
 import { getLocalFoodFact } from './local-food-facts';
-import { prefetchRecoStops } from './reco-prefetch';
-import type { RecoPrefetchResult } from './reco-prefetch';
 
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
@@ -162,7 +160,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const [imagesReady, setImagesReady] = useState(false);
   // stop title → resolved image URL (for stops that had no photoRef at build time)
   const [resolvedStopImages, setResolvedStopImages] = useState<Map<string, string>>(new Map());
-  const [loadingStep, setLoadingStep] = useState<0 | 1 | 2>(0);
+  const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [tripDetailsSavedToast, setTripDetailsSavedToast] = useState(false);
   // Session-scoped strikeout: stops that were just adjusted by a trip-details save this session
@@ -178,10 +176,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
   const tripDetailsRef = useRef<TripDetails | null>(savedItem?.tripDetails ?? state.pendingTripDetails ?? null);
-  // Enriched itinerary: original stops + prefetched reco stops injected as isEngineAdded
-  const enrichedItineraryRef = useRef<typeof activeItinerary | null>(null);
-  // Tracks which triggers were successfully prefetched per day (to suppress ReelRecoCard fallbacks)
-  const prefetchedByDayRef = useRef<RecoPrefetchResult['prefetchedByDay']>(new Map());
 
   useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
@@ -193,7 +187,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     pName: string,
     photoMap = cityPhotoMap,
     stopImages = resolvedStopImages,
-    prefetchedByDay = prefetchedByDayRef.current,
   ) {
     const journeyLegs = savedItem ? (savedItem.journeyLegs ?? null) : (journey ?? null);
 
@@ -211,7 +204,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
     if (balancedItinerary) {
       (balancedItinerary.days ?? []).forEach((day, dayIdx) => {
-        const dayPrefetched = prefetchedByDay.get(dayIdx) ?? new Set<string>();
         const cityWeather = wxByCity.get(day.city.toLowerCase()) ?? null;
         const signal = computeRecoSignal(
           { ...state, weather: cityWeather },
@@ -221,9 +213,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         const dayStops = balancedItinerary.days[dayIdx]?.stops ?? [];
         const recos = deriveRecos(dayStops, signal);
 
-        // Famous spots: skip if already prefetched as a stop
         const hasLandmark = dayStops.some(s => LANDMARK_CATS_LOCAL.has(s.category));
-        if (!hasLandmark && dayStops.length > 0 && recos.length < 4 && !dayPrefetched.has('famous_spots')) {
+        if (!hasLandmark && dayStops.length > 0 && recos.length < 4) {
           const anchor = dayStops[Math.floor(dayStops.length / 2)];
           recos.push({
             type: 'reco',
@@ -239,14 +230,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             stopLon: anchor.lon,
           });
         }
-        // Local food: skip if already prefetched as a stop
         const hasFoodReco = recos.some(r => r.trigger === 'lunch' || r.trigger === 'dinner' || r.trigger === 'local_food');
         const foodFact = getLocalFoodFact(day.city);
         const hasLowRichnessFoodStop = dayStops.some(
           s => FOOD_CATS.has(s.category) && (!s.localTip || s.localTip.length < 80),
         );
-        const localFoodPrefetched = dayPrefetched.has('local_food') || dayPrefetched.has('lunch') || dayPrefetched.has('dinner');
-        if (!hasFoodReco && foodFact && hasLowRichnessFoodStop && !localFoodPrefetched) {
+        if (!hasFoodReco && foodFact && hasLowRichnessFoodStop) {
           const anchor = dayStops[Math.floor(dayStops.length / 2)];
           recos.push({
             type: 'reco',
@@ -317,14 +306,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
     setImagesReady(false);
     setLoadingStep(0);
-    // Clear stale enriched itinerary from previous trip
-    enrichedItineraryRef.current = null;
-    prefetchedByDayRef.current = new Map();
     let cancelled = false;
 
     const FETCH_TIMEOUT_MS = 10_000;
-    // Reco prefetch gets its own generous timeout — parallel with photos
-    const RECO_TIMEOUT_MS = 12_000;
 
     (async () => {
       const primaryCity = activeItinerary.city ?? activeItinerary.cities?.[0] ?? '';
@@ -348,18 +332,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         setTimeout(() => resolve(undefined as never), FETCH_TIMEOUT_MS)
       );
 
-      // Reco prefetch races its own timeout so a slow Places API doesn't block the reel
-      const recoTimeoutPromise = new Promise<null>(resolve =>
-        setTimeout(() => resolve(null), RECO_TIMEOUT_MS)
-      );
-
-      // Run city photos, stop images, AND reco prefetch all in parallel
-      const [cityPhotosRaw, recoPrefetch, ...stopImageResults] = await Promise.all([
+      // Run city photos and stop images in parallel
+      const [cityPhotosRaw, ...stopImageResults] = await Promise.all([
         Promise.race([api.cityPhotos(allCities), raceTimeout.then(() => ({} as Record<string, string | null>))]),
-        Promise.race([
-          prefetchRecoStops(activeItinerary, state, weatherByCityRef.current, existingPlaceIds),
-          recoTimeoutPromise,
-        ]),
         ...stopsNeedingImages.map(({ stop, city }) =>
           Promise.race([
             api.placeImage(stop.title, city, stop.placeId ?? undefined).then(url => ({ title: stop.title, url })),
@@ -369,12 +344,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       ]);
 
       if (cancelled) return;
-
-      // Store prefetch result — used by all subsequent buildFiltered calls
-      if (recoPrefetch) {
-        enrichedItineraryRef.current = recoPrefetch.enrichedItinerary;
-        prefetchedByDayRef.current   = recoPrefetch.prefetchedByDay;
-      }
 
       // Build city photo map: Google proxy paths from DB only
       const apiBase = import.meta.env.VITE_API_URL ?? '';
@@ -395,24 +364,16 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
         if (r.url) newStopImages.set(r.title, r.url);
       }
-      // Also store reco images so enrichment rebuilds can resolve them
-      if (recoPrefetch) {
-        for (const [title, url] of recoPrefetch.recoImages) {
-          newStopImages.set(title, url);
-        }
-      }
       setResolvedStopImages(newStopImages);
 
-      // Build cards using enriched itinerary (reco stops already injected as "Our pick")
+      // Build cards — backend already injected reco stops into the itinerary
       setLoadingStep(1);
-      const itineraryForBuild = enrichedItineraryRef.current ?? activeItinerary;
       const filtered = buildFiltered(
-        itineraryForBuild,
+        activeItinerary,
         weatherByCityRef.current,
         personaNameRef.current,
         builtCityPhotoMap,
         newStopImages,
-        prefetchedByDayRef.current,
       );
       setCards(filtered);
 
@@ -476,13 +437,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
         }
       }
-      // Also preload reco stop images that were resolved during prefetch
-      if (recoPrefetch) {
-        for (const url of recoPrefetch.recoImages.values()) {
-          if (!srcs.includes(url)) srcs.push(url);
-        }
-      }
-
       await Promise.race([preloadImages(srcs), raceTimeout.catch(() => {})]);
 
       if (!cancelled) setImagesReady(true);
@@ -504,20 +458,18 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     el.scrollTop = activeIdxRef.current * el.clientHeight;
   }, [cards]);
 
-  // Enrichment-only updates — when weatherByCity, personaName, or city photos arrive.
-  // Always use enrichedItineraryRef (injected reco stops) when available so we don't
-  // revert to ReelRecoCard stubs after a secondary rebuild.
+  // Enrichment-only updates — when weatherByCity or personaName arrive.
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
     restoreScrollRef.current = true;
-    setCards(buildFiltered(enrichedItineraryRef.current ?? activeItinerary, weatherByCity, personaName));
+    setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
     restoreScrollRef.current = true;
-    setCards(buildFiltered(enrichedItineraryRef.current ?? activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
+    setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
 
@@ -666,7 +618,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     const STEPS: { label: string; done: boolean }[] = [
       { label: 'Itinerary built',        done: !!activeItinerary },
       { label: 'Gathering photos',       done: loadingStep >= 1 },
-      { label: 'Finding picks for you',  done: imagesReady },
+      { label: 'Loading your itinerary', done: imagesReady },
     ];
     const activeStep = STEPS.findIndex(s => !s.done);
 
