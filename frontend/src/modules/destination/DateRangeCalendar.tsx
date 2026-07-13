@@ -5,6 +5,7 @@ interface Props {
   singleDate?: boolean;
   minDate?: string;
   maxDate?: string;
+  maxDays?: number;
   initialMonth?: string; // ISO date — calendar opens at this month
   tripStart?: string | null; // existing trip start to highlight on calendar
   tripEnd?: string | null;   // existing trip end to highlight on calendar
@@ -26,7 +27,7 @@ function formatRange(start: string, end: string): string {
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
-export function DateRangeCalendar({ city, singleDate, minDate, maxDate, initialMonth, tripStart, tripEnd, onSelect }: Props) {
+export function DateRangeCalendar({ city, singleDate, minDate, maxDate, initialMonth, tripStart, tripEnd, onSelect, maxDays }: Props) {
   const today = new Date();
   const initDate = initialMonth ? new Date(initialMonth + 'T12:00:00') : today;
   const [viewYear, setViewYear] = useState(initDate.getFullYear());
@@ -57,7 +58,16 @@ export function DateRangeCalendar({ city, singleDate, minDate, maxDate, initialM
       setEndDate(null);
     } else {
       const s = iso < startDate ? iso : startDate;
-      const e = iso < startDate ? startDate : iso;
+      let e = iso < startDate ? startDate : iso;
+
+      // Cap end date to maxDays after start
+      if (maxDays) {
+        const maxEnd = new Date(s + 'T12:00:00');
+        maxEnd.setDate(maxEnd.getDate() + maxDays - 1);
+        const maxIso = maxEnd.toISOString().slice(0, 10);
+        if (e > maxIso) e = maxIso;
+      }
+
       setEndDate(e);
       setStartDate(s);
       // onSelect fires eagerly on second-date click (not Done tap).
@@ -147,7 +157,13 @@ export function DateRangeCalendar({ city, singleDate, minDate, maxDate, initialM
           const isPast = iso < todayIso;
           const isBelowMin = !!minDate && iso < minDate;
           const isAboveMax = !!maxDate && iso > maxDate;
-          const isDisabled = isPast || isBelowMin || isAboveMax;
+          const isOverLimit = !!maxDays && !!startDate && !endDate &&
+            (() => {
+              const maxEnd = new Date(startDate + 'T12:00:00');
+              maxEnd.setDate(maxEnd.getDate() + maxDays - 1);
+              return iso > maxEnd.toISOString().slice(0, 10);
+            })();
+          const isDisabled = isPast || isBelowMin || isAboveMax || isOverLimit;
           const isStart = iso === startDate;
           const isEnd = iso === endDate;
           const inRange = isInRange(iso);

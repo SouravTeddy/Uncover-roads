@@ -108,6 +108,7 @@ export function DestinationScreen() {
             <DateRangeCalendar
               key={pendingCity ?? city}
               city={pendingCity ?? city}
+              maxDays={14}
               onSelect={handleDateSelect}
             />
           </div>
