@@ -4846,6 +4846,132 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
         return {}
 
 
+def _resolve_reco_trigger(
+    trigger: dict,
+    existing_place_ids: set[str],
+    supabase_client,
+    google_api_key: str | None,
+    weights: dict,
+) -> dict | None:
+    """
+    Given a trigger dict from derive_day_recos, call Nearby Search + place_details_cache
+    and return a stop dict ready to insert into stops_out, or None on failure.
+    """
+    if not google_api_key:
+        return None
+
+    lat, lon = trigger.get("lat"), trigger.get("lon")
+    if lat is None or lon is None:
+        return None
+
+    from engine.reco_engine import TRIGGER_DEFAULTS
+    _TRIGGER_TYPES: dict[str, list[str]] = {
+        "lunch":      ["restaurant"],
+        "dinner":     ["restaurant"],
+        "evening":    ["night_club", "bar"],
+        "rest":       ["cafe"],
+        "culture":    ["museum", "art_gallery"],
+        "social_gap": ["bar"],
+        "hidden_gem": ["point_of_interest", "establishment"],
+        "local_food": ["restaurant"],
+        "famous_spots": ["tourist_attraction", "landmark"],
+    }
+    _TRIGGER_RADIUS: dict[str, int] = {
+        "famous_spots": 3000, "culture": 2000, "hidden_gem": 1500,
+    }
+
+    trig = trigger["trigger"]
+    google_types = _TRIGGER_TYPES.get(trig, ["restaurant"])
+    radius = _TRIGGER_RADIUS.get(trig, 1000)
+
+    best: dict | None = None
+    best_score = -1.0
+
+    for gtype in google_types:
+        try:
+            resp = requests.get(
+                f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
+                params={"location": f"{lat},{lon}", "radius": radius,
+                        "type": gtype, "key": google_api_key},
+                timeout=5,
+            )
+            data = resp.json()
+            if data.get("status") not in ("OK", "ZERO_RESULTS"):
+                continue
+            for place in data.get("results", [])[:8]:
+                pid = place.get("place_id", "")
+                if not pid or pid in existing_place_ids:
+                    continue
+                rating = place.get("rating") or 0
+                score = rating / 5.0
+                if score > best_score:
+                    best_score = score
+                    best = place
+                    best["_gtype"] = gtype
+        except Exception:
+            continue
+
+    if not best:
+        return None
+
+    pid = best.get("place_id", "")
+    existing_place_ids.add(pid)
+
+    # Fetch from cache (no Google call — read-only)
+    details_map = _batch_place_details(supabase_client, [pid]) if supabase_client else {}
+    details = details_map.get(pid, {})
+
+    loc = best.get("geometry", {}).get("location", {})
+    stop_lat = loc.get("lat", lat)
+    stop_lon = loc.get("lng", lon)
+
+    time_default, dur, cat_default = TRIGGER_DEFAULTS.get(trig, ("10:00", 60, "point_of_interest"))
+    category = best.get("_gtype") or cat_default
+
+    why_phrases: dict[str, str] = {
+        "lunch": "A good spot for lunch near your route.",
+        "dinner": "Worth stopping for dinner.",
+        "evening": "A place to end the evening.",
+        "rest": "A quiet spot to take a break.",
+        "culture": "A cultural stop that fits the day.",
+        "social_gap": "Somewhere to sit and watch the city.",
+        "hidden_gem": "Off the main circuit — worth knowing about.",
+        "local_food": "Local food that doesn't make the guidebooks.",
+        "famous_spots": "A landmark worth seeing while you're here.",
+    }
+
+    import uuid as _uuid
+    return {
+        "id":          f"reco-{trig}-{_uuid.uuid4().hex[:8]}",
+        "placeId":     pid,
+        "title":       details.get("name") or best.get("name", ""),
+        "area":        "",
+        "city":        trigger.get("city", ""),
+        "day":         trigger.get("_day_number", 1),
+        "time":        time_default,
+        "durationMin": dur,
+        "category":    category,
+        "lat":         stop_lat,
+        "lon":         stop_lon,
+        "priceLevel":  details.get("price_level") or best.get("price_level"),
+        "rating":      details.get("rating") or best.get("rating"),
+        "weekdayText": details.get("weekday_text") or None,
+        "whyForYou":   why_phrases.get(trig, "An addition based on your plan."),
+        "localTip":    details.get("review_summary") or details.get("editorial_summary") or None,
+        "googleMapsUrl": f"https://www.google.com/maps/place/?q=place_id:{pid}",
+        "website":     details.get("website") or None,
+        "photoRef":    details.get("photo_ref") or None,
+        "tags":        [],
+        "signals":     [],
+        "stage":       None,
+        "velocityRatio": None,
+        "transitFromPrev": None,
+        "walkFromPrev": None,
+        "isUserAdded": False,
+        "isEngineAdded": True,
+    }
+
+
 def _backfill_opening_hours(stops: list, place_details_map: dict) -> None:
     """Populate opening_hours for stops that bypass pre-engine fetch (e.g., inserts)."""
     for stop in stops:
@@ -5521,6 +5647,44 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "isUserAdded": s.is_user_added,
                 "isEngineAdded": not s.is_user_added,
             })
+
+        # ── Inject reco stops for this day ──────────────────────────────
+        try:
+            from engine.reco_engine import derive_day_recos, RecoSignal, _archetype_group as _ag
+            _pace_map = {"slow": "slow", "balanced": "moderate", "pack": "fast", "spontaneous": "moderate"}
+            _raw_answers = body.rawOBAnswers if hasattr(body, "rawOBAnswers") else {}
+            _pace = _pace_map.get((_raw_answers.get("pace") or ["moderate"])[0], "moderate") if _raw_answers else "moderate"
+            _reco_signal = RecoSignal(
+                weights=persona,
+                archetype=archetype,
+                archetype_group=_ag(archetype),
+                pace=_pace,
+                city=result.days[i].city if result.days[i].city else body.city,
+                is_first_day=(i == 0),
+                is_last_day=(i == len(result.days) - 1),
+                arrival_time=body.arrivalTime or None,
+                departure_time=body.departureTime or None,
+            )
+            _existing_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}
+            _reco_triggers = derive_day_recos(stops_out, _reco_signal)
+            for _trigger in _reco_triggers:
+                _trigger["_day_number"] = i + 1
+                _reco_stop = _resolve_reco_trigger(
+                    _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona
+                )
+                if _reco_stop:
+                    # Insert after anchor stop; fall back to appending
+                    _anchor_id = _trigger.get("after_stop_id")
+                    _anchor_idx = next(
+                        (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1
+                    )
+                    if _anchor_idx >= 0:
+                        stops_out.insert(_anchor_idx + 1, _reco_stop)
+                    else:
+                        stops_out.append(_reco_stop)
+        except Exception as _reco_err:
+            print(f"[reco_inject] day {i}: {_reco_err}")
+            # Non-fatal: reco injection failure doesn't break the itinerary
 
         # Build scenic corridor cards keyed by origin stop id.
         # Kept SEPARATE from stops_out so the frontend can insert them precisely
