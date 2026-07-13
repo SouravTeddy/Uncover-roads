@@ -58,9 +58,6 @@ export function rebalanceItinerary(itinerary: EngineItinerary): EngineItinerary 
   const total = nonTravelIdxs.reduce((s, i) => s + (days[i].stops?.length ?? 0), 0);
   if (total < 2) return itinerary;
 
-  const nDays = nonTravelIdxs.length;
-  const targetPerDay = total / nDays;
-
   // Check if rebalance is even necessary (all days within ±1 of target)
   const counts = nonTravelIdxs.map(i => days[i].stops?.length ?? 0);
   if (Math.max(...counts) - Math.min(...counts) <= 1) return itinerary;

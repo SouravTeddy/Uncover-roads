@@ -4,7 +4,6 @@ import {
   UNIFIED_PIN_SHADOW,
   UNIFIED_PIN_SIZE, UNIFIED_ICON_SIZE,
   SAVED_BADGE_SIZE, SAVED_BADGE_COLOR,
-  CATEGORY_MOOD, DEFAULT_MOOD,
 } from './pin-visual'
 import { CATEGORY_ICONS } from './types'
 
@@ -31,7 +30,6 @@ export function OurPicksPinsLayer({ picks, activePinId, onPinClick, selectedPlac
         const isSaved = favouritedIds?.has(pick.id) ?? false
         const size = isActive ? UNIFIED_PIN_SIZE + 4 : UNIFIED_PIN_SIZE
         const icon = CATEGORY_ICONS[pick.category] ?? 'location_on'
-        const mood = CATEGORY_MOOD[pick.category] ?? DEFAULT_MOOD
         const pinBg = isDark ? 'rgba(18,19,24,0.94)' : 'rgba(255,255,255,0.96)'
         const iconCol = isDark ? '#e8e2d8' : '#6b5e57'
 
