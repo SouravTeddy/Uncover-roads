@@ -191,9 +191,9 @@ export function ReelGroupCard({ card, active: _active, onMapNavigate }: Props) {
         paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)',
       }}>
         {!isSingle && (
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {card.cards.map((_, i) => (
-              <div key={i} style={{ width: i === activeIdx ? 20 : 6, height: 4, borderRadius: 999, background: i === activeIdx ? '#d4a853' : 'rgba(255,255,255,0.15)', transition: 'width .25s ease' }} />
+              <div key={i} style={{ width: 5, height: 5, borderRadius: 999, background: i === activeIdx ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.18)', transition: 'background .25s ease' }} />
             ))}
           </div>
         )}

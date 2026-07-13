@@ -514,21 +514,11 @@ export function TripsScreen() {
 
       {/* ── Current: reel / building / empty ── */}
       {tripsActiveTab === 'current' && (
-        hasBuiltThisSession || reelSavedId ? (
+        hasBuiltThisSession || reelSavedId || activeBuild?.status === 'pending' || activeBuild?.status === 'running' ? (
           <ItineraryReelScreen
             key={reelSavedId ?? 'live'}
             onTabBarScroll={setTabBarHidden}
           />
-        ) : (activeBuild?.status === 'pending' || activeBuild?.status === 'running') ? (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '32px', textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="ms animate-spin" style={{ fontSize: 30, color: 'var(--color-primary)' }}>autorenew</span>
-            </div>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 6 }}>Building your itinerary…</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>This takes about 20–30 seconds.<br />Hang tight.</p>
-            </div>
-          </div>
         ) : (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '32px', textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

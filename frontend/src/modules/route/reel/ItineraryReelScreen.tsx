@@ -250,6 +250,21 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         }
         recosByDayIdx.set(dayIdx, recos.filter(r => r.trigger !== 'walking_gap'));
       });
+
+      // Cap high-frequency triggers to 1 per trip — prevents e.g. 6 rest-break cards on a 6-day trip
+      const CAP_PER_TRIP: Partial<Record<string, number>> = { rest: 1, social_gap: 2, culture: 2 };
+      const tripTriggerCount = new Map<string, number>();
+      for (const [di, recos] of recosByDayIdx) {
+        const filtered = recos.filter(r => {
+          const cap = CAP_PER_TRIP[r.trigger];
+          if (cap == null) return true;
+          const count = tripTriggerCount.get(r.trigger) ?? 0;
+          if (count >= cap) return false;
+          tripTriggerCount.set(r.trigger, count + 1);
+          return true;
+        });
+        recosByDayIdx.set(di, filtered);
+      }
     }
 
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
@@ -613,9 +628,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     const cityName = activeItinerary?.city ?? activeItinerary?.cities?.[0] ?? '';
 
     const STEPS: { label: string; done: boolean }[] = [
-      { label: 'Itinerary built',        done: !!activeItinerary },
-      { label: 'Gathering photos',       done: loadingStep >= 1 },
-      { label: 'Loading your itinerary', done: imagesReady },
+      { label: 'Building your itinerary', done: !!activeItinerary },
+      { label: 'Gathering photos',        done: loadingStep >= 1 },
+      { label: 'Preparing your reel',     done: imagesReady },
     ];
     const activeStep = STEPS.findIndex(s => !s.done);
 
@@ -728,7 +743,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: imagesReady ? '100%' : loadingStep >= 1 ? '66%' : activeItinerary ? '33%' : '5%',
+              width: imagesReady ? '100%' : loadingStep >= 1 ? '66%' : activeItinerary ? '33%' : '8%',
               background: 'linear-gradient(90deg, rgba(212,168,83,.5), rgba(212,168,83,.9))',
               borderRadius: 99,
               transition: 'width .6s cubic-bezier(.25,0,0,1)',
