@@ -232,7 +232,9 @@ export function MapScreen() {
     state.travelStartDate, state.travelEndDate, activeCityDays,
   )
 
-  const cityAbortRef = useRef<AbortController | null>(null);
+  const cityAbortRef    = useRef<AbortController | null>(null);
+  const panZoomAbortRef = useRef<AbortController | null>(null);
+  const inFlightRef     = useRef(0);
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
@@ -242,18 +244,23 @@ export function MapScreen() {
   ) => {
     if (!city) return;
 
-    // Cancel any in-flight city-replace request before starting a new one
-    let signal: AbortSignal | undefined;
+    let signal: AbortSignal;
     if (replace) {
       cityAbortRef.current?.abort();
       cityAbortRef.current = new AbortController();
       signal = cityAbortRef.current.signal;
+    } else {
+      // Abort the previous pan/zoom fetch before starting a new one
+      panZoomAbortRef.current?.abort();
+      panZoomAbortRef.current = new AbortController();
+      signal = panZoomAbortRef.current.signal;
     }
 
+    inFlightRef.current += 1;
     setMapStatus('loading');
     try {
       const raw = await mapData(city, centerLat, centerLon, radiusM, signal);
-      if (signal?.aborted) return;
+      if (signal.aborted) return;
       const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({
         ...p,
         id: p.id ?? `${p.title}-${i}`,
@@ -263,9 +270,12 @@ export function MapScreen() {
         : { type: 'MERGE_PLACES', places: withIds },
       );
     } catch (e) {
-      console.error('[MapScreen] handleAreaLoad failed:', e);
+      if ((e as { name?: string }).name !== 'AbortError') {
+        console.error('[MapScreen] handleAreaLoad failed:', e);
+      }
     } finally {
-      setMapStatus('idle');
+      inFlightRef.current -= 1;
+      if (inFlightRef.current === 0) setMapStatus('idle');
       setInitialLoading(false);
     }
   }, [city, dispatch]);
