@@ -10,7 +10,6 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
-import { REC_RULES } from '../rec-rules';
 import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, ReelDayNudgeCard, DayIntelObservation } from './types';
 import { computeHotelAnchorRow } from './hotel-anchor';
 
@@ -114,17 +113,6 @@ function dayDistanceSplit(stops: EngineItineraryStop[]): { walkKm: number; rideK
   return { walkKm: Math.round(walkTotal * 10) / 10, rideKm: Math.round(rideTotal * 10) / 10 };
 }
 
-function hasMealInWindow(stops: EngineItineraryStop[], start: string, end: string): boolean {
-  // Widen by 90 min each side so an engine-inserted lunch at e.g. 11:00 or 14:45 isn't missed
-  const startMin = timeToMinutes(start) - 90;
-  const endMin   = timeToMinutes(end)   + 90;
-  return stops.some(s => {
-    const isMeal = s.category === 'restaurant' || s.category === 'cafe' || s.category === 'bakery'
-      || s.category === 'fast_food' || s.category === 'food' || s.category === 'meal_takeaway';
-    const t = timeToMinutes(s.time);
-    return isMeal && t >= startMin && t <= endMin;
-  });
-}
 
 const DEFAULT_WEIGHTS: EngineWeights = {
   w_walk_affinity: 0.5,
@@ -226,159 +214,6 @@ function triggerCTA(trigger: string, city: string): string {
   return city ? `${base} in ${city}` : base;
 }
 
-function buildMealObservations(
-  stops: EngineItineraryStop[],
-  city: string,
-): DayIntelObservation[] {
-  const obs: DayIntelObservation[] = [];
-
-  for (const window of REC_RULES.MEAL_WINDOWS) {
-    if (hasMealInWindow(stops, window.start, window.end)) continue;
-
-    if (window.type === 'lunch') {
-      const hasStopAtOrAfterWindow = stops.some(
-        s => timeToMinutes(s.time) >= timeToMinutes(window.start),
-      );
-      if (!hasStopAtOrAfterWindow) continue;
-    }
-
-    const lastStop = stops.at(-1);
-    if (!lastStop) continue;
-
-    const trigger = window.type as 'lunch' | 'dinner';
-    obs.push({
-      id: `meal-${window.type}-${lastStop.id}`,
-      trigger,
-      what: window.type === 'lunch' ? 'No lunch in the plan' : 'No dinner in the plan',
-      why: window.type === 'lunch'
-        ? 'Day runs through midday with no meal window covered.'
-        : 'Day plan has nothing for the evening meal.',
-      consequence: window.type === 'lunch'
-        ? 'A few well-rated spots are within reach.'
-        : 'Worth one reservation if you plan to eat out.',
-      ctaLabel: triggerCTA(trigger, city),
-      stopLat: lastStop.lat,
-      stopLon: lastStop.lon,
-      searchCategory: TRIGGER_SEARCH[trigger] ?? '',
-      anchorCity: city,
-    });
-  }
-
-  return obs;
-}
-
-// Archetypes that strongly care about each reco type — threshold drops to 0 for these
-const CULTURE_ARCHETYPES  = ['slowscholar', 'aesthete', 'historian'];
-const EVENING_ARCHETYPES  = ['nightcreature', 'pulse'];
-const REST_ARCHETYPES     = ['ritualseeker', 'flaneur'];
-
-function buildPersonaObservations(
-  stops: EngineItineraryStop[],
-  persona: string,
-  city: string,
-  weights: EngineWeights,
-): DayIntelObservation[] {
-  const obs: DayIntelObservation[] = [];
-  if (stops.length === 0) return obs;
-
-  const archetypeLower = persona.toLowerCase().replace(/\s+/g, '');
-  const lastStop = stops.at(-1)!;
-  const lastEndMin = timeToMinutes(lastStop.time) + lastStop.durationMin;
-
-  const eveningThreshold = EVENING_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
-  if (weights.w_nightlife >= eveningThreshold && lastEndMin < 21 * 60) {
-    obs.push({
-      id: `evening-${lastStop.id}`,
-      trigger: 'evening',
-      what: 'Evening is completely free',
-      why: `Day wraps at ${minutesToTime(lastEndMin)} with nothing after.`,
-      consequence: `${Math.round((21 * 60 - lastEndMin) / 60)}+ hours in ${city || 'the city'} with no plan — worth one intentional pick.`,
-      ctaLabel: triggerCTA('evening', city),
-      stopLat: lastStop.lat,
-      stopLon: lastStop.lon,
-      searchCategory: TRIGGER_SEARCH.evening,
-      anchorCity: city,
-    });
-  }
-
-  const cultureThreshold = CULTURE_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
-  if (weights.w_culture_depth >= cultureThreshold) {
-    const hasCulture = stops.some(s =>
-      s.category === 'museum' || s.category === 'gallery' || s.category === 'historic',
-    );
-    if (!hasCulture) {
-      const cats = [...new Set(stops.map(s => s.category).filter(Boolean))].slice(0, 3).join(', ');
-      obs.push({
-        id: `culture-${lastStop.id}`,
-        trigger: 'culture',
-        what: 'No cultural visit today',
-        why: `${stops.length} stops${cats ? ` — ${cats}` : ''}. No museum, gallery, or historic interior.`,
-        consequence: `Most likely gap to leave the day feeling thin for your style. ${city ? `${city}'s` : 'Local'} galleries are worth a look.`,
-        ctaLabel: triggerCTA('culture', city),
-        stopLat: lastStop.lat,
-        stopLon: lastStop.lon,
-        searchCategory: TRIGGER_SEARCH.culture,
-        anchorCity: city,
-      });
-    }
-  }
-
-  const restThreshold = REST_ARCHETYPES.includes(archetypeLower) ? 0 : 0.55;
-  if (weights.w_rest_need >= restThreshold && stops.length >= 3) {
-    const hasCafeBreak = stops.some(s => s.category === 'cafe' || s.category === 'bakery');
-    if (!hasCafeBreak) {
-      obs.push({
-        id: `rest-${lastStop.id}`,
-        trigger: 'rest',
-        what: `${stops.length} stops, no break`,
-        why: 'Back-to-back with no café or sit-down rest window.',
-        consequence: 'A 20-minute sit-down mid-day could reduce fatigue on a full schedule.',
-        ctaLabel: triggerCTA('rest', city),
-        stopLat: lastStop.lat,
-        stopLon: lastStop.lon,
-        searchCategory: TRIGGER_SEARCH.rest,
-        anchorCity: city,
-      });
-    }
-  }
-
-  return obs;
-}
-
-// ── Weather + closing-conflict info is shown on each ReelStopCard ────────────
-// (weather chip, conflict banner, logistics bar) — no separate reco cards needed
-
-// ── Walking-gap observation ───────────────────────────────────
-
-function buildWalkingGapObservations(
-  stops: EngineItineraryStop[],
-  city: string,
-  weights: EngineWeights,
-  walkBaseKm = 2.0,
-): DayIntelObservation[] {
-  if (weights.w_walk_affinity >= 0.65) return [];
-  const walkThresholdKm = walkBaseKm * (0.6 + weights.w_walk_affinity * 0.8);
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i];
-    const b = stops[i + 1];
-    const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-    if (distKm > walkThresholdKm) {
-      return [{
-        id: `walking-${a.id}-${b.id}`,
-        trigger: 'walking_gap',
-        what: `${distKm.toFixed(1)} km gap between stops`,
-        why: `${a.title} → ${b.title} is a long stretch on foot.`,
-        consequence: 'A rest spot or café midway could break it up without losing time.',
-        ctaLabel: triggerCTA('walking_gap', city),
-        stopLat: a.lat,
-        stopLon: a.lon,
-        searchCategory: TRIGGER_SEARCH.walking_gap,
-        anchorCity: city,
-      }];
-    }
-  }
-  return [];
-}
 
 // ── Walkable detour observations ─────────────────────────────
 // Fires for non-walk personas when a walkable leg exists that they'd naturally skip.
@@ -441,31 +276,6 @@ export function buildWalkableDetourObservations(
     if (obs.length >= 1) break; // surface at most one per day — don't overwhelm
   }
 
-  return obs;
-}
-
-// ── Discovery observations ────────────────────────────────────
-function buildDiscoveryObservations(
-  stops: EngineItineraryStop[],
-  city: string,
-): DayIntelObservation[] {
-  const obs: DayIntelObservation[] = [];
-  for (const stop of stops) {
-    if (stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0) {
-      obs.push({
-        id: `trending-${stop.id}`,
-        trigger: 'hidden_gem',
-        what: `${stop.title} is trending`,
-        why: `Gaining traction ${Math.round(stop.velocityRatio ?? 2)}× faster than similar places.`,
-        consequence: 'Catch it before the crowds arrive — it may be harder to visit a year from now.',
-        ctaLabel: 'View on map',
-        stopLat: stop.lat,
-        stopLon: stop.lon,
-        searchCategory: '',
-        anchorCity: city,
-      });
-    }
-  }
   return obs;
 }
 
@@ -1115,7 +925,7 @@ export function buildReelCards(
       const nudge: ReelDayNudgeCard = {
         type: 'day_nudge',
         id: `day-nudge-${dayIdx}`,
-        city: day.city || city || '',
+        city: day.city || itinerary.city || itinerary.cities?.[0] || '',
         day: logicalDayNum,
         totalDays: logicalTotalDays,
         stopCount: sortedStops.length,

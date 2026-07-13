@@ -767,22 +767,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
   // Build displayCards: collect scenic/reco/intel cards between stops into group trays
   const displayCards: ReelCard[] = (() => {
-    const TRIGGER_META: Record<string, { label: string; icon: string; color: string }> = {
-      lunch:             { label: 'Lunch window',    icon: 'restaurant',      color: '#c27c4a' },
-      dinner:            { label: 'Dinner window',   icon: 'dinner_dining',   color: '#7c6f9f' },
-      evening:           { label: 'Evening',         icon: 'nightlight',      color: '#7c6f9f' },
-      culture:           { label: 'Culture',         icon: 'museum',          color: '#8b9e6a' },
-      rest:              { label: 'Rest break',      icon: 'local_cafe',      color: '#d4a853' },
-      hidden_gem:        { label: 'Hidden gem',      icon: 'auto_awesome',    color: '#8b9e6a' },
-      category_diversity:{ label: 'Variety',         icon: 'grid_view',       color: '#8b9e6a' },
-      social_gap:        { label: 'Social',          icon: 'people',          color: '#4f8fab' },
-      density_sparse:    { label: 'Room to add',     icon: 'explore',         color: '#8b9e6a' },
-      famous_spots:      { label: 'Landmarks',       icon: 'museum',          color: '#7b9fcf' },
-      local_food:        { label: 'Local food',      icon: 'lunch_dining',    color: '#c27c4a' },
-      photo_detour:      { label: 'Photo moment',    icon: 'camera',          color: '#9b8eb8' },
-      walkable_detour:   { label: 'Worth the walk',    icon: 'directions_walk', color: '#8b9e6a' },
-    };
-
     // Contextual fallback images — used when no real place photo is available.
     // Selected by trigger type and travel group so they feel intentional, not generic.
     const u = (id: string) => `https://images.unsplash.com/photo-${id}?w=600&q=75`;
