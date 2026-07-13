@@ -200,7 +200,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails: _onShowTripDeta
           )}
           <span style={CHIP}>
             <span className="ms fill" style={{ fontSize: 15 }}>place</span>
-            {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}
+            {card.totalStops} {card.totalStops === 1 ? 'stop' : 'stops'}{(card.totalRecos ?? 0) > 0 ? ` · ${card.totalRecos} picks` : ''}
           </span>
           {card.totalDistanceKm > 0 && (
             <span style={CHIP}>

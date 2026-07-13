@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReelRecoCard as ReelRecoCardType } from './types';
 import { useReelRecommendations } from './useReelRecommendations';
 
@@ -46,6 +46,8 @@ const TRIGGER_CFG: Record<string, { icon: string; color: string; bg: string; bor
 
 const PRICE_DOTS: Record<number, string> = { 0: 'Free', 1: '$', 2: '$$', 3: '$$$', 4: '$$$$' };
 
+const GOLD = '#d4a853';
+
 export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInteract, onMapNavigate }: Props) {
   const cfg = TRIGGER_CFG[card.trigger] ?? TRIGGER_CFG.rest;
   const { places, loading, photoUrl } = useReelRecommendations(
@@ -56,12 +58,25 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
   const photo  = photoUrl ?? card.anchorPhotoUrl ?? null;
   const isDone = !loading;
 
+  const [expanded, setExpanded] = useState(false);
+  const expandedRef = useRef(false);
+  const panelTouchY = useRef(0);
+
+  const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
+
+  const onPanelTouchStart = (e: React.TouchEvent) => { panelTouchY.current = e.touches[0].clientY; };
+  const onPanelTouchEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - panelTouchY.current;
+    if (Math.abs(dy) < 24) return;
+    e.preventDefault();
+    if (dy < 0) setExpandedSync(true);
+    if (dy > 0) setExpandedSync(false);
+  };
+
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // No place found after load — render invisible placeholder so snap scroll stays intact
-  if (isDone && !place) {
-    return <div className="reel-card" style={{ width: '100%', height: '100dvh', background: '#0c0d0e' }} />;
-  }
+  // No place found after load — remove from snap scroll entirely
+  if (isDone && !place) return null;
 
   return (
     <div className="reel-card" style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden', background: '#0c0d0e' }}>
@@ -74,135 +89,165 @@ export function ReelRecoCard({ card, active, archetype, existingPlaceIds, onInte
         />
       )}
 
-      {/* Gradient — heavier at bottom so text is always legible */}
+      {/* Gradient scrim */}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(12,13,14,0.15) 0%, rgba(12,13,14,0.45) 35%, rgba(12,13,14,0.96) 72%)' }} />
 
-      {/* Top badges */}
+      {/* Trigger chip — top left */}
       <div style={{
         position: 'absolute',
         top: 'calc(env(safe-area-inset-top, 0px) + 18px)',
-        left: 20, right: 20,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        left: 20,
         opacity: active ? 1 : 0, transition: 'opacity .35s ease',
       }}>
-        {/* Trigger chip */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: cfg.bg, border: `1px solid ${cfg.border}`, backdropFilter: 'blur(8px)' }}>
           <span className="ms fill" style={{ fontSize: 13, color: cfg.color }}>{cfg.icon}</span>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: cfg.color }}>{cfg.chipLabel}</span>
         </div>
-
-        {/* Our Pick badge */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 999, background: 'rgba(212,168,83,0.14)', border: '1px solid rgba(212,168,83,0.4)', backdropFilter: 'blur(8px)' }}>
-          <span className="ms fill" style={{ fontSize: 12, color: '#d4a853' }}>star</span>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#d4a853' }}>Our Pick</span>
-        </div>
       </div>
 
-      {/* Loading shimmer */}
-      {loading && (
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 120px' }}>
-          <div style={{ height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.07)', marginBottom: 14, width: '35%', animation: 'pulse 1.6s ease-in-out infinite' }} />
-          <div style={{ height: 38, borderRadius: 8, background: 'rgba(255,255,255,0.1)', marginBottom: 10, animation: 'pulse 1.6s ease-in-out infinite' }} />
-          <div style={{ height: 14, borderRadius: 6, background: 'rgba(255,255,255,0.05)', width: '55%', marginBottom: 28, animation: 'pulse 1.6s ease-in-out infinite' }} />
-          <div style={{ height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.6s ease-in-out infinite' }} />
+      {/* Panel — same structure as stop card */}
+      <div
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10,
+          background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)',
+          borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none',
+          overflow: 'hidden',
+          touchAction: expanded ? 'none' : 'pan-y',
+          height: expanded ? '86dvh' : 'auto',
+          transition: 'height 0.44s cubic-bezier(.22,1,.36,1)',
+          display: 'flex', flexDirection: 'column',
+        }}
+        onTouchStart={onPanelTouchStart}
+        onTouchEnd={onPanelTouchEnd}
+      >
+        {/* Drag handle */}
+        <div
+          onClick={(e) => { e.stopPropagation(); setExpandedSync(!expandedRef.current); }}
+          style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+        >
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.22)' }} />
         </div>
-      )}
 
-      {/* Place content */}
-      {place && (
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          padding: '0 24px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
-        }}>
+        {/* Content */}
+        <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
 
-          {/* Meta row: rating + distance + price */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8,
-            opacity: active ? 1 : 0,
-            transform: active ? 'translateY(0)' : 'translateY(6px)',
-            transition: 'opacity .38s .08s ease, transform .38s .08s ease',
-          }}>
-            {place.rating != null && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, fontWeight: 600, color: '#d4a853' }}>
-                <span className="ms fill" style={{ fontSize: 13 }}>star</span>
-                {place.rating.toFixed(1)}
-              </span>
-            )}
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-              {place.distanceM < 1000 ? `${place.distanceM}m away` : `${(place.distanceM / 1000).toFixed(1)}km away`}
-            </span>
-            {place.priceLevel != null && (
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{PRICE_DOTS[place.priceLevel]}</span>
-            )}
+          {/* COLLAPSED */}
+          <div
+            style={{ display: expanded ? 'none' : 'block', padding: '0 20px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)' }}
+            onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
+          >
+            {/* Trigger label row */}
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: cfg.color, marginBottom: 8 }}>
+              {cfg.chipLabel} suggestion
+            </div>
+
+            {loading ? (
+              <>
+                <div style={{ height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.1)', marginBottom: 8, width: '68%', animation: 'pulse 1.6s ease-in-out infinite' }} />
+                <div style={{ height: 13, borderRadius: 6, background: 'rgba(255,255,255,0.07)', width: '50%', animation: 'pulse 1.6s ease-in-out infinite' }} />
+              </>
+            ) : place ? (
+              <>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: '#f5f0ea', lineHeight: 1.15, margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {place.name}
+                </h2>
+                {place.matchReasons.length > 0 && (
+                  <p style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(242,237,230,.52)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {place.matchReasons.join(' · ')}
+                  </p>
+                )}
+              </>
+            ) : null}
           </div>
 
-          {/* Place name */}
-          <h2 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: 32, fontWeight: 700, color: '#f5f0ea', lineHeight: 1.1,
-            margin: '0 0 6px',
-            opacity: active ? 1 : 0,
-            transform: active ? 'translateY(0)' : 'translateY(10px)',
-            transition: 'opacity .45s .15s ease, transform .45s .15s ease',
+          {/* EXPANDED */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            opacity: expanded ? 1 : 0,
+            pointerEvents: expanded ? 'auto' : 'none',
+            transition: 'opacity 0.22s ease 0.16s',
           }}>
-            {place.name}
-          </h2>
-
-          {/* City */}
-          <p style={{
-            fontSize: 13, color: 'rgba(255,255,255,0.45)', margin: '0 0 14px',
-            opacity: active ? 1 : 0, transition: 'opacity .4s .22s ease',
-          }}>
-            {card.nearbyCity}
-          </p>
-
-          {/* Match reason chips */}
-          {place.matchReasons.length > 0 && (
-            <div style={{
-              display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18,
-              opacity: active ? 1 : 0, transition: 'opacity .4s .28s ease',
-            }}>
-              {place.matchReasons.slice(0, 3).map(r => (
-                <span key={r} style={{
-                  fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
-                  background: 'rgba(212,168,83,0.12)', border: '1px solid rgba(212,168,83,0.25)', color: '#d4a853',
-                }}>
-                  {r}
-                </span>
-              ))}
+            {/* Meta strip */}
+            <div style={{ flexShrink: 0, padding: '4px 20px 13px', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: cfg.color }}>
+                {cfg.chipLabel} suggestion
+              </span>
             </div>
-          )}
 
-          {/* CTA */}
-          <button
-            onClick={() => {
-              onInteract?.('tapped');
-              if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
-                onMapNavigate(card.stopLat, card.stopLon, [{
-                  id: place.placeId,
-                  title: place.name,
-                  category: place.category as import('../../../shared/types').Category,
-                  lat: place.lat,
-                  lon: place.lon,
-                  place_id: place.placeId,
-                  rating: place.rating ?? undefined,
-                }]);
-              }
-            }}
-            style={{
-              width: '100%', padding: '15px 20px', borderRadius: 13,
-              border: '1px solid rgba(212,168,83,0.45)',
-              background: 'rgba(212,168,83,0.12)',
-              color: '#d4a853', fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.03em', cursor: 'pointer',
-              opacity: active ? 1 : 0, transition: 'opacity .4s .33s ease',
-            }}
-          >
-            See on map →
-          </button>
+            {/* Scroll area */}
+            <div
+              className="no-scrollbar"
+              style={{ flex: 1, overflowY: 'auto', touchAction: 'pan-y', padding: '18px 20px', paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
+            >
+              {place && (
+                <>
+                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: '#f5f0ea', lineHeight: 1.14, margin: '0 0 10px' }}>
+                    {place.name}
+                  </h2>
+
+                  {/* Meta: rating + distance + price + city */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {place.rating != null && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 13, fontWeight: 600, color: GOLD }}>
+                        <span className="ms fill" style={{ fontSize: 13 }}>star</span>
+                        {place.rating.toFixed(1)}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,.42)' }}>
+                      {place.distanceM < 1000 ? `${place.distanceM}m away` : `${(place.distanceM / 1000).toFixed(1)}km away`}
+                    </span>
+                    {place.priceLevel != null && (
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>{PRICE_DOTS[place.priceLevel]}</span>
+                    )}
+                    {card.nearbyCity && (
+                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>{card.nearbyCity}</span>
+                    )}
+                  </div>
+
+                  {/* Match reason chips */}
+                  {place.matchReasons.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
+                      {place.matchReasons.slice(0, 3).map(r => (
+                        <span key={r} style={{
+                          fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
+                          background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color,
+                        }}>
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Explore nearby CTA */}
+                  <div style={{ height: 1, background: 'rgba(255,255,255,.07)', margin: '20px 0' }} />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onInteract?.('tapped');
+                      if (onMapNavigate && card.stopLat != null && card.stopLon != null) {
+                        onMapNavigate(card.stopLat, card.stopLon, [{
+                          id: place.placeId,
+                          title: place.name,
+                          category: place.category as import('../../../shared/types').Category,
+                          lat: place.lat,
+                          lon: place.lon,
+                          place_id: place.placeId,
+                          rating: place.rating ?? undefined,
+                        }]);
+                      }
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '14px 16px', marginTop: 6, borderRadius: 14, border: 'none', background: `linear-gradient(135deg, ${GOLD} 0%, #c08535 100%)`, cursor: 'pointer', color: '#0a080a', fontSize: 15, fontWeight: 700, fontFamily: "'DM Sans',sans-serif", WebkitTapHighlightColor: 'transparent' }}
+                  >
+                    <span className="ms" style={{ fontSize: 18 }}>explore</span>
+                    Explore nearby
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

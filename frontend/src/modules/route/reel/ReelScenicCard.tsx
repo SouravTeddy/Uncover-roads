@@ -367,13 +367,21 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
             {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
           </div>
-          {/* Breadcrumb row */}
-          <div style={{ fontSize: 12, color: '#a08d80', marginBottom: 4 }}>
-            <span style={{ color: '#a08d80' }}>{card.from}</span>
-            {' → '}
-            <span style={{ color: '#a08d80' }}>{card.to}</span>
-            {' · '}
-            {card.detourMin} min {card.modeIcon === 'walk' ? 'walk' : 'drive'}
+          {/* Breadcrumb row + optional detour badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: '#a08d80' }}>
+              <span style={{ color: '#a08d80' }}>{card.from}</span>
+              {' → '}
+              <span style={{ color: '#a08d80' }}>{card.to}</span>
+              {' · '}
+              {card.detourMin} min {card.modeIcon === 'walk' ? 'walk' : 'drive'}
+            </div>
+            {!isHighWalk && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8, padding: '3px 9px', borderRadius: 6, background: 'rgba(196,181,253,.10)', border: '1px solid rgba(196,181,253,.25)' }}>
+                <span className="ms" style={{ fontSize: 12, color: 'rgba(196,181,253,.85)' }}>directions_walk</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(196,181,253,.85)' }}>Optional detour</span>
+              </div>
+            )}
           </div>
           {!isHighWalk && (
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
@@ -391,14 +399,6 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
             </div>
           )}
         </div>
-
-        {/* Badge — just above description */}
-        {!isHighWalk && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(196,181,253,.1)', border: '1px solid rgba(196,181,253,.25)' }}>
-            <span className="ms" style={{ fontSize: 15, color: 'rgba(196,181,253,.8)' }}>directions_walk</span>
-            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'rgba(196,181,253,.8)' }}>Optional detour</span>
-          </div>
-        )}
 
         {/* Why — persona voice */}
         <div style={{ fontSize: isHighWalk ? 15 : 15, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.6)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
