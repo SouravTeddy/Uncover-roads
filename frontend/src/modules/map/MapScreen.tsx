@@ -860,7 +860,6 @@ export function MapScreen() {
             onSelect={handleFilterSelect}
             onCategoriesSelect={(cats) => { setActiveCategories(cats); setActiveQuickPickLabel(null) }}
             onQuickPickSelect={handleQuickPickSelect}
-            empty={emptyArea && activeCategories.length > 0}
           />
         </div>
 
