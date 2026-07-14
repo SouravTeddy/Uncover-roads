@@ -125,21 +125,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     personaProfile?.archetype ??
     'Explorer';
 
-  const _archetype: string =
-    (activeItinerary as import('../../../shared/types').EngineItinerary | null)?.archetypeSnapshot ??
-    savedItem?.persona?.archetype ??
-    persona?.archetype ??
-    'explorer';
-
   const itineraryCities = activeItinerary
     ? (activeItinerary.cities?.length ? activeItinerary.cities : [activeItinerary.city ?? city].filter(Boolean))
     : [];
   const cityPhotoMap = useCityPhotoBatch(itineraryCities as string[]);
 
-  const _existingPlaceIds = [
-    ...state.selectedPlaces.map(p => p.place_id ?? p.id),
-    ...(activeItinerary?.days?.flatMap(d => d.stops.map(s => s.placeId).filter(Boolean)) ?? []),
-  ];
+
 
   const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);
