@@ -283,6 +283,10 @@ def derive_day_recos(
     social_target  = 0.6 if signal.archetype_group == "social" else 0.2
     hidden_gem_target = w.get("w_spontaneity", 0.4) * 0.6
 
+    print(f"[reco_engine] day flags: has_lunch={has_lunch} has_dinner={has_dinner} has_evening={has_evening} has_culture={has_culture} has_rest={has_rest} has_social={has_social} has_landmark={has_landmark} has_hidden_gem={has_hidden_gem}")
+    print(f"[reco_engine] targets: lunch={lunch_target:.2f} dinner={dinner_target:.2f} evening={evening_target:.2f} culture={culture_target:.2f} rest={rest_target:.2f} social={social_target:.2f}")
+    print(f"[reco_engine] stops={len(stops)} cats={[s.get('category','?') for s in sorted_stops]} times={[s.get('time','?') for s in sorted_stops]}")
+
     # ── Gap → trigger ──────────────────────────────────────────────────
     triggers: list[dict] = []
     counts: dict[str, int] = {}
