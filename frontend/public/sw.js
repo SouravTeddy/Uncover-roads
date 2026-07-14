@@ -1,4 +1,8 @@
-const CACHE_NAME = 'uncover-roads-v3';
+const CACHE_NAME = 'uncover-roads-v4';
+const IMAGE_CACHE_NAME = 'uncover-trip-images-v1';
+
+// Railway backend origin for place photos
+const RAILWAY_ORIGIN = 'https://web-production-19f5a.up.railway.app';
 
 // Static assets to pre-cache on install
 const STATIC_ASSETS = [
@@ -17,13 +21,13 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: clear old caches
+// Activate: clear old caches, but preserve image cache
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key !== CACHE_NAME)
+          .filter((key) => key !== CACHE_NAME && key !== IMAGE_CACHE_NAME)
           .map((key) => caches.delete(key))
       )
     )
@@ -36,8 +40,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin requests
-  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (request.method !== 'GET') return;
+
+  // Cache-first for Railway place-photo images (cross-origin)
+  if (url.origin === RAILWAY_ORIGIN && url.pathname.startsWith('/place-photo')) {
+    event.respondWith(imageCacheFirst(request));
+    return;
+  }
+
+  // Skip other cross-origin requests
+  if (url.origin !== self.location.origin) return;
 
   // Network-first for API calls
   if (url.pathname.startsWith('/api/')) {
@@ -57,6 +69,21 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(cacheFirst(request));
 });
 
+async function imageCacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetch(request, { mode: 'cors' });
+    if (response.ok) {
+      const cache = await caches.open(IMAGE_CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return new Response('', { status: 503 });
+  }
+}
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -68,7 +95,6 @@ async function cacheFirst(request) {
     }
     return response;
   } catch {
-    // Offline and not cached — fail silently for sub-resources
     return new Response('', { status: 503 });
   }
 }

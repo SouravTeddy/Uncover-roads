@@ -88,6 +88,27 @@ async function enrichPhotoMomentCards(
   return result;
 }
 
+const IMAGE_CACHE_NAME = 'uncover-trip-images-v1';
+
+function preCacheTripImages(itinerary: import('../../../shared/types').EngineItinerary): void {
+  if (!('caches' in self)) return;
+  const urls: string[] = [];
+  for (const day of itinerary.days ?? []) {
+    for (const stop of day.stops ?? []) {
+      const url = (stop as any).imageUrl as string | undefined;
+      if (url && url.startsWith('http')) urls.push(url);
+    }
+  }
+  if (urls.length === 0) return;
+  caches.open(IMAGE_CACHE_NAME).then((cache) => {
+    for (const url of urls) {
+      cache.match(url).then((hit) => {
+        if (!hit) fetch(url, { mode: 'cors' }).then((r) => { if (r.ok) cache.put(url, r); }).catch(() => {});
+      });
+    }
+  }).catch(() => {});
+}
+
 function preloadImages(srcs: string[]): Promise<void> {
   if (srcs.length === 0) return Promise.resolve();
   return Promise.all(
@@ -141,7 +162,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const [removedStopIds, setRemovedStopIds] = useState<Set<string>>(new Set());
   const [undoPending, setUndoPending] = useState<{ id: string; label: string } | null>(null);
   const [saved, setSaved] = useState(!!savedItem);
-  const [imagesReady, setImagesReady] = useState(false);
+  const [imagesReady, setImagesReady] = useState(!!savedItem);
   // stop title → resolved image URL (for stops that had no photoRef at build time)
   const [resolvedStopImages, setResolvedStopImages] = useState<Map<string, string>>(new Map());
   const [loadingStep, setLoadingStep] = useState<0 | 1>(0);
@@ -423,25 +444,25 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     if (!activeItinerary || savedItem || saved || autoSavedRef.current) return;
     autoSavedRef.current = true;
     const id = `reel-${Date.now()}`;
-    dispatch({
-      type: 'SAVE_ITINERARY',
-      saved: {
-        id,
-        city: city || activeItinerary.city || activeItinerary.cities[0] || '',
-        date: new Date().toISOString(),
-        travelDate: state.travelStartDate,
-        cityLat: state.cityGeo?.lat ?? null,
-        cityLon: state.cityGeo?.lon ?? null,
-        selectedPlaces: state.selectedPlaces,
-        itinerary: activeItinerary as any,
-        persona: persona ?? { archetype: 'explorer', archetype_name: 'Explorer' } as any,
-        lastUpdateCheck: null,
-        pendingSwapCards: [],
-        journeyLegs: journey ?? null,
-        tripDetails: null,
-      },
-    });
+    const savedEntry = {
+      id,
+      city: city || activeItinerary.city || activeItinerary.cities[0] || '',
+      date: new Date().toISOString(),
+      travelDate: state.travelStartDate,
+      cityLat: state.cityGeo?.lat ?? null,
+      cityLon: state.cityGeo?.lon ?? null,
+      selectedPlaces: state.selectedPlaces,
+      itinerary: activeItinerary as any,
+      persona: persona ?? { archetype: 'explorer', archetype_name: 'Explorer' } as any,
+      lastUpdateCheck: null,
+      pendingSwapCards: [],
+      journeyLegs: journey ?? null,
+      tripDetails: null,
+    };
+    dispatch({ type: 'SAVE_ITINERARY', saved: savedEntry });
+    dispatch({ type: 'SET_REEL_SAVED_ID', id });
     setSaved(true);
+    preCacheTripImages(activeItinerary);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary]);
 
