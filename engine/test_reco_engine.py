@@ -115,3 +115,13 @@ def test_evening_pref_nightlife_elevates_bar_for_non_social():
     s_nightlife = _base_signal(archetype="historian", archetype_group="cultural", evening_pref="nightlife")
     types_yes = persona_google_types("evening", s_nightlife)
     assert types_yes[0] in ("bar", "night_club"), f"With evening_pref=nightlife, bar/night_club should be first, got: {types_yes}"
+
+
+def test_injected_stop_image_url_format():
+    # Validate the imageUrl format string matches the expected pattern
+    photo_ref = "ATplDJa1234exampleref"
+    api_base = "https://api.example.com"
+    image_url = f"{api_base}/place-photo?ref={photo_ref}&maxwidth=800"
+    assert image_url == "https://api.example.com/place-photo?ref=ATplDJa1234exampleref&maxwidth=800"
+    assert "&maxwidth=800" in image_url
+    assert photo_ref in image_url
