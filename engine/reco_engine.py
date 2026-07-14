@@ -76,6 +76,12 @@ TRIGGER_DEFAULTS: dict[str, tuple[str, int, str]] = {
 
 GAP_FLOOR = 0.20
 
+_TRIGGER_CAPS: dict[str, int] = {
+    "lunch": 1,
+    "dinner": 1,
+}
+_DEFAULT_TRIGGER_CAP = 2
+
 
 def _time_to_min(t: str) -> int:
     h, m = map(int, t.split(":"))
@@ -279,12 +285,14 @@ def derive_day_recos(
 
     # ── Gap → trigger ──────────────────────────────────────────────────
     triggers: list[dict] = []
-    seen: set[str] = set()
+    counts: dict[str, int] = {}
 
     def _emit(trigger: str, anchor: Optional[dict]) -> None:
-        if trigger in seen or anchor is None:
+        if counts.get(trigger, 0) >= _TRIGGER_CAPS.get(trigger, _DEFAULT_TRIGGER_CAP):
             return
-        seen.add(trigger)
+        if anchor is None:
+            return
+        counts[trigger] = counts.get(trigger, 0) + 1
         defaults = TRIGGER_DEFAULTS.get(trigger)
         if not defaults:
             return
