@@ -10,7 +10,7 @@ import type {
 } from '../../../shared/types';
 import { getPlacePhotoUrl } from '../../../shared/api';
 import { formatCityLabel } from '../../../shared/cityPhoto';
-import type { ReelCard, ReelStopCard, ReelRecoCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation } from './types';
+import type { ReelCard, ReelStopCard, ReelIntelCard, ReelScenicCard, ReelDayTransitionCard, DayIntelObservation } from './types';
 import { computeHotelAnchorRow } from './hotel-anchor';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -450,7 +450,6 @@ export function buildReelCards(
   _savedId: string | null,
   weatherByCity: Map<string, WeatherData> = new Map(),
   persona: string,
-  recosByDayIdx: Map<number, ReelRecoCard[]> = new Map(),
   cityPhotoMap: Map<string, string | null> = new Map(),
   _cityCountries: Record<string, string> = {},
   tripDetails?: TripDetails | null,
@@ -712,23 +711,6 @@ export function buildReelCards(
       dayScenic.map(({ _afterStopId, ...card }) => [_afterStopId, card as ReelScenicCard]),
     );
 
-    // Build reco lookup: afterStopId → ReelRecoCard[]
-    // Recos are pushed directly to cards after their anchor stop (not converted to observations).
-    const engineRecos = recosByDayIdx.get(dayIdx) ?? [];
-    // Deduplicate by trigger type per day — keep only the first reco for each trigger
-    const seenTriggers = new Set<string>();
-    const dedupedRecos = engineRecos.filter(r => {
-      if (seenTriggers.has(r.trigger)) return false;
-      seenTriggers.add(r.trigger);
-      return true;
-    });
-    const recoByAfterStopId = new Map<string, ReelRecoCard[]>();
-    for (const reco of dedupedRecos) {
-      const key = reco.afterStopId ?? '__end__';
-      if (!recoByAfterStopId.has(key)) recoByAfterStopId.set(key, []);
-      recoByAfterStopId.get(key)!.push(reco);
-    }
-
     // Build scenic corridor map from backend-generated cards (ORS + Overpass + pysolar).
     const backendScenicByOriginId = new Map<string, ScenicCorridorCard>();
     for (const sc of (day.scenicCorridors ?? [])) {
@@ -856,13 +838,6 @@ export function buildReelCards(
       const scenicCard = scenicByStopId.get(stop.id);
       if (scenicCard) cards.push(scenicCard);
 
-      // Reco cards anchored to this stop — pushed as full ReelRecoCard objects
-      const stopRecos = recoByAfterStopId.get(stop.id);
-      if (stopRecos) {
-        for (const reco of stopRecos) cards.push(reco);
-        recoByAfterStopId.delete(stop.id);
-      }
-
       // Backend scenic corridor card — richer than the frontend heuristic (ORS + Overpass + pysolar).
       // Only fires when the backend sent scenicCorridors; otherwise falls back to walkable detour below.
       const backendScenic = backendScenicByOriginId.get(stop.id);
@@ -927,17 +902,6 @@ export function buildReelCards(
     // No separate wrap-up card needed.
 
     // day_nudge removed — reco engine fills sparse days with prefetched "Our pick" stops
-  }
-
-  // Balance card: engine ran, zero recos, and no observations — plan is genuinely well-balanced
-  const allRecosCount = Array.from(recosByDayIdx.values()).reduce((sum, r) => sum + r.length, 0);
-  if (recosByDayIdx.size > 0 && allRecosCount === 0) {
-    const allCategories = new Set(allStops.map(s => s.category));
-    cards.push({
-      type: 'balance',
-      message: buildBalanceMessage(persona, stopCount, allCategories),
-      persona,
-    });
   }
 
   const orderedStops = itinerary.days.flatMap(d =>

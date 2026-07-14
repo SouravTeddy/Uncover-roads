@@ -3,13 +3,12 @@ import { useAppStore } from '../../../shared/store';
 import { buildReelCards } from './reel-builder';
 import { ReelIntroCard } from './ReelIntroCard';
 import { ReelStopCard } from './ReelStopCard';
-import { ReelRecoCard } from './ReelRecoCard';
 import { ReelIntelCard } from './ReelIntelCard';
 import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
-import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType } from './types';
+import type { ReelCard, ReelStopCard as ReelStopCardType } from './types';
 import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
@@ -19,7 +18,6 @@ import ReelScenicCard from './ReelScenicCard';
 import { ReelGroupCard } from './ReelGroupCard';
 import { ReelDayIntelCard } from './ReelDayIntelCard';
 import { ReelGrowthCard } from './ReelGrowthCard';
-import { buildInteraction } from '../reco-engine';
 import { rebalanceItinerary } from './rebalance';
 import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
@@ -190,8 +188,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // Rebalance stops across days for even distribution before building reel cards.
     const balancedItinerary = baseItinerary ? rebalanceItinerary(baseItinerary) : baseItinerary;
 
-    const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
-
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
     const itineraryForBuild = {
@@ -206,7 +202,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       })),
     };
 
-    const built = buildReelCards(itineraryForBuild, journeyLegs, reelSavedId, wxByCity, pName, recosByDayIdx, photoMap, cityCountries, tripDetailsRef.current, state.rawOBAnswers?.group ?? 'solo');
+    const built = buildReelCards(itineraryForBuild, journeyLegs, reelSavedId, wxByCity, pName, photoMap, cityCountries, tripDetailsRef.current, state.rawOBAnswers?.group ?? 'solo');
 
     // Also patch any stop cards that still have no image (title-lookup fallback)
     for (const card of built) {
@@ -218,7 +214,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
     return built.filter(c => {
       if (c.type === 'stop') return !removedStopIds.has(c.stop.id);
-      if (c.type === 'reco') return !removedStopIds.has(c.afterStopId);
       return true;
     });
   }
@@ -994,20 +989,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
               onRegisterPanelControl={isActive ? registerPanelControl : undefined}
             />;
           }
-          else if (card.type === 'reco')    child = (
-            <ReelRecoCard
-              card={card} active={isActive}
-              archetype={archetype}
-              existingPlaceIds={existingPlaceIds}
-              onInteract={(action) => {
-                const interaction = buildInteraction(
-                  card, action, card.id.includes('-conflict'),
-                  archetype, state.rawOBAnswers?.pace?.[0] ?? 'moderate', null, 1, state.weather?.condition ?? null,
-                );
-                dispatch({ type: 'ADD_RECO_INTERACTION', interaction });
-              }}
-            />
-          );
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
           else if (card.type === 'transit') child = <ReelTransitCard  card={card} active={isActive} />;
           else if (card.type === 'balance') child = <ReelBalanceCard card={card} active={isActive} />;
