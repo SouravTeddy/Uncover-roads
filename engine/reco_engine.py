@@ -197,7 +197,7 @@ _PERSONA_TYPE_MAP: dict = {
 }
 
 
-def persona_google_types(trigger: str, signal: "RecoSignal") -> list:
+def persona_google_types(trigger: str, signal: "RecoSignal") -> list[str]:
     """
     Returns ordered list of Google Place API types to try for a trigger,
     personalised by archetype group, group type (family), and mood.
