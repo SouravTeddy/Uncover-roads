@@ -423,25 +423,6 @@ function deriveTransitMode(distKm: number): 'flight' | 'drive' | 'train' | null 
 }
 
 
-// ── Balance message builder ──────────────────────────────────
-
-function buildBalanceMessage(
-  persona: string,
-  stopCount: number,
-  categories: Set<string>,
-): string {
-  const hasFood = categories.has('restaurant') || categories.has('cafe');
-  const hasCulture = categories.has('museum') || categories.has('gallery') || categories.has('historic');
-  const hasNature = categories.has('park') || categories.has('viewpoint') || categories.has('beach');
-
-  if (stopCount <= 2) return `A focused ${stopCount}-stop day — everything at your pace.`;
-  if (hasCulture && hasFood && hasNature) return `Culture, food, and open space. A complete day.`;
-  if (hasCulture && hasFood) return `${stopCount} stops — culture and meals balanced.`;
-  if (hasNature && hasFood) return `${stopCount} stops — outdoor and food covered.`;
-  if (hasFood) return `${stopCount} stops with meals built in.`;
-  return `${stopCount} stops, well-paced for ${persona}.`;
-}
-
 // ── Main builder ─────────────────────────────────────────────
 
 export function buildReelCards(
