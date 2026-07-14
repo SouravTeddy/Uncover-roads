@@ -882,11 +882,6 @@ export function buildReelCards(
 
     }
 
-    // Flush any recos whose afterStopId wasn't found in this day's stops
-    for (const recos of recoByAfterStopId.values()) {
-      for (const reco of recos) cards.push(reco);
-    }
-
     // Remaining intel cards not matched to a specific stop — push after all stops
     const intelAnchorStop = sortedStops.at(-1);
     const lastStopImage = intelAnchorStop

@@ -722,16 +722,3 @@ export interface ActiveBuild {
   startedAt?: number; // Date.now() when build was started
 }
 
-/** A persona-scored nearby place returned by /reel-reco. No AI text. */
-export interface ReelRecoPlace {
-  placeId: string
-  name: string
-  lat: number
-  lon: number
-  category: string
-  rating: number | null
-  priceLevel: number | null
-  distanceM: number
-  affinityScore: number
-  matchReasons: string[]
-}
