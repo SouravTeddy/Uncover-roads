@@ -536,11 +536,12 @@ export function MapScreen() {
         startDate,
         selectedPlaces: interleaved,
         personaArchetype: personaProfile?.archetype ?? 'explorer',
-        engineWeights: null,
+        engineWeights: (state.persona as { weights?: Record<string, number> })?.weights ?? null,
         cities: orderedCities.length > 1 ? orderedCities : undefined,
         arrivalTime: state.pendingTripDetails?.arrivalTime ?? null,
         departureTime: state.pendingTripDetails?.departureTime ?? null,
         startType: state.tripContext.startType ?? 'hotel',
+        rawOBAnswers: state.rawOBAnswers ?? null,
       });
 
       dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending', startedAt: Date.now() } });

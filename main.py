@@ -172,6 +172,7 @@ class EngineItineraryPayload(BaseModel):
     arrivalTime: Optional[str] = None   # user's actual arrival time for day-1 adjustment
     departureTime: Optional[str] = None  # user's departure time on last day
     startType: Optional[str] = "hotel"  # 'airport' | 'hotel' | 'custom'
+    rawOBAnswers: Optional[dict] = None
 
 
 # ── Phase 5 Startup: City Seed + Sync Scheduler ──────────────────────────────
