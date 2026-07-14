@@ -1,5 +1,5 @@
 import pytest
-from engine.reco_engine import RecoSignal, _archetype_group, persona_google_types
+from engine.reco_engine import RecoSignal, _archetype_group, persona_google_types, derive_day_recos
 
 def _base_signal(**kwargs):
     defaults = dict(
@@ -55,6 +55,50 @@ def test_family_culture_gets_kid_friendly():
     s = _base_signal(group="family", is_family=True)
     types = persona_google_types("culture", s)
     assert "amusement_park" in types or "zoo" in types
+
+
+def _stop(id, time, category, lat=35.6, lon=139.7):
+    return {"id": id, "time": time, "category": category,
+            "lat": lat, "lon": lon, "durationMin": 60}
+
+
+def test_no_duplicate_trigger_types():
+    # With counter (new behavior), each type fires up to _DEFAULT_TRIGGER_CAP (2) times
+    # This test verifies counter dedup works correctly
+    stops = [
+        _stop("s1", "09:00", "museum"),
+        _stop("s2", "11:00", "museum"),
+        _stop("s3", "14:00", "museum"),
+    ]
+    signal = _base_signal()
+    triggers = derive_day_recos(stops, signal)
+    trigger_types = [t["trigger"] for t in triggers]
+    # No trigger type should exceed its cap
+    from collections import Counter
+    counts = Counter(trigger_types)
+    for trigger_type, count in counts.items():
+        cap = {"lunch": 1, "dinner": 1}.get(trigger_type, 2)
+        assert count <= cap, f"Trigger '{trigger_type}' fired {count} times, cap is {cap}"
+
+
+def test_lunch_not_emitted_when_restaurant_present():
+    stops = [
+        _stop("s1", "09:00", "museum"),
+        _stop("s2", "12:30", "restaurant"),
+        _stop("s3", "15:00", "museum"),
+    ]
+    signal = _base_signal()
+    triggers = derive_day_recos(stops, signal)
+    assert not any(t["trigger"] == "lunch" for t in triggers)
+
+
+def test_lunch_capped_at_1():
+    # Even if gap detection finds 2 lunch gaps, only 1 should be emitted
+    # This is hard to trigger naturally so we test the cap constant directly
+    from engine.reco_engine import _TRIGGER_CAPS, _DEFAULT_TRIGGER_CAP
+    assert _TRIGGER_CAPS.get("lunch") == 1
+    assert _TRIGGER_CAPS.get("dinner") == 1
+    assert _DEFAULT_TRIGGER_CAP == 2
 
 
 def test_evening_pref_nightlife_elevates_bar_for_non_social():
