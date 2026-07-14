@@ -4893,6 +4893,7 @@ def _resolve_reco_trigger(
     best: dict | None = None
     best_score = -1.0
 
+    print(f"[reco_resolve] trigger={trig} lat={lat} lon={lon} radius={radius} types={google_types}")
     for gtype in google_types:
         try:
             resp = requests.get(
@@ -4902,9 +4903,12 @@ def _resolve_reco_trigger(
                 timeout=5,
             )
             data = resp.json()
-            if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            status = data.get("status")
+            results = data.get("results", [])
+            print(f"[reco_resolve]   gtype={gtype} status={status} results={len(results)}")
+            if status not in ("OK", "ZERO_RESULTS"):
                 continue
-            for place in data.get("results", [])[:8]:
+            for place in results[:8]:
                 pid = place.get("place_id", "")
                 if not pid or pid in existing_place_ids:
                     continue
@@ -4914,9 +4918,11 @@ def _resolve_reco_trigger(
                     best_score = score
                     best = place
                     best["_gtype"] = gtype
-        except Exception:
+        except Exception as _e:
+            print(f"[reco_resolve]   gtype={gtype} exception={_e}")
             continue
 
+    print(f"[reco_resolve] trigger={trig} best={'found:'+best.get('name','?') if best else 'NONE'}")
     if not best:
         return None
 
@@ -5686,24 +5692,28 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             )
             _existing_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}
             _reco_triggers = derive_day_recos(stops_out, _reco_signal)
+            print(f"[reco_inject] day {i+1} stops={len(stops_out)} triggers={[t['trigger'] for t in _reco_triggers]}")
             for _trigger in _reco_triggers:
-                _trigger["_day_number"] = i + 1
-                _reco_stop = _resolve_reco_trigger(
-                    _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona,
-                    signal=_reco_signal,
-                )
-                if _reco_stop:
-                    # Insert after anchor stop; fall back to appending
-                    _anchor_id = _trigger.get("after_stop_id")
-                    _anchor_idx = next(
-                        (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1
+                try:
+                    _trigger["_day_number"] = i + 1
+                    _reco_stop = _resolve_reco_trigger(
+                        _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona,
+                        signal=_reco_signal,
                     )
-                    if _anchor_idx >= 0:
-                        stops_out.insert(_anchor_idx + 1, _reco_stop)
-                    else:
-                        stops_out.append(_reco_stop)
+                    if _reco_stop:
+                        # Insert after anchor stop; fall back to appending
+                        _anchor_id = _trigger.get("after_stop_id")
+                        _anchor_idx = next(
+                            (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1
+                        )
+                        if _anchor_idx >= 0:
+                            stops_out.insert(_anchor_idx + 1, _reco_stop)
+                        else:
+                            stops_out.append(_reco_stop)
+                except Exception as _reco_err:
+                    print(f"[reco_inject] day {i+1} trigger={_trigger.get('trigger')}: {_reco_err}")
         except Exception as _reco_err:
-            print(f"[reco_inject] day {i}: {_reco_err}")
+            print(f"[reco_inject] day {i+1} setup error: {_reco_err}")
             # Non-fatal: reco injection failure doesn't break the itinerary
 
         # Build scenic corridor cards keyed by origin stop id.
