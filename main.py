@@ -4866,7 +4866,7 @@ def _resolve_reco_trigger(
     if lat is None or lon is None:
         return None
 
-    from engine.reco_engine import TRIGGER_DEFAULTS
+    from engine.reco_engine import TRIGGER_DEFAULTS, persona_google_types
     _TRIGGER_TYPES: dict[str, list[str]] = {
         "lunch":      ["restaurant"],
         "dinner":     ["restaurant"],
@@ -4885,7 +4885,6 @@ def _resolve_reco_trigger(
     trig = trigger["trigger"]
     # Persona-aware type selection when signal is available
     if signal is not None:
-        from engine.reco_engine import persona_google_types
         google_types = persona_google_types(trig, signal)
     else:
         google_types = _TRIGGER_TYPES.get(trig, ["restaurant"])
