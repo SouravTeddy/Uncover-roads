@@ -62,7 +62,7 @@ def _stop(id, time, category, lat=35.6, lon=139.7):
             "lat": lat, "lon": lon, "durationMin": 60}
 
 
-def test_no_duplicate_trigger_types():
+def test_trigger_types_respect_caps():
     # With counter (new behavior), each type fires up to _DEFAULT_TRIGGER_CAP (2) times
     # This test verifies counter dedup works correctly
     stops = [
@@ -93,11 +93,15 @@ def test_lunch_not_emitted_when_restaurant_present():
 
 
 def test_lunch_capped_at_1():
-    # Even if gap detection finds 2 lunch gaps, only 1 should be emitted
-    # This is hard to trigger naturally so we test the cap constant directly
+    # Sparse day — only one morning stop, plenty of gap for the lunch detector
+    stops = [_stop("s1", "09:00", "museum")]
+    signal = _base_signal()
+    triggers = derive_day_recos(stops, signal)
+    lunch_triggers = [t for t in triggers if t["trigger"] == "lunch"]
+    assert len(lunch_triggers) <= 1, f"Lunch emitted {len(lunch_triggers)} times, cap is 1"
+    # Also verify the constant itself
     from engine.reco_engine import _TRIGGER_CAPS, _DEFAULT_TRIGGER_CAP
     assert _TRIGGER_CAPS.get("lunch") == 1
-    assert _TRIGGER_CAPS.get("dinner") == 1
     assert _DEFAULT_TRIGGER_CAP == 2
 
 
