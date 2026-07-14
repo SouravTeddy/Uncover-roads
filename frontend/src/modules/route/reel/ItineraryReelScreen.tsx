@@ -9,8 +9,7 @@ import { ReelTransitCard } from './ReelTransitCard';
 import { ReelFinaleCard } from './ReelFinaleCard';
 import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
-import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType, RecoTrigger } from './types';
-import { FOOD_CATS } from '../reco-engine/profile';
+import type { ReelCard, ReelRecoCard as ReelRecoCardType, ReelStopCard as ReelStopCardType } from './types';
 import type { WeatherData, TripDetails } from '../../../shared/types';
 import { api, getPlacePhotoUrl } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
@@ -20,16 +19,12 @@ import ReelScenicCard from './ReelScenicCard';
 import { ReelGroupCard } from './ReelGroupCard';
 import { ReelDayIntelCard } from './ReelDayIntelCard';
 import { ReelGrowthCard } from './ReelGrowthCard';
-import { computeRecoSignal, deriveRecos, buildInteraction } from '../reco-engine';
+import { buildInteraction } from '../reco-engine';
 import { rebalanceItinerary } from './rebalance';
-import { syncRecoInteractions } from '../../../shared/userSync';
-import { supabase } from '../../../shared/supabase';
 import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
-import { getLocalFoodFact } from './local-food-facts';
-
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -192,80 +187,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
     const baseItinerary = itinerary;
 
-    // Rebalance stops across days before computing recos so that reco cards
-    // are also distributed proportionally (they're derived per-day from stops).
+    // Rebalance stops across days for even distribution before building reel cards.
     const balancedItinerary = baseItinerary ? rebalanceItinerary(baseItinerary) : baseItinerary;
 
-    const LANDMARK_CATS_LOCAL = new Set(['museum', 'historic', 'tourism', 'gallery', 'amusement_park', 'zoo', 'aquarium']);
-
     const recosByDayIdx = new Map<number, ReelRecoCardType[]>();
-    if (balancedItinerary) {
-      (balancedItinerary.days ?? []).forEach((day, dayIdx) => {
-        const cityWeather = wxByCity.get(day.city.toLowerCase()) ?? null;
-        const signal = computeRecoSignal(
-          { ...state, weather: cityWeather },
-          dayIdx,
-          balancedItinerary,
-        );
-        const dayStops = balancedItinerary.days[dayIdx]?.stops ?? [];
-        const recos = deriveRecos(dayStops, signal);
-
-        const hasLandmark = dayStops.some(s => LANDMARK_CATS_LOCAL.has(s.category));
-        if (!hasLandmark && dayStops.length > 0 && recos.length < 4) {
-          const anchor = dayStops[Math.floor(dayStops.length / 2)];
-          recos.push({
-            type: 'reco',
-            id: `famous-spots-${day.city}-${dayIdx}`,
-            trigger: 'famous_spots' as ReelRecoCardType['trigger'],
-            label: `Famous spots in ${day.city}`,
-            consequence: `You haven't added any of ${day.city}'s iconic landmarks — browse what's nearby.`,
-            nearbyCity: day.city,
-            persona: signal.archetype,
-            afterStopId: anchor.id,
-            weightScore: 0.4,
-            stopLat: anchor.lat,
-            stopLon: anchor.lon,
-          });
-        }
-        const hasFoodReco = recos.some(r => r.trigger === 'lunch' || r.trigger === 'dinner' || r.trigger === 'local_food');
-        const foodFact = getLocalFoodFact(day.city);
-        const hasLowRichnessFoodStop = dayStops.some(
-          s => FOOD_CATS.has(s.category) && (!s.localTip || s.localTip.length < 80),
-        );
-        if (!hasFoodReco && foodFact && hasLowRichnessFoodStop) {
-          const anchor = dayStops[Math.floor(dayStops.length / 2)];
-          recos.push({
-            type: 'reco',
-            id: `local-food-${day.city}-${dayIdx}`,
-            trigger: 'local_food' as RecoTrigger,
-            label: foodFact.dish,
-            consequence: `${foodFact.context} ${foodFact.where}.`,
-            nearbyCity: day.city,
-            persona: signal.archetype,
-            afterStopId: anchor.id,
-            weightScore: 0.45,
-            stopLat: anchor.lat,
-            stopLon: anchor.lon,
-          });
-        }
-        recosByDayIdx.set(dayIdx, recos.filter(r => r.trigger !== 'walking_gap'));
-      });
-
-      // Cap high-frequency triggers to 1 per trip — prevents e.g. 6 rest-break cards on a 6-day trip
-      const CAP_PER_TRIP: Partial<Record<string, number>> = { rest: 1, social_gap: 2, culture: 2 };
-      const tripTriggerCount = new Map<string, number>();
-      for (const [di, recos] of recosByDayIdx) {
-        const filtered = recos.filter(r => {
-          const cap = CAP_PER_TRIP[r.trigger];
-          if (cap == null) return true;
-          const count = tripTriggerCount.get(r.trigger) ?? 0;
-          if (count >= cap) return false;
-          tripTriggerCount.set(r.trigger, count + 1);
-          return true;
-        });
-        recosByDayIdx.set(di, filtered);
-      }
-    }
 
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
@@ -612,15 +537,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     });
     setSaved(true);
   }, [saved, activeItinerary, city, dispatch, state, persona]);
-
-  useEffect(() => {
-    return () => {
-      if (state.recoInteractions.length === 0) return;
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) syncRecoInteractions(user.id, state.recoInteractions as any).catch(console.warn);
-      });
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!activeItinerary || !imagesReady || !state.persona) {
     const stopCount = activeItinerary?.days?.flatMap(d => d.stops ?? []).length ?? 0;
