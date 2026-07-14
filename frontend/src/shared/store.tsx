@@ -584,6 +584,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, route: action.route };
 
     case 'SAVE_ITINERARY': {
+      if (state.savedItineraries.some(s => s.id === action.saved.id)) return state;
       const saved = state.pendingTripDetails
         ? { ...action.saved, tripDetails: state.pendingTripDetails }
         : action.saved;
