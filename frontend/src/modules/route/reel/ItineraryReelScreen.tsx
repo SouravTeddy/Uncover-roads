@@ -125,7 +125,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     personaProfile?.archetype ??
     'Explorer';
 
-  const archetype: string =
+  const _archetype: string =
     (activeItinerary as import('../../../shared/types').EngineItinerary | null)?.archetypeSnapshot ??
     savedItem?.persona?.archetype ??
     persona?.archetype ??
@@ -136,7 +136,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     : [];
   const cityPhotoMap = useCityPhotoBatch(itineraryCities as string[]);
 
-  const existingPlaceIds = [
+  const _existingPlaceIds = [
     ...state.selectedPlaces.map(p => p.place_id ?? p.id),
     ...(activeItinerary?.days?.flatMap(d => d.stops.map(s => s.placeId).filter(Boolean)) ?? []),
   ];
@@ -362,8 +362,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           srcs.push(c.imageUrl);
         } else if (c.type === 'intel' && c.imageUrl) {
           srcs.push(c.imageUrl);
-        } else if (c.type === 'reco' && c.anchorPhotoUrl) {
-          srcs.push(c.anchorPhotoUrl);
         } else if (c.type === 'scenic') {
           if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
           if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
@@ -797,10 +795,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         flushGroup();
         result.push(card);
 
-      } else if (card.type === 'reco') {
-        flushGroup();
-        result.push(card);
-
       } else if (card.type === 'intel') {
         // EXCLUDE transit-decision intel cards — these say "taking transit because distance > X km"
         // which directly contradicts walk/scenic cards in the same group and confuses the user.
@@ -879,7 +873,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     );
   }
 
-  const dotCards = displayCards.filter(c => c.type !== 'reco' && c.type !== 'transit' && c.type !== 'intel' && c.type !== 'scenic' && c.type !== 'group' && c.type !== 'day_transition');
+  const dotCards = displayCards.filter(c => c.type !== 'transit' && c.type !== 'intel' && c.type !== 'scenic' && c.type !== 'group' && c.type !== 'day_transition');
   const activeDotIdx = (() => {
     let last = -1;
     for (let i = 0; i <= activeIdx; i++) {
@@ -1064,7 +1058,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           if (!child) return null;
           const cardKey =
             card.type === 'stop' ? card.stop.id :
-            card.type === 'reco' ? card.id :
             card.type === 'intel' ? card.id :
             card.type === 'transit' ? `transit-${card.from}-${card.to}` :
             card.type === 'day_divider' ? `day-${card.day}` :

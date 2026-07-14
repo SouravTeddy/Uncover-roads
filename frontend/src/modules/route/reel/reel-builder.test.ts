@@ -205,7 +205,7 @@ describe('buildReelCards', () => {
     ];
     const day = DAY('Bangalore', '2026-06-10', stops);
     const itin = { ...ITIN(stops), days: [day] };
-    const cards = buildReelCards(itin, null, null, new Map(), 'explorer', new Map([[0, []]]));
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
     const balance = cards.find(c => c.type === 'balance') as any;
     expect(balance).toBeDefined();
     expect(balance.message).not.toBe('Your day looks well-balanced for your style.');
