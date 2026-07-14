@@ -498,29 +498,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     setUndoPending(null);
   }, [undoPending]);
 
-  const handleSave = useCallback(() => {
-    if (saved || !activeItinerary) return;
-    const id = `reel-${Date.now()}`;
-    dispatch({
-      type: 'SAVE_ITINERARY',
-      saved: {
-        id,
-        city: city || activeItinerary.city || activeItinerary.cities[0] || '',
-        date: new Date().toISOString(),
-        travelDate: state.travelStartDate,
-        cityLat: state.cityGeo?.lat ?? null,
-        cityLon: state.cityGeo?.lon ?? null,
-        selectedPlaces: state.selectedPlaces,
-        itinerary: activeItinerary as any,
-        persona: persona!,
-        lastUpdateCheck: null,
-        pendingSwapCards: [],
-        journeyLegs: journey ?? null,
-        tripDetails: null,
-      },
-    });
-    setSaved(true);
-  }, [saved, activeItinerary, city, dispatch, state, persona]);
 
   if (!activeItinerary || !imagesReady || !state.persona) {
     const stopCount = activeItinerary?.days?.flatMap(d => d.stops ?? []).length ?? 0;
