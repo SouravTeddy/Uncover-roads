@@ -4880,7 +4880,22 @@ def _resolve_reco_trigger(
     }
     _TRIGGER_RADIUS: dict[str, int] = {
         "famous_spots": 3000, "culture": 2000, "hidden_gem": 1500,
+        "lunch": 1500, "dinner": 1500,
     }
+    # Per-trigger [min_min, max_min] clamp for display time (avoids lunch at 7 PM)
+    _TIME_CLAMP: dict[str, tuple[int, int]] = {
+        "lunch":      (660,  870),   # 11:00 – 14:30
+        "dinner":     (1020, 1260),  # 17:00 – 21:00
+        "evening":    (1140, 1380),  # 19:00 – 23:00
+        "rest":       (780,  1020),  # 13:00 – 17:00
+        "social_gap": (960,  1200),  # 16:00 – 20:00
+        "culture":    (540,  960),   # 09:00 – 16:00
+        "famous_spots": (540, 960),
+    }
+    # Place types that should never be recommended
+    _EXCLUDED_TYPES = {"lodging", "local_government_office", "political",
+                       "community_center", "neighborhood", "sublocality",
+                       "administrative_area_level_1", "administrative_area_level_2"}
 
     trig = trigger["trigger"]
     # Persona-aware type selection when signal is available
@@ -4911,6 +4926,9 @@ def _resolve_reco_trigger(
             for place in results[:8]:
                 pid = place.get("place_id", "")
                 if not pid or pid in existing_place_ids:
+                    continue
+                place_types = set(place.get("types") or [])
+                if place_types & _EXCLUDED_TYPES:
                     continue
                 rating = place.get("rating") or 0
                 score = rating / 5.0
@@ -4953,8 +4971,20 @@ def _resolve_reco_trigger(
     }
 
     import uuid as _uuid
-    _photo_ref = details.get("photo_ref") or None
+    _nearby_photo = (best.get("photos") or [{}])[0].get("photo_reference")
+    _photo_ref = details.get("photo_ref") or _nearby_photo or None
     _api_base = os.environ.get("API_BASE_URL", "")
+
+    # Compute display time: anchor_end + 15 min transit, clamped to sensible range per trigger
+    _anchor_end = trigger.get("anchor_end_min")
+    if _anchor_end is not None:
+        _lo, _hi = _TIME_CLAMP.get(trig, (540, 1260))
+        _raw_min = _anchor_end + 15
+        _clamped = max(_lo, min(_hi, _raw_min))
+        _reco_time = f"{_clamped // 60:02d}:{_clamped % 60:02d}"
+    else:
+        _reco_time = time_default
+
     return {
         "id":          f"reco-{trig}-{_uuid.uuid4().hex[:8]}",
         "placeId":     pid,
@@ -4962,7 +4992,7 @@ def _resolve_reco_trigger(
         "area":        "",
         "city":        trigger.get("city", ""),
         "day":         trigger.get("_day_number", 1),
-        "time":        time_default,
+        "time":        _reco_time,
         "durationMin": dur,
         "category":    category,
         "lat":         stop_lat,
@@ -5690,28 +5720,48 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 budget=_budget,
                 evening_pref=_evening_pref,
             )
-            _existing_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}
+            from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+            _base_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}
             _reco_triggers = derive_day_recos(stops_out, _reco_signal)
             print(f"[reco_inject] day {i+1} stops={len(stops_out)} triggers={[t['trigger'] for t in _reco_triggers]}")
+
+            def _resolve_one(trig_dict):
+                trig_dict["_day_number"] = i + 1
+                return trig_dict, _resolve_reco_trigger(
+                    trig_dict, set(_base_pids), _supabase, GOOGLE_PLACES_API_KEY, persona,
+                    signal=_reco_signal,
+                )
+
+            # Resolve all triggers in parallel (each gets its own pids snapshot)
+            _results: dict[str, dict] = {}
+            with ThreadPoolExecutor(max_workers=6) as _pool:
+                _futures = {_pool.submit(_resolve_one, t): t for t in _reco_triggers}
+                for _fut in _as_completed(_futures):
+                    try:
+                        _td, _reco_stop = _fut.result()
+                        if _reco_stop:
+                            _results[_td["trigger"]] = (_td, _reco_stop)
+                    except Exception as _e:
+                        print(f"[reco_inject] day {i+1}: {_e}")
+
+            # Insert in trigger order; deduplicate by placeId
+            _seen_pids = set(_base_pids)
             for _trigger in _reco_triggers:
-                try:
-                    _trigger["_day_number"] = i + 1
-                    _reco_stop = _resolve_reco_trigger(
-                        _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona,
-                        signal=_reco_signal,
-                    )
-                    if _reco_stop:
-                        # Insert after anchor stop; fall back to appending
-                        _anchor_id = _trigger.get("after_stop_id")
-                        _anchor_idx = next(
-                            (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1
-                        )
-                        if _anchor_idx >= 0:
-                            stops_out.insert(_anchor_idx + 1, _reco_stop)
-                        else:
-                            stops_out.append(_reco_stop)
-                except Exception as _reco_err:
-                    print(f"[reco_inject] day {i+1} trigger={_trigger.get('trigger')}: {_reco_err}")
+                if _trigger["trigger"] not in _results:
+                    continue
+                _td, _reco_stop = _results[_trigger["trigger"]]
+                _pid = _reco_stop.get("placeId", "")
+                if _pid and _pid in _seen_pids:
+                    continue
+                _seen_pids.add(_pid)
+                _anchor_id = _td.get("after_stop_id")
+                _anchor_idx = next(
+                    (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1
+                )
+                if _anchor_idx >= 0:
+                    stops_out.insert(_anchor_idx + 1, _reco_stop)
+                else:
+                    stops_out.append(_reco_stop)
         except Exception as _reco_err:
             print(f"[reco_inject] day {i+1} setup error: {_reco_err}")
             # Non-fatal: reco injection failure doesn't break the itinerary

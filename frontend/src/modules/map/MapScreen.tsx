@@ -545,6 +545,7 @@ export function MapScreen() {
       });
 
       dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: res.buildId, cityName: primaryCity, status: 'pending', startedAt: Date.now() } });
+      dispatch({ type: 'RESET_MAP' });
       dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' });
       dispatch({ type: 'GO_TO', screen: 'trips' });
     } catch (err: unknown) {

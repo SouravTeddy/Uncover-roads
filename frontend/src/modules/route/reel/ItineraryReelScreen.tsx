@@ -1066,23 +1066,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         })}
       </div>
 
-      {/* Floating back button — top-left, screen layer, back button only */}
-      <button
-        onClick={() => {
-          dispatch({ type: 'SET_REEL_SAVED_ID', id: null });
-          dispatch({ type: 'GO_BACK' });
-        }}
-        style={{
-          position: 'fixed', top: 8, left: 16, zIndex: 30,
-          width: 38, height: 38, borderRadius: '50%',
-          background: 'rgba(0,0,0,.38)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,.18)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer',
-        }}
-      >
-        <span className="ms" style={{ fontSize: 18, color: '#fff' }}>arrow_back</span>
-      </button>
 
       {/* Progress dots */}
       <div style={{
