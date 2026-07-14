@@ -256,11 +256,11 @@ def derive_day_recos(
     sorted_stops = sorted(stops, key=lambda s: _time_to_min(s.get("time", "09:00")))
 
     has_lunch = any(
-        660 <= _time_to_min(s.get("time", "00:00")) <= 900 and s.get("category", "") in FOOD_CATS
+        540 <= _time_to_min(s.get("time", "00:00")) <= 1020 and s.get("category", "") in FOOD_CATS
         for s in sorted_stops
     )
     has_dinner = any(
-        _time_to_min(s.get("time", "00:00")) >= 1020 and s.get("category", "") in FOOD_CATS
+        _time_to_min(s.get("time", "00:00")) >= 900 and s.get("category", "") in FOOD_CATS
         for s in sorted_stops
     )
     has_evening = any(_time_to_min(s.get("time", "00:00")) >= 1200 for s in sorted_stops)
@@ -301,15 +301,17 @@ def derive_day_recos(
         if not defaults:
             return
         time_default, dur, cat = defaults
+        anchor_end_min = _time_to_min(anchor.get("time", "09:00")) + anchor.get("durationMin", 60)
         triggers.append({
-            "trigger":       trigger,
-            "after_stop_id": anchor.get("id"),
-            "lat":           anchor.get("lat"),
-            "lon":           anchor.get("lon"),
-            "city":          signal.city,
-            "time":          time_default,
-            "duration_min":  dur,
-            "category":      cat,
+            "trigger":        trigger,
+            "after_stop_id":  anchor.get("id"),
+            "lat":            anchor.get("lat"),
+            "lon":            anchor.get("lon"),
+            "city":           signal.city,
+            "time":           time_default,
+            "anchor_end_min": anchor_end_min,
+            "duration_min":   dur,
+            "category":       cat,
         })
 
     if not has_lunch   and (lunch_target - 0) >= GAP_FLOOR:
