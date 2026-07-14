@@ -137,6 +137,80 @@ def _anchor_stop(stops: list[dict], prefer_last: bool = False, prefer_noon: bool
     return stops[len(stops) // 2]
 
 
+def persona_google_types(trigger: str, signal: "RecoSignal") -> list:
+    """
+    Returns ordered list of Google Place API types to try for a trigger,
+    personalised by archetype group, group type (family), and mood.
+    First entry is the primary type; subsequent entries are fallbacks.
+    """
+    g = signal.archetype_group
+    is_family = signal.is_family
+
+    _MAP: dict = {
+        "rest": {
+            "family":   ["park", "amusement_park", "cafe"],
+            "social":   ["bar", "cafe"],
+            "cultural": ["cafe", "museum"],
+            "sensory":  ["cafe", "park"],
+            "explorer": ["park", "viewpoint", "cafe"],
+        },
+        "lunch": {
+            "family":   ["restaurant", "cafe"],
+            "social":   ["restaurant", "bar"],
+            "cultural": ["restaurant", "cafe"],
+            "sensory":  ["restaurant"],
+            "explorer": ["restaurant", "market"],
+        },
+        "dinner": {
+            "family":   ["restaurant"],
+            "social":   ["restaurant", "bar"],
+            "cultural": ["restaurant"],
+            "sensory":  ["restaurant"],
+            "explorer": ["restaurant", "market"],
+        },
+        "evening": {
+            "family":   ["restaurant"],
+            "social":   ["bar", "night_club"],
+            "cultural": ["theater", "bar"],
+            "sensory":  ["restaurant", "bar"],
+            "explorer": ["bar", "viewpoint"],
+        },
+        "culture": {
+            "family":   ["amusement_park", "zoo", "museum"],
+            "social":   ["museum", "art_gallery"],
+            "cultural": ["museum", "art_gallery", "church"],
+            "sensory":  ["art_gallery", "museum"],
+            "explorer": ["museum", "art_gallery"],
+        },
+        "social_gap": {
+            "family":   ["park", "cafe"],
+            "social":   ["bar", "night_club"],
+            "cultural": ["cafe", "bar"],
+            "sensory":  ["cafe", "bar"],
+            "explorer": ["bar", "cafe"],
+        },
+        "hidden_gem": {
+            "family":   ["point_of_interest", "park"],
+            "social":   ["bar", "point_of_interest"],
+            "cultural": ["point_of_interest", "historic_site"],
+            "sensory":  ["point_of_interest", "cafe"],
+            "explorer": ["point_of_interest", "establishment"],
+        },
+        "local_food": {
+            "_all": ["restaurant", "market", "cafe"],
+        },
+        "famous_spots": {
+            "family":   ["amusement_park", "tourist_attraction", "landmark"],
+            "_all":     ["tourist_attraction", "landmark"],
+        },
+    }
+
+    group_key = "family" if is_family else g
+    trigger_map = _MAP.get(trigger, {})
+    types = trigger_map.get(group_key) or trigger_map.get("_all") or trigger_map.get(g) or ["restaurant"]
+    return types
+
+
 def derive_day_recos(
     stops: list[dict],   # stops_out dicts for this day (already serialised)
     signal: RecoSignal,

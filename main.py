@@ -4853,6 +4853,7 @@ def _resolve_reco_trigger(
     supabase_client,
     google_api_key: str | None,
     weights: dict,
+    signal=None,   # RecoSignal | None — for persona-aware type selection
 ) -> dict | None:
     """
     Given a trigger dict from derive_day_recos, call Nearby Search + place_details_cache
@@ -4882,7 +4883,12 @@ def _resolve_reco_trigger(
     }
 
     trig = trigger["trigger"]
-    google_types = _TRIGGER_TYPES.get(trig, ["restaurant"])
+    # Persona-aware type selection when signal is available
+    if signal is not None:
+        from engine.reco_engine import persona_google_types
+        google_types = persona_google_types(trig, signal)
+    else:
+        google_types = _TRIGGER_TYPES.get(trig, ["restaurant"])
     radius = _TRIGGER_RADIUS.get(trig, 1000)
 
     best: dict | None = None
@@ -5681,7 +5687,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             for _trigger in _reco_triggers:
                 _trigger["_day_number"] = i + 1
                 _reco_stop = _resolve_reco_trigger(
-                    _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona
+                    _trigger, _existing_pids, _supabase, GOOGLE_PLACES_API_KEY, persona,
+                    signal=_reco_signal,
                 )
                 if _reco_stop:
                     # Insert after anchor stop; fall back to appending
