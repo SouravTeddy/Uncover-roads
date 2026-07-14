@@ -80,14 +80,13 @@ describe('buildReelCards', () => {
     expect(cards.filter(c => c.type === 'stop').length).toBe(2);
   });
 
-  it('does not inject a lunch reco when a restaurant stop exists in lunch window', () => {
+  it('does not inject reco cards (reco-engine removed — backend handles injections)', () => {
     const stops = [
       STOP({ id: 's1', time: '09:00', category: 'museum' }),
       STOP({ id: 's2', time: '12:30', category: 'restaurant' }),
     ];
     const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
-    const recos = cards.filter(c => c.type === 'reco');
-    expect(recos.every(c => c.type === 'reco' && (c as import('./types').ReelRecoCard).trigger !== 'lunch')).toBe(true);
+    expect(cards.some(c => c.type === 'reco')).toBe(false);
   });
 
   it('inserts transit card between cities in multi-city journey', () => {
@@ -135,33 +134,6 @@ describe('buildReelCards', () => {
       expect(transit.transitIsEstimated).toBe(true);
       expect(transit.transitDurationMin).toBeNull();
     }
-  });
-
-  it('uses pre-computed recos when recosByDayIdx is provided', () => {
-    // Engine recos are now converted to DayIntelObservations (internal dedup / count)
-    // rather than being pushed directly as 'reco' type cards.
-    const stops = [
-      STOP({ id: 's1', time: '09:00', category: 'museum' }),
-      STOP({ id: 's2', time: '15:00', category: 'park' }),
-    ];
-    const fakeReco: import('./types').ReelRecoCard = {
-      type: 'reco', id: 'hasLunch-s1', trigger: 'lunch',
-      label: 'No lunch', consequence: 'Find something nearby',
-      nearbyCity: 'Paris', persona: 'explorer', afterStopId: 's1', weightScore: 0.5,
-    };
-    const recosByDayIdx = new Map([[0, [fakeReco]]]);
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'explorer', recosByDayIdx);
-    // Recos become observations — no 'reco' card type in the stream
-    expect(cards.some(c => c.type === 'reco')).toBe(false);
-    // Stop cards and overall structure should still be present
-    expect(cards.some(c => c.type === 'stop')).toBe(true);
-  });
-
-  it('injects balance card when engine returns empty recos map', () => {
-    const stops = [STOP()];
-    const recosByDayIdx = new Map([[0, []]]);
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'explorer', recosByDayIdx);
-    expect(cards.some(c => c.type === 'balance')).toBe(true);
   });
 
   it('intel card with stopId is anchored to matching stop, not title-matched', () => {

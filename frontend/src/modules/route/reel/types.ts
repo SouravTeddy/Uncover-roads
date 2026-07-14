@@ -142,24 +142,6 @@ export type RecoTrigger =
   | 'time_balance' | 'category_diversity' | 'social_gap'
   | 'budget_mismatch' | 'live_event' | 'hidden_gem' | 'famous_spots';
 
-export interface ReelRecoCard {
-  type: 'reco';
-  id: string;
-  trigger: RecoTrigger;
-  label: string;
-  consequence: string;
-  nearbyCity: string;
-  persona: string;
-  afterStopId: string;
-  weightScore?: number;
-  recoLevel?: 'l1' | 'l2';
-  // Coordinates of the anchor stop — used to fetch nearby recommendations
-  stopLat?: number;
-  stopLon?: number;
-  // Photo of the anchor stop — used as background in the reco card top half
-  anchorPhotoUrl?: string | null;
-}
-
 /**
  * Engine intelligence card — surfaces a decision made by the sequencer/inserter.
  * All text is deterministic (template-based from engine message type + weights).
@@ -321,7 +303,6 @@ export type ReelCard =
   | ReelIntroCard
   | ReelSummaryCard
   | ReelStopCard
-  | ReelRecoCard
   | ReelIntelCard
   | ReelTransitCard
   | ReelFinaleCard
