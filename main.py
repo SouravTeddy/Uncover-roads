@@ -4947,6 +4947,8 @@ def _resolve_reco_trigger(
     }
 
     import uuid as _uuid
+    _photo_ref = details.get("photo_ref") or None
+    _api_base = os.environ.get("API_BASE_URL", "")
     return {
         "id":          f"reco-{trig}-{_uuid.uuid4().hex[:8]}",
         "placeId":     pid,
@@ -4966,7 +4968,8 @@ def _resolve_reco_trigger(
         "localTip":    details.get("review_summary") or details.get("editorial_summary") or None,
         "googleMapsUrl": f"https://www.google.com/maps/place/?q=place_id:{pid}",
         "website":     details.get("website") or None,
-        "photoRef":    details.get("photo_ref") or None,
+        "photoRef":    _photo_ref,
+        "imageUrl":    f"{_api_base}/place-photo?ref={_photo_ref}&maxwidth=800" if _photo_ref and _api_base else None,
         "tags":        [],
         "signals":     [],
         "stage":       None,
