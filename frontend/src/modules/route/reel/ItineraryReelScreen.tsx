@@ -1026,7 +1026,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             </div>
           );
           else if (card.type === 'scenic') child = <ReelScenicCard card={card} active={isActive} />;
-          else if (card.type === 'finale')  child = <ReelFinaleCard   card={card} active={isActive} onSave={handleSave} saved={saved} />;
+          else if (card.type === 'finale')  child = <ReelFinaleCard card={card} active={isActive} />;
           else if (card.type === 'day_divider') child = <ReelDayDividerCard card={card} />;
           else if (card.type === 'day_transition') child = <ReelDayTransitionCard card={card} active={isActive} />;
           // day_nudge removed — reco engine fills sparse days with "Our pick" stops
