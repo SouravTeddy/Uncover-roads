@@ -1,5 +1,5 @@
 import pytest
-from engine.reco_engine import RecoSignal, _archetype_group
+from engine.reco_engine import RecoSignal, _archetype_group, persona_google_types
 
 def _base_signal(**kwargs):
     defaults = dict(
@@ -31,3 +31,27 @@ def test_reco_signal_family():
 def test_reco_signal_mood():
     s = _base_signal(mood=["culture", "explore"])
     assert "culture" in s.mood
+
+
+def test_family_rest_gets_park():
+    s = _base_signal(group="family", is_family=True)
+    types = persona_google_types("rest", s)
+    assert "park" in types
+
+
+def test_nightlife_archetype_evening_gets_bar():
+    s = _base_signal(archetype="nightcreature", archetype_group="social", evening_pref="nightlife")
+    types = persona_google_types("evening", s)
+    assert types[0] in ("bar", "night_club")
+
+
+def test_cultural_archetype_rest_gets_cafe():
+    s = _base_signal(archetype="historian", archetype_group="cultural")
+    types = persona_google_types("rest", s)
+    assert "cafe" in types
+
+
+def test_family_culture_gets_kid_friendly():
+    s = _base_signal(group="family", is_family=True)
+    types = persona_google_types("culture", s)
+    assert "amusement_park" in types or "zoo" in types
