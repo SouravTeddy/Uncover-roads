@@ -66,29 +66,6 @@ describe('buildReelCards', () => {
     expect(cards[cards.length - 1].type).toBe('finale');
   });
 
-  it('injects a reco card at lunch window when no lunch stop exists', () => {
-    // Meal gap observations are now tracked internally (DayIntelObservation) and
-    // are not surfaced as standalone reco cards in the card stream.
-    const stops = [
-      STOP({ id: 's1', time: '09:00', category: 'museum' }),
-      STOP({ id: 's2', time: '14:30', category: 'park' }),
-    ];
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
-    const recos = cards.filter(c => c.type === 'reco');
-    expect(recos.length).toBe(0);
-    // Stop cards should still be present
-    expect(cards.filter(c => c.type === 'stop').length).toBe(2);
-  });
-
-  it('does not inject reco cards (reco-engine removed — backend handles injections)', () => {
-    const stops = [
-      STOP({ id: 's1', time: '09:00', category: 'museum' }),
-      STOP({ id: 's2', time: '12:30', category: 'restaurant' }),
-    ];
-    const cards = buildReelCards(ITIN(stops), null, null, WEATHER_MAP, 'epicurean');
-    expect(cards.some(c => c.type === 'reco')).toBe(false);
-  });
-
   it('inserts transit card between cities in multi-city journey', () => {
     const legs: JourneyLeg[] = [
       { type: 'transit', mode: 'train', from: 'Paris', to: 'Lyon', fromCoords: [0, 0], toCoords: [0, 0], durationMinutes: 120, distanceKm: 460 },

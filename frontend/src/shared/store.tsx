@@ -439,7 +439,6 @@ export type Action =
   | { type: 'REMOVE_ITINERARY'; id: string }
   | { type: 'SET_PENDING_TRIP_DETAILS'; details: import('./types').TripDetails | null }
   | { type: 'DISMISS_PIN'; pinId: string }
-  | { type: 'ADD_RECO_INTERACTION'; interaction: AppState['recoInteractions'][number] }
   | { type: 'SET_RECO_FOCUS_PLACES'; places: Place[] | null }
   | { type: 'UPDATE_PLACE_CITY'; id: string; city: string }
   | { type: 'SET_ACTIVE_BUILD'; build: ActiveBuild }
@@ -898,9 +897,6 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'DISMISS_PIN':
       return { ...state, dismissedPinIds: [...state.dismissedPinIds, action.pinId] };
-
-    case 'ADD_RECO_INTERACTION':
-      return { ...state, recoInteractions: [...state.recoInteractions, action.interaction] };
 
     case 'SET_RECO_FOCUS_PLACES':
       return { ...state, recoFocusPlaces: action.places };

@@ -1049,8 +1049,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
               card={card}
               active={isActive}
               selectedPlaces={state.selectedPlaces}
-              onInteract={(action) => {
-                if (action === 'tapped') dispatch({ type: 'ADD_RECO_INTERACTION', interaction: { cardId: card.id, action: 'tapped', timestamp: Date.now() } as any });
+              onInteract={(_action) => {
+                // ADD_RECO_INTERACTION removed — reco engine deleted in Task 7
               }}
               onMapNavigate={(lat, lon, places) => {
                 if (places.length > 0) dispatch({ type: 'SET_RECO_FOCUS_PLACES', places });
