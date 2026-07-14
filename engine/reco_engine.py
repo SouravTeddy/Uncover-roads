@@ -97,6 +97,16 @@ class RecoSignal:
     is_last_day: bool
     arrival_time: Optional[str]
     departure_time: Optional[str]
+    # OB fields — all optional (default to neutral when not sent by old clients)
+    group: str = "solo"          # 'solo' | 'couple' | 'family' | 'friends'
+    is_family: bool = False
+    mood: list = None            # ['culture', 'eat_drink', 'explore', 'relax']
+    budget: Optional[str] = None # 'budget' | 'mid' | 'splurge'
+    evening_pref: Optional[str] = None  # 'nightlife' | 'dinner' | 'early_night'
+
+    def __post_init__(self):
+        if self.mood is None:
+            self.mood = []
 
 
 _ARCHETYPE_GROUPS: dict[str, str] = {

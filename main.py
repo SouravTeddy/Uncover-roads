@@ -5653,8 +5653,13 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         try:
             from engine.reco_engine import derive_day_recos, RecoSignal, _archetype_group as _ag
             _pace_map = {"slow": "slow", "balanced": "moderate", "pack": "fast", "spontaneous": "moderate"}
-            _raw_answers = body.rawOBAnswers if hasattr(body, "rawOBAnswers") else {}
-            _pace = _pace_map.get((_raw_answers.get("pace") or ["moderate"])[0], "moderate") if _raw_answers else "moderate"
+            _raw = body.rawOBAnswers or {}
+            _pace = _pace_map.get((_raw.get("pace") or ["moderate"])[0], "moderate") if _raw else "moderate"
+            _group = _raw.get("group") or "solo"
+            _is_family = _group == "family"
+            _mood = _raw.get("mood") or []
+            _budget = _raw.get("budget") or None
+            _evening_pref = _raw.get("evening") or None
             _reco_signal = RecoSignal(
                 weights=persona,
                 archetype=archetype,
@@ -5665,6 +5670,11 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 is_last_day=(i == len(result.days) - 1),
                 arrival_time=body.arrivalTime or None,
                 departure_time=body.departureTime or None,
+                group=_group,
+                is_family=_is_family,
+                mood=_mood,
+                budget=_budget,
+                evening_pref=_evening_pref,
             )
             _existing_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}
             _reco_triggers = derive_day_recos(stops_out, _reco_signal)
