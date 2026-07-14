@@ -24,6 +24,7 @@ interface Props {
   archetype?: string;
   weather?: { condition: string; temp: number } | null;
   primaryCity?: string;
+  cityPhotoUrl?: string | null;
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
   isJustAdjusted?: boolean;
   onRemove?: () => void;
@@ -291,7 +292,7 @@ interface CardPill {
 }
 
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, onInteract, isJustAdjusted, onRemove, onRegisterPanelControl }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove, onRegisterPanelControl }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
@@ -354,7 +355,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, onInterac
   const photoFetchAttempted = useRef(false);
   const photoUrl = stop.imageUrl
     ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null)
-    ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null);
+    ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null)
+    ?? cityPhotoUrl
+    ?? null;
 
   useEffect(() => {
     if (!active || stop.imageUrl || stop.photoRef || !stop.placeId) return;
