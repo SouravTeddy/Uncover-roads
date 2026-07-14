@@ -5679,7 +5679,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 archetype=archetype,
                 archetype_group=_ag(archetype),
                 pace=_pace,
-                city=result.days[i].city if result.days[i].city else body.city,
+                city=day_city,
                 is_first_day=(i == 0),
                 is_last_day=(i == len(result.days) - 1),
                 arrival_time=body.arrivalTime or None,
