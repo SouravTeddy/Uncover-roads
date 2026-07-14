@@ -978,6 +978,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             child = <ReelStopCard
               card={cardWithFixedNumbers} active={isActive} weather={weather}
               primaryCity={city || activeItinerary?.city || ''}
+              cityPhotoUrl={cityPhotoMap.get(((card as ReelStopCardType).stop.city ?? city ?? activeItinerary?.city ?? '').toLowerCase()) ?? null}
               isJustAdjusted={isJustAdjusted}
               onRemove={() => {
                 const stop = (card as ReelStopCardType).stop;
