@@ -1821,8 +1821,11 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
             if results and results[0].get("photos"):
                 ref = results[0]["photos"][0]["photo_reference"]
                 result_pid = pid or results[0].get("place_id", "")
-                if result_pid and len(ref) > 300:
+                if result_pid and len(ref) > 300 and not ref.startswith("places/"):
                     ref = f"places/{result_pid}/photos/{ref}"
+                elif len(ref) > 300 and not ref.startswith("places/") and not result_pid:
+                    print(f"[place-image] unwrappable new-format ref, skipping: {ref[:60]}")
+                    raise ValueError("no place_id to wrap new-format ref")
                 if pid:
                     import threading
                     threading.Thread(target=_cache_photo_ref_bg, args=(pid, ref), daemon=True).start()
@@ -4329,15 +4332,23 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
                         headers={"Cache-Control": "public, max-age=86400"})
 
     # New Places API v1 resource names start with "places/"
+    # Raw new-format tokens (>300 chars, no "places/" prefix) cannot be served — caller
+    # should have nullified these so the frontend falls back to placeImage by name.
+    if len(photo_ref) > 300 and not photo_ref.startswith("places/"):
+        print(f"[place-photo] unwrapped new-format ref, cannot proxy: {photo_ref[:60]}")
+        raise HTTPException(status_code=422, detail="New-format photo ref requires full resource name")
+
     use_new_api = photo_ref.startswith("places/")
 
     try:
         if use_new_api:
+            # New Places API v1: follow any redirect to CDN
             r = requests.get(
                 f"https://places.googleapis.com/v1/{photo_ref}/media",
-                params={"maxWidthPx": max_width, "skipHttpRedirect": "true"},
+                params={"maxWidthPx": max_width},
                 headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
                 timeout=10,
+                allow_redirects=True,
             )
         else:
             r = requests.get(
@@ -4346,15 +4357,20 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
                 timeout=10, allow_redirects=True,
             )
         if not r.ok:
+            print(f"[place-photo] {'new' if use_new_api else 'old'} API failed: status={r.status_code} ref={photo_ref[:80]}")
             raise HTTPException(status_code=502, detail="Google photo fetch failed")
         ct = r.headers.get("Content-Type", "image/jpeg")
         data = r.content
+        if not data:
+            print(f"[place-photo] empty response body: ref={photo_ref[:80]}")
+            raise HTTPException(status_code=502, detail="Empty photo response")
         if len(_photo_cache) >= _PHOTO_CACHE_MAX:
             _photo_cache.pop(next(iter(_photo_cache)))
         _photo_cache[cache_key] = (data, ct)
         return Response(content=data, media_type=ct,
                         headers={"Cache-Control": "public, max-age=86400"})
     except requests.RequestException as e:
+        print(f"[place-photo] request error: {e} ref={photo_ref[:80]}")
         raise HTTPException(status_code=502, detail=f"Photo fetch error: {e}")
 
 
@@ -4986,13 +5002,16 @@ def _resolve_reco_trigger(
 
     import uuid as _uuid
     _nearby_photo_raw = (best.get("photos") or [{}])[0].get("photo_reference")
-    # New Places API v1 tokens are very long (>300 chars). Wrap with place resource
-    # name so /place-photo can route to the correct API endpoint.
-    if _nearby_photo_raw and len(_nearby_photo_raw) > 300 and pid:
-        _nearby_photo = f"places/{pid}/photos/{_nearby_photo_raw}"
-    else:
-        _nearby_photo = _nearby_photo_raw
-    _photo_ref = details.get("photo_ref") or _nearby_photo or None
+
+    def _wrap_photo(ref: str | None, place_id: str | None) -> str | None:
+        """Wrap new-format raw tokens with full resource name; nullify if unwrappable."""
+        if not ref:
+            return None
+        if len(ref) > 300 and not ref.startswith("places/"):
+            return f"places/{place_id}/photos/{ref}" if place_id else None
+        return ref
+
+    _photo_ref = _wrap_photo(details.get("photo_ref"), pid) or _wrap_photo(_nearby_photo_raw, pid) or None
     _api_base = os.environ.get("API_BASE_URL", "")
 
     # Compute display time: anchor_end + 15 min transit, clamped to sensible range per trigger
@@ -5702,7 +5721,11 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "localTip": _pd.get("editorial_summary") or None,
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                 "website": _pd.get("website") or None,
-                "photoRef": (lambda _r: f"places/{s.place_id}/photos/{_r}" if (_r and len(_r) > 300 and s.place_id) else _r)(
+                "photoRef": (lambda _r:
+                    _r if not _r else
+                    _r if not (len(_r) > 300 and not _r.startswith("places/")) else  # already wrapped or old-format
+                    f"places/{s.place_id}/photos/{_r}" if s.place_id else None  # wrap or nullify
+                )(
                     _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None
                 ),
                 "tags": s.tags or [],
