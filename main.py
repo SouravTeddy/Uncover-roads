@@ -6153,7 +6153,7 @@ async def cities_search(city_id: str, _user=Depends(get_current_user)):
 
 
 def _fetch_city_photo_ref(city_name: str) -> Optional[str]:
-    """Call Google Places Text Search and return the first photo_reference."""
+    """Call Google Places Text Search and return the first photo_reference (wrapped if new-format)."""
     if not GOOGLE_PLACES_API_KEY:
         return None
     try:
@@ -6167,6 +6167,11 @@ def _fetch_city_photo_ref(city_name: str) -> Optional[str]:
             if photos:
                 ref = photos[0].get("photo_reference")
                 if ref:
+                    pid = result.get("place_id", "")
+                    if len(ref) > 300 and not ref.startswith("places/") and pid:
+                        ref = f"places/{pid}/photos/{ref}"
+                    elif len(ref) > 300 and not ref.startswith("places/"):
+                        continue  # can't wrap without place_id, try next result
                     return ref
     except Exception:
         pass
@@ -6191,11 +6196,21 @@ async def cities_photos(names: str):
         .in_("name", name_list)
         .execute()
     )
+    def _is_stale_photo_url(url: Optional[str]) -> bool:
+        """Returns True if the cached URL contains a raw new-format token (unwrappable)."""
+        if not url:
+            return True
+        if "photo_ref=" not in url:
+            return False
+        ref_part = url.split("photo_ref=")[1].split("&")[0]
+        return len(ref_part) > 300 and not ref_part.startswith("places%2F") and not ref_part.startswith("places/")
+
     result: dict[str, Optional[str]] = {n: None for n in name_list}
     db_name_map: dict[str, str] = {}  # canonical DB name → original request name
     for r in (rows.data or []):
         db_name_map[r["name"]] = r["name"]
-        result[r["name"]] = r.get("image_url")
+        url = r.get("image_url")
+        result[r["name"]] = None if _is_stale_photo_url(url) else url
     # Second pass: case-insensitive match for unresolved names
     unmatched = [n for n in name_list if result[n] is None]
     for uname in unmatched:
