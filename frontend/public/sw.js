@@ -73,10 +73,11 @@ async function imageCacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   try {
-    const response = await fetch(request, { mode: 'cors' });
-    if (response.ok) {
+    const response = await fetch(request);
+    // Cache successful responses and opaque (no-cors) responses
+    if (response.ok || response.type === 'opaque') {
       const cache = await caches.open(IMAGE_CACHE_NAME);
-      cache.put(request, response.clone());
+      cache.put(request, response.clone()).catch(() => {});
     }
     return response;
   } catch {
