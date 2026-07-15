@@ -1821,11 +1821,27 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
             if results and results[0].get("photos"):
                 ref = results[0]["photos"][0]["photo_reference"]
                 result_pid = pid or results[0].get("place_id", "")
-                if result_pid and len(ref) > 300 and not ref.startswith("places/"):
-                    ref = f"places/{result_pid}/photos/{ref}"
-                elif len(ref) > 300 and not ref.startswith("places/") and not result_pid:
-                    print(f"[place-image] unwrappable new-format ref, skipping: {ref[:60]}")
-                    raise ValueError("no place_id to wrap new-format ref")
+                if len(ref) > 300:
+                    # New-format token from old API — use new Places API to get proper photo
+                    if result_pid:
+                        try:
+                            new_details = requests.get(
+                                f"https://places.googleapis.com/v1/places/{result_pid}",
+                                params={"fields": "photos"},
+                                headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
+                                timeout=5,
+                            ).json()
+                            new_photos = new_details.get("photos", [])
+                            if new_photos:
+                                fresh_name = new_photos[0]["name"]
+                                if pid:
+                                    import threading
+                                    threading.Thread(target=_cache_photo_ref_bg, args=(pid, fresh_name), daemon=True).start()
+                                return {"image": f"/place-photo?photo_ref={fresh_name}&max_width=800"}
+                        except Exception as e:
+                            print(f"[place-image] new Places API failed for {result_pid}: {e}")
+                    # New API also failed — skip to Wikipedia below
+                    raise ValueError("new-format ref, falling back to Wikipedia")
                 if pid:
                     import threading
                     threading.Thread(target=_cache_photo_ref_bg, args=(pid, ref), daemon=True).start()
@@ -4340,35 +4356,68 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
 
     use_new_api = photo_ref.startswith("places/")
 
-    try:
-        if use_new_api:
-            # New Places API v1: follow any redirect to CDN
-            r = requests.get(
-                f"https://places.googleapis.com/v1/{photo_ref}/media",
+    def _fetch_new_api_photo(name: str) -> Optional[requests.Response]:
+        """Fetch image bytes via Places API v1 media endpoint."""
+        try:
+            resp = requests.get(
+                f"https://places.googleapis.com/v1/{name}/media",
                 params={"maxWidthPx": max_width},
                 headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
                 timeout=10,
                 allow_redirects=True,
             )
+            return resp if resp.ok and resp.content else None
+        except Exception:
+            return None
+
+    def _get_fresh_place_photo(place_id: str) -> Optional[requests.Response]:
+        """Call Places API v1 to get a fresh photo name for place_id, then fetch it."""
+        try:
+            details = requests.get(
+                f"https://places.googleapis.com/v1/places/{place_id}",
+                params={"fields": "photos"},
+                headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
+                timeout=5,
+            ).json()
+            photos = details.get("photos", [])
+            if not photos:
+                return None
+            return _fetch_new_api_photo(photos[0]["name"])
+        except Exception as e:
+            print(f"[place-photo] fresh photo fetch error for {place_id}: {e}")
+            return None
+
+    try:
+        r: Optional[requests.Response] = None
+        if use_new_api:
+            r = _fetch_new_api_photo(photo_ref)
+            if r is None:
+                # Old-API token is incompatible with new API — get a fresh token via place_id
+                place_id = photo_ref.split('/')[1] if photo_ref.count('/') >= 2 else None
+                if place_id:
+                    print(f"[place-photo] stale token, fetching fresh photo for place_id={place_id}")
+                    r = _get_fresh_place_photo(place_id)
         else:
-            r = requests.get(
+            resp = requests.get(
                 f"https://maps.googleapis.com/maps/api/place/photo"
                 f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}",
                 timeout=10, allow_redirects=True,
             )
-        if not r.ok:
-            print(f"[place-photo] {'new' if use_new_api else 'old'} API failed: status={r.status_code} ref={photo_ref[:80]}")
-            raise HTTPException(status_code=502, detail="Google photo fetch failed")
+            r = resp if resp.ok else None
+
+        if r is None or not r.content:
+            print(f"[place-photo] all attempts failed: ref={photo_ref[:80]}")
+            raise HTTPException(status_code=404, detail="Photo not found")
+
         ct = r.headers.get("Content-Type", "image/jpeg")
         data = r.content
-        if not data:
-            print(f"[place-photo] empty response body: ref={photo_ref[:80]}")
-            raise HTTPException(status_code=502, detail="Empty photo response")
         if len(_photo_cache) >= _PHOTO_CACHE_MAX:
             _photo_cache.pop(next(iter(_photo_cache)))
         _photo_cache[cache_key] = (data, ct)
         return Response(content=data, media_type=ct,
                         headers={"Cache-Control": "public, max-age=86400"})
+    except HTTPException:
+        raise
     except requests.RequestException as e:
         print(f"[place-photo] request error: {e} ref={photo_ref[:80]}")
         raise HTTPException(status_code=502, detail=f"Photo fetch error: {e}")
