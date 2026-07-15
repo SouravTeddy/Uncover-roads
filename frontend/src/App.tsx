@@ -23,7 +23,6 @@ import { NavScreen } from './modules/navigation';
 import { ProfileScreen } from './modules/profile';
 import { TripsScreen, SavedScreen } from './modules/trips';
 import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
-import { InstallPrompt } from './modules/pwa/InstallPrompt';
 
 function ScreenRouter() {
   useBuildStatus();
@@ -217,7 +216,6 @@ function ScreenRouter() {
         </motion.div>
       </AnimatePresence>
 
-      <InstallPrompt />
       <BottomNav />
 
     </div>
