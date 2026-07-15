@@ -5005,7 +5005,7 @@ def _resolve_reco_trigger(
         "googleMapsUrl": f"https://www.google.com/maps/place/?q=place_id:{pid}",
         "website":     details.get("website") or None,
         "photoRef":    _photo_ref,
-        "imageUrl":    f"{_api_base}/place-photo?ref={_photo_ref}&maxwidth=800" if _photo_ref and _api_base else None,
+        "imageUrl":    f"{_api_base}/place-photo?photo_ref={_photo_ref}&max_width=800" if _photo_ref and _api_base else None,
         "tags":        [],
         "signals":     [],
         "stage":       None,
