@@ -103,7 +103,7 @@ function preCacheTripImages(itinerary: import('../../../shared/types').EngineIti
   caches.open(IMAGE_CACHE_NAME).then((cache) => {
     for (const url of urls) {
       cache.match(url).then((hit) => {
-        if (!hit) fetch(url, { mode: 'cors' }).then((r) => { if (r.ok) cache.put(url, r); }).catch(() => {});
+        if (!hit) fetch(url).then((r) => { if (r.ok || r.type === 'opaque') cache.put(url, r); }).catch(() => {});
       });
     }
   }).catch(() => {});
