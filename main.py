@@ -4028,18 +4028,19 @@ def place_details(request: Request, place_id: str):
             }
 
         result = data.get("result", {})
-        photo_ref = None
-        if result.get("photos"):
-            photo_ref = result["photos"][0]["photo_reference"]
+        old_photo_ref = result["photos"][0]["photo_reference"] if result.get("photos") else None
 
-        # Fetch generative summary from Places API (New) — Gemini over thousands of reviews
+        # Fetch generative summary + proper photo name from Places API (New)
+        # The old API now returns new-format photo_reference tokens that only work with
+        # the new API. Request photos.name here to get a proper v1 resource name.
         review_summary = None
+        photo_ref = old_photo_ref
         try:
             new_resp = requests.get(
                 f"https://places.googleapis.com/v1/places/{place_id}",
                 headers={
                     "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-                    "X-Goog-FieldMask": "generativeSummary",
+                    "X-Goog-FieldMask": "generativeSummary,photos",
                 },
                 timeout=5,
             ).json()
@@ -4048,8 +4049,16 @@ def place_details(request: Request, place_id: str):
                 gen.get("overview", {}).get("text")
                 or gen.get("description", {}).get("text")
             )
+            new_photos = new_resp.get("photos", [])
+            if new_photos:
+                photo_ref = new_photos[0]["name"]  # e.g. "places/{pid}/photos/{proper_token}"
+            elif old_photo_ref and len(old_photo_ref) > 300:
+                photo_ref = None  # old-format new token, unusable — let frontend skip
         except Exception as e:
-            print(f"PLACE DETAILS generativeSummary error for {place_id}: {e}")
+            print(f"PLACE DETAILS new API error for {place_id}: {e}")
+            # Fall back: nullify unusable new-format refs from old API
+            if old_photo_ref and len(old_photo_ref) > 300:
+                photo_ref = None
 
         details = {
             "place_id": place_id,
@@ -4357,17 +4366,24 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
     use_new_api = photo_ref.startswith("places/")
 
     def _fetch_new_api_photo(name: str) -> Optional[requests.Response]:
-        """Fetch image bytes via Places API v1 media endpoint."""
+        """Fetch image bytes via Places API v1: use skipHttpRedirect to get photoUri, then fetch it."""
         try:
-            resp = requests.get(
+            # skipHttpRedirect=true returns JSON {photoUri: "..."} instead of a redirect
+            meta = requests.get(
                 f"https://places.googleapis.com/v1/{name}/media",
-                params={"maxWidthPx": max_width},
+                params={"maxWidthPx": max_width, "skipHttpRedirect": "true"},
                 headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
-                timeout=10,
-                allow_redirects=True,
+                timeout=8,
             )
-            return resp if resp.ok and resp.content else None
-        except Exception:
+            print(f"[place-photo] new API status={meta.status_code} name={name[:60]}")
+            if meta.ok:
+                photo_uri = meta.json().get("photoUri")
+                if photo_uri:
+                    img = requests.get(photo_uri, timeout=10)
+                    return img if img.ok and img.content else None
+            return None
+        except Exception as e:
+            print(f"[place-photo] _fetch_new_api_photo error: {e}")
             return None
 
     def _get_fresh_place_photo(place_id: str) -> Optional[requests.Response]:
@@ -4380,6 +4396,7 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
                 timeout=5,
             ).json()
             photos = details.get("photos", [])
+            print(f"[place-photo] fresh details for {place_id}: {len(photos)} photos")
             if not photos:
                 return None
             return _fetch_new_api_photo(photos[0]["name"])
