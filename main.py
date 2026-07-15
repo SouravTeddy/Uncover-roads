@@ -6178,6 +6178,33 @@ def _fetch_city_photo_ref(city_name: str) -> Optional[str]:
     return None
 
 
+def _fetch_city_wiki_photo(city_name: str) -> Optional[str]:
+    """Fetch a city thumbnail from Wikipedia. Returns absolute URL or None."""
+    wiki_base = "https://en.wikipedia.org/w/api.php"
+    try:
+        search = requests.get(wiki_base, params={
+            "action": "query", "list": "search",
+            "srsearch": city_name,
+            "format": "json", "srlimit": 1,
+        }, timeout=8).json()
+        results = search.get("query", {}).get("search", [])
+        if not results:
+            return None
+        title = results[0]["title"]
+        images = requests.get(wiki_base, params={
+            "action": "query", "titles": title,
+            "prop": "pageimages", "pithumbsize": 800,
+            "format": "json",
+        }, timeout=8).json()
+        for page in images.get("query", {}).get("pages", {}).values():
+            src = page.get("thumbnail", {}).get("source")
+            if src:
+                return src
+    except Exception:
+        pass
+    return None
+
+
 @app.get("/api/cities/photos")
 async def cities_photos(names: str):
     """Batch image URL lookup by city name. Returns {name: proxy_path|null}.
@@ -6222,16 +6249,20 @@ async def cities_photos(names: str):
                 db_name_map[uname] = db_name
         except Exception:
             pass
-    # Third pass: for cities still without an image, fetch from Google and persist
+    # Third pass: for cities still without an image, fetch from Google → Wikipedia fallback
     still_missing = [n for n in name_list if not result.get(n)]
     for city in still_missing:
         ref = _fetch_city_photo_ref(city)
-        proxy_path = f"/place-photo?photo_ref={ref}&max_width=800" if ref else None
-        result[city] = proxy_path
-        if proxy_path:
+        city_url: Optional[str] = f"/place-photo?photo_ref={ref}&max_width=800" if ref else None
+        if not city_url:
+            # Google Places returned nothing usable — fall back to Wikipedia thumbnail
+            city_url = _fetch_city_wiki_photo(city)
+            print(f"[city-photos] wiki fallback for {city}: {city_url and city_url[:60]}")
+        result[city] = city_url
+        if city_url:
             try:
                 canonical = db_name_map.get(city, city)
-                _supabase.table("city_whitelist").update({"image_url": proxy_path}).ilike("name", canonical).execute()
+                _supabase.table("city_whitelist").update({"image_url": city_url}).ilike("name", canonical).execute()
             except Exception:
                 pass
     return result
