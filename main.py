@@ -1820,6 +1820,9 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
             results = ts.get("results", [])
             if results and results[0].get("photos"):
                 ref = results[0]["photos"][0]["photo_reference"]
+                result_pid = pid or results[0].get("place_id", "")
+                if result_pid and len(ref) > 300:
+                    ref = f"places/{result_pid}/photos/{ref}"
                 if pid:
                     import threading
                     threading.Thread(target=_cache_photo_ref_bg, args=(pid, ref), daemon=True).start()
@@ -4310,7 +4313,8 @@ _PHOTO_CACHE_MAX = 500
 @app.get("/place-photo")
 def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = Query(800)):
     """Proxy Google Place Photos — fetches and caches bytes server-side.
-    API key never leaves the server; browser referrer restrictions don't apply.
+    Handles both old-format photo_reference (CmRa…) and new Places API v1
+    resource names (places/{id}/photos/{token}).
     """
     client_ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(client_ip):
@@ -4324,17 +4328,27 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
         return Response(content=data, media_type=ct,
                         headers={"Cache-Control": "public, max-age=86400"})
 
-    google_url = (
-        f"https://maps.googleapis.com/maps/api/place/photo"
-        f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}"
-    )
+    # New Places API v1 resource names start with "places/"
+    use_new_api = photo_ref.startswith("places/")
+
     try:
-        r = requests.get(google_url, timeout=10, allow_redirects=True)
+        if use_new_api:
+            r = requests.get(
+                f"https://places.googleapis.com/v1/{photo_ref}/media",
+                params={"maxWidthPx": max_width, "skipHttpRedirect": "true"},
+                headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
+                timeout=10,
+            )
+        else:
+            r = requests.get(
+                f"https://maps.googleapis.com/maps/api/place/photo"
+                f"?photo_reference={photo_ref}&maxwidth={max_width}&key={GOOGLE_PLACES_API_KEY}",
+                timeout=10, allow_redirects=True,
+            )
         if not r.ok:
             raise HTTPException(status_code=502, detail="Google photo fetch failed")
         ct = r.headers.get("Content-Type", "image/jpeg")
         data = r.content
-        # Evict oldest entry if cache full
         if len(_photo_cache) >= _PHOTO_CACHE_MAX:
             _photo_cache.pop(next(iter(_photo_cache)))
         _photo_cache[cache_key] = (data, ct)
@@ -4971,7 +4985,13 @@ def _resolve_reco_trigger(
     }
 
     import uuid as _uuid
-    _nearby_photo = (best.get("photos") or [{}])[0].get("photo_reference")
+    _nearby_photo_raw = (best.get("photos") or [{}])[0].get("photo_reference")
+    # New Places API v1 tokens are very long (>300 chars). Wrap with place resource
+    # name so /place-photo can route to the correct API endpoint.
+    if _nearby_photo_raw and len(_nearby_photo_raw) > 300 and pid:
+        _nearby_photo = f"places/{pid}/photos/{_nearby_photo_raw}"
+    else:
+        _nearby_photo = _nearby_photo_raw
     _photo_ref = details.get("photo_ref") or _nearby_photo or None
     _api_base = os.environ.get("API_BASE_URL", "")
 
@@ -5682,7 +5702,9 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "localTip": _pd.get("editorial_summary") or None,
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                 "website": _pd.get("website") or None,
-                "photoRef": _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None,
+                "photoRef": (lambda _r: f"places/{s.place_id}/photos/{_r}" if (_r and len(_r) > 300 and s.place_id) else _r)(
+                    _photo_ref_lookup.get(s.place_id or "") or _pd.get("photo_ref") or None
+                ),
                 "tags": s.tags or [],
                 "signals": _signals,
                 "stage": _sd.get("stage"),
