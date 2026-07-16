@@ -1,230 +1,263 @@
-import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
-import { Button } from '../../shared/ui/Button';
-
-// ── Main screen ───────────────────────────────────────────────
+import { getPackRemainingTrips } from '../../shared/tier';
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
-  const { userTier } = state;
+  const { userTier, tripPacks, packTripsRemaining } = state;
 
-  const [coupon, setCoupon] = useState('');
-  const [couponFeedback, setCouponFeedback] = useState('');
+  function back() { dispatch({ type: 'GO_BACK' }); }
 
-  const isPaywalled = userTier === 'free';
-
-  function back() {
-    dispatch({ type: 'GO_BACK' });
+  function handlePurchase() {
+    alert('Payment integration in progress.');
   }
 
-  function buyPack(_trips: number) {
-    // TODO: integrate Google Play Billing / RevenueCat — no purchase without payment
-    alert('Purchase coming soon. Payment integration in progress.');
+  function handleDowngrade() {
+    dispatch({ type: 'SET_USER_TIER', tier: 'free' });
+    back();
   }
 
-  function applyCoupon() {
-    setCouponFeedback('Coupon validation coming soon.');
-  }
+  // Derive active state
+  const isPro  = userTier === 'pro';
+  const isPack = !isPro && (userTier === 'pack' || getPackRemainingTrips(tripPacks) > 0 || packTripsRemaining > 0);
 
-
-  const freeCta =
-    userTier === 'free'
-      ? { label: 'Current Plan', disabled: true }
-      : { label: 'Downgrade to Free', disabled: false };
-
-  const proCta =
-    userTier === 'pro'
-      ? { label: 'Current Plan', disabled: true }
-      : { label: 'Go Pro · $6.99/mo', disabled: false };
-
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: '$0',
-      priceSub: 'forever',
-      features: [
-        '3 full trips — no restrictions',
-        'Full persona experience',
-        'Explore + Wishlist',
-        'Share itinerary',
-      ],
-      cta: freeCta,
-      onCta: undefined as (() => void) | undefined,
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: '$6.99/mo',
-      priceSub: 'billed monthly',
-      features: [
-        'Unlimited trips',
-        'Our Picks + Live Events',
-        'Full persona experience',
-        'Explore + Wishlist',
-        'Share itinerary',
-        'Cancel anytime',
-      ],
-      cta: proCta,
-      onCta: proCta.disabled ? undefined : () => alert('Purchase coming soon. Payment integration in progress.'),
-    },
-  ];
+  // Pack counter: total purchased is always 10; track used vs remaining
+  const tripsRemaining = isPack
+    ? (getPackRemainingTrips(tripPacks) || packTripsRemaining)
+    : 0;
+  const tripsTotal = 10;
+  const tripsUsed  = Math.max(0, tripsTotal - tripsRemaining);
+  const progressPct = Math.min(100, (tripsUsed / tripsTotal) * 100);
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col bg-[var(--color-bg)]"
-      style={{ zIndex: 20 }}
-    >
+    <div className="fixed inset-0 flex flex-col bg-[var(--color-bg)]" style={{ zIndex: 20 }}>
+
       {/* Header */}
-      <div className="bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-divider)] flex-shrink-0">
         <button
           className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
           onClick={back}
         >
-          <span className="ms text-[var(--color-text-2)]">arrow_back</span>
+          <span className="ms text-[var(--color-text-2)]" style={{ fontSize: 18 }}>arrow_back</span>
         </button>
-        <h2 className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)]">
-          Choose a Plan
-        </h2>
+        <span className="text-[16px] font-semibold text-[var(--color-text-1)] tracking-tight">
+          Plans &amp; Pricing
+        </span>
       </div>
 
+      {/* Scroll body */}
       <div
-        className="flex-1 overflow-y-auto flex flex-col gap-6 px-4 py-5"
-        style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
+        className="flex-1 overflow-y-auto"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)' }}
       >
 
-        {/* ── Plan cards ── */}
-        <div className="flex flex-col gap-4">
-          {plans.filter(p => !(isPaywalled && p.id === 'free')).map(plan => (
-            <div
-              key={plan.id}
-              className={`bg-[var(--color-surface)] border rounded-[20px] p-5 ${
-                plan.id === 'pro' ? 'border-[var(--color-amber)]' :
-                'border-[var(--color-border)]'
-              }`}
-            >
-              {plan.id === 'pro' && (
-                <div className="text-[11px] font-bold text-[var(--color-amber)] uppercase tracking-wide mb-2">
-                  Most Popular
-                </div>
-              )}
-              <div className="font-[family-name:var(--font-heading)] text-[20px] font-bold text-[var(--color-text-1)]">
-                {plan.name}
+        {/* Hero */}
+        <div className="px-5 pt-6 pb-5">
+          {isPro ? (
+            <>
+              <div className="text-[11px] font-bold uppercase tracking-[.07em] text-[var(--color-sage)] mb-1.5">
+                Pro · Active
               </div>
-              <div className="text-[13px] text-[var(--color-text-3)] mb-3">{plan.price} · {plan.priceSub}</div>
+              <div className="text-[22px] font-bold text-[var(--color-text-1)] tracking-tight leading-snug">
+                All features on
+              </div>
+            </>
+          ) : isPack ? (
+            <>
+              <div className="text-[11px] font-bold uppercase tracking-[.07em] text-[var(--color-primary)] mb-1.5">
+                Active trip pack
+              </div>
+              <div className="text-[22px] font-bold text-[var(--color-text-1)] tracking-tight leading-snug">
+                Trips remaining
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-[11px] font-bold uppercase tracking-[.07em] text-[var(--color-primary)] mb-1.5">
+                3 free trips used
+              </div>
+              <div className="text-[22px] font-bold text-[var(--color-text-1)] tracking-tight leading-snug">
+                Keep exploring
+              </div>
+            </>
+          )}
+        </div>
 
-              {/* Feature rows */}
-              {plan.features.map(f => (
-                <div key={f} className="flex items-center gap-2 mt-3">
-                  <span className="ms fill text-[var(--color-sage)] text-[18px]">check_circle</span>
-                  <span className="text-[13px] text-[var(--color-text-2)]">{f}</span>
+        {/* Pro plan card */}
+        <div
+          className="mx-4 rounded-[20px] overflow-hidden bg-[var(--color-surface)]"
+          style={{ border: '1.5px solid rgba(212,168,83,.28)' }}
+        >
+          <div className="p-[18px] pb-4">
+
+            {/* Pill */}
+            {isPro ? (
+              <div
+                className="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[.04em] mb-3.5"
+                style={{ background: 'rgba(107,148,112,.15)', border: '1px solid rgba(107,148,112,.3)', color: 'var(--color-sage)' }}
+              >
+                <span className="ms" style={{ fontSize: 12 }}>check_circle</span> Current plan
+              </div>
+            ) : (
+              <div
+                className="inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[.04em] mb-3.5"
+                style={{ background: 'var(--color-primary-bg)', border: '1px solid rgba(212,168,83,.28)', color: 'var(--color-primary)' }}
+              >
+                <span className="ms" style={{ fontSize: 12 }}>workspace_premium</span> Pro · Best value
+              </div>
+            )}
+
+            {/* Price */}
+            <div className="flex items-baseline gap-1 mb-0.5">
+              <span
+                className="text-[34px] font-bold text-[var(--color-text-1)]"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
+                ₹299
+              </span>
+              <span className="text-[13px] text-[var(--color-text-3)]">/month</span>
+            </div>
+            <div className="text-[12px] text-[var(--color-text-3)] mb-4">
+              Billed monthly · Cancel anytime
+            </div>
+
+            {/* Features */}
+            <div className="flex flex-col gap-2">
+              {[
+                ['all_inclusive', 'Unlimited trips'],
+                ['star',         'Our Picks + Live Events'],
+                ['face',         'Full persona experience'],
+                ['bookmark',     'Save & share itineraries'],
+              ].map(([icon, label]) => (
+                <div key={label} className="flex items-center gap-2">
+                  <span className="ms text-[var(--color-sage)]" style={{ fontSize: 15 }}>{icon}</span>
+                  <span className="text-[13px] text-[var(--color-text-2)]">{label}</span>
                 </div>
               ))}
-
-              <Button
-                variant="primary"
-                className="w-full mt-6 h-[52px] rounded-2xl"
-                style={{ fontFamily: 'var(--font-sans)' }}
-                disabled={plan.cta.disabled}
-                onClick={plan.onCta}
-              >
-                {plan.cta.label}
-              </Button>
             </div>
-          ))}
-        </div>
-
-        {/* ── OR divider ── */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-[var(--color-divider)]" />
-          <span className="text-[11px] font-bold text-[var(--color-text-4)] uppercase tracking-widest">or</span>
-          <div className="flex-1 h-px bg-[var(--color-divider)]" />
-        </div>
-
-        {/* ── Trip Packs ── */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-5">
-          <div className="font-[family-name:var(--font-heading)] text-[17px] font-bold text-[var(--color-text-1)] mb-1">
-            Buy a Trip Pack
-          </div>
-          <div className="text-[12px] text-[var(--color-text-3)] mb-4">
-            One-time purchase · 1-year validity · Full experience · Hard stop when trips run out
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <PackRow
-              name="5 Trips"
-              meta="Full experience · $0.60/trip"
-              price="$2.99"
-              priceLocal="₹249"
-              onBuy={() => buyPack(5)}
-            />
-          </div>
-
-        </div>
-
-        {/* ── Coupon ── */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-5">
-          <div className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--color-text-1)] mb-3">
-            Have a coupon?
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={coupon}
-              onChange={e => setCoupon(e.target.value)}
-              placeholder="Enter coupon code"
-              className="flex-1 rounded-[12px] px-3 py-2 text-sm outline-none bg-[var(--color-bg)] text-[var(--color-text-1)] border border-[var(--color-border)]"
-            />
-            <Button variant="primary" onClick={applyCoupon}>Apply</Button>
-          </div>
-          {couponFeedback && (
-            <p className="text-xs mt-2 text-[var(--color-text-2)]">{couponFeedback}</p>
+          {/* CTA strip */}
+          {isPro ? (
+            <>
+              <div style={{ height: 1, background: 'var(--color-divider)', margin: '0 18px' }} />
+              <button
+                onClick={handleDowngrade}
+                className="w-full flex items-center justify-center gap-1.5 py-3"
+              >
+                <span className="ms text-[var(--color-text-4)]" style={{ fontSize: 14 }}>south</span>
+                <span className="text-[12px] text-[var(--color-text-3)]">
+                  Downgrade to Free — cancels at end of billing period
+                </span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handlePurchase}
+              className="w-full flex items-center justify-center gap-2 py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80"
+              style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
+            >
+              <span className="ms" style={{ fontSize: 17 }}>bolt</span>
+              Go Pro · ₹299/mo
+            </button>
           )}
-          <p className="text-xs text-[var(--color-text-3)] mt-2">
-            Valid coupons unlock free access or bonus trips for the specified period.
-          </p>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function PackRow({
-  name, meta, price, priceLocal, badge, onBuy,
-}: {
-  name: string; meta: string; price: string; priceLocal: string;
-  badge?: string; onBuy: () => void;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3 p-3 rounded-2xl border"
-      style={{
-        background: badge ? 'rgba(212,168,83,.05)' : 'var(--color-surface)',
-        borderColor: badge ? 'rgba(212,168,83,.3)' : 'var(--color-border)',
-      }}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-semibold text-[var(--color-text-1)]">{name}</span>
-          {badge && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--color-primary)] text-[#0f0d0c]">
-              {badge}
+        {/* OR divider */}
+        <div className="flex items-center gap-2.5 mx-5 my-4">
+          <div className="flex-1 h-px bg-[var(--color-divider)]" />
+          <span className="text-[10px] font-bold uppercase tracking-[.07em] text-[var(--color-text-4)]">or</span>
+          <div className="flex-1 h-px bg-[var(--color-divider)]" />
+        </div>
+
+        {/* Trip pack card */}
+        <div
+          className="mx-4 rounded-[20px] bg-[var(--color-surface)] p-4 transition-opacity"
+          style={{
+            border: '1px solid var(--color-border)',
+            opacity: isPro ? 0.35 : 1,
+            pointerEvents: isPro ? 'none' : undefined,
+          }}
+        >
+          {/* Pack header */}
+          <div className="flex items-start justify-between mb-3.5">
+            <div>
+              <div className="text-[15px] font-semibold text-[var(--color-text-1)]">Trip Pack</div>
+              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">One-time · 1-year validity</div>
+            </div>
+            <span
+              className="text-[10px] font-bold text-[var(--color-text-3)] px-2 py-[3px] rounded-full flex-shrink-0 ml-2"
+              style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}
+            >
+              No subscription
             </span>
+          </div>
+
+          {/* Counter (pack state only) */}
+          {isPack && (
+            <div className="mb-3.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[12px] text-[var(--color-text-2)]">Trips used</span>
+                <span className="text-[12px] font-bold text-[var(--color-text-1)]">
+                  {tripsUsed} <span className="font-normal text-[var(--color-text-3)]">of {tripsTotal}</span>
+                </span>
+              </div>
+              <div className="h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--color-surface2)' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: 'linear-gradient(90deg, var(--color-primary), var(--color-primary-dk))',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Buy row */}
+          <div
+            className="flex items-center gap-3 p-[11px] rounded-[14px]"
+            style={{ border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.03)' }}
+          >
+            <div
+              className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center flex-shrink-0"
+              style={{ background: 'var(--color-primary-bg)' }}
+            >
+              <span className="ms text-[var(--color-primary)]" style={{ fontSize: 16 }}>travel_explore</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-[var(--color-text-1)]">10 Trips</div>
+              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">₹29/trip · full experience</div>
+            </div>
+            <div className="flex items-center gap-2.5 flex-shrink-0">
+              <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹299</span>
+              <button
+                onClick={handlePurchase}
+                className="h-8 px-3 rounded-[10px] text-[12px] font-bold text-[#0f0d0c] active:opacity-80"
+                style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
+              >
+                Buy
+              </button>
+            </div>
+          </div>
+
+          {isPro && (
+            <div className="text-[11px] text-[var(--color-text-4)] text-center pt-2.5">
+              Not needed on Pro — you have unlimited trips
+            </div>
           )}
         </div>
-        <div className="text-[10px] text-[var(--color-text-3)] mt-0.5">{meta}</div>
+
+        {/* Free plan note */}
+        {!isPro && (
+          <div
+            className="mx-4 mt-3.5 p-3 rounded-[12px] text-[12px] text-[var(--color-text-3)] leading-relaxed"
+            style={{ border: '1px solid var(--color-divider)' }}
+          >
+            <span className="text-[var(--color-text-2)] font-semibold">Free plan</span> includes 3 complete trips — no restrictions or watermarks.
+          </div>
+        )}
+
       </div>
-      <div className="text-right mr-2 flex-shrink-0">
-        <div className="text-[13px] font-bold text-[var(--color-text-1)]">{price}</div>
-        <div className="text-[10px] text-[var(--color-text-3)]">{priceLocal}</div>
-      </div>
-      <button
-        onClick={onBuy}
-        className="h-8 px-3 rounded-xl font-bold text-[12px] text-[#0f0d0c] flex-shrink-0"
-        style={{ background: 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))' }}
-      >
-        Buy
-      </button>
     </div>
   );
 }
