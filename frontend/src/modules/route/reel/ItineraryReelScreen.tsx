@@ -10,7 +10,7 @@ import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelStopCard as ReelStopCardType } from './types';
 import type { WeatherData, TripDetails } from '../../../shared/types';
-import { api, getPlacePhotoUrl } from '../../../shared/api';
+import { api } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { getPreloadedUrls } from '../../../shared/imagePreloader';
 import { ReelBalanceCard } from './ReelBalanceCard';
@@ -109,16 +109,6 @@ function preCacheTripImages(itinerary: import('../../../shared/types').EngineIti
   }).catch(() => {});
 }
 
-function preloadImages(srcs: string[]): Promise<void> {
-  if (srcs.length === 0) return Promise.resolve();
-  return Promise.all(
-    srcs.map(src => new Promise<void>(resolve => {
-      const img = new Image();
-      img.onload = img.onerror = () => resolve();
-      img.src = src;
-    })),
-  ).then(() => undefined);
-}
 
 interface ItineraryReelScreenProps {
   onTabBarScroll?: (hidden: boolean) => void;
@@ -175,6 +165,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const arrowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Lazy image loading: track fetched stop titles and keep a live snapshot of cards
+  const lazyFetchedRef = useRef<Set<string>>(new Set());
+  const lazyPrimaryCity = useRef('');
+  const cardsDataRef = useRef<ReelCard[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelControlRef = useRef<import('./ReelStopCard').PanelControl | null>(null);
@@ -264,12 +258,17 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         ].filter(Boolean) as string[]),
       ];
 
-      // Collect all stops that have no image yet (skip scenic cards mixed in by backend)
+      lazyPrimaryCity.current = primaryCity;
+      lazyFetchedRef.current = new Set();
+
+      // Eager batch: only first 10 stops without images — rest lazy-load on scroll
       const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
         (d.stops ?? [])
           .filter(s => !s.imageUrl && s.title)
           .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
-      );
+      ).slice(0, 10);
+      // Pre-mark eager stops as fetched so lazy effect skips them
+      for (const { stop } of stopsNeedingImages) lazyFetchedRef.current.add(stop.title);
 
       // Race timeout shared by photo fetches
       const raceTimeout = new Promise<never>(resolve =>
@@ -320,6 +319,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         newStopImages,
       );
       setCards(filtered);
+      // Show the reel immediately — remaining images lazy-load on scroll
+      if (!cancelled) setImagesReady(true);
 
       // Fetch live events for all days in the trip.
       // Clear stale events first so a city change doesn't carry over previous results.
@@ -364,24 +365,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         })
         .catch(() => { /* non-critical — show cards without photo moments */ });
 
-      // Preload every image URL into the browser cache before revealing the reel
-      const srcs: string[] = [];
-      for (const c of filtered) {
-        if (c.type === 'stop') {
-          const url = c.stop.imageUrl ?? (c.stop.photoRef ? getPlacePhotoUrl(c.stop.photoRef, 800, 1200) : null);
-          if (url) srcs.push(url);
-        } else if (c.type === 'intro' && c.imageUrl) {
-          srcs.push(c.imageUrl);
-        } else if (c.type === 'intel' && c.imageUrl) {
-          srcs.push(c.imageUrl);
-        } else if (c.type === 'scenic') {
-          if (c.originPhotoUrl) srcs.push(c.originPhotoUrl);
-          if (c.destPhotoUrl) srcs.push(c.destPhotoUrl);
-        }
-      }
-      await Promise.race([preloadImages(srcs), raceTimeout.catch(() => {})]);
-
-      if (!cancelled) setImagesReady(true);
     })();
 
     return () => { cancelled = true; };
@@ -390,6 +373,35 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
   // Keep activeIdxRef in sync so the scroll restore effect can read it synchronously
   useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
+
+  // Keep a live snapshot of cards for the lazy-fetch effect (avoids stale closure)
+  useEffect(() => { cardsDataRef.current = cards; }, [cards]);
+
+  // Lazy-fetch images for the next 3 stop cards as the user scrolls
+  useEffect(() => {
+    if (!imagesReady) return;
+    const upcoming = cardsDataRef.current.slice(activeIdx + 1, activeIdx + 4);
+    for (const card of upcoming) {
+      if (card.type !== 'stop') continue;
+      const { stop } = card;
+      if (stop.imageUrl || stop.photoRef) continue;
+      if (!stop.title) continue;
+      if (lazyFetchedRef.current.has(stop.title)) continue;
+      lazyFetchedRef.current.add(stop.title);
+      const city = stop.city ?? lazyPrimaryCity.current;
+      api.placeImage(stop.title, city, stop.placeId ?? undefined)
+        .then(url => {
+          if (!url) return;
+          setCards(prev => prev.map(c =>
+            c.type === 'stop' && c.stop.title === stop.title && !c.stop.imageUrl
+              ? { ...c, stop: { ...c.stop, imageUrl: url } }
+              : c
+          ));
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIdx, imagesReady]);
 
   // After secondary card rebuilds (weather/persona/photos), restore scroll so the
   // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
