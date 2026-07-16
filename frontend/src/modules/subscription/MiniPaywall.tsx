@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function MiniPaywall({ onClose, context }: Props) {
-  const { state, dispatch } = useAppStore();
+  const { dispatch } = useAppStore();
   const [purchaseConfirm, setPurchaseConfirm] = useState<{ tripsAdded: number } | null>(null);
 
   function handlePackPurchase(_size: 1 | 5) {

@@ -2,12 +2,6 @@ import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { Button } from '../../shared/ui/Button';
 
-function oneYearFromNow(): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + 1);
-  return d.toISOString().split('T')[0];
-}
-
 // ── Main screen ───────────────────────────────────────────────
 
 export function SubscriptionScreen() {
