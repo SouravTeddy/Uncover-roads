@@ -14,7 +14,7 @@ export function computeExtraDays(
   return Math.max(0, totalDays - budgetDays);
 }
 
-const FREE_TIER_LIMIT = 5
+const FREE_TIER_LIMIT = 3
 
 export function RouteScreen() {
   const { state, dispatch } = useAppStore()

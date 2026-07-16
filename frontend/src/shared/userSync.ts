@@ -76,19 +76,27 @@ export async function syncPersonaProfile(
   }, { onConflict: 'user_id' });
 }
 
-// Load role + generation count for the signed-in user.
+// Load role, generation count, and tier for the signed-in user.
 // Returns null on failure so callers never downgrade a cached role.
-export async function loadUserProfile(userId: string): Promise<{ role: 'user' | 'admin'; generationCount: number } | null> {
+export async function loadUserProfile(userId: string): Promise<{
+  role: 'user' | 'admin';
+  generationCount: number;
+  tier: 'free' | 'pack' | 'pro';
+  packTripsRemaining: number;
+} | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('role, generation_count')
+    .select('role, generation_count, tier, pack_trips_remaining')
     .eq('id', userId)
     .single();
 
   if (error || !data) return null;
+  const rawTier = data.tier;
   return {
     role: data.role === 'admin' ? 'admin' : 'user',
     generationCount: data.generation_count ?? 0,
+    tier: rawTier === 'pro' || rawTier === 'pack' ? rawTier : 'free',
+    packTripsRemaining: data.pack_trips_remaining ?? 0,
   };
 }
 

@@ -495,7 +495,7 @@ export async function* aiItineraryStream(
 ): AsyncGenerator<Itinerary> {
   const res = await fetch(`${BASE}/ai-itinerary-stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...await authHeaders() },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(120_000),
   });

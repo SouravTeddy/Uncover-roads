@@ -29,8 +29,6 @@ export function useItinerary() {
       return
     }
     const updatedPlaces = state.selectedPlaces.filter(p => p.id !== stop.placeId)
-    // IMPORTANT: increment generation count BEFORE clearing (per Self-Review gap fix)
-    dispatch({ type: 'INCREMENT_GENERATION_COUNT' })
     dispatch({ type: 'SET_SELECTED_PLACES', places: updatedPlaces })
     dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: null })
     dispatch({ type: 'CLEAR_ENGINE_MESSAGES' })

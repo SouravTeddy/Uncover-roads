@@ -23,11 +23,9 @@ export function SubscriptionScreen() {
     dispatch({ type: 'GO_BACK' });
   }
 
-  function buyPack(trips: number) {
-    dispatch({
-      type: 'ADD_TRIP_PACK',
-      pack: { id: crypto.randomUUID(), trips, usedTrips: 0, expiresAt: oneYearFromNow() },
-    });
+  function buyPack(_trips: number) {
+    // TODO: integrate Google Play Billing / RevenueCat — no purchase without payment
+    alert('Purchase coming soon. Payment integration in progress.');
   }
 
   function applyCoupon() {
@@ -74,7 +72,7 @@ export function SubscriptionScreen() {
         'Cancel anytime',
       ],
       cta: proCta,
-      onCta: proCta.disabled ? undefined : () => dispatch({ type: 'SET_USER_TIER', tier: 'pro' }),
+      onCta: proCta.disabled ? undefined : () => alert('Purchase coming soon. Payment integration in progress.'),
     },
   ];
 

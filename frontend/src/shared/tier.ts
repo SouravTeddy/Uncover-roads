@@ -12,14 +12,13 @@ export function getPackRemainingTrips(packs: TripPack[]): number {
 
 /**
  * Returns true when Our Picks and Live Events should be hidden/locked.
- * Locked for free tier after the 2nd generation (generationCount >= 2),
- * unless they have active pack trips (packs unlock full experience).
- * 1st and 2nd generations are fully free; restriction kicks in on 3rd.
+ * All 3 free generations are full — curation is only locked after the free
+ * limit is exhausted and no pack trips remain.
  */
 export function isCurationLocked(state: AppState): boolean {
   if (state.userTier === 'pro') return false;
   if (getPackRemainingTrips(state.tripPacks) > 0) return false;
-  return state.generationCount >= 2;
+  return state.generationCount >= 3;
 }
 
 /**
@@ -39,7 +38,7 @@ export function shouldShowConversionNudge(packPurchaseCount: number): boolean {
   return packPurchaseCount >= 2;
 }
 
-const PACK_PRICES: Record<number, number> = { 5: 2.99 };
+const PACK_PRICES: Record<number, number> = { 10: 299 };
 
 /** Returns total amount spent across all trip packs. */
 export function computePackSpend(packs: TripPack[]): number {

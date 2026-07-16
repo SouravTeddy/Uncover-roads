@@ -70,6 +70,8 @@ function ScreenRouter() {
       if (profile) {
         dispatch({ type: 'SET_USER_ROLE', role: profile.role });
         dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+        dispatch({ type: 'SET_USER_TIER', tier: profile.tier });
+        dispatch({ type: 'SET_PACK_TRIPS', count: profile.packTripsRemaining });
       }
       dispatch({ type: 'PROFILE_LOADED' });
     }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
@@ -111,11 +113,13 @@ function ScreenRouter() {
         loadSavedItineraries(session.user.id).then(items => {
           if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
         }).catch(console.warn);
-        // Always load role + generation count so admin bypass works without re-login
+        // Always load role + generation count + tier so values can't be spoofed via localStorage
         loadUserProfile(session.user.id).then(profile => {
           if (profile) {
             dispatch({ type: 'SET_USER_ROLE', role: profile.role });
             dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+            dispatch({ type: 'SET_USER_TIER', tier: profile.tier });
+            dispatch({ type: 'SET_PACK_TRIPS', count: profile.packTripsRemaining });
           }
           dispatch({ type: 'PROFILE_LOADED' });
         }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });
@@ -139,6 +143,8 @@ function ScreenRouter() {
             if (profile) {
               dispatch({ type: 'SET_USER_ROLE', role: profile.role });
               dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+              dispatch({ type: 'SET_USER_TIER', tier: profile.tier });
+              dispatch({ type: 'SET_PACK_TRIPS', count: profile.packTripsRemaining });
             }
             dispatch({ type: 'PROFILE_LOADED' });
           }).catch(() => { dispatch({ type: 'PROFILE_LOADED' }); });

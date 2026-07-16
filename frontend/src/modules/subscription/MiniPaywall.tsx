@@ -13,13 +13,9 @@ export function MiniPaywall({ onClose, context }: Props) {
   const { state, dispatch } = useAppStore();
   const [purchaseConfirm, setPurchaseConfirm] = useState<{ tripsAdded: number } | null>(null);
 
-  function handlePackPurchase(size: 1 | 5) {
-    // TODO: integrate payment provider (Stripe / App Store / Play Store)
-    // Currently simulates immediate success for UI development
-    const current = state.packTripsRemaining;
-    dispatch({ type: 'SET_TIER', tier: 'pack' });
-    dispatch({ type: 'SET_PACK_TRIPS', count: current + size });
-    setPurchaseConfirm({ tripsAdded: size });
+  function handlePackPurchase(_size: 1 | 5) {
+    // TODO: integrate Google Play Billing / RevenueCat
+    alert('Purchase coming soon. Payment integration in progress.');
   }
 
   function handleViewAllPlans() {

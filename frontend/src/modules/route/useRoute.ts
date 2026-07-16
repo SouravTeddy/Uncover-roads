@@ -14,7 +14,7 @@ export function useRoute() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'active' | 'saved'>('active');
 
-  const { city, selectedPlaces, persona, itinerary, weather, savedItineraries } = state;
+  const { city, selectedPlaces, persona, itinerary, weather, savedItineraries, tripPacks } = state;
 
   const totalDays = computeTotalDays(state.travelStartDate, state.travelEndDate) ||
     (state.tripContext.days ?? 1);
@@ -30,7 +30,13 @@ export function useRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function buildItinerary(overridePlaces?: typeof state.selectedPlaces) {
+  async function buildItinerary(overridePlaces?: typeof state.selectedPlaces, isRebuild = false) {
+    // Wait for Supabase profile so generationCount and tier are server-confirmed
+    if (!state.profileLoaded) {
+      setLoading(true);
+      return;
+    }
+
     if (shouldShowPaywall(state)) {
       dispatch({ type: 'GO_TO', screen: 'subscription' });
       return;
@@ -115,10 +121,19 @@ export function useRoute() {
       }
     }
 
-    dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) incrementGenerationCount(user.id).catch(console.warn);
-    });
+    if (!isRebuild) {
+      dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
+      if (state.userTier === 'pack') {
+        // Consume from the oldest non-expired pack so tripPacks[].usedTrips stays accurate
+        const today = new Date().toISOString().split('T')[0];
+        const activePack = tripPacks.find(p => p.expiresAt >= today && p.usedTrips < p.trips);
+        if (activePack) dispatch({ type: 'USE_PACK_TRIP', packId: activePack.id });
+        dispatch({ type: 'CONSUME_PACK_TRIP' }); // keep packTripsRemaining counter in sync
+      }
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) incrementGenerationCount(user.id).catch(console.warn);
+      });
+    }
   }
 
   async function loadWeather() {
@@ -146,7 +161,7 @@ export function useRoute() {
       dispatch({ type: 'GO_TO', screen: 'map' });
       return;
     }
-    buildItinerary();
+    buildItinerary(undefined, true);
   }
 
   async function saveItinerary() {
