@@ -102,13 +102,14 @@ interface Props {
   onMoveEnd: (center: [number, number], zoom: number, bbox: [number, number, number, number]) => void;
   onBearingChange?: (bearing: number) => void;
   onClick?: (lngLat: { lat: number; lng: number }) => void;
+  onLoad?: () => void;
   routeGeojson?: GeoJSON.Feature<GeoJSON.LineString> | null;
   pinDropResult?: { lat: number; lon: number } | null;
   children?: React.ReactNode;
 }
 
 export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
-  { center, zoom = 13, places, selectedPlace, selectedPlaces, highlightIds, onPlaceClick, onMoveEnd, onBearingChange, onClick, routeGeojson, pinDropResult, children },
+  { center, zoom = 13, places, selectedPlace, selectedPlaces, highlightIds, onPlaceClick, onMoveEnd, onBearingChange, onClick, onLoad, routeGeojson, pinDropResult, children },
   ref,
 ) {
   const mapRef = useRef<LibreMapRef>(null);
@@ -167,6 +168,7 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
       onMoveEnd={handleMoveEnd}
       onMove={onBearingChange ? handleMove : undefined}
       onClick={onClick ? (e: MapMouseEvent) => onClick({ lat: e.lngLat.lat, lng: e.lngLat.lng }) : undefined}
+      onLoad={onLoad}
     >
       <MapLibreRoute geojson={routeGeojson ?? null} />
       <MapLibreMarkers

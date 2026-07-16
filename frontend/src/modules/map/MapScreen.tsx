@@ -598,6 +598,11 @@ export function MapScreen() {
         onPlaceClick={() => {}}
         onMoveEnd={handleMapMoveEnd}
         onBearingChange={setMapBearing}
+        onLoad={() => {
+          // cityGeo may have arrived before the map style finished loading, in which
+          // case initialViewState was baked in as [20,0]. Correct it now.
+          if (cityGeo) mapHandleRef.current?.flyTo(cityGeo.lat, cityGeo.lon, 13);
+        }}
         routeGeojson={routeGeojson}
       >
         {/* Famous places — only when zoomed in; disappear on zoom-out to free memory */}
