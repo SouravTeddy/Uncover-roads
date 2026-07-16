@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, memo } from 'react';
 import type { ReelStopCard as ReelStopCardType, TransitInfo } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl, fetchPlaceDetails, BASE } from '../../../shared/api';
+import { getPlacePhotoUrl, fetchPlaceDetails, BASE, api } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -352,8 +352,11 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   }, [expanded, card.prevStopLat, card.prevStopLon, stop.lat, stop.lon]);
 
   const [fallbackPhotoRef, setFallbackPhotoRef] = useState<string | null>(null);
+  const [placeImageUrl, setPlaceImageUrl] = useState<string | null>(null);
   const photoFetchAttempted = useRef(false);
-  const photoUrl = stop.imageUrl
+  const placeImageAttempted = useRef(false);
+  const photoUrl = placeImageUrl
+    ?? stop.imageUrl
     ?? (stop.photoRef ? getPlacePhotoUrl(stop.photoRef, 800, 1200) : null)
     ?? (fallbackPhotoRef ? getPlacePhotoUrl(fallbackPhotoRef, 800, 1200) : null)
     ?? cityPhotoUrl
@@ -367,6 +370,16 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
       if (details?.photo_ref) setFallbackPhotoRef(details.photo_ref);
     }).catch(() => {});
   }, [active, stop.imageUrl, stop.photoRef, stop.placeId]);
+
+  const handlePhotoFinalError = () => {
+    if (placeImageAttempted.current) return;
+    placeImageAttempted.current = true;
+    const city = stop.city ?? '';
+    if (!stop.title || !city) return;
+    api.placeImage(stop.title, city, stop.placeId ?? undefined)
+      .then(url => { if (url) setPlaceImageUrl(url); })
+      .catch(() => {});
+  };
 
   useEffect(() => { if (active) onInteract?.('viewed'); }, [active, onInteract]);
   useEffect(() => {
@@ -562,6 +575,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
       <ReelImg
         src={photoUrl}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', zIndex: 0 }}
+        onFinalError={handlePhotoFinalError}
       />
 
       {/* Sky tint */}
