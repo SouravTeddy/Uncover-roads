@@ -599,6 +599,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
                 {cityName} · {days} day{days !== 1 ? 's' : ''} · {stopCount} stop{stopCount !== 1 ? 's' : ''}
               </p>
             )}
+            <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: '14px 0 0', lineHeight: 1.5 }}>
+              We're crafting a personalised trip just for you.<br />
+              This usually takes 30–60 seconds.
+            </p>
           </div>
 
           {/* Step indicators */}
