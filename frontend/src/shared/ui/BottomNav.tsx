@@ -12,6 +12,7 @@ const OB_SCREENS = new Set<Screen>(['login', 'welcome', 'walkthrough', 'ob1', 'o
 
 const EXPLORE_SCREENS    = new Set<Screen>(['destination', 'map']);
 const ITINERARY_SCREENS  = new Set<Screen>(['trips']);
+const PROFILE_SCREENS    = new Set<Screen>(['profile', 'subscription']);
 
 export function BottomNav() {
   const { state, dispatch } = useAppStore();
@@ -30,6 +31,7 @@ export function BottomNav() {
   function isActive(screen: Screen): boolean {
     if (screen === 'destination') return EXPLORE_SCREENS.has(currentScreen);
     if (screen === 'trips')       return ITINERARY_SCREENS.has(currentScreen);
+    if (screen === 'profile')     return PROFILE_SCREENS.has(currentScreen);
     return currentScreen === screen;
   }
 

@@ -47,7 +47,7 @@ export function SubscriptionScreen() {
       {/* Scroll body */}
       <div
         className="flex-1 overflow-y-auto"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 32px)' }}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}
       >
 
         {/* Hero */}
