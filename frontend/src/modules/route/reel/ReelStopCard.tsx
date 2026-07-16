@@ -578,6 +578,14 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
         onFinalError={handlePhotoFinalError}
       />
 
+      {/* Loading image indicator — shown while photo is still being fetched */}
+      {!photoUrl && (
+        <div style={{ position: 'absolute', top: 54, left: 14, zIndex: 10, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(8px)' }}>
+          <span className="ms" style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', animation: 'spin 1.5s linear infinite' }}>autorenew</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.42)', letterSpacing: '.02em' }}>Loading image</span>
+        </div>
+      )}
+
       {/* Sky tint */}
       <SkyTintLayers condition={condition} />
 
