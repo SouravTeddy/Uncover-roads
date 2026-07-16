@@ -2,19 +2,24 @@ import { useState, useEffect } from 'react'
 import type { MapFilter } from '../../shared/types'
 
 const SUB_CHIPS: { categories: string[]; label: string; icon: string }[] = [
-  { categories: ['historic', 'tourism'], label: 'Landmarks',  icon: 'account_balance' },
-  { categories: ['cafe'],                label: 'Cafes',       icon: 'local_cafe' },
-  { categories: ['park'],                label: 'Parks',       icon: 'park' },
-  { categories: ['restaurant'],          label: 'Dining',      icon: 'restaurant' },
-  { categories: ['museum'],              label: 'Museums',     icon: 'museum' },
-  { categories: ['bar'],                 label: 'Bars',        icon: 'local_bar' },
-  { categories: ['nightlife'],           label: 'Nightlife',   icon: 'nightlife' },
-  { categories: ['gallery'],             label: 'Art',         icon: 'palette' },
-  { categories: ['viewpoint'],           label: 'Views',       icon: 'landscape' },
-  { categories: ['beach'],               label: 'Beaches',     icon: 'beach_access' },
-  { categories: ['market'],              label: 'Markets',     icon: 'storefront' },
-  { categories: ['spiritual'],           label: 'Spiritual',   icon: 'temple_buddhist' },
-  { categories: ['spa'],                 label: 'Spa',         icon: 'spa' },
+  // Attractions
+  { categories: ['historic', 'tourism'], label: 'Landmarks',   icon: 'account_balance' },
+  { categories: ['museum'],              label: 'Museums',      icon: 'museum' },
+  { categories: ['amusement_park'],      label: 'Theme Parks',  icon: 'attractions' },
+  { categories: ['gallery'],             label: 'Art',          icon: 'palette' },
+  { categories: ['market'],              label: 'Markets',      icon: 'storefront' },
+  { categories: ['spiritual'],           label: 'Spiritual',    icon: 'temple_buddhist' },
+  // Outdoors
+  { categories: ['park'],                label: 'Parks',        icon: 'park' },
+  { categories: ['beach'],               label: 'Beaches',      icon: 'beach_access' },
+  { categories: ['viewpoint'],           label: 'Views',        icon: 'landscape' },
+  // Food & Drink
+  { categories: ['restaurant'],          label: 'Dining',       icon: 'restaurant' },
+  { categories: ['cafe'],                label: 'Cafes',        icon: 'local_cafe' },
+  { categories: ['bar'],                 label: 'Bars',         icon: 'local_bar' },
+  { categories: ['nightlife'],           label: 'Nightlife',    icon: 'nightlife' },
+  // Wellness
+  { categories: ['spa'],                 label: 'Spa',          icon: 'spa' },
 ]
 
 export const QUICK_PICKS: { label: string; categories: string[]; icon: string }[] = [
