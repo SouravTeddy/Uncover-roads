@@ -3,12 +3,11 @@ import { useAppStore } from '../../shared/store';
 import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
 import { NotificationsScreen } from './sub-screens/NotificationsScreen';
-import { UnitsSheet } from './sub-screens/UnitsSheet';
 import { PrivacyScreen } from './sub-screens/PrivacyScreen';
 import { SubscriptionDetailsScreen } from './sub-screens/SubscriptionDetailsScreen';
 import { ARCHETYPE_COLORS } from '../persona/types';
 
-type ProfileView = 'main' | 'notifications' | 'units' | 'privacy' | 'subscription-details';
+type ProfileView = 'main' | 'notifications' | 'privacy' | 'subscription-details';
 
 // ── Archetype derivation from primary mood ─────────────────────
 const MOOD_ARCHETYPE: Record<string, string> = {
@@ -80,14 +79,13 @@ export function ProfileScreen() {
 
   // Sub-screen routing
   if (view === 'notifications') return <NotificationsScreen onBack={() => setView('main')} />;
-  if (view === 'units') return <UnitsSheet onClose={() => setView('main')} />;
   if (view === 'privacy') return <PrivacyScreen onBack={() => setView('main')} onSignOut={handleSignOut} />;
   if (view === 'subscription-details') return <SubscriptionDetailsScreen onBack={() => setView('main')} />;
 
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 flex items-center">
+      <div className="px-4 pt-6 pb-3 flex items-center">
         <h1 className="font-[family-name:var(--font-heading)] text-[18px] font-bold text-[var(--color-text-1)]">
           Profile
         </h1>
@@ -98,53 +96,46 @@ export function ProfileScreen() {
         className="flex-1 overflow-y-auto"
         style={{ paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px) + 1.5rem)' }}
       >
-
-        {/* User card */}
-        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[20px] p-4 mx-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center text-[var(--color-primary)] font-bold text-[18px] flex-shrink-0">
-            {initial}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[14px] font-bold text-[var(--color-text-1)] truncate">{name}</div>
-            <div className="text-[11px] text-[var(--color-text-3)] truncate">{email}</div>
-          </div>
-          <div
-            className="px-2 py-0.5 rounded-full border text-[11px] font-bold flex-shrink-0"
-            style={badgeIsPaid
-              ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
-              : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
-          >
-            {badgeLabel}
-          </div>
-        </div>
-
-        {/* Archetype card — compact horizontal */}
-        {archetypeData && (
-          <div className="mx-4 mt-4">
+        {/* ── Identity block ───────────────────────────────────── */}
+        <div className="mx-4 rounded-[20px] overflow-hidden border border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
+          {/* User row */}
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="w-11 h-11 rounded-full bg-[var(--color-primary-bg)] flex items-center justify-center text-[var(--color-primary)] font-bold text-[17px] flex-shrink-0">
+              {initial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] font-semibold text-[var(--color-text-1)] truncate">{name}</div>
+              <div className="text-[12px] text-[var(--color-text-3)] truncate mt-0.5">{email}</div>
+            </div>
             <div
-              className="rounded-[20px] px-4 py-3 relative overflow-hidden flex items-center gap-3"
-              style={{
-                background: `linear-gradient(135deg, ${archetypeData.glow}, var(--color-surface))`,
-                border: `1px solid ${archetypeData.primary}28`,
-              }}
+              className="px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide flex-shrink-0"
+              style={badgeIsPaid
+                ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
+                : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
+            >
+              {badgeLabel}
+            </div>
+          </div>
+
+          {/* Persona row — only when archetype is set */}
+          {archetypeData && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 relative overflow-hidden border-t border-[var(--color-divider)]"
+              style={{ background: `linear-gradient(135deg, ${archetypeData.glow}, transparent)` }}
             >
               <div
-                className="absolute left-0 top-0 bottom-0 w-1/2 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}18, transparent 70%)` }}
+                className="absolute left-0 top-0 bottom-0 w-2/5 pointer-events-none"
+                style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}12, transparent 70%)` }}
               />
               <span
-                className="text-[28px] relative flex-shrink-0"
-                style={{ filter: `drop-shadow(0 0 10px ${archetypeData.primary}70)` }}
+                className="text-[22px] relative flex-shrink-0"
+                style={{ filter: `drop-shadow(0 0 8px ${archetypeData.primary}60)` }}
               >
                 {archetypeData.emoji}
               </span>
               <div className="flex-1 min-w-0 relative">
-                <div className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--color-text-1)] leading-tight">
-                  {archetypeData.name}
-                </div>
-                <div className="text-[11px] text-[var(--color-text-4)] mt-0.5 uppercase tracking-[.06em] font-semibold">
-                  Travel Persona
-                </div>
+                <div className="text-[13px] font-semibold text-[var(--color-text-1)] leading-tight">{archetypeData.name}</div>
+                <div className="text-[11px] text-[var(--color-text-4)] mt-0.5">Travel persona</div>
               </div>
               <button
                 onClick={startOBRedo}
@@ -153,7 +144,7 @@ export function ProfileScreen() {
                   fontSize: 11, fontWeight: 600,
                   color: 'var(--color-primary)',
                   background: 'var(--color-primary-bg)',
-                  border: '1px solid rgba(212,168,83,.22)',
+                  border: '1px solid rgba(212,168,83,.20)',
                   padding: '4px 10px', borderRadius: 99,
                 }}
               >
@@ -161,14 +152,11 @@ export function ProfileScreen() {
                 Retune
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Plan row */}
-        <div className="mt-5 px-4">
-          <SectionLabel>Settings</SectionLabel>
+          )}
         </div>
-        <div className="mx-4 mb-2">
+
+        {/* ── Plan ─────────────────────────────────────────────── */}
+        <div className="mx-4 mt-3">
           <PlanRow
             userTier={userTier}
             generationCount={generationCount}
@@ -176,44 +164,25 @@ export function ProfileScreen() {
             onManage={() => setView('subscription-details')}
           />
         </div>
-        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
+
+        {/* ── Preferences ──────────────────────────────────────── */}
+        <div className="mx-4 mt-3 rounded-[20px] overflow-hidden border border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
+          {/* Notifications */}
           <SettingsRow
             label="Notifications"
             onTap={() => setView('notifications')}
           />
-        </div>
 
-        {/* App section */}
-        <div className="px-4">
-          <SectionLabel>App</SectionLabel>
-        </div>
-        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-4 mx-4" style={{ background: 'var(--color-surface)' }}>
-          <SettingsRow
-            label="Units"
-            sublabel={state.units === 'km' ? 'Kilometres' : 'Miles'}
-            onTap={() => setView('units')}
-          />
-          <SettingsRow
-            label="Privacy & Data"
-            divider
-            onTap={() => setView('privacy')}
-          />
-
-          {/* Appearance row */}
-          <div className="flex items-center justify-between py-3 px-4 border-t border-[var(--color-divider)]">
+          {/* Appearance */}
+          <div className="flex items-center justify-between py-3.5 px-4 border-t border-[var(--color-divider)]">
             <div className="flex items-center gap-3">
-              <span className="ms text-[var(--color-text-2)] text-[20px]">
+              <span className="ms text-[var(--color-text-3)] text-[18px]">
                 {theme === 'dark' ? 'dark_mode' : 'light_mode'}
               </span>
-              <div>
-                <div className="text-[14px] text-[var(--color-text-1)] font-medium">Appearance</div>
-                <div className="text-[11px] text-[var(--color-text-3)]">
-                  {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-                </div>
-              </div>
+              <span className="text-[14px] font-medium text-[var(--color-text-2)]">
+                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+              </span>
             </div>
-
-            {/* 36×20px toggle pill */}
             <button
               onClick={() => dispatch({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
               className="w-9 h-5 rounded-full relative transition-colors duration-200 flex-shrink-0"
@@ -228,13 +197,15 @@ export function ProfileScreen() {
           </div>
         </div>
 
-        {/* Legal & Support */}
-        <div className="mt-2 px-4">
-          <SectionLabel>Legal & Support</SectionLabel>
-        </div>
-        <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] mb-8 mx-4" style={{ background: 'var(--color-surface)' }}>
+        {/* ── Account & Legal ───────────────────────────────────── */}
+        <div className="mx-4 mt-3 mb-8 rounded-[20px] overflow-hidden border border-[var(--color-border)]" style={{ background: 'var(--color-surface)' }}>
+          <SettingsRow
+            label="Privacy & Data"
+            onTap={() => setView('privacy')}
+          />
           <SettingsRow
             label="Privacy Policy"
+            divider
             onTap={() => openUrl('https://uncoverroads.com/privacy')}
           />
           <SettingsRow
@@ -258,7 +229,6 @@ export function ProfileScreen() {
             onTap={handleSignOut}
           />
         </div>
-
       </div>
     </div>
   );
@@ -349,12 +319,6 @@ function PlanRow({
       </div>
       <span className="text-[11px] font-bold text-[var(--color-primary)] flex-shrink-0">Upgrade →</span>
     </button>
-  );
-}
-
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <p style={{ color: 'var(--color-text-3)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8, paddingLeft: 4 }}>{children}</p>
   );
 }
 
