@@ -132,26 +132,6 @@ export function MapScreen() {
   const cityCenter = cityGeo ? { lat: cityGeo.lat, lon: cityGeo.lon } : null
   const heatmapSeeds = useHeatmapSeed(cityCenter, mapCenter)
 
-  // Empty area detection
-  const isFilterActive = activeCategories.length > 0
-  const activeCategoryLabel = (() => {
-    if (activeQuickPickLabel) {
-      return activeQuickPickLabel.replace(/^(Best |Top )/, '').toLowerCase()
-    }
-    const SUB_CHIP_LABELS: Record<string, string> = {
-      restaurant: 'eateries', cafe: 'cafés', park: 'parks', museum: 'museums',
-      historic: 'landmarks', tourism: 'attractions', viewpoint: 'viewpoints',
-      bar: 'bars', nightlife: 'nightlife spots',
-    }
-    return activeCategories.length === 1 ? (SUB_CHIP_LABELS[activeCategories[0]] ?? activeCategories[0]) : 'spots'
-  })()
-  const matchingInView = isFilterActive && mapBbox
-    ? filteredPlaces.filter(p =>
-        p.lat >= mapBbox[0] && p.lat <= mapBbox[1] &&
-        p.lon >= mapBbox[2] && p.lon <= mapBbox[3]
-      ).length
-    : 1  // non-zero default when no filter
-  const emptyArea = isFilterActive && matchingInView === 0
 
   const selectedIds = useMemo(() => new Set(selectedPlaces.map(p => p.id)), [selectedPlaces]);
   const favouritedIds = useMemo(
@@ -779,7 +759,7 @@ export function MapScreen() {
       {/* Area result strip — screen-level so position: absolute works correctly */}
       {(() => {
         const selArea = neighborhoods.find(n => n.id === selectedAreaId) ?? null
-        if (!selArea || emptyArea) return null
+        if (!selArea) return null
         return (
           <div
             style={{
@@ -812,39 +792,6 @@ export function MapScreen() {
         )
       })()}
 
-      {/* Empty area banner — tappable to clear the active category filter */}
-      {emptyArea && (
-        <button
-          onClick={() => { setActiveCategories([]); setActiveQuickPickLabel(null); }}
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: 92,
-            zIndex: 55,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '13px 16px',
-            borderRadius: 16,
-            background: 'rgba(12,13,17,.94)',
-            backdropFilter: 'blur(16px)',
-            border: '1.5px solid rgba(232,97,90,.6)',
-            boxShadow: '0 12px 36px rgba(0,0,0,.6), 0 0 22px rgba(232,97,90,.16)',
-            animation: 'bannerIn .4s cubic-bezier(.25,0,0,1) both',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <div style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(232,97,90,.16)', border: '1px solid rgba(232,97,90,.4)' }}>
-            <span className="ms" style={{ fontSize: 19, color: '#e8615a' }}>search_off</span>
-          </div>
-          <div style={{ lineHeight: 1.3 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 800, color: '#e8615a' }}>No {activeCategoryLabel ?? 'spots'} here</div>
-            <div style={{ fontSize: 11.5, fontWeight: 500, color: 'rgba(242,237,230,.6)', marginTop: 1 }}>Tap to clear filter and see all pins</div>
-          </div>
-        </button>
-      )}
 
       {/* Reco focus places banner — shown when navigating from reel */}
       {recoFocusPlaces.length > 0 && (
