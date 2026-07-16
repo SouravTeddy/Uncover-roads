@@ -1,6 +1,6 @@
 import { useId, useState, useEffect, useRef } from 'react';
 import type { ReelScenicCard as ReelScenicCardType } from './types';
-import { fetchPlaceDetails, getPlacePhotoUrl } from '../../../shared/api';
+import { api } from '../../../shared/api';
 import {
   WalkSpineScene, SelfDriveScene, CoastalScene,
   RidgeScene, CrowdFreeScene, ForestScene,
@@ -307,22 +307,22 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
 
   useEffect(() => {
     if (!active) return;
-    const needsOrigin = !card.originPhotoUrl && !!card.originPlaceId;
-    const needsDest = !card.destPhotoUrl && !!card.destPlaceId;
+    const needsOrigin = !card.originPhotoUrl && (!!card.originPlaceId || !!card.from);
+    const needsDest = !card.destPhotoUrl && (!!card.destPlaceId || !!card.to);
     if (!needsOrigin && !needsDest) return;
     if (fetchAttempted.current) return;
     fetchAttempted.current = true;
     if (needsOrigin) {
-      fetchPlaceDetails(card.originPlaceId!).then(d => {
-        if (d?.photo_ref) setFallbackOriginUrl(getPlacePhotoUrl(d.photo_ref, 800, 600));
-      }).catch(() => {});
+      api.placeImage(card.from, '', card.originPlaceId ?? undefined)
+        .then(url => { if (url) setFallbackOriginUrl(url); })
+        .catch(() => {});
     }
     if (needsDest) {
-      fetchPlaceDetails(card.destPlaceId!).then(d => {
-        if (d?.photo_ref) setFallbackDestUrl(getPlacePhotoUrl(d.photo_ref, 800, 600));
-      }).catch(() => {});
+      api.placeImage(card.to, '', card.destPlaceId ?? undefined)
+        .then(url => { if (url) setFallbackDestUrl(url); })
+        .catch(() => {});
     }
-  }, [active, card.originPhotoUrl, card.destPhotoUrl, card.originPlaceId, card.destPlaceId]);
+  }, [active, card.originPhotoUrl, card.destPhotoUrl, card.originPlaceId, card.destPlaceId, card.from, card.to]);
 
   const photoUrl = (card.destPhotoUrl ?? fallbackDestUrl) ?? (card.originPhotoUrl ?? fallbackOriginUrl) ?? card.photoUrl;
 

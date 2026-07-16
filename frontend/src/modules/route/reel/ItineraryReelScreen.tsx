@@ -167,8 +167,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const arrowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Lazy image loading: track fetched stop titles and keep a live snapshot of cards
+  // Lazy image loading: track fetched stop titles and used image URLs (to prevent duplicates)
   const lazyFetchedRef = useRef<Set<string>>(new Set());
+  const lazyUsedUrlsRef = useRef<Set<string>>(new Set());
   const lazyPrimaryCity = useRef('');
   const cardsDataRef = useRef<ReelCard[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -262,6 +263,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
       lazyPrimaryCity.current = primaryCity;
       lazyFetchedRef.current = new Set();
+      lazyUsedUrlsRef.current = new Set();
 
       // Eager batch: only first 10 stops without images — rest lazy-load on scroll
       const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
@@ -307,7 +309,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       // Store resolved stop images so enrichment rebuilds keep them
       const newStopImages = new Map<string, string>();
       for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
-        if (r.url) newStopImages.set(r.title, r.url);
+        if (r.url) {
+          newStopImages.set(r.title, r.url);
+          lazyUsedUrlsRef.current.add(r.url); // seed dedup set so lazy-fetch won't reuse
+        }
       }
       setResolvedStopImages(newStopImages);
 
@@ -394,6 +399,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       api.placeImage(stop.title, city, stop.placeId ?? undefined)
         .then(url => {
           if (!url) return;
+          // Skip if this exact URL is already used by another card (prevents duplicates)
+          if (lazyUsedUrlsRef.current.has(url)) return;
+          lazyUsedUrlsRef.current.add(url);
           setCards(prev => prev.map(c =>
             c.type === 'stop' && c.stop.title === stop.title && !c.stop.imageUrl
               ? { ...c, stop: { ...c.stop, imageUrl: url } }
@@ -415,16 +423,16 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   }, [cards]);
 
   // Enrichment-only updates — when weatherByCity or personaName arrive.
+  // Do NOT set restoreScrollRef here: these don't change card count, so scrollTop is
+  // already correct. Touching scrollTop mid-swipe is what causes "same card again" bug.
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    restoreScrollRef.current = true;
     setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    restoreScrollRef.current = true;
     setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
