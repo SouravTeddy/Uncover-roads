@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 interface Props {
   src: string | null | undefined;
   style: CSSProperties;
+  onFinalError?: () => void;
 }
 
 /**
@@ -12,7 +13,7 @@ interface Props {
  * - Retries up to 3 times with backoff on load failure.
  * - Fades the image in smoothly once loaded.
  */
-export function ReelImg({ src, style }: Props) {
+export function ReelImg({ src, style, onFinalError }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState(false);
 
@@ -29,8 +30,9 @@ export function ReelImg({ src, style }: Props) {
   const handleError = () => {
     if (attempt < 3) {
       setTimeout(() => setAttempt(a => a + 1), 800 * (attempt + 1));
+    } else {
+      onFinalError?.();
     }
-    // After max retries: shimmer stays visible, no fallback
   };
 
   const showShimmer = !!src && !loaded;
