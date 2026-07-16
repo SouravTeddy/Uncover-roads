@@ -23,6 +23,8 @@ import { TripDetailsSheet } from './TripDetailsSheet';
 import { enrichScenicCardsWithTransit } from './transit-enrichment';
 import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
+import { supabase } from '../../../shared/supabase';
+import { syncSavedItinerary } from '../../../shared/userSync';
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -475,6 +477,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     dispatch({ type: 'SET_REEL_SAVED_ID', id });
     setSaved(true);
     preCacheTripImages(activeItinerary);
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) syncSavedItinerary(user.id, savedEntry).catch(console.warn);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary]);
 
@@ -612,8 +617,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
               </p>
             )}
             <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: '14px 0 0', lineHeight: 1.5 }}>
-              We're crafting a personalised trip just for you.<br />
-              This usually takes 30–60 seconds.
+              We're crafting a personalised trip just for you — this takes a little time.
             </p>
           </div>
 

@@ -615,8 +615,16 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, savedItineraries: updated };
     }
 
-    case 'SET_SAVED_ITINERARIES':
-      return { ...state, savedItineraries: action.items };
+    case 'SET_SAVED_ITINERARIES': {
+      // Merge: combine local items not in Supabase with Supabase items.
+      // Keeps locally-saved-but-not-yet-synced trips from being overwritten.
+      const remoteIds = new Set(action.items.map(i => i.id));
+      const localOnly = state.savedItineraries.filter(i => !remoteIds.has(i.id));
+      const merged = [...action.items, ...localOnly].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+      return { ...state, savedItineraries: merged };
+    }
 
     case 'SET_USER_ROLE':
       try { localStorage.setItem('ur_user_role', action.role); } catch { /* ignore */ }
