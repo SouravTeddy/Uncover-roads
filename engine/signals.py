@@ -111,18 +111,52 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def _crowd_pressure(stop: "EngineStop", ctx: "EngineContext", date_str: str | None) -> float:
-    """Compute Crowd Pressure Score 0–1 for this stop at its scheduled time."""
+def _popular_times_score(popular_times: list | None, date_str: str | None, hour: int) -> float | None:
+    """Extract busyness score 0–1 from Google Places popular_times for a specific day/hour.
+
+    popular_times: [{day: int (0=Sun), data: [24 ints 0-100]}, ...]
+    Returns None if data is unavailable for this day.
+    """
+    if not popular_times or not date_str:
+        return None
+    try:
+        # Python weekday(): 0=Mon … 6=Sun → Google: 0=Sun … 6=Sat
+        py_weekday = _dt.fromisoformat(date_str).weekday()
+        google_day = (py_weekday + 1) % 7
+        for entry in popular_times:
+            if entry.get("day") == google_day:
+                data = entry.get("data") or []
+                if 0 <= hour < len(data):
+                    return data[hour] / 100.0
+    except Exception:
+        pass
+    return None
+
+
+def _crowd_pressure(
+    stop: "EngineStop", ctx: "EngineContext", date_str: str | None,
+    popular_times: list | None = None,
+) -> float:
+    """Compute Crowd Pressure Score 0–1 for this stop at its scheduled time.
+
+    Uses Google Places popular_times when available; falls back to category
+    peak curves + neighbourhood crowd index.
+    """
     if not stop.scheduled_time:
         return 0.3
     h, _ = _parse_hm(stop.scheduled_time)
+
+    # ── Real data path: Google Popular Times ──────────────────────────────
+    real_score = _popular_times_score(popular_times, date_str, h)
+    if real_score is not None:
+        return real_score
+
+    # ── Fallback: category peak curve + neighbourhood index ───────────────
     peak_curve = _CATEGORY_PEAK.get(stop.category.lower(), _DEFAULT_PEAK)
     base_peak = peak_curve[h]
 
-    # Neighborhood crowd_index
     crowd_mult = 1.0
     if ctx.city.neighborhoods:
-        # Find nearest neighborhood by centroid distance
         best_nb = min(
             ctx.city.neighborhoods,
             key=lambda nb: _haversine_km(stop.lat, stop.lon, nb.center[0], nb.center[1]),
@@ -133,11 +167,10 @@ def _crowd_pressure(stop: "EngineStop", ctx: "EngineContext", date_str: str | No
                 day_type = "weekend" if (
                     date_str and _dt.fromisoformat(date_str).weekday() >= 5
                 ) else "weekday"
-                crowd_mult = best_nb.crowd_index.get(day_type, 0.5) * 2  # 0→0, 0.5→1, 1→2
+                crowd_mult = best_nb.crowd_index.get(day_type, 0.5) * 2
             except Exception:
                 pass
 
-    # Weekend bump for outdoor/social categories
     is_weekend = bool(date_str and _dt.fromisoformat(date_str).weekday() >= 5)
     weekend_bump = 1.2 if (is_weekend and stop.category.lower() in {"park", "beach", "market", "landmark", "viewpoint"}) else 1.0
 
@@ -212,10 +245,11 @@ def _cap_text(text: str, max_chars: int = 60) -> str:
 def _sig_crowd(
     stop: "EngineStop", ctx: "EngineContext", date_str: str | None,
     day_state: DaySignalState,
+    popular_times: list | None = None,
 ) -> StopSignal | None:
     if not day_state.can_fire("crowd"):
         return None
-    cps = _crowd_pressure(stop, ctx, date_str)
+    cps = _crowd_pressure(stop, ctx, date_str, popular_times)
     h, _ = _parse_hm(stop.scheduled_time) if stop.scheduled_time else (12, 0)
     arrive = stop.scheduled_time or "?"
 
@@ -538,11 +572,12 @@ def compute_stop_signals(
     Returns list of {type, text, icon} dicts for the API response.
     """
     prev_stop = day_stops[stop_idx - 1] if stop_idx > 0 else None
+    popular_times = place_details.get("popular_times")
     candidates: list[StopSignal] = []
 
     for fn in [
         lambda: _sig_discovery(stage, velocity_ratio, day_state),
-        lambda: _sig_crowd(stop, ctx, date_str, day_state),
+        lambda: _sig_crowd(stop, ctx, date_str, day_state, popular_times),
         lambda: _sig_timing(stop, date_str, day_state),
         lambda: _sig_value(stop, place_details, ctx, day_state),
         lambda: _sig_transit(stop, prev_stop, ctx, day_state),

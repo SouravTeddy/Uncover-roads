@@ -4010,7 +4010,7 @@ def place_details(request: Request, place_id: str):
     # 2. Cache miss — call Google
     params = {
         "place_id": place_id,
-        "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types",
+        "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,popular_times",
         "key": GOOGLE_PLACES_API_KEY,
     }
     try:
@@ -4076,6 +4076,7 @@ def place_details(request: Request, place_id: str):
             "photo_ref": photo_ref,
             "types": result.get("types", []),
             "review_summary": review_summary,
+            "popular_times": result.get("popular_times"),
         }
 
         # 3. Write to cache
@@ -4275,7 +4276,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
             f"{GOOGLE_PLACES_BASE}/details/json",
             params={
                 "place_id": resolved_id,
-                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,editorial_summary,reviews",
+                "fields": "name,formatted_address,geometry,rating,user_ratings_total,opening_hours,formatted_phone_number,website,price_level,photos,types,editorial_summary,reviews,popular_times",
                 "key": GOOGLE_PLACES_API_KEY,
             },
             timeout=5,
@@ -4316,6 +4317,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
                 for r in (result.get("reviews") or [])[:3]
                 if r.get("text")
             ],
+            "popular_times": result.get("popular_times"),
         }
 
         if _supabase:
@@ -4932,6 +4934,7 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
                 "reviews":             (row.get("data") or {}).get("reviews") or [],
                 "rating_count":        (row.get("data") or {}).get("rating_count"),
                 "photo_ref":           (row.get("data") or {}).get("photo_ref"),
+                "popular_times":       (row.get("data") or {}).get("popular_times"),
                 "opening_hours_parsed": _parse_weekday_text(
                     (row.get("data") or {}).get("weekday_text") or []
                 ),
