@@ -741,6 +741,7 @@ export function MapScreen() {
           places={places}
           onSelect={(place) => {
             setActivePlace(place);
+            fetchDetails(place);
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id });
             mapHandleRef.current?.flyTo(place.lat, place.lon, 13);
           }}
