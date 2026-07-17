@@ -39,7 +39,6 @@ import { useHeatmapSeed } from './useHeatmapSeed'
 import { AreaBlobLayer } from './AreaBlobLayer'
 import { AreaPillsOverlay } from './AreaPillsOverlay'
 import { MapPlaceSearch } from './MapPlaceSearch'
-import { SearchHighlightPin } from './SearchHighlightPin'
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -51,7 +50,6 @@ export function MapScreen() {
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
-  const [searchHighlight, setSearchHighlight] = useState<{ lat: number; lon: number } | null>(null)
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
@@ -691,10 +689,6 @@ export function MapScreen() {
           />
         )}
 
-        {searchHighlight && (
-          <SearchHighlightPin lat={searchHighlight.lat} lon={searchHighlight.lon} />
-        )}
-
         {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
 
         <AreaBlobLayer
@@ -744,12 +738,15 @@ export function MapScreen() {
           city={city}
           cityLat={mapCenter?.lat ?? cityGeo?.lat ?? null}
           cityLon={mapCenter?.lon ?? cityGeo?.lon ?? null}
-          onSelect={(lat, lon, _name) => {
-            setSearchHighlight({ lat, lon });
-            mapHandleRef.current?.flyTo(lat, lon, 16);
-            setActivePlace(null);
+          places={places}
+          onSelect={(place) => {
+            setActivePlace(place);
+            dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id });
+            mapHandleRef.current?.flyTo(place.lat, place.lon, 13);
           }}
-          onClear={() => setSearchHighlight(null)}
+          onClear={() => {
+            dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
+          }}
         />
       )}
 

@@ -1,37 +1,69 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { placesAutocomplete, geocodePlace } from '../../shared/api';
+import { placesAutocomplete } from '../../shared/api';
 import type { AutocompleteResult } from '../../shared/types';
+import type { Place } from '../../shared/types';
 
 interface Props {
   city: string;
   cityLat: number | null;
   cityLon: number | null;
-  onSelect: (lat: number, lon: number, name: string) => void;
+  places: Place[];
+  onSelect: (place: Place) => void;
   onClear: () => void;
+}
+
+interface MatchedResult {
+  autocomplete: AutocompleteResult;
+  place: Place;
 }
 
 const SESSION_ID = crypto.randomUUID();
 
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function findMatchingPlace(mainText: string, places: Place[]): Place | null {
+  const g = normalize(mainText);
+  // Exact match
+  let m = places.find(p => normalize(p.title) === g);
+  if (m) return m;
+  // Substring (one contains the other)
+  m = places.find(p => {
+    const pn = normalize(p.title);
+    return g.includes(pn) || pn.includes(g);
+  });
+  if (m) return m;
+  // Word overlap — 60% of the shorter string's significant words must match
+  m = places.find(p => {
+    const pWords = normalize(p.title).split(' ').filter(w => w.length > 2);
+    const gWords = g.split(' ').filter(w => w.length > 2);
+    if (!pWords.length || !gWords.length) return false;
+    const pSet = new Set(pWords);
+    const common = gWords.filter(w => pSet.has(w)).length;
+    return common / Math.min(pWords.length, gWords.length) >= 0.6;
+  });
+  return m ?? null;
+}
+
 function placeIcon(types: string[]): string {
-  if (types.some(t => ['restaurant', 'food', 'meal_takeaway', 'meal_delivery', 'cafe', 'bakery', 'bar'].includes(t))) return 'restaurant';
+  if (types.some(t => ['restaurant', 'food', 'meal_takeaway', 'cafe', 'bakery', 'bar'].includes(t))) return 'restaurant';
   if (types.some(t => ['museum', 'art_gallery'].includes(t))) return 'museum';
   if (types.some(t => ['park', 'natural_feature', 'campground'].includes(t))) return 'park';
-  if (types.some(t => ['lodging', 'rv_park'].includes(t))) return 'hotel';
-  if (types.some(t => ['transit_station', 'subway_station', 'bus_station', 'train_station', 'light_rail_station'].includes(t))) return 'directions_subway';
-  if (types.some(t => ['shopping_mall', 'store', 'clothing_store', 'department_store'].includes(t))) return 'shopping_bag';
-  if (types.some(t => ['tourist_attraction', 'point_of_interest'].includes(t))) return 'photo_camera';
+  if (types.some(t => ['lodging'].includes(t))) return 'hotel';
+  if (types.some(t => ['transit_station', 'subway_station', 'bus_station', 'train_station'].includes(t))) return 'directions_subway';
+  if (types.some(t => ['shopping_mall', 'store', 'clothing_store'].includes(t))) return 'shopping_bag';
   return 'place';
 }
 
-export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Props) {
+export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onClear }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<AutocompleteResult[]>([]);
+  const [results, setResults] = useState<MatchedResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [noResults, setNoResults] = useState(false);
   const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [picking, setPicking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,15 +102,21 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await placesAutocomplete(
+        const raw = await placesAutocomplete(
           query,
           SESSION_ID,
-          '',
+          'establishment',
           cityLat ?? undefined,
           cityLon ?? undefined,
         );
-        setResults(res);
-        setNoResults(res.length === 0);
+        // Only keep results that have a matching pin in our places array
+        const matched: MatchedResult[] = [];
+        for (const r of raw) {
+          const place = findMatchingPlace(r.main_text, places);
+          if (place) matched.push({ autocomplete: r, place });
+        }
+        setResults(matched);
+        setNoResults(matched.length === 0);
       } catch {
         setResults([]);
         setNoResults(true);
@@ -87,20 +125,12 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
       }
     }, 280);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, isOpen, cityLat, cityLon]);
+  }, [query, isOpen, cityLat, cityLon, places]);
 
-  const pick = async (result: AutocompleteResult) => {
-    if (picking) return;
-    setPicking(true);
-    try {
-      const geo = await geocodePlace(result.place_id, SESSION_ID);
-      if (!geo) return;
-      setSelectedName(result.main_text);
-      onSelect(geo.lat, geo.lon, result.main_text);
-      close();
-    } finally {
-      setPicking(false);
-    }
+  const pick = (item: MatchedResult) => {
+    setSelectedName(item.autocomplete.main_text);
+    onSelect(item.place);
+    close();
   };
 
   const overlayStyle: React.CSSProperties = {
@@ -122,7 +152,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
 
   return (
     <>
-      {/* Compact pill — between back button and city label */}
+      {/* Compact pill */}
       <div
         onClick={selectedName ? undefined : open}
         style={{
@@ -144,12 +174,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
           overflow: 'hidden',
         }}
       >
-        <span
-          className="ms"
-          style={{ fontSize: 17, color: 'var(--color-text-3)', flexShrink: 0, lineHeight: 1 }}
-        >
-          search
-        </span>
+        <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', flexShrink: 0, lineHeight: 1 }}>search</span>
         <span
           style={{
             flex: 1,
@@ -165,64 +190,34 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
         {selectedName && (
           <button
             onClick={clear}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              color: 'var(--color-text-4)',
-              flexShrink: 0,
-            }}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--color-text-4)', flexShrink: 0 }}
           >
             <span className="ms" style={{ fontSize: 16, lineHeight: 1 }}>close</span>
           </button>
         )}
       </div>
 
-      {/* Full-screen search overlay */}
+      {/* Full-screen overlay */}
       {(isOpen || isClosing) && (
         <div style={overlayStyle}>
           {/* Top row */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: `calc(${safeTop} + 12px) 16px 0`,
-              flexShrink: 0,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: `calc(${safeTop} + 12px) 16px 0`, flexShrink: 0 }}>
             <button
               onClick={close}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,.07)',
-                border: '1px solid rgba(255,255,255,.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                flexShrink: 0,
-                padding: 0,
+                width: 40, height: 40, borderRadius: '50%',
+                background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0, padding: 0,
               }}
             >
               <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-2)', lineHeight: 1 }}>arrow_back</span>
             </button>
             <div
               style={{
-                flex: 1,
-                height: 40,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '0 10px',
-                borderRadius: 20,
-                background: 'rgba(255,255,255,.07)',
-                border: '1px solid rgba(255,255,255,.1)',
+                flex: 1, height: 40, display: 'flex', alignItems: 'center', gap: 8,
+                padding: '0 10px', borderRadius: 20,
+                background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',
               }}
             >
               <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', lineHeight: 1, flexShrink: 0 }}>search</span>
@@ -231,99 +226,53 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder={`Search in ${city}…`}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: 14,
-                  color: 'var(--color-text-1)',
-                  caretColor: 'var(--color-primary)',
-                }}
+                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: 'var(--color-text-1)', caretColor: 'var(--color-primary)' }}
               />
-              {query ? (
-                <button
-                  onClick={() => setQuery('')}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-                >
+              {query && (
+                <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                   <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-4)', lineHeight: 1 }}>close</span>
                 </button>
-              ) : null}
+              )}
             </div>
           </div>
 
-          {/* Divider */}
           <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginTop: 16 }} />
 
-          {/* Loading */}
           {loading && (
-            <div style={{ padding: '20px 16px', color: 'var(--color-text-4)', fontSize: 13, textAlign: 'center' }}>
-              Searching…
-            </div>
+            <div style={{ padding: '20px 16px', color: 'var(--color-text-4)', fontSize: 13, textAlign: 'center' }}>Searching…</div>
           )}
 
-          {/* Results */}
           {!loading && results.length > 0 && (
             <div style={{ overflowY: 'auto', flex: 1 }}>
-              {results.map((r, i) => (
+              {results.map((item, i) => (
                 <button
-                  key={r.place_id}
-                  onClick={() => pick(r)}
-                  disabled={picking}
+                  key={item.autocomplete.place_id}
+                  onClick={() => pick(item)}
                   style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '13px 16px',
-                    background: 'none',
-                    border: 'none',
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '13px 16px', background: 'none', border: 'none',
                     borderBottom: i < results.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
+                    cursor: 'pointer', textAlign: 'left',
                   }}
                 >
                   <div
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: '50%',
+                      width: 36, height: 36, borderRadius: '50%',
                       background: 'rgba(255,255,255,.06)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}
                   >
                     <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', lineHeight: 1 }}>
-                      {placeIcon(r.types ?? [])}
+                      {placeIcon(item.autocomplete.types ?? [])}
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 500,
-                        color: 'var(--color-text-1)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {r.main_text}
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.autocomplete.main_text}
                     </div>
-                    {r.secondary_text && (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: 'var(--color-text-4)',
-                          marginTop: 2,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {r.secondary_text}
+                    {item.autocomplete.secondary_text && (
+                      <div style={{ fontSize: 12, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.autocomplete.secondary_text}
                       </div>
                     )}
                   </div>
@@ -333,48 +282,18 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
             </div>
           )}
 
-          {/* No results */}
           {!loading && noResults && query.trim() && (
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                padding: '0 32px',
-                textAlign: 'center',
-              }}
-            >
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '0 32px', textAlign: 'center' }}>
               <span className="ms" style={{ fontSize: 40, color: 'var(--color-text-4)', lineHeight: 1 }}>search_off</span>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-2)' }}>
-                No results in {city}
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>
-                Try a different name or check the spelling.
-              </p>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--color-text-2)' }}>No results in {city}</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Try a different name or check the spelling.</p>
             </div>
           )}
 
-          {/* Empty state before typing */}
           {!loading && !noResults && results.length === 0 && !query.trim() && (
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                padding: '0 32px',
-                textAlign: 'center',
-              }}
-            >
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '0 32px', textAlign: 'center' }}>
               <span className="ms" style={{ fontSize: 40, color: 'rgba(255,255,255,.1)', lineHeight: 1 }}>travel_explore</span>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>
-                Type a place name to search within {city}
-              </p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Type a place name to find it on the map</p>
             </div>
           )}
         </div>
