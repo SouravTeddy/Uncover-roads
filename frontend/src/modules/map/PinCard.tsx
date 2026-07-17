@@ -767,7 +767,7 @@ export function PinCard({
               )}
 
               {/* ② What's best here — review_summary when available, persona insight as fallback */}
-              {(details.review_summary || whyForYouText) && (
+              {(details?.review_summary || whyForYouText) && (
                 <div style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <button
                     onClick={() => setBestHereOpen(o => !o)}
@@ -781,7 +781,7 @@ export function PinCard({
                       {!bestHereOpen && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {(() => {
-                            const text = details.review_summary ?? whyForYouText ?? ''
+                            const text = details?.review_summary ?? whyForYouText ?? ''
                             return text.length > 55 ? text.slice(0, 55) + '…' : text
                           })()}
                         </div>
@@ -794,9 +794,9 @@ export function PinCard({
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                         <div style={{ paddingBottom: 12 }}>
                           <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
-                            {details.review_summary ?? whyForYouText}
+                            {details?.review_summary ?? whyForYouText}
                           </p>
-                          {details.review_summary && (
+                          {details?.review_summary && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
                               <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
                               AI summary from thousands of reviews
