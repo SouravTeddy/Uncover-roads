@@ -257,26 +257,49 @@ async def require_pro(user=Depends(get_current_user)):
 
 
 async def require_auth_or_pack(user=Depends(get_current_user)):
-    """Requires login + either pro/unlimited or remaining pack trips."""
+    """Allows: pro/unlimited subscribers, pack holders with trips left, free-tier users under the 3-trip limit."""
     if not _supabase:
         raise HTTPException(status_code=503, detail="auth_unavailable")
-    result = (
-        _supabase.table("user_subscriptions")
-        .select("status, pack_trips_remaining, expires_at")
-        .eq("user_id", str(user.id))
-        .single()
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(status_code=403, detail="subscription_required")
-    sub = result.data
-    if sub["status"] in ("pro", "unlimited"):
-        if sub.get("expires_at") and sub["expires_at"] < datetime.now(timezone.utc).isoformat():
-            raise HTTPException(status_code=403, detail="subscription_expired")
+
+    # Check subscription first (maybe_single avoids exception when no row exists)
+    try:
+        sub_result = (
+            _supabase.table("user_subscriptions")
+            .select("status, pack_trips_remaining, expires_at")
+            .eq("user_id", str(user.id))
+            .maybe_single()
+            .execute()
+        )
+        sub = sub_result.data if sub_result else None
+    except Exception:
+        sub = None
+
+    if sub:
+        if sub["status"] in ("pro", "unlimited"):
+            if sub.get("expires_at") and sub["expires_at"] < datetime.now(timezone.utc).isoformat():
+                raise HTTPException(status_code=403, detail="subscription_expired")
+            return user
+        if sub["status"] == "pack" and sub.get("pack_trips_remaining", 0) > 0:
+            return user
+
+    # Free-tier fallback: allow if generation_count < 3
+    try:
+        profile_result = (
+            _supabase.table("profiles")
+            .select("generation_count")
+            .eq("id", str(user.id))
+            .maybe_single()
+            .execute()
+        )
+        profile = profile_result.data if profile_result else None
+        count = (profile.get("generation_count") or 0) if profile else 0
+    except Exception:
+        count = 0
+
+    if count < 3:
         return user
-    if sub["status"] == "pack" and sub.get("pack_trips_remaining", 0) > 0:
-        return user
-    raise HTTPException(status_code=403, detail="subscription_required")
+
+    raise HTTPException(status_code=403, detail="generation_limit_reached")
 
 
 # ── Per-user rate limiting ────────────────────────────────────────────────────
