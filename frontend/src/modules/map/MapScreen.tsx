@@ -740,7 +740,7 @@ export function MapScreen() {
           city={city}
           cityLat={mapCenter?.lat ?? cityGeo?.lat ?? null}
           cityLon={mapCenter?.lon ?? cityGeo?.lon ?? null}
-          onSelect={(lat, lon, name) => {
+          onSelect={(lat, lon, _name) => {
             setSearchHighlight({ lat, lon });
             mapHandleRef.current?.flyTo(lat, lon, 16);
             setActivePlace(null);

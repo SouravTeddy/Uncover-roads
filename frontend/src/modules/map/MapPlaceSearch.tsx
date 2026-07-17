@@ -296,7 +296,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, onSelect, onClear }: Pr
                     }}
                   >
                     <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', lineHeight: 1 }}>
-                      {placeIcon(r.types)}
+                      {placeIcon(r.types ?? [])}
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
