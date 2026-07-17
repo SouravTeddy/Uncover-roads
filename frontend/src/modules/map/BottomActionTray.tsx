@@ -5,13 +5,12 @@ interface Props {
   days: number
   buildLoading: boolean
   isBuildingActive?: boolean
-  hasExistingItinerary: boolean
   onBuild: () => void
 }
 
 const MIN_PLACES = 2
 
-export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildingActive, hasExistingItinerary, onBuild }: Props) {
+export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildingActive, onBuild }: Props) {
   const count = itineraryPlaces.length
   const canBuild = count >= MIN_PLACES
   const hasItinerary = count > 0
@@ -25,8 +24,6 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildi
     ? 'Building in progress'
     : buildLoading
     ? 'Building…'
-    : hasExistingItinerary
-    ? `Rebuild itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
     : `Build itinerary · ${count} place${count === 1 ? '' : 's'}${dayPart}`
 
   return (

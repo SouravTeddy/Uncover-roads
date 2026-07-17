@@ -1134,7 +1134,6 @@ export function MapScreen() {
           days={activeCityDays}
           buildLoading={buildLoading}
           isBuildingActive={state.activeBuild?.status === 'pending' || state.activeBuild?.status === 'running'}
-          hasExistingItinerary={state.hasBuiltThisSession}
           onBuild={handleBuild}
         />
       )}
