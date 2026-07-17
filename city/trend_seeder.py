@@ -163,8 +163,20 @@ def seed_trend_scores(
             "stage":      prev.get("stage", "mainstream"),
             "signals": {
                 **prev_signals,
-                "velocity_ratio": velocity_ratio,
-                "trend_seeded":   True,
+                "velocity_ratio":    velocity_ratio,
+                "trend_seeded":      True,
+                # Raw scores (unnormalised, source units)
+                "youtube_score":     raw_yt[i],
+                "wikimedia_score":   raw_wiki[i],
+                "foursquare_score":  raw_fsq[i],
+                "reddit_score":      raw_red[i],
+                # Normalised scores (0–1, city-relative)
+                "youtube_norm":      round(norm_yt[i], 4),
+                "wikimedia_norm":    round(norm_wiki[i], 4),
+                "foursquare_norm":   round(norm_fsq[i], 4),
+                "reddit_norm":       round(norm_red[i], 4),
+                "composite_score":   round(composite, 4),
+                "trend_seeded_at":   datetime.utcnow().isoformat(),
             },
             "updated_at": datetime.utcnow().isoformat(),
         })
