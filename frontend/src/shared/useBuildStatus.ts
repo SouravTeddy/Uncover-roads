@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from './store';
 import { api } from './api';
+import { loadUserProfile } from './userSync';
+import { supabase } from './supabase';
 
 const POLL_MS = 5_000;
 const STALE_MS = 10 * 60 * 1000; // 10 minutes — consider build stalled
@@ -28,6 +30,16 @@ export function useBuildStatus(): void {
             dispatch({ type: 'SET_ENGINE_ITINERARY', itinerary: res.result as import('./types').EngineItinerary });
           }
           dispatch({ type: 'CLEAR_ACTIVE_BUILD' });
+          // Re-read generation count so profile screen stays in sync
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return;
+            loadUserProfile(user.id).then(profile => {
+              if (profile) {
+                dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+                dispatch({ type: 'SET_USER_TIER', tier: profile.tier });
+              }
+            }).catch(() => {});
+          });
         } else if (res.status === 'failed') {
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
         } else {

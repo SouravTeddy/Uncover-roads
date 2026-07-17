@@ -534,8 +534,12 @@ export function MapScreen() {
     } catch (err: unknown) {
       console.error('[MapScreen] executeBuild failed:', err);
       // If build already in progress, reconnect to it
-      const detail = (err as { detail?: { code?: string; buildId?: string } }).detail;
-      if (detail?.code === 'build_in_progress' && detail.buildId) {
+      const errAny = err as { detail?: { code?: string; buildId?: string } | string; status?: number };
+      const detail = errAny.detail;
+      const detailStr = typeof detail === 'string' ? detail : (detail as { code?: string })?.code;
+      if (detailStr === 'generation_limit_reached') {
+        dispatch({ type: 'GO_TO', screen: 'subscription' });
+      } else if (typeof detail === 'object' && detail?.code === 'build_in_progress' && detail.buildId) {
         dispatch({ type: 'SET_ACTIVE_BUILD', build: { id: detail.buildId, cityName: city ?? '', status: 'running', startedAt: Date.now() } });
       } else {
         setBuildError('Could not start build — try again');

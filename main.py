@@ -6147,6 +6147,41 @@ async def engine_itinerary_start(
         except Exception as _e:
             raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
 
+    # Enforce free-tier generation limit and increment count
+    if _supabase:
+        try:
+            sub_result = (
+                _supabase.table("user_subscriptions")
+                .select("status, pack_trips_remaining")
+                .eq("user_id", str(user.id))
+                .maybe_single()
+                .execute()
+            )
+            sub = sub_result.data if sub_result else None
+            is_paid = sub and sub.get("status") in ("pro", "unlimited")
+            is_pack = sub and sub.get("status") == "pack" and sub.get("pack_trips_remaining", 0) > 0
+
+            if not is_paid and not is_pack:
+                profile_result = (
+                    _supabase.table("profiles")
+                    .select("generation_count")
+                    .eq("id", str(user.id))
+                    .maybe_single()
+                    .execute()
+                )
+                profile = profile_result.data if profile_result else None
+                count = (profile.get("generation_count") or 0) if profile else 0
+                if count >= 3:
+                    if build_id:
+                        _supabase.table("itinerary_builds").delete().eq("id", build_id).execute()
+                    raise HTTPException(status_code=403, detail="generation_limit_reached")
+
+            _supabase.rpc("increment_generation_count", {"uid": str(user.id)}).execute()
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # non-fatal — proceed with generation
+
     background_tasks.add_task(_run_itinerary_build, build_id, str(user.id), body)
     return JSONResponse(status_code=202, content={"buildId": build_id, "status": "pending"})
 
