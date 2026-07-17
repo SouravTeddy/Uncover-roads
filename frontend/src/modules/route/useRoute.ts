@@ -5,7 +5,7 @@ import { shouldShowPaywall } from '../../shared/tier';
 import type { ItineraryRequest } from '../../shared/api';
 import type { Itinerary, SavedItinerary } from '../../shared/types';
 import { supabase } from '../../shared/supabase';
-import { syncSavedItinerary, incrementGenerationCount } from '../../shared/userSync';
+import { syncSavedItinerary, loadUserProfile } from '../../shared/userSync';
 import { computeTotalDays, addDaysToIso } from '../map/trip-capacity-utils';
 
 export function useRoute() {
@@ -81,6 +81,7 @@ export function useRoute() {
         location_name: state.tripContext.locationName,
       },
       selected_places: placesToUse.map(p => ({ id: p.id, title: p.title, lat: p.lat, lon: p.lon })),
+      is_rebuild: isRebuild,
     };
 
     let dispatched = 0;
@@ -122,16 +123,21 @@ export function useRoute() {
     }
 
     if (!isRebuild) {
-      dispatch({ type: 'INCREMENT_GENERATION_COUNT' });
       if (state.userTier === 'pack') {
-        // Consume from the oldest non-expired pack so tripPacks[].usedTrips stays accurate
         const today = new Date().toISOString().split('T')[0];
         const activePack = tripPacks.find(p => p.expiresAt >= today && p.usedTrips < p.trips);
         if (activePack) dispatch({ type: 'USE_PACK_TRIP', packId: activePack.id });
-        dispatch({ type: 'CONSUME_PACK_TRIP' }); // keep packTripsRemaining counter in sync
+        dispatch({ type: 'CONSUME_PACK_TRIP' });
       }
+      // Re-read from DB — server already incremented generation_count
       supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) incrementGenerationCount(user.id).catch(console.warn);
+        if (!user) return;
+        loadUserProfile(user.id).then(profile => {
+          if (profile) {
+            dispatch({ type: 'SET_GENERATION_COUNT', count: profile.generationCount });
+            dispatch({ type: 'SET_USER_TIER', tier: profile.tier });
+          }
+        }).catch(console.warn);
       });
     }
   }

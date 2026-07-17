@@ -1570,18 +1570,26 @@ Return ONLY a valid JSON object, no markdown, no explanation:
 # =========================================
 @app.post("/ai-itinerary-stream")
 def ai_itinerary_stream(body: dict, user=Depends(require_auth_or_pack)):
-    places    = body.get("selected_places", [])
-    city      = body.get("city", "the city")
-    days      = int(body.get("days", 1))
-    pace      = body.get("pace", "moderate")
-    persona   = body.get("persona", "")
-    archetype = body.get("persona_archetype", "")
-    trip_ctx  = body.get("trip_context", {})
+    places     = body.get("selected_places", [])
+    city       = body.get("city", "the city")
+    days       = int(body.get("days", 1))
+    pace       = body.get("pace", "moderate")
+    persona    = body.get("persona", "")
+    archetype  = body.get("persona_archetype", "")
+    trip_ctx   = body.get("trip_context", {})
+    is_rebuild = bool(body.get("is_rebuild", False))
 
     if not places:
         return {"itinerary": [], "summary": {}}
     if not ANTHROPIC_API_KEY:
         return {"error": "No Anthropic API key configured"}
+
+    # Increment generation count server-side for fresh generations only
+    if not is_rebuild and _supabase:
+        try:
+            _supabase.rpc("increment_generation_count", {"uid": str(user.id)}).execute()
+        except Exception:
+            pass
 
     # Nearest-neighbour sort (same as /ai-itinerary)
     def _dist2(a, b):

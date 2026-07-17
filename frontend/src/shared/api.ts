@@ -76,6 +76,7 @@ export interface ItineraryRequest {
   };
   selected_places?: Array<{ id: string; title: string; lat?: number; lon?: number }>;
   conflict_resolution?: string;
+  is_rebuild?: boolean;
 }
 
 export interface PersonaResponse {
