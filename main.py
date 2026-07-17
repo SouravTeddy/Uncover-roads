@@ -2888,6 +2888,9 @@ def places_autocomplete(
     query: str,
     session_id: str,
     types: str = "",
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    radius_m: int = 20000,
 ):
     """
     Google Places Autocomplete with session tokens.
@@ -2917,6 +2920,10 @@ def places_autocomplete(
     }
     if types:
         params["types"] = types
+    if lat is not None and lon is not None:
+        params["location"] = f"{lat},{lon}"
+        params["radius"] = radius_m
+        params["strictbounds"] = "true"
     try:
         resp = requests.get(f"{GOOGLE_PLACES_BASE}/autocomplete/json", params=params, timeout=5)
         data = resp.json()

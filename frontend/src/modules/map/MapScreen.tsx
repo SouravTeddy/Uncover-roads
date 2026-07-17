@@ -38,6 +38,8 @@ import { useNeighborhoods } from './useNeighborhoods'
 import { useHeatmapSeed } from './useHeatmapSeed'
 import { AreaBlobLayer } from './AreaBlobLayer'
 import { AreaPillsOverlay } from './AreaPillsOverlay'
+import { MapPlaceSearch } from './MapPlaceSearch'
+import { SearchHighlightPin } from './SearchHighlightPin'
 
 // ── Main screen ─────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ export function MapScreen() {
   const [mapBbox, setMapBbox] = useState<[number,number,number,number] | null>(null)
   const [mapCenter, setMapCenter] = useState<{lat: number; lon: number} | null>(null)
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null)
+  const [searchHighlight, setSearchHighlight] = useState<{ lat: number; lon: number } | null>(null)
   const {
     city, cityGeo, filteredPlaces, places, selectedPlaces,
     activeFilter, loading, error, activePlace, setActivePlace,
@@ -684,6 +687,10 @@ export function MapScreen() {
           />
         )}
 
+        {searchHighlight && (
+          <SearchHighlightPin lat={searchHighlight.lat} lon={searchHighlight.lon} />
+        )}
+
         {isMultiCity && <CityArcLayer cityFootprints={cityFootprints} />}
 
         <AreaBlobLayer
@@ -726,6 +733,21 @@ export function MapScreen() {
       >
         <span className="ms text-text-2 text-base">arrow_back</span>
       </button>
+
+      {/* Place search bar — between back button and city label */}
+      {city && (
+        <MapPlaceSearch
+          city={city}
+          cityLat={mapCenter?.lat ?? cityGeo?.lat ?? null}
+          cityLon={mapCenter?.lon ?? cityGeo?.lon ?? null}
+          onSelect={(lat, lon, name) => {
+            setSearchHighlight({ lat, lon });
+            mapHandleRef.current?.flyTo(lat, lon, 16);
+            setActivePlace(null);
+          }}
+          onClear={() => setSearchHighlight(null)}
+        />
+      )}
 
       {/* Compass — top-right, below filter bar */}
       <button

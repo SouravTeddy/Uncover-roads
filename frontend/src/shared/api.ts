@@ -332,8 +332,14 @@ export async function placesAutocomplete(
   query: string,
   sessionId: string,
   types = '',
+  lat?: number,
+  lon?: number,
 ): Promise<AutocompleteResult[]> {
   const params = new URLSearchParams({ query, session_id: sessionId, types });
+  if (lat != null && lon != null) {
+    params.set('lat', String(lat));
+    params.set('lon', String(lon));
+  }
   const res = await fetch(`${BASE}/places-autocomplete?${params}`);
   if (!res.ok) return [];
   const data = await res.json();
