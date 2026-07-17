@@ -59,6 +59,10 @@ def _best_candidate(
     seen_ids: set[str] | None = None,
 ) -> InsertCandidate | None:
     archetype = ctx.persona.get("archetype", "wanderer")
+    weights = ctx.persona.get("weights", {})
+    w_budget = weights.get("w_budget_sensitivity", 0.4)
+    w_crowd  = weights.get("w_crowd_aversion", 0.5)
+
     candidates = [c for c in ctx.city.insert_candidates if c.type == type_]
     if seen_ids:
         candidates = [c for c in candidates if c.place_id not in seen_ids]
@@ -69,12 +73,30 @@ def _best_candidate(
             candidates = [c for c in candidates if c.place_id not in seen_ids]
     if not candidates:
         return None
+
     def _score(c: InsertCandidate) -> float:
         affinity = c.persona_affinity.get(archetype, 0.5)
         dist_km = _haversine_km(c.lat, c.lon, near_lat, near_lon)
         # Max 0.4 penalty for distance; affinity dominates at 0.7
         dist_penalty = min(1.0, dist_km / 5.0) * 0.4
-        return affinity * 0.7 + (1.0 - dist_penalty) * 0.3
+        base = affinity * 0.7 + (1.0 - dist_penalty) * 0.3
+
+        # Budget penalty: price_level 3+ hurts budget-sensitive personas.
+        # Scale: w_budget=0.6 + price_level=4 → 0.6*(1.0)*0.35 = 0.21 penalty
+        if c.price_level and c.price_level >= 3:
+            budget_penalty = w_budget * ((c.price_level - 2) / 2) * 0.35
+        else:
+            budget_penalty = 0.0
+
+        # Crowd penalty: high rating_count = tourist trap.
+        # >800 reviews = very popular; penalise crowd-averse personas.
+        if c.rating_count:
+            crowd_penalty = w_crowd * min(1.0, c.rating_count / 800) * 0.25
+        else:
+            crowd_penalty = 0.0
+
+        return max(0.0, base - budget_penalty - crowd_penalty)
+
     return max(candidates, key=_score)
 
 
@@ -143,6 +165,10 @@ def detect(
     # w_rest=0.8 → 3 stops, w_rest=0.3 → 5 stops.
     rest_threshold = max(3, round(_REST_STOPS_MAX - w_rest * 2))
 
+    # Coffee gap scales with w_rest: high-rest personas get café breaks more often.
+    # w_rest=0.8 (ritualseeker) → ~108 min, w_rest=0.3 (epicurean) → ~153 min.
+    coffee_gap_min = max(90, int(_COFFEE_GAP_MIN - w_rest * 90))
+
     result: list[EngineStop] = []
     messages: list[EngineMessage] = []
     mins_since_rest = 9999
@@ -189,9 +215,9 @@ def detect(
         mid_lat = (stop.lat + stops[i + 1].lat) / 2
         mid_lon = (stop.lon + stops[i + 1].lon) / 2
 
-        # Coffee/café insert — fires when no rest break in the last 3h.
+        # Coffee/café insert — fires when no rest break since persona-scaled gap.
         # Uses time-window only; mins_since_rest resets naturally when a café is encountered.
-        if mins_since_rest >= _COFFEE_GAP_MIN:
+        if mins_since_rest >= coffee_gap_min:
             c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
@@ -292,7 +318,7 @@ def detect(
             if last_end_min < _EARLY_DAY_CUTOFF_HOUR * 60:
                 fills = 0
                 # 1. Coffee/café break if no recent rest
-                if mins_since_rest >= _COFFEE_GAP_MIN and fills < _EARLY_DAY_MAX_FILLS:
+                if mins_since_rest >= coffee_gap_min and fills < _EARLY_DAY_MAX_FILLS:
                     c = _best_candidate("coffee", ctx, last.lat, last.lon, seen_ids)
                     if c:
                         result.append(_candidate_to_stop(c, city=last.city))

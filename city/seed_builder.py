@@ -246,6 +246,8 @@ def _fetch_google_pois(city: dict, neighborhoods: list[Neighborhood]) -> list[di
                         "google_type": primary_type,
                         "time_cost_min": _DEFAULT_TIME_COST.get(insert_type, 45),
                         "neighborhood": nh.id,
+                        "price_level": place.get("price_level"),
+                        "rating_count": place.get("user_ratings_total"),
                     })
             except Exception:
                 continue
@@ -328,6 +330,8 @@ def _build_insert_candidates(pois: list[dict]) -> list[InsertCandidate]:
             "rest": ["afternoon", "evening"],
             "micro": ["morning", "afternoon", "evening"],
         }.get(poi["type"], ["morning", "afternoon", "evening"])
+        price_level = poi.get("price_level")
+        rating_count = poi.get("rating_count")
         candidates.append(InsertCandidate(
             place_id=poi["place_id"] or f"{poi['type']}_{poi.get('neighborhood', 'center')}_0",
             name=poi["name"],
@@ -338,6 +342,8 @@ def _build_insert_candidates(pois: list[dict]) -> list[InsertCandidate]:
             persona_affinity=affinity,
             trigger=None,
             time_of_day_match=time_of_day,
+            price_level=price_level,
+            rating_count=rating_count,
         ))
         # Restaurants serve dinner too — emit a separate dinner candidate so lunch
         # and dinner slots don't compete for the same seen_ids slot.
@@ -352,6 +358,8 @@ def _build_insert_candidates(pois: list[dict]) -> list[InsertCandidate]:
                 persona_affinity=affinity,
                 trigger=None,
                 time_of_day_match=["evening"],
+                price_level=price_level,
+                rating_count=rating_count,
             ))
     return candidates
 

@@ -25,6 +25,8 @@ class InsertCandidate:
     persona_affinity: dict[str, float]
     trigger: str | None
     time_of_day_match: list[str]
+    price_level: int | None = None   # Google price_level: 1=cheap 2=moderate 3=exp 4=very exp
+    rating_count: int | None = None  # Google user_ratings_total — proxy for popularity/crowds
 
 
 @dataclass
@@ -68,6 +70,8 @@ def _insert_candidate_from_dict(d: dict) -> InsertCandidate:
         persona_affinity=d.get("persona_affinity", {}),
         trigger=d.get("trigger"),
         time_of_day_match=d.get("time_of_day_match", []),
+        price_level=d.get("price_level"),
+        rating_count=d.get("rating_count"),
     )
 
 
