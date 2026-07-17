@@ -63,6 +63,7 @@ interface Props {
   onClose: () => void
   onFavourite: () => void
   details?: PlaceDetails | null
+  detailsLoaded?: boolean
   travelDate?: string | null
   travelStartDate?: string | null
   travelEndDate?: string | null
@@ -83,7 +84,7 @@ const shimmerBase: React.CSSProperties = {
 export function PinCard({
   place, city, isSelected, isFavourited,
   onAdd, onClose, onFavourite,
-  details, travelDate, travelStartDate, travelEndDate,
+  details, detailsLoaded = false, travelDate, travelStartDate, travelEndDate,
   ourPickBadge = null,
   badgeReason = null,
   userTier = 'free',
@@ -549,7 +550,7 @@ export function PinCard({
           </h2>
 
           {/* Address — shimmer while loading */}
-          {details == null ? (
+          {!detailsLoaded ? (
             <div style={{ ...shimmerBase, height: 11, width: '55%', marginBottom: 10 }} />
           ) : details?.address ? (
             <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--color-text-3)', animation: 'sectionReveal 360ms 0ms cubic-bezier(.22,1,.36,1) both' }}>
@@ -558,7 +559,7 @@ export function PinCard({
           ) : null}
 
           {/* Chips row — travel-date timing + rating + price */}
-          {details == null ? (
+          {!detailsLoaded ? (
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               <div style={{ ...shimmerBase, height: 22, width: 120, borderRadius: 99 }} />
               <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
@@ -710,7 +711,7 @@ export function PinCard({
           )}
 
           {/* ── Accordion sections ── */}
-          {details == null ? (
+          {!detailsLoaded ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
               <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
               <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
@@ -865,7 +866,7 @@ export function PinCard({
           )}
 
           {/* Analysis strip — shimmer while loading */}
-          {details == null ? (
+          {!detailsLoaded ? (
             <div style={{ ...shimmerBase, height: 62, width: '100%', borderRadius: 10, marginBottom: 14 }} />
           ) : insights.length > 0 ? (
             <div
@@ -1018,7 +1019,7 @@ export function PinCard({
 
         {/* Pinned CTA footer — paddingBottom clears the floating BottomNav (~72px from bottom) */}
         <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)' }}>
-          {details == null ? (
+          {!detailsLoaded ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
             <button

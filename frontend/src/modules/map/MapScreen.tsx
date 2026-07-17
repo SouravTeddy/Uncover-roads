@@ -139,7 +139,7 @@ export function MapScreen() {
     () => new Set(favouritedPins.map(f => f.placeId)),
     [favouritedPins],
   );
-  const { details, fetchDetails, clearDetails } = usePlaceDetails();
+  const { details, detailsLoaded, fetchDetails, clearDetails } = usePlaceDetails();
 
   const [clusterGroup, setClusterGroup] = useState<{ places: Place[]; lat: number; lon: number } | null>(null);
   const clusterSheetRef    = useRef<HTMLDivElement>(null);
@@ -851,7 +851,7 @@ export function MapScreen() {
       <MapLoadingOverlay visible={initialLoading && places.length === 0} />
 
       {/* Map status — loading / zoomed-out indicator (hidden during initial overlay) */}
-      <MapStatusIndicator status={initialLoading ? 'idle' : mapStatus} />
+      {!activePlace && <MapStatusIndicator status={initialLoading ? 'idle' : mapStatus} />}
 
       {/* ── Top overlay ── */}
       <div
@@ -1059,6 +1059,7 @@ export function MapScreen() {
           }}
           onClose={handlePinCardClose}
           details={details}
+          detailsLoaded={detailsLoaded}
           isFavourited={isFavourited}
           onFavourite={() => {
             if (!activePlace) return;
