@@ -38,7 +38,7 @@ export function shouldShowConversionNudge(packPurchaseCount: number): boolean {
   return packPurchaseCount >= 2;
 }
 
-const PACK_PRICES: Record<number, number> = { 10: 299 };
+const PACK_PRICES: Record<number, number> = { 5: 99 };
 
 /** Returns total amount spent across all trip packs. */
 export function computePackSpend(packs: TripPack[]): number {

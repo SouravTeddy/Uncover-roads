@@ -3,7 +3,7 @@ import { getPackRemainingTrips } from '../../shared/tier';
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
-  const { userTier, tripPacks, packTripsRemaining } = state;
+  const { userTier, tripPacks, packTripsRemaining, generationCount } = state;
 
   function back() { dispatch({ type: 'GO_BACK' }); }
 
@@ -24,7 +24,7 @@ export function SubscriptionScreen() {
   const tripsRemaining = isPack
     ? (getPackRemainingTrips(tripPacks) || packTripsRemaining)
     : 0;
-  const tripsTotal = 10;
+  const tripsTotal = 5;
   const tripsUsed  = Math.max(0, tripsTotal - tripsRemaining);
   const progressPct = Math.min(100, (tripsUsed / tripsTotal) * 100);
 
@@ -73,7 +73,7 @@ export function SubscriptionScreen() {
           ) : (
             <>
               <div className="text-[11px] font-bold uppercase tracking-[.07em] text-[var(--color-primary)] mb-1.5">
-                3 free trips used
+                {generationCount} of 3 free trips used
               </div>
               <div className="text-[22px] font-bold text-[var(--color-text-1)] tracking-tight leading-snug">
                 Keep exploring
@@ -225,11 +225,11 @@ export function SubscriptionScreen() {
               <span className="ms text-[var(--color-primary)]" style={{ fontSize: 16 }}>travel_explore</span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-[var(--color-text-1)]">10 Trips</div>
-              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">₹29/trip · full experience</div>
+              <div className="text-[13px] font-semibold text-[var(--color-text-1)]">5 Trips</div>
+              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">₹19/trip · full experience</div>
             </div>
             <div className="flex items-center gap-2.5 flex-shrink-0">
-              <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹299</span>
+              <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹99</span>
               <button
                 onClick={handlePurchase}
                 className="h-8 px-3 rounded-[10px] text-[12px] font-bold text-[#0f0d0c] active:opacity-80"
@@ -253,7 +253,7 @@ export function SubscriptionScreen() {
             className="mx-4 mt-3.5 p-3 rounded-[12px] text-[12px] text-[var(--color-text-3)] leading-relaxed"
             style={{ border: '1px solid var(--color-divider)' }}
           >
-            <span className="text-[var(--color-text-2)] font-semibold">Free plan</span> includes 3 complete trips — no restrictions or watermarks.
+            <span className="text-[var(--color-text-2)] font-semibold">Free plan</span> includes 3 complete trips. Top up with a 5-trip pack or go Pro for unlimited.
           </div>
         )}
 
