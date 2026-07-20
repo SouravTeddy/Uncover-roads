@@ -45,19 +45,18 @@ export function JourneyBreadcrumb({ cities }: Props) {
           <span
             style={{
               flexShrink: 0,
-              height: 26,
-              padding: '0 10px',
-              background: 'rgba(59,130,246,.12)',
-              border: '1px solid rgba(59,130,246,.25)',
+              height: 24,
+              padding: '0 9px',
+              background: 'rgba(255,255,255,.10)',
+              border: '1px solid rgba(255,255,255,.18)',
               borderRadius: 999,
               fontSize: 11,
-              fontWeight: 700,
-              color: '#93c5fd',
+              fontWeight: 600,
+              color: 'var(--color-text-1)',
               display: 'inline-flex',
               alignItems: 'center',
-              fontFamily: 'var(--font-heading)',
-              letterSpacing: 0.3,
               whiteSpace: 'nowrap',
+              backdropFilter: 'blur(8px)',
             }}
           >
             {city}
@@ -65,7 +64,7 @@ export function JourneyBreadcrumb({ cities }: Props) {
           {i < cities.length - 1 && (
             <span
               className="ms"
-              style={{ fontSize: 13, color: 'rgba(148,163,184,.4)', flexShrink: 0 }}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', flexShrink: 0 }}
             >
               arrow_forward
             </span>

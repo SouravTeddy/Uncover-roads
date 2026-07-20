@@ -120,24 +120,6 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
         </div>
       </div>
 
-      {/* App icon tile */}
-      <div
-        className="absolute bottom-3 right-4 flex items-center justify-center"
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 10,
-          background: 'rgba(255,255,255,.15)',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <span
-          className="material-symbols-outlined"
-          style={{ color: 'var(--color-primary)', fontSize: 22 }}
-        >
-          explore
-        </span>
-      </div>
     </div>
   );
 }
