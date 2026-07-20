@@ -4134,6 +4134,11 @@ def place_details(request: Request, place_id: str):
             "weekday_text": result.get("opening_hours", {}).get("weekday_text", []),
             "photo_ref": photo_ref,
             "types": result.get("types", []),
+            "editorial_summary": _sanitise(result.get("editorial_summary", {}).get("overview")),
+            "reviews": [
+                {"text": r.get("text", ""), "author_name": r.get("author_name", ""), "rating": r.get("rating", 0)}
+                for r in result.get("reviews", [])[:3]
+            ],
             "review_summary": review_summary,
             "popular_times": result.get("popular_times"),
         }
