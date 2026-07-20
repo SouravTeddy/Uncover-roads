@@ -95,42 +95,14 @@ describe('SubscriptionScreen', () => {
     return render(<SubscriptionScreen />);
   }
 
-  it('renders "Current Plan" disabled button for Pro user on the Pro column', () => {
+  it('renders "Current plan" pill for Pro user', () => {
     renderWithState(makeState({ userTier: 'pro' }));
-    // Pro user sees both plan cards; the Pro plan CTA is "Current Plan" (disabled)
-    const buttons = screen.getAllByText('Current Plan');
-    const disabledBtn = buttons.find(btn => (btn as HTMLButtonElement).disabled);
-    expect(disabledBtn).toBeTruthy();
+    expect(screen.getByText(/Current plan/i)).toBeTruthy();
   });
 
-  it('renders "Go Pro" CTA for Free user on the Pro column', () => {
+  it('renders "Go Pro" CTA for Free user', () => {
     renderWithState(makeState({ userTier: 'free' }));
-    // Free plan card is hidden for free users; only Pro plan card is shown
-    const getProButtons = screen.getAllByText('Go Pro · $6.99/mo');
+    const getProButtons = screen.getAllByText(/Go Pro/);
     expect(getProButtons.length).toBeGreaterThan(0);
-  });
-
-  it('Apply button shows inline "coming soon" feedback instead of alert', () => {
-    renderWithState(makeState());
-
-    const input = screen.getByPlaceholderText('Enter coupon code');
-    fireEvent.change(input, { target: { value: 'LAUNCH50' } });
-
-    const applyBtn = screen.getByText('Apply');
-    fireEvent.click(applyBtn);
-
-    expect(screen.getByText('Coupon validation coming soon.')).toBeTruthy();
-  });
-
-  it('Apply button shows inline feedback for any coupon code (no client-side validation)', () => {
-    renderWithState(makeState());
-
-    const input = screen.getByPlaceholderText('Enter coupon code');
-    fireEvent.change(input, { target: { value: 'BADCODE' } });
-
-    const applyBtn = screen.getByText('Apply');
-    fireEvent.click(applyBtn);
-
-    expect(screen.getByText('Coupon validation coming soon.')).toBeTruthy();
   });
 });

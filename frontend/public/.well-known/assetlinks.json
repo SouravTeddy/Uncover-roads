@@ -1,8 +1,12 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.uncoverroads.app",
-    "sha256_cert_fingerprints": ["REPLACE_WITH_PLAY_STORE_SIGNING_KEY_SHA256"]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.uncoverroads.travel",
+      "sha256_cert_fingerprints": [
+        "25:77:35:6C:BF:D3:F0:76:8F:88:0D:2B:B6:B2:94:A5:39:E9:3F:CB:10:2C:4C:FB:E9:78:F9:E3:E8:22:AD:D0"
+      ]
+    }
   }
-}]
+]

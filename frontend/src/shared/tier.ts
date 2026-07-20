@@ -18,7 +18,7 @@ export function getPackRemainingTrips(packs: TripPack[]): number {
 export function isCurationLocked(state: AppState): boolean {
   if (state.userTier === 'pro') return false;
   if (getPackRemainingTrips(state.tripPacks) > 0) return false;
-  return state.generationCount >= 3;
+  return state.generationCount >= 2;
 }
 
 /**
@@ -38,7 +38,7 @@ export function shouldShowConversionNudge(packPurchaseCount: number): boolean {
   return packPurchaseCount >= 2;
 }
 
-const PACK_PRICES: Record<number, number> = { 5: 99 };
+const PACK_PRICES: Record<number, number> = { 5: 2.99 };
 
 /** Returns total amount spent across all trip packs. */
 export function computePackSpend(packs: TripPack[]): number {

@@ -991,7 +991,9 @@ export function getGenerationAccess(
 ): { allowed: boolean; degraded: boolean } {
   if (tier === 'pro') return { allowed: true, degraded: false };
   if (tier === 'pack') return { allowed: packTrips > 0, degraded: false };
-  // Free tier — 3 full generations, then blocked
-  if (genCount < 3) return { allowed: true, degraded: false };
+  // Free tier: degrade Our Picks/Live Events on the last free trip (count=2),
+  // block entirely once the limit is reached (count>=3).
+  if (genCount < 2) return { allowed: true, degraded: false };
+  if (genCount < 3) return { allowed: true, degraded: true };
   return { allowed: false, degraded: false };
 }

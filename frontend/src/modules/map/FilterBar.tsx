@@ -105,6 +105,8 @@ export function FilterBar({
             const isDisabled = anyActive && !isActive
             const count      = chipCount(chip.categories)
 
+            if (count === 0 && !isActive) return null
+
             return (
               <button
                 key={chip.label}

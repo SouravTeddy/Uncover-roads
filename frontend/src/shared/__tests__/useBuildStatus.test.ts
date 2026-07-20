@@ -44,8 +44,15 @@ describe('useBuildStatus', () => {
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'SET_ENGINE_ITINERARY' })
     );
+    // Auto-save flow: clears stale reel ref, saves itinerary, sets new reel id, then clears build
     expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'SET_ACTIVE_BUILD', build: expect.objectContaining({ status: 'done' }) })
+      expect.objectContaining({ type: 'SET_REEL_SAVED_ID', id: null })
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SAVE_ITINERARY' })
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'CLEAR_ACTIVE_BUILD' })
     );
   });
 
