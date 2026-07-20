@@ -70,11 +70,9 @@ export function useBuildStatus(): void {
         } else if (res.status === 'failed') {
           dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
         } else {
-          // Check for stale running build (dyno may have restarted mid-build)
+          // Stale check covers both 'pending' (never started) and 'running' (dyno restart).
           const updatedAt = new Date(res.updatedAt).getTime();
-          if (Date.now() - updatedAt > STALE_MS && res.status === 'running') {
-            // Mark failed so user sees a clear signal and can retry
-            // Backend /start will clean up the orphaned DB row on next attempt
+          if (Date.now() - updatedAt > STALE_MS) {
             dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
           }
         }

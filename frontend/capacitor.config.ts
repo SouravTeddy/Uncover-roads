@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.uncoverroads.app',
+  appId: 'com.uncoverroads.travel',
   appName: 'Uncover Roads',
   webDir: 'dist',
   server: {
