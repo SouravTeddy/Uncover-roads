@@ -11,7 +11,7 @@ import { usePersonaInsight } from './pincard-persona'
 const CATEGORY_COLORS: Record<string, string> = {
   restaurant: '#ef4444', cafe: '#f97316', park: '#22c55e',
   museum: '#8b5cf6', historic: '#a16207', tourism: '#0ea5e9',
-  event: '#ec4899', place: '#6b7280',
+  event: '#ec4899', place: '#9ca3af',
 }
 
 const CATEGORY_BEST_LABEL: Record<string, string> = {
@@ -317,6 +317,9 @@ export function PinCard({
       {/* Sheet */}
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pincard-title"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -413,10 +416,12 @@ export function PinCard({
           <div style={{ position: 'absolute', inset: 0, zIndex: 4, background: 'linear-gradient(to top, var(--color-surface) 0%, transparent 55%)', pointerEvents: 'none' }} />
           {/* Heart button */}
           <button
+            aria-label={isFavourited ? 'Remove from favourites' : 'Add to favourites'}
+            aria-pressed={isFavourited}
             onClick={e => { e.stopPropagation(); onFavourite(); }}
             style={{
-              position: 'absolute', top: 11, right: 11, zIndex: 5,
-              width: 36, height: 36, borderRadius: '50%',
+              position: 'absolute', top: 8, right: 8, zIndex: 5,
+              width: 44, height: 44, borderRadius: '50%',
               background: isFavourited ? 'rgba(212,168,83,0.35)' : 'rgba(0,0,0,0.48)',
               border: `1px solid ${isFavourited ? 'rgba(212,168,83,0.5)' : 'rgba(255,255,255,0.18)'}`,
               backdropFilter: 'blur(8px)',
@@ -433,7 +438,7 @@ export function PinCard({
             <div style={{
               position: 'absolute', bottom: 34, right: 12, zIndex: 6,
               background: 'rgba(0,0,0,.45)', borderRadius: 8, padding: '3px 8px',
-              fontSize: 9, color: 'rgba(255,255,255,.7)', backdropFilter: 'blur(4px)',
+              fontSize: 11, color: 'rgba(255,255,255,.82)', backdropFilter: 'blur(4px)',
               pointerEvents: 'none',
             }}>
               {imgSrcs.length} photos ›
@@ -536,7 +541,7 @@ export function PinCard({
           </div>
 
           {/* Place name — immediate */}
-          <h2 style={{
+          <h2 id="pincard-title" style={{
             margin: '0 0 4px',
             fontFamily: 'var(--font-heading)',
             fontSize: 24, fontWeight: 700, lineHeight: 1.1,

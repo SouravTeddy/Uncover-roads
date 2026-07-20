@@ -58,7 +58,7 @@ export function BottomActionTray({ itineraryPlaces, days, buildLoading, isBuildi
           {label} →
         </button>
         {!canBuild && (
-          <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.68rem', color: 'var(--color-text-3)' }}>
+          <p style={{ textAlign: 'center', margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-2)' }}>
             Add one more place to build
           </p>
         )}

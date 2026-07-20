@@ -736,7 +736,7 @@ export function MapScreen() {
           top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
           left: 16,
           zIndex: 20,
-          width: 40, height: 40, borderRadius: '50%',
+          width: 44, height: 44, borderRadius: '50%',
           background: 'rgba(15,20,30,.82)', backdropFilter: 'blur(8px)',
           border: '1px solid rgba(255,255,255,.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -861,10 +861,11 @@ export function MapScreen() {
             Nearby spots · Tap any pin to explore
           </span>
           <button
+            aria-label="Dismiss nearby spots"
             onClick={() => dispatch({ type: 'SET_RECO_FOCUS_PLACES', places: null })}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--color-text-4)', display: 'flex' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-3)', flexShrink: 0 }}
           >
-            <span className="ms" style={{ fontSize: 16 }}>close</span>
+            <span className="ms" style={{ fontSize: 18 }}>close</span>
           </button>
         </div>
       )}
@@ -1024,8 +1025,12 @@ export function MapScreen() {
                   {clusterGroup.places.length} places here
                 </span>
               </div>
-              <button onClick={() => setClusterGroup(null)}>
-                <span className="ms text-text-3" style={{ fontSize: 16 }}>close</span>
+              <button
+                aria-label="Close cluster picker"
+                onClick={() => setClusterGroup(null)}
+                style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <span className="ms text-text-3" style={{ fontSize: 18 }}>close</span>
               </button>
             </div>
             {clusterGroup.places.map((place, i) => {

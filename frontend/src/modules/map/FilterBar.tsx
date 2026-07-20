@@ -113,7 +113,7 @@ export function FilterBar({
                 onClick={() => onCategoriesSelect(isActive ? [] : chip.categories)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                  padding: '6px 14px', height: 34, borderRadius: 999,
+                  padding: '0 14px', height: 44, borderRadius: 999,
                   background: isActive ? 'rgba(212,168,83,.15)' : 'var(--color-surface2)',
                   border: isActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
                   color: isActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',

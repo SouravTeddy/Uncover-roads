@@ -174,14 +174,15 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
   return (
     <>
       {/* Compact pill */}
-      <div
+      <button
+        aria-label={selectedName ? undefined : `Search in ${city}`}
         onClick={selectedName ? undefined : open}
         style={{
           position: 'absolute',
           top: `calc(${safeTop} + 12px)`,
           left: 64,
           right: 92,
-          height: 40,
+          height: 44,
           zIndex: 25,
           display: 'flex',
           alignItems: 'center',
@@ -200,7 +201,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           style={{
             flex: 1,
             fontSize: 13,
-            color: selectedName ? 'var(--color-text-1)' : 'var(--color-text-4)',
+            color: selectedName ? 'var(--color-text-1)' : 'var(--color-text-3)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -216,11 +217,11 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
             <span className="ms" style={{ fontSize: 16, lineHeight: 1 }}>close</span>
           </button>
         )}
-      </div>
+      </button>
 
       {/* Full-screen overlay */}
       {(isOpen || isClosing) && (
-        <div style={overlayStyle}>
+        <div style={overlayStyle} role="dialog" aria-modal="true" aria-label={`Search in ${city}`}>
           {/* Top row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: `calc(${safeTop} + 12px) 16px 0`, flexShrink: 0 }}>
             <button

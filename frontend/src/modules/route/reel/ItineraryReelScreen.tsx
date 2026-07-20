@@ -870,19 +870,21 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // Old-format saved trips (flat itinerary, no days) produce zero cards
   if (displayCards.length === 0) {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: '#0c0c0e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
-        <span style={{ fontSize: 44, lineHeight: 1 }}>🗺️</span>
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-3)' }}>route</span>
+        </div>
         <div>
-          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 600, color: 'rgba(255,255,255,.85)', margin: '0 0 8px', lineHeight: 1.2 }}>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, color: 'var(--color-text-1)', margin: '0 0 8px', lineHeight: 1.2 }}>
             Reel not available
           </p>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.38)', lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.5, margin: 0 }}>
             This trip was saved in an older format and can't be replayed as a reel.
           </p>
         </div>
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'trips' })}
-          style={{ marginTop: 8, padding: '12px 28px', borderRadius: 12, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.07)', color: 'rgba(255,255,255,.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ marginTop: 8, padding: '12px 28px', borderRadius: 12, border: '1px solid var(--color-border-m)', background: 'var(--color-surface)', color: 'var(--color-text-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
         >
           Back to trips
         </button>
@@ -926,9 +928,16 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         </div>
       )}
 
+      {/* Screen reader live region — announces the active stop name as user scrolls */}
+      <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}>
+        {displayCards[activeIdx]?.type === 'stop' ? `Now viewing: ${(displayCards[activeIdx] as any).stop?.title ?? ''}` : ''}
+      </div>
+
       {/* Snap-scroll container — position:fixed so nothing clips its scroll events */}
       <div
         ref={scrollRef}
+        role="region"
+        aria-label="Itinerary reel"
         style={{
           position: 'fixed', inset: 0,
           overflowY: 'scroll', overflowX: 'hidden',

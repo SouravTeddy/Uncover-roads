@@ -319,7 +319,7 @@ export const initialState: AppState = {
   obPreResolved: [],
   persona: getStoredPersona(),
   city:           ssGet<string>('ur_ss_city')    ?? '',
-  cityGeo:        ssGet<GeoData>('ur_ss_geo')    ?? null,
+  cityGeo:        (() => { const g = ssGet<GeoData>('ur_ss_geo'); return (g && typeof g.lat === 'number' && isFinite(g.lat) && typeof g.lon === 'number' && isFinite(g.lon)) ? g : null; })(),
   places:         ssGet<Place[]>('ur_ss_places') ?? [],
   selectedPlaces: ssGet<Place[]>('ur_ss_sel')    ?? [],
   activeFilter:   'all',

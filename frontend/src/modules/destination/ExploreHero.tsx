@@ -115,7 +115,7 @@ export function ExploreHero({ city, persona, savedTripCity, userName }: ExploreH
         <div style={{ color: 'rgba(255,255,255,.95)', fontSize: 17, fontWeight: 700, lineHeight: 1.2 }}>
           The world won't wait, {userName}.
         </div>
-        <div style={{ color: 'rgba(255,255,255,.6)', fontSize: 11, fontWeight: 400, marginTop: 4, fontStyle: 'italic' }}>
+        <div style={{ color: 'rgba(255,255,255,.82)', fontSize: 12, fontWeight: 400, marginTop: 4, fontStyle: 'italic' }}>
           "To travel is to live." — H.C. Andersen
         </div>
       </div>

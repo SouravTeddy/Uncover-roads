@@ -335,16 +335,6 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                 Updates
               </div>
             )}
-            {!hasUnresolvedSwaps && isPast && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '4px 9px', borderRadius: 999,
-                fontSize: 10, color: 'rgba(255,255,255,.3)', border: '1px solid rgba(255,255,255,.1)',
-                backdropFilter: 'blur(12px)',
-              }}>
-                Visited
-              </div>
-            )}
           </div>
 
           {/* Bottom: city + stats + arrow */}
@@ -356,16 +346,16 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Stat row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'rgba(255,255,255,.48)', fontWeight: 500 }}>
-                  <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.32)' }}>route</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 13, color: 'rgba(255,255,255,.80)', fontWeight: 500 }}>
+                  <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.60)' }}>route</span>
                   {allStops.length} stop{allStops.length !== 1 ? 's' : ''}
                   {numDays > 1 && ` · ${numDays} days`}
                 </span>
                 {isPast && (
                   <>
-                    <div style={{ width: 1, height: 10, background: 'rgba(255,255,255,.14)' }} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, color: 'rgba(255,255,255,.48)', fontWeight: 500 }}>
-                      <span className="ms" style={{ fontSize: 11, color: 'rgba(255,255,255,.32)' }}>history</span>
+                    <div style={{ width: 1, height: 10, background: 'rgba(255,255,255,.25)' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 13, color: 'rgba(255,255,255,.80)', fontWeight: 500 }}>
+                      <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.60)' }}>history</span>
                       {timeAgo(item.travelDate ?? item.date)}
                     </span>
                   </>
@@ -386,7 +376,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
             <button
               onClick={e => { e.stopPropagation(); setNudgeOpen(true); }}
               style={{
-                flexShrink: 0, width: 34, height: 34, borderRadius: '50%',
+                flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
                 border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.1)',
                 backdropFilter: 'blur(10px)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -525,12 +515,12 @@ export function TripsScreen() {
               <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 6 }}>No itinerary in progress</p>
-              <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Explore a city and build your<br />itinerary to see it here.</p>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8, lineHeight: 1.2 }}>No itinerary yet</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.6 }}>Explore a city and build your<br />itinerary to see it here.</p>
             </div>
             <button
               onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-              style={{ padding: '10px 24px', borderRadius: 12, background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+              style={{ padding: '12px 28px', borderRadius: 14, background: 'rgba(212,168,83,.15)', border: '1px solid rgba(212,168,83,.4)', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
             >
               Start exploring
             </button>
@@ -572,12 +562,12 @@ export function TripsScreen() {
                 <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
               </div>
               <div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 6 }}>No trips saved yet</p>
-                <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
+                <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8, lineHeight: 1.2 }}>No trips yet</p>
+                <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.6 }}>Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
               </div>
               <button
                 onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-                style={{ padding: '10px 24px', borderRadius: 12, background: 'var(--color-primary)', color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                style={{ padding: '12px 28px', borderRadius: 14, background: 'rgba(212,168,83,.15)', border: '1px solid rgba(212,168,83,.4)', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
               >
                 Start exploring
               </button>
@@ -618,8 +608,8 @@ export function TripsList() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', gap: 16 }}>
         <span className="ms" style={{ fontSize: 40, color: 'var(--color-text-4)' }}>route</span>
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-2)', marginBottom: 4 }}>No trips saved yet</p>
-          <p style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Your planned itineraries appear here.</p>
+          <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8, lineHeight: 1.2 }}>No trips yet</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.6 }}>Your planned itineraries appear here.</p>
         </div>
         <button
           onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}

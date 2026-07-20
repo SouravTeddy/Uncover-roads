@@ -45,7 +45,7 @@ const T = {
   skyBdr:   'rgba(79,143,171,0.20)',
   text1:    '#f5f0ea',
   text2:    'rgba(255,255,255,0.68)',
-  text3:    'rgba(255,255,255,0.42)',
+  text3:    'rgba(255,255,255,0.65)',
   pillBg:   'rgba(0,0,0,0.68)',
   pillBdr:  'rgba(255,255,255,0.18)',
   pillClr:  'rgba(255,255,255,0.90)',
@@ -582,7 +582,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
       {!photoUrl && (
         <div style={{ position: 'absolute', top: 54, left: 14, zIndex: 10, display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 99, background: 'rgba(0,0,0,0.42)', backdropFilter: 'blur(8px)' }}>
           <span className="ms" style={{ fontSize: 12, color: 'rgba(255,255,255,.45)', animation: 'spin 1.5s linear infinite' }}>autorenew</span>
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.42)', letterSpacing: '.02em' }}>Loading image</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.60)', letterSpacing: '.02em' }}>Loading image</span>
         </div>
       )}
 

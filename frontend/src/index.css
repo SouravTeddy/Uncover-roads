@@ -58,7 +58,7 @@
   --color-surface2:   #f8f4ef;
   --color-text-1:     #2c2420;  /* 15.1:1 */
   --color-text-2:     #6b5e57;  /* 5.9:1  */
-  --color-text-3:     #7e7068;  /* 4.5:1  — was #a09085 (2.9:1, failed AA) */
+  --color-text-3:     #706058;  /* 4.7:1 on #f8f4ef — was #7e7068 (4.32:1, failed on surface2) */
   --color-text-4:     #9a8c84;  /* 3.4:1  — decorative/large-text only */
   --color-border:     rgba(44,36,32,.08);
   --color-border-m:   rgba(44,36,32,.14);

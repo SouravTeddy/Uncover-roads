@@ -991,7 +991,12 @@ def city_search(request: Request, q: str = Query(...)):
             if not name or name in seen:
                 continue
             seen.add(name)
-            results.append({"name": name, "country": country})
+            results.append({
+                "name": name,
+                "country": country,
+                "lat": float(item.get("lat", 0)),
+                "lon": float(item.get("lon", 0)),
+            })
 
         return results
     except Exception as e:

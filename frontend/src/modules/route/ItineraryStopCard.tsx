@@ -40,7 +40,7 @@ export function ItineraryStopCard({ stop, stopNumber, onRemove }: Props) {
         <button
           aria-label="Remove stop"
           onClick={() => onRemove(stop.id)}
-          className="ml-3 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border border-[var(--color-border)] text-[var(--color-text-3)]"
+          className="ml-3 flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center border border-[var(--color-border)] text-[var(--color-text-3)]"
         >
           <span className="ms text-[16px]">remove_circle_outline</span>
         </button>

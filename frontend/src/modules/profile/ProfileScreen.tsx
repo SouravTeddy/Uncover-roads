@@ -107,10 +107,10 @@ export function ProfileScreen() {
               <div className="text-[12px] mt-0.5 truncate" style={{ color: 'var(--color-text-3)' }}>{email}</div>
             </div>
             <div
-              className="px-2 py-0.5 rounded-full border text-[10px] font-bold flex-shrink-0 tracking-[.05em]"
+              className="px-2.5 py-0.5 rounded-full border text-[11px] font-bold flex-shrink-0 tracking-[.05em]"
               style={badgeIsPaid
                 ? { borderColor: 'var(--color-amber)', color: 'var(--color-amber)', background: 'var(--color-amber-bg)' }
-                : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)' }}
+                : { borderColor: 'var(--color-border)', color: 'var(--color-text-3)', background: 'var(--color-surface2)' }}
             >
               {badgeLabel}
             </div>
