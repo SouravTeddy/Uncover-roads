@@ -41,18 +41,42 @@ export function LoginScreen() {
   async function signInWithGoogle() {
     setAuthLoading(true);
     setError(null);
-    // Set a flag before the redirect. Session storage survives OAuth redirects
-    // in the same tab, so getInitialScreen() can detect a fresh sign-in
-    // reliably — regardless of URL param stripping or auth event timing.
-    sessionStorage.setItem('ur_auth_pending', '1');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) {
-      sessionStorage.removeItem('ur_auth_pending');
-      setError(error.message);
-      setAuthLoading(false);
+
+    const { Capacitor } = await import('@capacitor/core');
+    const isNative = Capacitor.isNativePlatform();
+
+    if (isNative) {
+      // On native (Android/iOS) we must not let the system browser handle the
+      // OAuth redirect — the WebView would never receive the ?code= callback.
+      // Instead: get the OAuth URL, open it in the Capacitor in-app browser,
+      // and let the appUrlOpen listener in App.tsx exchange the code.
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'https://uncover-roads.vercel.app',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (error || !data?.url) {
+        setError(error?.message ?? 'OAuth failed');
+        setAuthLoading(false);
+        return;
+      }
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: data.url });
+      // Loading spinner stays until appUrlOpen fires and navigates the user in.
+    } else {
+      // Web / PWA: standard redirect flow
+      sessionStorage.setItem('ur_auth_pending', '1');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) {
+        sessionStorage.removeItem('ur_auth_pending');
+        setError(error.message);
+        setAuthLoading(false);
+      }
     }
   }
 

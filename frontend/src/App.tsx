@@ -99,6 +99,33 @@ function ScreenRouter() {
     }
   }
 
+  // Handle OAuth deep-link callback on native (Android/iOS).
+  // When the in-app browser completes Google sign-in, the OS fires appUrlOpen
+  // with the redirect URL containing ?code=. We exchange it for a session here.
+  useEffect(() => {
+    let removeListener: (() => void) | undefined;
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (!Capacitor.isNativePlatform()) return;
+      import('@capacitor/app').then(({ App: CapApp }) => {
+        import('@capacitor/browser').then(({ Browser }) => {
+          CapApp.addListener('appUrlOpen', async ({ url }: { url: string }) => {
+            if (url.includes('uncover-roads.vercel.app')) {
+              await Browser.close();
+              const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
+              if (!error && session?.user) {
+                handleSignedIn(session.user);
+              }
+            }
+          }).then((handle: { remove: () => void }) => {
+            removeListener = handle.remove;
+          });
+        });
+      });
+    });
+    return () => { removeListener?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const initialScreen = state.currentScreen;
 
