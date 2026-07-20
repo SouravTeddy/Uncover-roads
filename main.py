@@ -69,8 +69,14 @@ def _is_restricted_city(city: str) -> bool:
 
 app = FastAPI()
 
-# CORS — only allow your Vercel frontend (update after deploying)
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+# CORS origins — web PWA + Capacitor native WebViews (Android/iOS)
+_DEFAULT_ORIGINS = [
+    "https://uncover-roads.vercel.app",
+    "capacitor://localhost",   # iOS Capacitor native WebView
+    "http://localhost",         # Android Capacitor native WebView
+    "http://localhost:5173",    # local Vite dev server
+]
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", ",".join(_DEFAULT_ORIGINS)).split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -404,7 +410,10 @@ OVERPASS_ENDPOINTS = [
 # GEOCODE
 # =========================================
 @app.get("/geocode")
-def geocode(city: str = Query(...)):
+def geocode(request: Request, city: str = Query(...)):
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
     try:
         url    = "https://nominatim.openstreetmap.org/search"
         params = {"q": city, "format": "json", "limit": 1, "addressdetails": 1, "accept-language": "en"}
@@ -947,7 +956,10 @@ out 100;
 # CITY SEARCH (autocomplete dropdown)
 # =========================================
 @app.get("/city-search")
-def city_search(q: str = Query(...)):
+def city_search(request: Request, q: str = Query(...)):
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
     try:
         url    = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -6147,40 +6159,23 @@ async def engine_itinerary_start(
         except Exception as _e:
             raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
 
-    # Enforce free-tier generation limit and increment count
+    # Enforce free-tier generation limit and increment — atomic to prevent race conditions
     if _supabase:
         try:
-            sub_result = (
-                _supabase.table("user_subscriptions")
-                .select("status, pack_trips_remaining")
-                .eq("user_id", str(user.id))
-                .maybe_single()
-                .execute()
-            )
-            sub = sub_result.data if sub_result else None
-            is_paid = sub and sub.get("status") in ("pro", "unlimited")
-            is_pack = sub and sub.get("status") == "pack" and sub.get("pack_trips_remaining", 0) > 0
-
-            if not is_paid and not is_pack:
-                profile_result = (
-                    _supabase.table("profiles")
-                    .select("generation_count")
-                    .eq("id", str(user.id))
-                    .maybe_single()
-                    .execute()
-                )
-                profile = profile_result.data if profile_result else None
-                count = (profile.get("generation_count") or 0) if profile else 0
-                if count >= 3:
+            result = _supabase.rpc("check_and_increment_generation", {"uid": str(user.id)}).execute()
+            outcome = result.data if result else None
+            if outcome and not outcome.get("allowed"):
+                reason = outcome.get("reason", "limit_reached")
+                if reason == "limit_reached":
                     if build_id:
                         _supabase.table("itinerary_builds").delete().eq("id", build_id).execute()
                     raise HTTPException(status_code=403, detail="generation_limit_reached")
-
-            _supabase.rpc("increment_generation_count", {"uid": str(user.id)}).execute()
+                elif reason == "profile_not_found":
+                    logging.warning("check_and_increment_generation: profile not found for user %s", user.id)
         except HTTPException:
             raise
-        except Exception:
-            pass  # non-fatal — proceed with generation
+        except Exception as _e:
+            logging.error("check_and_increment_generation failed for user %s: %s", user.id, _e)
 
     background_tasks.add_task(_run_itinerary_build, build_id, str(user.id), body)
     return JSONResponse(status_code=202, content={"buildId": build_id, "status": "pending"})
