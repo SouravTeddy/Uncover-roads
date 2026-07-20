@@ -759,6 +759,13 @@ export function MapScreen() {
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id });
             mapHandleRef.current?.flyTo(place.lat, place.lon, 13);
           }}
+          onCitySelect={(name, lat, lon) => {
+            // Switch the active city while keeping the itinerary (selectedPlaces) intact
+            dispatch({ type: 'SET_CITY', city: name });
+            dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.1, lat + 0.1, lon - 0.1, lon + 0.1] } });
+            dispatch({ type: 'SET_PLACES', places: [] });
+            mapHandleRef.current?.flyTo(lat, lon, 13);
+          }}
           onClear={() => {
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
           }}

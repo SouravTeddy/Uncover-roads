@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { placesAutocomplete } from '../../shared/api';
-import type { AutocompleteResult } from '../../shared/types';
+import { placesAutocomplete, api } from '../../shared/api';
+import type { AutocompleteResult, CityResult } from '../../shared/types';
 import type { Place } from '../../shared/types';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   cityLon: number | null;
   places: Place[];
   onSelect: (place: Place) => void;
+  onCitySelect: (name: string, lat: number, lon: number) => void;
   onClear: () => void;
 }
 
@@ -56,11 +57,12 @@ function placeIcon(types: string[]): string {
   return 'place';
 }
 
-export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onClear }: Props) {
+export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCitySelect, onClear }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MatchedResult[]>([]);
+  const [cityResults, setCityResults] = useState<CityResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [noResults, setNoResults] = useState(false);
   const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCle
     if (!isOpen) return;
     if (!query.trim()) {
       setResults([]);
+      setCityResults([]);
       setNoResults(false);
       setLoading(false);
       return;
@@ -102,34 +105,52 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCle
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const raw = await placesAutocomplete(
-          query,
-          SESSION_ID,
-          'establishment',
-          cityLat ?? undefined,
-          cityLon ?? undefined,
-        );
-        // Only keep results that have a matching pin in our places array
+        const [raw, cities] = await Promise.all([
+          placesAutocomplete(
+            query,
+            SESSION_ID,
+            'establishment',
+            cityLat ?? undefined,
+            cityLon ?? undefined,
+          ).catch(() => [] as AutocompleteResult[]),
+          api.citySearch(query).catch(() => [] as CityResult[]),
+        ]);
+
+        // Filter city results — exclude the current city (already here)
+        const filteredCities = cities.filter(
+          c => c.name.toLowerCase() !== city.toLowerCase(),
+        ).slice(0, 3);
+
+        // Only keep place results that match an existing pin
         const matched: MatchedResult[] = [];
         for (const r of raw) {
           const place = findMatchingPlace(r.main_text, places);
           if (place) matched.push({ autocomplete: r, place });
         }
+
         setResults(matched);
-        setNoResults(matched.length === 0);
+        setCityResults(filteredCities);
+        setNoResults(matched.length === 0 && filteredCities.length === 0);
       } catch {
         setResults([]);
+        setCityResults([]);
         setNoResults(true);
       } finally {
         setLoading(false);
       }
     }, 280);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, isOpen, cityLat, cityLon, places]);
+  }, [query, isOpen, cityLat, cityLon, places, city]);
 
   const pick = (item: MatchedResult) => {
     setSelectedName(item.autocomplete.main_text);
     onSelect(item.place);
+    close();
+  };
+
+  const pickCity = (c: CityResult) => {
+    setSelectedName(null);
+    onCitySelect(c.name, c.lat, c.lon);
     close();
   };
 
@@ -242,8 +263,42 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCle
             <div style={{ padding: '20px 16px', color: 'var(--color-text-4)', fontSize: 13, textAlign: 'center' }}>Searching…</div>
           )}
 
-          {!loading && results.length > 0 && (
+          {!loading && (cityResults.length > 0 || results.length > 0) && (
             <div style={{ overflowY: 'auto', flex: 1 }}>
+              {/* City results — shown above place results, distinct style */}
+              {cityResults.map((c, i) => (
+                <button
+                  key={`city-${c.name}-${i}`}
+                  onClick={() => pickCity(c)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '13px 16px', background: 'none', border: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,.05)',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'rgba(212,168,83,.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}
+                  >
+                    <span className="ms" style={{ fontSize: 17, color: 'var(--color-primary)', lineHeight: 1 }}>travel_explore</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {c.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-4)', marginTop: 2 }}>{c.country}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(212,168,83,.12)', borderRadius: 6, padding: '2px 7px', flexShrink: 0 }}>
+                    Go to city
+                  </span>
+                </button>
+              ))}
+
+              {/* Place results */}
               {results.map((item, i) => (
                 <button
                   key={item.autocomplete.place_id}
@@ -290,10 +345,10 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCle
             </div>
           )}
 
-          {!loading && !noResults && results.length === 0 && !query.trim() && (
+          {!loading && !noResults && cityResults.length === 0 && results.length === 0 && !query.trim() && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '0 32px', textAlign: 'center' }}>
               <span className="ms" style={{ fontSize: 40, color: 'rgba(255,255,255,.1)', lineHeight: 1 }}>travel_explore</span>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Type a place name to find it on the map</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-4)', lineHeight: 1.5 }}>Search a place or type a city name to jump there</p>
             </div>
           )}
         </div>
