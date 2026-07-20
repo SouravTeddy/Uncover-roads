@@ -727,6 +727,12 @@ def map_data(
     if city and _is_restricted_city(city):
         raise HTTPException(status_code=403, detail="Travel planning not available for this destination.")
 
+    # Validate any provided coordinates before using them
+    if lat is not None and lon is not None:
+        _validate_coords((lat, lon))
+    if center_lat is not None and center_lon is not None:
+        _validate_coords((center_lat, center_lon))
+
     # Resolve search center
     clat = center_lat or lat
     clon = center_lon or lon
@@ -3037,6 +3043,7 @@ async def reverse_geocode(lat: float, lon: float):
     Uses Google Geocoding API (same key as Places). Falls back to Nominatim.
     Results are cached in-process by rounded coordinate (4dp ≈ 11m precision).
     """
+    _validate_coords((lat, lon))
     cache_key = f"{lat:.4f},{lon:.4f}"
     if cache_key in _reverse_geocode_cache:
         return _reverse_geocode_cache[cache_key]
@@ -4014,6 +4021,7 @@ def transit_corridor(
     Cached in transit_corridor_cache for 30 days.
     Used by the frontend scenic walk cards to show real transit data.
     """
+    _validate_coords((origin_lat, origin_lon), (dest_lat, dest_lon))
     return _fetch_transit_corridor(origin_lat, origin_lon, dest_lat, dest_lon)
 
 
@@ -4201,6 +4209,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
       3. Google nearbysearch at 10m radius (coordinate-based fallback)
     Returns None place_id (and empty detail fields) if all lookups fail.
     """
+    _validate_coords((lat, lon))
     if not GOOGLE_PLACES_API_KEY:
         return {"place_id": None}
 
@@ -4648,6 +4657,7 @@ def nearby(
     Google Places Nearby Search — called only on expand chip tap.
     Cost: ~$0.032 per request. Rate-limited per IP.
     """
+    _validate_coords((lat, lon))
     if not GOOGLE_PLACES_API_KEY:
         return []
     client_ip = request.client.host if request.client else "unknown"

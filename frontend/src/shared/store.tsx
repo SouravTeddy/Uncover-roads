@@ -125,6 +125,25 @@ export interface AppState {
 
 // ── Trip-state persistence (localStorage — survives refreshes, PWA restarts) ──
 
+// Bump this when the shape of any stored key changes incompatibly.
+// On mismatch, session/nav state is cleared so stale data can't crash the app.
+// Saved itineraries and user profile keys are intentionally NOT cleared.
+const SCHEMA_VERSION = 1;
+const _SESSION_KEYS = [
+  'ur_ss_screen', 'ur_ss_city', 'ur_ss_places', 'ur_ss_sel',
+  'ur_ss_geo', 'ur_ss_engine_itin', 'ur_ss_active_build',
+  'ur_ss_footprints', 'ur_ss_ts',
+];
+(function migrateStorage() {
+  try {
+    if (localStorage.getItem('ur_schema_v') === String(SCHEMA_VERSION)) return;
+    for (const key of _SESSION_KEYS) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+    }
+    localStorage.setItem('ur_schema_v', String(SCHEMA_VERSION));
+  } catch { /* ignore — private mode or storage unavailable */ }
+})();
+
 function ssGet<T>(key: string): T | null {
   try {
     const v = localStorage.getItem(key);
