@@ -226,26 +226,38 @@ export function MapScreen() {
     state.travelStartDate, state.travelEndDate, activeCityDays,
   )
 
-  const cityAbortRef    = useRef<AbortController | null>(null);
-  const panZoomAbortRef = useRef<AbortController | null>(null);
-  const inFlightRef     = useRef(0);
+  const cityAbortRef     = useRef<AbortController | null>(null);
+  const panZoomAbortRef  = useRef<AbortController | null>(null);
+  // Separate controller for prefetch neighbours so they cannot abort the primary fetch.
+  const prefetchAbortRef = useRef<AbortController | null>(null);
+  const inFlightRef      = useRef(0);
 
   const handleAreaLoad = useCallback(async (
     centerLat: number,
     centerLon: number,
     radiusM = 3000,
     replace = false,
-  ) => {
-    if (!city) return;
+    isPrefetch = false,
+  ): Promise<boolean> => {
+    if (!city) return false;
 
     let signal: AbortSignal;
     if (replace) {
+      // City change — cancel everything
       cityAbortRef.current?.abort();
+      panZoomAbortRef.current?.abort();
+      prefetchAbortRef.current?.abort();
       cityAbortRef.current = new AbortController();
       signal = cityAbortRef.current.signal;
+    } else if (isPrefetch) {
+      // Prefetch neighbour — only abort the previous prefetch batch, never the primary
+      prefetchAbortRef.current?.abort();
+      prefetchAbortRef.current = new AbortController();
+      signal = prefetchAbortRef.current.signal;
     } else {
-      // Abort the previous pan/zoom fetch before starting a new one
+      // Primary pan/zoom fetch — abort previous primary AND stale prefetches
       panZoomAbortRef.current?.abort();
+      prefetchAbortRef.current?.abort();
       panZoomAbortRef.current = new AbortController();
       signal = panZoomAbortRef.current.signal;
     }
@@ -254,7 +266,7 @@ export function MapScreen() {
     setMapStatus('loading');
     try {
       const raw = await mapData(city, centerLat, centerLon, radiusM, signal);
-      if (signal.aborted) return;
+      if (signal.aborted) return false;
       const withIds = (Array.isArray(raw) ? raw : []).map((p, i) => ({
         ...p,
         id: p.id ?? `${p.title}-${i}`,
@@ -263,10 +275,12 @@ export function MapScreen() {
         ? { type: 'SET_PLACES', places: withIds }
         : { type: 'MERGE_PLACES', places: withIds },
       );
+      return true;
     } catch (e) {
       if ((e as { name?: string }).name !== 'AbortError') {
         console.error('[MapScreen] handleAreaLoad failed:', e);
       }
+      return false;
     } finally {
       inFlightRef.current -= 1;
       if (inFlightRef.current === 0) setMapStatus('idle');
@@ -288,8 +302,8 @@ export function MapScreen() {
   }, [city, cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
-    onFetch: useCallback((center: [number, number]) => {
-      handleAreaLoad(center[0], center[1], 3000, false);
+    onFetch: useCallback((center: [number, number], _zoom: number, isPrefetch: boolean) => {
+      return handleAreaLoad(center[0], center[1], 3000, false, isPrefetch);
     }, [handleAreaLoad]),
     onZoomedOut: useCallback(() => {
       setMapStatus('zoomed-out');

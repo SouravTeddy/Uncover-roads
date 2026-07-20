@@ -1,9 +1,9 @@
 import { useCallback, useRef } from 'react';
 
-const TILE_ZOOM  = 14;   // ~2.4 km tiles at equator, ~1.5 km at 45°
-const DEBOUNCE   = 500;  // ms — wait until the user stops moving
-const MIN_ZOOM   = 12;   // don't fetch pins when zoomed too far out
-const PREFETCH_DELAY = 350; // ms after primary fetch fires adjacent tiles
+const TILE_ZOOM      = 14;   // ~2.4 km tiles at equator, ~1.5 km at 45°
+const DEBOUNCE       = 500;  // ms — wait until the user stops moving
+const MIN_ZOOM       = 12;   // don't fetch pins when zoomed too far out
+const PREFETCH_DELAY = 600;  // ms after primary fetch fires adjacent tiles
 
 function latLonToTile(lat: number, lon: number, z: number): [number, number] {
   const n = Math.pow(2, z);
@@ -24,26 +24,34 @@ function tileCenter(tx: number, ty: number, z: number): [number, number] {
 const NEIGHBOURS: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 
 interface UseMapMoveProps {
-  onFetch: (center: [number, number], zoom: number) => void;
+  // Returns true on success, false on abort/error.
+  // Primary fetches use isPrefetch=false; neighbour prefetches use isPrefetch=true.
+  // Callers must use separate AbortControllers for each so prefetches cannot
+  // cancel the primary fetch that was fired for the user's actual position.
+  onFetch: (center: [number, number], zoom: number, isPrefetch: boolean) => Promise<boolean>;
   onZoomedOut: () => void;
 }
 
 export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
-  const debounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prefetchRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fetchedTiles = useRef(new Set<string>());
+  const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefetchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchedTiles  = useRef(new Set<string>());
+  // Tiles whose fetch is currently in-flight — prevents duplicate concurrent requests
+  // for the same tile before the first one has had a chance to settle.
+  const inFlightTiles = useRef(new Set<string>());
 
   const handleMoveEnd = useCallback(
     (center: [number, number], zoom: number) => {
       // Cancel both the debounce and any pending prefetch — fast zoom/pan should
-      // only fire a fetch for where the user actually stops, not intermediate tiles
+      // only fire a fetch for where the user actually stops, not intermediate tiles.
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (prefetchRef.current) clearTimeout(prefetchRef.current);
 
       debounceRef.current = setTimeout(() => {
         if (zoom < MIN_ZOOM) {
-          // Zoomed too far out — clear cache so zooming back in re-fetches fresh data
+          // Zoomed too far out — clear caches so zooming back in re-fetches fresh data.
           fetchedTiles.current.clear();
+          inFlightTiles.current.clear();
           onZoomedOut();
           return;
         }
@@ -51,23 +59,30 @@ export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
         const [tx, ty] = latLonToTile(center[0], center[1], TILE_ZOOM);
         const key = `${tx}/${ty}`;
 
-        // Tile already fetched — nothing to do
-        if (fetchedTiles.current.has(key)) return;
+        // Skip if already successfully fetched or currently in-flight.
+        if (fetchedTiles.current.has(key) || inFlightTiles.current.has(key)) return;
 
-        // Primary tile
-        fetchedTiles.current.add(key);
-        onFetch(center, zoom);
+        // Mark in-flight immediately to block duplicate requests; only move to
+        // fetchedTiles once the promise resolves with success=true.
+        inFlightTiles.current.add(key);
+        onFetch(center, zoom, false).then(success => {
+          inFlightTiles.current.delete(key);
+          if (success) fetchedTiles.current.add(key);
+          // On abort/failure the tile is NOT added to fetchedTiles, so the next
+          // pan/zoom will retry it rather than silently skipping it.
+        });
 
-        // Prefetch orthogonal neighbours after a short delay so the primary
-        // fetch gets a head start and the server isn't hit by 5 requests at once
-        if (prefetchRef.current) clearTimeout(prefetchRef.current);
+        // Prefetch orthogonal neighbours after a longer delay so the primary
+        // fetch has time to complete before neighbours are started.
         prefetchRef.current = setTimeout(() => {
           for (const [dx, dy] of NEIGHBOURS) {
             const nKey = `${tx + dx}/${ty + dy}`;
-            if (!fetchedTiles.current.has(nKey)) {
-              fetchedTiles.current.add(nKey);
-              onFetch(tileCenter(tx + dx, ty + dy, TILE_ZOOM), zoom);
-            }
+            if (fetchedTiles.current.has(nKey) || inFlightTiles.current.has(nKey)) continue;
+            inFlightTiles.current.add(nKey);
+            onFetch(tileCenter(tx + dx, ty + dy, TILE_ZOOM), zoom, true).then(success => {
+              inFlightTiles.current.delete(nKey);
+              if (success) fetchedTiles.current.add(nKey);
+            });
           }
         }, PREFETCH_DELAY);
       }, DEBOUNCE);
