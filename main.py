@@ -230,7 +230,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         raise HTTPException(status_code=503, detail="auth_unavailable")
     token = authorization.split(" ")[1]
     try:
-        response = _supabase.auth.get_user(token)  # TODO: blocking call — move to executor when supabase-py async client stabilises
+        import asyncio
+        response = await asyncio.to_thread(_supabase.auth.get_user, token)
     except HTTPException:
         raise
     except Exception:
@@ -771,8 +772,8 @@ def map_data(
                         _refresh_map_data_tile, tile_key, clat, clon, radius_m, city
                     )
                     return stale_places
-        except Exception:
-            pass
+        except Exception as _e:
+            logging.warning("MAP DATA: cache read failed for tile %s: %s", tile_key, _e)
 
     # Auto-seed city_data for cities we haven't seen before.
     # For new cities: write a minimal stub synchronously then kick off a full
@@ -875,8 +876,8 @@ def map_data(
         if row:
             print(f"MAP DATA: returning {len(row['places'])} places for tile {tile_key} ({city})")
             return row["places"]
-    except Exception:
-        pass
+    except Exception as _e:
+        logging.warning("MAP DATA: post-fetch cache read failed for tile %s: %s", tile_key, _e)
 
     # Cache read failed — fall back to what we just fetched
     return fetched_places
@@ -6060,7 +6061,7 @@ async def _run_itinerary_build(
         try:
             _supabase.table("itinerary_builds").update(patch).eq("id", build_id).execute()
         except Exception as _e:
-            print(f"[build] status update failed for {build_id}: {_e}")
+            logging.warning("[build] status update failed for %s: %s", build_id, _e)
 
     try:
         _update("running")
@@ -6093,7 +6094,7 @@ async def _run_itinerary_build(
         result_dict = await _asyncio.to_thread(_run_engine_sync)
         _update("done", result=result_dict)
     except Exception as _exc:
-        print(f"[build] failed for {build_id}: {_exc}")
+        logging.error("[build] failed for %s: %s", build_id, _exc, exc_info=True)
         _update("failed", error=str(_exc))
 
 
@@ -6202,7 +6203,6 @@ async def engine_itinerary_status(build_id: str, user=Depends(get_current_user))
         "buildId": d["id"],
         "status":  d["status"],
         "result":  d.get("result"),
-        "error":   d.get("error"),
         "updatedAt": d["updated_at"],
     }
 
