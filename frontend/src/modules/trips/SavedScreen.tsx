@@ -12,19 +12,10 @@ export function SavedScreen() {
   const defaultTab: SubTab = favouritedPins.length > 0 ? 'saved' : 'itineraries';
   const [activeTab, setActiveTab] = useState<SubTab>(defaultTab);
 
-  function handleOpenMap(city: string) {
-    const pin = favouritedPins.find(p => p.city === city);
-    dispatch({ type: 'SET_CITY', city });
-    if (pin) {
-      dispatch({
-        type: 'SET_CITY_GEO',
-        geo: {
-          lat: pin.lat,
-          lon: pin.lon,
-          bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15],
-        },
-      });
-    }
+  function handleOpenMap(pin: import('../../shared/types').FavouritedPin) {
+    dispatch({ type: 'SET_CITY', city: pin.city });
+    dispatch({ type: 'SET_CITY_GEO', geo: { lat: pin.lat, lon: pin.lon, bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15] } });
+    dispatch({ type: 'SET_PENDING_PLACE', place: { id: pin.placeId, title: pin.title, lat: pin.lat, lon: pin.lon, category: pin.category ?? 'place', place_id: pin.placeId.startsWith('osm-') ? undefined : pin.placeId, photo_ref: pin.photoRef ?? undefined } });
     dispatch({ type: 'GO_TO', screen: 'map' });
   }
 

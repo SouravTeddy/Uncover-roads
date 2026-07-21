@@ -13,18 +13,18 @@ const pin: FavouritedPin = {
 
 describe('SavedPlaceCard', () => {
   it('renders place title', () => {
-    render(<SavedPlaceCard pin={pin} category="historic" onRemove={vi.fn()} />);
+    render(<SavedPlaceCard pin={pin} category="historic" onRemove={vi.fn()} onClick={vi.fn()} />);
     expect(screen.getByText('Senso-ji Temple')).toBeTruthy();
   });
 
   it('renders heart badge', () => {
-    render(<SavedPlaceCard pin={pin} category="historic" onRemove={vi.fn()} />);
+    render(<SavedPlaceCard pin={pin} category="historic" onRemove={vi.fn()} onClick={vi.fn()} />);
     expect(screen.getByText('❤️')).toBeTruthy();
   });
 
   it('calls onRemove when heart badge clicked', () => {
     const onRemove = vi.fn();
-    render(<SavedPlaceCard pin={pin} category="historic" onRemove={onRemove} />);
+    render(<SavedPlaceCard pin={pin} category="historic" onRemove={onRemove} onClick={vi.fn()} />);
     fireEvent.click(screen.getByText('❤️'));
     expect(onRemove).toHaveBeenCalledWith('p1');
   });
