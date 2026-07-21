@@ -673,7 +673,7 @@ export function TripsScreen() {
                   className="text-sm font-semibold text-[var(--color-primary)] px-5 py-2 rounded-full"
                   style={{ background: 'var(--color-primary-bg)' }}
                 >
-                  Open on map
+                  Done
                 </button>
               </div>
             )}
