@@ -446,9 +446,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   if (card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict) {
     allPills.push({ icon: 'schedule', label: 'Timing note', urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
   }
-  if (crowdRow && !crowdRow.isBusy) {
-    allPills.push({ icon: crowdRow.icon, label: 'Good window', urgent: false, detail: { title: 'Crowd & timing', body: crowdRow.text } });
-  }
+  // "Good window" is already shown as the inline crowd-note badge above the pills — don't duplicate it here
   if (transitSig) {
     if (hasConflict) {
       allPills.push({ icon: 'umbrella', label: 'Rain conflict', urgent: true, detail: { title: 'Getting here', body: `Rain detected. ${transitSig.text} — consider alternative transport.` } });
@@ -494,7 +492,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
       setExpandedSync(true);
       setTimeout(() => { setPillDetail(pill.detail); setActivePillEl(el); }, 420);
     } else {
-      if (pillDetail === pill.detail) {
+      // Compare by title (string) not by reference — allPills is rebuilt each render
+      if (pillDetail?.title === pill.detail?.title) {
         setPillDetail(null); setActivePillEl(null);
       } else {
         if (activePillEl) activePillEl.setAttribute('data-open', 'false');

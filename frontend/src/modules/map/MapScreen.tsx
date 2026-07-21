@@ -225,6 +225,8 @@ export function MapScreen() {
   const [searchPins, setSearchPins] = useState<SearchResultPin[]>([])
   const [showSearchStrip, setShowSearchStrip] = useState(false)
 
+  const [searchOpen, setSearchOpen] = useState(false)
+
   // Build Itinerary loading + error state
   const [buildLoading, setBuildLoading] = useState(false)
   const [buildError, setBuildError] = useState<string | null>(null)
@@ -327,7 +329,7 @@ export function MapScreen() {
     return () => { if (reverseGeoDebounce.current) clearTimeout(reverseGeoDebounce.current); };
   }, [mapCenter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { handleMoveEnd, setLastFetch } = useMapMove({
+  const { handleMoveEnd, setLastFetch, evictTile } = useMapMove({
     onFetch: useCallback((center: [number, number], _zoom: number, isPrefetch: boolean) => {
       return handleAreaLoad(center[0], center[1], 3000, false, isPrefetch);
     }, [handleAreaLoad]),
@@ -783,6 +785,8 @@ export function MapScreen() {
             setActivePlace(place);
             fetchDetails(place);
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id });
+            setActiveCategories([]);
+            evictTile(place.lat, place.lon);
             mapHandleRef.current?.flyTo(place.lat, place.lon, 13);
           }}
           onCitySelect={(name, lat, lon) => {
@@ -797,6 +801,8 @@ export function MapScreen() {
           onClear={() => {
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: null });
           }}
+          onSearchOpen={() => setSearchOpen(true)}
+          onSearchClose={() => setSearchOpen(false)}
         />
       )}
 
@@ -1191,7 +1197,7 @@ export function MapScreen() {
     </div>
 
       {/* BottomActionTray — lifted outside the stacking-context div so it renders above BottomNav (zIndex 30) */}
-      {city && !activePinId && (
+      {city && !activePinId && !searchOpen && (
         <BottomActionTray
           itineraryPlaces={selectedPlaces}
           days={activeCityDays}

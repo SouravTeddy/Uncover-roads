@@ -67,9 +67,16 @@ export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
         inFlightTiles.current.add(key);
         onFetch(center, zoom, false).then(success => {
           inFlightTiles.current.delete(key);
-          if (success) fetchedTiles.current.add(key);
-          // On abort/failure the tile is NOT added to fetchedTiles, so the next
-          // pan/zoom will retry it rather than silently skipping it.
+          if (success) {
+            fetchedTiles.current.add(key);
+          } else {
+            // Instant retry on failure — one attempt, no delay.
+            inFlightTiles.current.add(key);
+            onFetch(center, zoom, false).then(retrySuccess => {
+              inFlightTiles.current.delete(key);
+              if (retrySuccess) fetchedTiles.current.add(key);
+            });
+          }
         });
 
         // Prefetch orthogonal neighbours after a longer delay so the primary
@@ -97,5 +104,14 @@ export function useMapMove({ onFetch, onZoomedOut }: UseMapMoveProps) {
     fetchedTiles.current.add(`${tx}/${ty}`);
   }, []);
 
-  return { handleMoveEnd, setLastFetch };
+  // Call before flying to a search result — evicts that tile so handleMoveEnd
+  // always fires a fresh fetch instead of skipping a stale cache hit.
+  const evictTile = useCallback((lat: number, lon: number) => {
+    const [tx, ty] = latLonToTile(lat, lon, TILE_ZOOM);
+    const key = `${tx}/${ty}`;
+    fetchedTiles.current.delete(key);
+    inFlightTiles.current.delete(key);
+  }, []);
+
+  return { handleMoveEnd, setLastFetch, evictTile };
 }

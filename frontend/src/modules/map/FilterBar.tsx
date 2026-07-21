@@ -75,12 +75,15 @@ export function FilterBar({
     return cats.reduce((sum, c) => sum + (categoryCounts[c] ?? 0), 0)
   }
 
+  const allCount = Object.values(categoryCounts).reduce((s, n) => s + n, 0)
+
   const activeChip = SUB_CHIPS.find(c =>
     c.categories.length === activeCategories.length &&
     c.categories.every(cat => activeCategories.includes(cat))
   )
 
   const anyActive = activeCategories.length > 0
+  const allActive = !anyActive
 
   return (
     <>
@@ -100,6 +103,28 @@ export function FilterBar({
             scrollbarWidth: 'none',
           }}
         >
+          {/* All chip — always first, clears any active category */}
+          <button
+            onClick={() => onCategoriesSelect([])}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+              padding: '0 14px', height: 44, borderRadius: 999,
+              background: allActive ? 'rgba(212,168,83,.15)' : 'var(--color-surface2)',
+              border: allActive ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              color: allActive ? 'var(--color-primary-text)' : 'var(--color-text-2)',
+              fontSize: '0.875rem', fontWeight: 600,
+              backdropFilter: 'blur(8px)', cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'opacity 0.15s ease, border-color 0.12s ease, background 0.12s ease',
+            }}
+          >
+            <span className="ms" style={{ fontSize: 14 }}>apps</span>
+            All
+            <span style={{ opacity: allActive ? 0.8 : 0.55, fontSize: '0.74rem' }}>
+              · <AnimatedCount value={allCount} />
+            </span>
+          </button>
+
           {SUB_CHIPS.map(chip => {
             const isActive   = activeChip?.label === chip.label
             const isDisabled = anyActive && !isActive

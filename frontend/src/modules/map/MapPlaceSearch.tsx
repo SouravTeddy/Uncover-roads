@@ -11,6 +11,8 @@ interface Props {
   onSelect: (place: Place) => void;
   onCitySelect: (name: string, lat: number, lon: number) => void;
   onClear: () => void;
+  onSearchOpen?: () => void;
+  onSearchClose?: () => void;
 }
 
 interface MatchedResult {
@@ -57,7 +59,7 @@ function placeIcon(types: string[]): string {
   return 'place';
 }
 
-export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCitySelect, onClear }: Props) {
+export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCitySelect, onClear, onSearchOpen, onSearchClose }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [query, setQuery] = useState('');
@@ -72,11 +74,13 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
   const open = () => {
     setIsOpen(true);
     setIsClosing(false);
+    onSearchOpen?.();
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const close = useCallback(() => {
     setIsClosing(true);
+    onSearchClose?.();
     setTimeout(() => {
       setIsOpen(false);
       setIsClosing(false);
@@ -84,7 +88,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
       setResults([]);
       setNoResults(false);
     }, 240);
-  }, []);
+  }, [onSearchClose]);
 
   const clear = (e: React.MouseEvent) => {
     e.stopPropagation();
