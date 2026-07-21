@@ -330,6 +330,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType; active: boolean 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Destination image is always preferred — origin is only a fallback
   const photoUrl = (card.destPhotoUrl ?? fallbackDestUrl) ?? (card.originPhotoUrl ?? fallbackOriginUrl) ?? card.photoUrl;
 
   // Parse distance into number + unit for big stat display
@@ -382,7 +383,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType; active: boolean 
           <div style={{ display: 'flex', alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: card.accent, boxShadow: `0 0 8px ${card.accent}88` }} />
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 84, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.from}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 90, textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'] }}>{card.from}</div>
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px', marginTop: -1 }}>
               <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 26 }}>
@@ -395,7 +396,7 @@ function WalkCorridorCard({ card }: { card: ReelScenicCardType; active: boolean 
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'transparent', border: `2px solid ${card.accent}60` }} />
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 84, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.to}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 90, textAlign: 'center', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as React.CSSProperties['WebkitBoxOrient'] }}>{card.to}</div>
             </div>
           </div>
 
