@@ -4193,7 +4193,7 @@ _NEARBY_TYPE_TO_CATEGORY = {
     "art_gallery":        "gallery",
 }
 
-MAP_DATA_CACHE_TTL_HOURS = int(os.getenv("MAP_DATA_CACHE_TTL_HOURS", "24"))
+MAP_DATA_CACHE_TTL_HOURS = int(os.getenv("MAP_DATA_CACHE_TTL_HOURS", "168"))
 
 _CATEGORY_TO_GOOGLE_TYPE = {
     "restaurant": "restaurant",
