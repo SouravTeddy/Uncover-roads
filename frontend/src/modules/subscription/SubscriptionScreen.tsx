@@ -116,7 +116,7 @@ export function SubscriptionScreen() {
               </span>
               <span className="text-[13px] text-[var(--color-text-3)]">/month</span>
             </div>
-            <div className="text-[12px] text-[var(--color-text-3)] mb-4">
+            <div className="text-[13px] text-[var(--color-text-3)] mb-4">
               Billed monthly · Cancel anytime
             </div>
 
@@ -180,11 +180,11 @@ export function SubscriptionScreen() {
           {/* Pack header */}
           <div className="flex items-start justify-between mb-3.5">
             <div>
-              <div className="text-[15px] font-semibold text-[var(--color-text-1)]">Trip Pack</div>
-              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">One-time · 1-year validity</div>
+              <div className="text-[16px] font-semibold text-[var(--color-text-1)]">Trip Pack</div>
+              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">One-time · 1-year validity</div>
             </div>
             <span
-              className="text-[10px] font-bold text-[var(--color-text-3)] px-2 py-[3px] rounded-full flex-shrink-0 ml-2"
+              className="text-[12px] font-bold text-[var(--color-text-3)] px-2.5 py-1 rounded-full flex-shrink-0 ml-2"
               style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}
             >
               No subscription
@@ -224,8 +224,8 @@ export function SubscriptionScreen() {
               <span className="ms text-[var(--color-primary)]" style={{ fontSize: 16 }}>travel_explore</span>
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-[var(--color-text-1)]">5 Trips</div>
-              <div className="text-[11px] text-[var(--color-text-3)] mt-0.5">₹19/trip · full experience</div>
+              <div className="text-[14px] font-semibold text-[var(--color-text-1)]">5 Trips</div>
+              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">₹19/trip · full experience</div>
             </div>
             <div className="flex items-center gap-2.5 flex-shrink-0">
               <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹99</span>
@@ -249,7 +249,7 @@ export function SubscriptionScreen() {
         {/* Free plan note */}
         {!isPro && (
           <div
-            className="mx-4 mt-3.5 p-3 rounded-[12px] text-[12px] text-[var(--color-text-3)] leading-relaxed"
+            className="mx-4 mt-3.5 p-4 rounded-[14px] text-[14px] text-[var(--color-text-3)] leading-relaxed"
             style={{ border: '1px solid var(--color-divider)' }}
           >
             <span className="text-[var(--color-text-2)] font-semibold">Free plan</span> includes 3 complete trips. Top up with a 5-trip pack or go Pro for unlimited.
