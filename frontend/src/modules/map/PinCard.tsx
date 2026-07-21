@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { Place, PlaceDetails, Persona } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
-import { computeAnalysisInsights, getTravelDateBadge } from './pincard-utils'
+import { computeAnalysisInsights, getTravelDateBadge, filterTypes, getDirectionsUrl } from './pincard-utils'
 import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 import { usePersonaInsight } from './pincard-persona'
@@ -96,7 +96,6 @@ export function PinCard({
   const [descOpen, setDescOpen] = useState(true)
   const [bestHereOpen, setBestHereOpen] = useState(false)
   const [planVisitOpen, setPlanVisitOpen] = useState(false)
-  const [reviewsOpen, setReviewsOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIdx, setGalleryIdx] = useState(0)
   const [imgSrcs, setImgSrcs] = useState<string[]>([])
@@ -185,7 +184,6 @@ export function PinCard({
     setDescOpen(true)
     setBestHereOpen(false)
     setPlanVisitOpen(false)
-    setReviewsOpen(false)
     setGalleryOpen(false)
     setGalleryIdx(0)
   }, [place.id])
@@ -262,9 +260,9 @@ export function PinCard({
   const phone = details?.phone ?? null
   const website = details?.website ?? null
   const description = details?.editorial_summary ?? null
-  const PRICE_SYMBOLS = ['', '₹', '₹₹', '₹₹₹', '₹₹₹₹']
-
   const whyForYouText = personaInsight ?? place.reason ?? null
+  const placeTypes = details?.types ? filterTypes(details.types).slice(0, 2) : []
+  const directionsUrl = (details?.lat && details?.lon) ? getDirectionsUrl(details.lat, details.lon) : null
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
@@ -526,8 +524,8 @@ export function PinCard({
             )
           })()}
 
-          {/* Category chip — immediate */}
-          <div style={{ marginBottom: 6 }}>
+          {/* Category chip + type tags — immediate */}
+          <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{
               display: 'inline-block',
               fontSize: '0.7rem', fontWeight: 700,
@@ -538,6 +536,11 @@ export function PinCard({
             }}>
               {categoryLabel}
             </span>
+            {placeTypes.map(t => (
+              <span key={t} style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--color-text-4)', background: 'var(--color-surface2)', border: '1px solid var(--color-border)', borderRadius: 99, padding: '2px 7px' }}>
+                {t}
+              </span>
+            ))}
           </div>
 
           {/* Place name — immediate */}
@@ -563,14 +566,53 @@ export function PinCard({
             </p>
           ) : null}
 
-          {/* Chips row — travel-date timing + rating + price */}
+          {/* Chips row — rating + source + open status + travel date */}
           {!detailsLoaded ? (
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-              <div style={{ ...shimmerBase, height: 22, width: 120, borderRadius: 99 }} />
+              <div style={{ ...shimmerBase, height: 22, width: 90, borderRadius: 99 }} />
               <div style={{ ...shimmerBase, height: 22, width: 52, borderRadius: 99 }} />
+              <div style={{ ...shimmerBase, height: 22, width: 80, borderRadius: 99 }} />
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12, animation: 'sectionReveal 360ms 50ms cubic-bezier(.22,1,.36,1) both' }}>
+              {rating !== null && (
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 700,
+                  padding: '3px 8px', borderRadius: 99,
+                  background: 'var(--color-amber-bg)',
+                  border: '1px solid var(--color-amber-bdr)',
+                  color: 'var(--color-amber)',
+                }}>
+                  ★ {typeof rating === 'number' ? rating.toFixed(1) : rating}
+                  {ratingCount !== null && (
+                    <span style={{ fontWeight: 400, opacity: 0.7 }}> ({(ratingCount as number).toLocaleString()})</span>
+                  )}
+                </span>
+              )}
+              {rating !== null && (
+                <span style={{
+                  fontSize: '0.68rem', fontWeight: 500,
+                  padding: '3px 7px', borderRadius: 99,
+                  background: 'var(--color-surface2)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-4)',
+                }}>
+                  Google
+                </span>
+              )}
+              {details?.open_now !== undefined && !resolvedStart && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: '0.72rem', fontWeight: 600,
+                  padding: '3px 9px', borderRadius: 99,
+                  background: details.open_now ? 'rgba(107,148,112,.15)' : 'rgba(194,100,100,.15)',
+                  border: `1px solid ${details.open_now ? 'rgba(107,148,112,.3)' : 'rgba(194,100,100,.3)'}`,
+                  color: details.open_now ? '#7aaa80' : '#d48080',
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                  {details.open_now ? 'Open now' : 'Closed now'}
+                </span>
+              )}
               {weekdayText.length > 0 && resolvedStart && (() => {
                 const badge = getTravelDateBadge(weekdayText, resolvedStart)
                 if (!badge) return null
@@ -589,31 +631,6 @@ export function PinCard({
                   </span>
                 )
               })()}
-              {rating !== null && (
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 700,
-                  padding: '3px 8px', borderRadius: 99,
-                  background: 'var(--color-amber-bg)',
-                  border: '1px solid var(--color-amber-bdr)',
-                  color: 'var(--color-amber)',
-                }}>
-                  ★ {typeof rating === 'number' ? rating.toFixed(1) : rating}
-                  {ratingCount !== null && (
-                    <span style={{ fontWeight: 400, opacity: 0.7 }}> ({(ratingCount as number).toLocaleString()})</span>
-                  )}
-                </span>
-              )}
-              {priceLevel !== null && priceLevel > 0 && (
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 600,
-                  padding: '3px 8px', borderRadius: 99,
-                  background: 'var(--color-surface2)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text-3)',
-                }}>
-                  {PRICE_SYMBOLS[priceLevel as number] ?? ''}
-                </span>
-              )}
             </div>
           )}
 
@@ -715,10 +732,35 @@ export function PinCard({
             </div>
           )}
 
+          {/* ── Inline review quote ── */}
+          {!detailsLoaded ? (
+            <div style={{ ...shimmerBase, height: 72, width: '100%', borderRadius: 10, marginBottom: 10 }} />
+          ) : details?.reviews && details.reviews.length > 0 ? (
+            <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 12, marginBottom: 2, animation: 'sectionReveal 360ms 80ms cubic-bezier(.22,1,.36,1) both' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, color: 'var(--color-text-4)', marginBottom: 7 }}>
+                What visitors say
+              </div>
+              <p style={{ fontSize: '0.82rem', lineHeight: 1.55, fontStyle: 'italic', color: 'rgba(242,237,230,.72)', marginBottom: 7, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+                "{details.reviews[0].text}"
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                  {details.reviews[0].author_name?.[0]?.toUpperCase() ?? 'G'}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>{details.reviews[0].author_name || 'Google reviewer'}</span>
+                <span style={{ fontSize: 10, color: 'var(--color-amber)', marginLeft: 'auto' }}>{'★'.repeat(Math.round(details.reviews[0].rating))}</span>
+              </div>
+              {ratingCount !== null && (
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: 'var(--color-primary)', display: 'block', marginTop: 6, textDecoration: 'none' }}>
+                  See all {(ratingCount as number).toLocaleString()} reviews on Google →
+                </a>
+              )}
+            </div>
+          ) : null}
+
           {/* ── Accordion sections ── */}
           {!detailsLoaded ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
-              <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
               <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
               <div style={{ ...shimmerBase, height: 40, width: '100%', borderRadius: 8 }} />
             </div>
@@ -780,8 +822,13 @@ export function PinCard({
                   >
                     <span className="ms fill" style={{ fontSize: 14, color: 'var(--color-primary)', flexShrink: 0 }}>auto_awesome</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--color-primary)', marginBottom: 2 }}>
-                        {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: 'var(--color-primary)' }}>
+                          {CATEGORY_BEST_LABEL[place.category] ?? 'What people love'}
+                        </span>
+                        <span style={{ fontSize: 9, fontWeight: 600, color: 'rgba(212,168,83,.5)', background: 'var(--color-primary-bg)', borderRadius: 4, padding: '1px 5px' }}>
+                          AI summary
+                        </span>
                       </div>
                       {!bestHereOpen && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -975,85 +1022,61 @@ export function PinCard({
             </div>
           )}
 
-          {/* ⑤ Reviews accordion */}
-          {details?.reviews && details.reviews.length > 0 && (
-            <div style={{ borderBottom: '1px solid var(--color-border)', animation: 'sectionReveal 360ms 160ms cubic-bezier(.22,1,.36,1) both' }}>
-              <button
-                onClick={() => setReviewsOpen(o => !o)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', textAlign: 'left' }}
-              >
-                <span className="ms" style={{ fontSize: 14, color: 'var(--color-text-3)', flexShrink: 0 }}>chat_bubble</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {!reviewsOpen && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      "{details.reviews[0].text.slice(0, 55)}{details.reviews[0].text.length > 55 ? '…' : ''}"
-                    </div>
-                  )}
-                </div>
-                <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', flexShrink: 0, transform: reviewsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }}>expand_more</span>
-              </button>
-              <AnimatePresence>
-                {reviewsOpen && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                    <div style={{ paddingBottom: 12 }}>
-                      {details.reviews.map((review, i) => (
-                        <div key={i} style={{ borderRadius: 10, padding: '10px 12px', background: 'var(--color-surface2)', marginBottom: 6 }}>
-                          <p style={{ fontSize: 12, lineHeight: 1.55, fontStyle: 'italic', marginBottom: 6, color: 'rgba(242,237,230,.72)' }}>"{review.text}"</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(212,168,83,.18)', color: '#d4a853', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                              {review.author_name?.[0]?.toUpperCase() ?? 'G'}
-                            </div>
-                            <span style={{ fontSize: 10, color: 'rgba(242,237,230,.38)' }}>{review.author_name || 'Google reviewer'}</span>
-                            <span style={{ fontSize: 9, color: '#c49840', marginLeft: 'auto' }}>{'★'.repeat(Math.round(review.rating))}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {details.rating_count != null && (
-                        <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 10, color: 'var(--color-primary)', display: 'block', textAlign: 'right', marginTop: 2, textDecoration: 'none' }}>
-                          See all {(details.rating_count as number).toLocaleString()} reviews on Google →
-                        </a>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
 
         </div>
 
         {/* Pinned CTA footer — paddingBottom clears the floating BottomNav (~72px from bottom) */}
-        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)' }}>
+        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 8 }}>
           {!detailsLoaded ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
-            <button
-              onClick={isBuildingActive ? undefined : onAdd}
-              style={{
-                width: '100%', padding: '13px 0', borderRadius: 14,
-                border: isSelected
-                  ? '1px solid rgba(212,168,83,.35)'
-                  : (trendingLocked || isBuildingActive) ? '1px solid var(--color-border)' : 'none',
-                cursor: (trendingLocked || isBuildingActive) ? 'default' : 'pointer',
-                fontSize: '0.9rem', fontWeight: 700, fontFamily: 'inherit',
-                background: isSelected
-                  ? 'transparent'
-                  : (trendingLocked || isBuildingActive)
-                  ? 'var(--color-surface2)'
-                  : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
-                color: isSelected
-                  ? 'var(--color-primary)'
-                  : (trendingLocked || isBuildingActive)
-                  ? 'var(--color-text-3)'
-                  : '#0f0d0c',
-                opacity: (trendingLocked || isBuildingActive) ? 0.45 : 1,
-                boxShadow: isSelected || trendingLocked || isBuildingActive ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
-                transition: 'all 0.15s ease',
-                pointerEvents: (trendingLocked || isBuildingActive) ? 'none' : 'auto',
-              }}
-            >
-              {isBuildingActive ? 'Build in progress…' : isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
-            </button>
+            <>
+              {directionsUrl && (
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  aria-label="Get directions"
+                  style={{
+                    flexShrink: 0, width: 44, height: 44, borderRadius: 12,
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--color-text-2)', textDecoration: 'none',
+                  }}
+                >
+                  <span className="ms" style={{ fontSize: 18 }}>directions</span>
+                </a>
+              )}
+              <button
+                onClick={isBuildingActive ? undefined : onAdd}
+                style={{
+                  flex: 1, padding: '13px 0', borderRadius: 14,
+                  border: isSelected
+                    ? '1px solid rgba(212,168,83,.35)'
+                    : (trendingLocked || isBuildingActive) ? '1px solid var(--color-border)' : 'none',
+                  cursor: (trendingLocked || isBuildingActive) ? 'default' : 'pointer',
+                  fontSize: '0.9rem', fontWeight: 700, fontFamily: 'inherit',
+                  background: isSelected
+                    ? 'transparent'
+                    : (trendingLocked || isBuildingActive)
+                    ? 'var(--color-surface2)'
+                    : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
+                  color: isSelected
+                    ? 'var(--color-primary)'
+                    : (trendingLocked || isBuildingActive)
+                    ? 'var(--color-text-3)'
+                    : '#0f0d0c',
+                  opacity: (trendingLocked || isBuildingActive) ? 0.45 : 1,
+                  boxShadow: isSelected || trendingLocked || isBuildingActive ? 'none' : '0 6px 28px rgba(212,168,83,.25)',
+                  transition: 'all 0.15s ease',
+                  pointerEvents: (trendingLocked || isBuildingActive) ? 'none' : 'auto',
+                }}
+              >
+                {isBuildingActive ? 'Build in progress…' : isSelected ? '✓ In itinerary' : '+ Add to itinerary'}
+              </button>
+            </>
           )}
         </div>
 
