@@ -434,11 +434,13 @@ export type Action =
   | { type: 'SET_UNITS'; units: 'km' | 'miles' }
   | { type: 'SET_REFERENCE_PINS'; pins: ReferencePin[] }
   | { type: 'TOGGLE_FAVOURITE'; pin: FavouritedPin }
+  | { type: 'SET_FAVOURITED_PINS'; pins: FavouritedPin[] }
   | { type: 'ADD_CITY_FOOTPRINT'; footprint: CityFootprint }
   | { type: 'SET_SIMILAR_PINS'; state: { sourcePlaceId: string; similarIds: string[] } | null }
   | { type: 'SET_THEME'; theme: 'dark' | 'light' }
   | { type: 'SAVE_EVENT'; event: SavedEvent }
   | { type: 'REMOVE_EVENT'; id: string }
+  | { type: 'SET_SAVED_EVENTS'; events: SavedEvent[] }
   | { type: 'SET_LIVE_EVENTS'; events: import('./types').LiveEvent[] }
   // ── Phase 3: city context actions ────────────────────────────
   | { type: 'SET_CITY_CONTEXTS'; contexts: CityContext[] }
@@ -827,6 +829,11 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, favouritedPins: updated };
     }
 
+    case 'SET_FAVOURITED_PINS': {
+      ssSave('ur_ss_favs', action.pins);
+      return { ...state, favouritedPins: action.pins };
+    }
+
     case 'ADD_CITY_FOOTPRINT': {
       const exists = state.cityFootprints.some(f => f.city === action.footprint.city);
       const updated = exists
@@ -926,6 +933,11 @@ export function reducer(state: AppState, action: Action): AppState {
       const updated = state.savedEvents.filter(e => e.id !== action.id);
       ssSave('ur_ss_saved_events', updated);
       return { ...state, savedEvents: updated };
+    }
+
+    case 'SET_SAVED_EVENTS': {
+      ssSave('ur_ss_saved_events', action.events);
+      return { ...state, savedEvents: action.events };
     }
 
     case 'SET_LIVE_EVENTS':

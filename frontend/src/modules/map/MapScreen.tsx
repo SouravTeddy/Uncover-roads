@@ -11,6 +11,8 @@ import { MapStatusIndicator } from './MapStatusIndicator';
 import { MapLoadingOverlay } from './MapLoadingOverlay';
 import { usePlaceDetails } from './usePlaceDetails';
 import { mapData, api, reverseGeocodeCity } from '../../shared/api';
+import { syncFavouritePin, deleteFavouritePin } from '../../shared/userSync';
+import { supabase } from '../../shared/supabase';
 import { computeTotalDays } from './trip-capacity-utils';
 import { useAppStore } from '../../shared/store';
 import { saveSessionMulti } from '../destination/useRecentSessions';
@@ -1120,18 +1122,22 @@ export function MapScreen() {
           isFavourited={isFavourited}
           onFavourite={() => {
             if (!activePlace) return;
-            dispatch({
-              type: 'TOGGLE_FAVOURITE',
-              pin: {
-                placeId: activePlace.id,
-                title: activePlace.title,
-                lat: activePlace.lat,
-                lon: activePlace.lon,
-                city,
-                category: activePlace.category,
-                photoRef: activePlace.photo_ref ?? null,
-                travelDate: state.travelStartDate ?? null,
-              },
+            const pin = {
+              placeId: activePlace.id,
+              title: activePlace.title,
+              lat: activePlace.lat,
+              lon: activePlace.lon,
+              city,
+              category: activePlace.category,
+              photoRef: activePlace.photo_ref ?? null,
+              travelDate: state.travelStartDate ?? null,
+            };
+            const isCurrentlyFaved = state.favouritedPins.some(f => f.placeId === activePlace.id);
+            dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+            supabase.auth.getUser().then(({ data: { user } }) => {
+              if (!user) return;
+              if (isCurrentlyFaved) deleteFavouritePin(user.id, pin.placeId).catch(() => {});
+              else syncFavouritePin(user.id, pin).catch(() => {});
             });
           }}
           travelDate={state.tripContext.date}

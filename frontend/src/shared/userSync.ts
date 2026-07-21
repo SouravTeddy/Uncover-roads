@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Persona, SavedItinerary } from './types';
+import type { FavouritedPin, Persona, SavedEvent, SavedItinerary } from './types';
 // Called on SIGNED_IN — upserts the user's profile from their Google data
 export async function syncProfile(user: User) {
   const meta = user.user_metadata ?? {};
@@ -104,6 +104,92 @@ export async function loadUserProfile(userId: string): Promise<{
 export async function incrementGenerationCount(userId: string) {
   await supabase.rpc('increment_generation_count', { uid: userId });
 }
+
+// ── Favourited pins ─────────────────────────────────────────────────────────
+
+export async function syncFavouritePin(userId: string, pin: FavouritedPin) {
+  await supabase.from('user_favourites').upsert({
+    user_id: userId,
+    place_id: pin.placeId,
+    title: pin.title,
+    lat: pin.lat,
+    lon: pin.lon,
+    city: pin.city,
+    category: pin.category ?? null,
+    photo_ref: pin.photoRef ?? null,
+    travel_date: pin.travelDate ?? null,
+  }, { onConflict: 'user_id,place_id' });
+}
+
+export async function deleteFavouritePin(userId: string, placeId: string) {
+  await supabase.from('user_favourites')
+    .delete()
+    .eq('user_id', userId)
+    .eq('place_id', placeId);
+}
+
+export async function loadFavouritedPins(userId: string): Promise<FavouritedPin[]> {
+  const { data, error } = await supabase
+    .from('user_favourites')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return data.map(row => ({
+    placeId: row.place_id,
+    title: row.title,
+    lat: row.lat,
+    lon: row.lon,
+    city: row.city,
+    category: row.category ?? undefined,
+    photoRef: row.photo_ref ?? null,
+    travelDate: row.travel_date ?? null,
+  }));
+}
+
+// ── Saved events ─────────────────────────────────────────────────────────────
+
+export async function syncSavedEvent(userId: string, event: SavedEvent) {
+  await supabase.from('user_saved_events').upsert({
+    user_id: userId,
+    id: event.id,
+    title: event.title,
+    city: event.city,
+    date: event.date ?? null,
+    is_annual: event.isAnnual,
+    venue: event.venue ?? null,
+    category: event.category,
+    saved_at: event.savedAt,
+  }, { onConflict: 'user_id,id' });
+}
+
+export async function deleteSavedEvent(userId: string, eventId: string) {
+  await supabase.from('user_saved_events')
+    .delete()
+    .eq('user_id', userId)
+    .eq('id', eventId);
+}
+
+export async function loadSavedEvents(userId: string): Promise<SavedEvent[]> {
+  const { data, error } = await supabase
+    .from('user_saved_events')
+    .select('*')
+    .eq('user_id', userId)
+    .order('saved_at', { ascending: true });
+  if (error || !data) return [];
+  return data.map(row => ({
+    id: row.id,
+    title: row.title,
+    city: row.city,
+    date: row.date ?? null,
+    isAnnual: row.is_annual,
+    venue: row.venue ?? null,
+    category: row.category,
+    savedAt: row.saved_at,
+  }));
+}
+
+// ── Saved itineraries ────────────────────────────────────────────────────────
 
 // Load saved itineraries from Supabase for the signed-in user
 export async function loadSavedItineraries(userId: string): Promise<SavedItinerary[]> {

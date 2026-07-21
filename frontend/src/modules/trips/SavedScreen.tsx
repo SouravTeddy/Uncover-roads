@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { TripsList } from './TripsScreen';
 import { SavedPlacesTab } from './SavedPlacesTab';
+import { deleteFavouritePin, deleteSavedEvent } from '../../shared/userSync';
+import { supabase } from '../../shared/supabase';
 
 type SubTab = 'itineraries' | 'saved';
 
@@ -21,11 +23,19 @@ export function SavedScreen() {
 
   function handleRemovePin(placeId: string) {
     const pin = favouritedPins.find(p => p.placeId === placeId);
-    if (pin) dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+    if (pin) {
+      dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) deleteFavouritePin(user.id, placeId).catch(() => {});
+      });
+    }
   }
 
   function handleRemoveEvent(id: string) {
     dispatch({ type: 'REMOVE_EVENT', id });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) deleteSavedEvent(user.id, id).catch(() => {});
+    });
   }
 
   const SUB_TABS: { key: SubTab; label: string }[] = [

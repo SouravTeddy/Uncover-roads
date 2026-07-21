@@ -5,7 +5,7 @@ import type { Screen } from './shared/types';
 import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
-import { syncProfile, loadSavedItineraries, loadUserProfile } from './shared/userSync';
+import { syncProfile, loadSavedItineraries, loadUserProfile, loadFavouritedPins, loadSavedEvents } from './shared/userSync';
 import { useBuildStatus } from './shared/useBuildStatus';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
@@ -65,6 +65,12 @@ function ScreenRouter() {
     syncProfile(user).catch(console.warn);
     loadSavedItineraries(user.id).then(items => {
       if (items.length > 0) dispatch({ type: 'SET_SAVED_ITINERARIES', items });
+    }).catch(console.warn);
+    loadFavouritedPins(user.id).then(pins => {
+      if (pins.length > 0) dispatch({ type: 'SET_FAVOURITED_PINS', pins });
+    }).catch(console.warn);
+    loadSavedEvents(user.id).then(events => {
+      if (events.length > 0) dispatch({ type: 'SET_SAVED_EVENTS', events });
     }).catch(console.warn);
     loadUserProfile(user.id).then(profile => {
       if (profile) {

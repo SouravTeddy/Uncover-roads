@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { useAppStore } from '../../shared/store';
 import type { SavedItinerary, FavouritedPin } from '../../shared/types';
 import { getPlacePhotoUrl } from '../../shared/api';
+import { deleteFavouritePin, deleteSavedEvent } from '../../shared/userSync';
+import { supabase } from '../../shared/supabase';
 import { useCityPhoto } from '../destination/useCityPhoto';
 import { formatCityLabel } from '../../shared/cityPhoto';
 import { SmartUpdates } from './SmartUpdates';
@@ -546,9 +548,19 @@ export function TripsScreen() {
             onOpenMap={openPinCalendar}
             onRemovePin={(placeId) => {
               const pin = favouritedPins.find(p => p.placeId === placeId);
-              if (pin) dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+              if (pin) {
+                dispatch({ type: 'TOGGLE_FAVOURITE', pin });
+                supabase.auth.getUser().then(({ data: { user } }) => {
+                  if (user) deleteFavouritePin(user.id, placeId).catch(() => {});
+                });
+              }
             }}
-            onRemoveEvent={(id) => dispatch({ type: 'REMOVE_EVENT', id })}
+            onRemoveEvent={(id) => {
+              dispatch({ type: 'REMOVE_EVENT', id });
+              supabase.auth.getUser().then(({ data: { user } }) => {
+                if (user) deleteSavedEvent(user.id, id).catch(() => {});
+              });
+            }}
           />
         </div>
       )}
