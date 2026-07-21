@@ -165,6 +165,15 @@ const CAT_LABEL: Record<string, string> = {
   market: 'Market', street_art: 'Street art',
 };
 
+const CAT_EMOJI: Record<string, string> = {
+  restaurant: '🍽️', cafe: '☕', park: '🌿', museum: '🏛️',
+  historic: '🏛️', tourism: '📍', place: '📍', bar: '🍸',
+  nightlife: '🌙', gallery: '🖼️', bakery: '🥐', spa: '💆',
+  spiritual: '🕌', stadium: '🏟️', zoo: '🐘', aquarium: '🐠',
+  library: '📚', cinema: '🎬', amusement_park: '🎡',
+  viewpoint: '🔭', beach: '🏖️', market: '🛍️', street_art: '🎨',
+};
+
 function categoryLabel(cat: string): string {
   return CAT_LABEL[cat] ?? cat.replace(/_/g, ' ');
 }
@@ -299,6 +308,9 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   const [pillDetail, setPillDetail] = useState<{ title: string; body: string } | null>(null);
   const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [placeRatingCount, setPlaceRatingCount] = useState<number | null>(null);
+  const [placeReviewSummary, setPlaceReviewSummary] = useState<string | null>(null);
+  const placeDetailsFetchDone = useRef(false);
 
   // Keep expandedRef in sync so PanelControl.isExpanded() always reads current value
   const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
@@ -366,10 +378,25 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
     if (!active || stop.imageUrl || stop.photoRef || !stop.placeId) return;
     if (photoFetchAttempted.current) return;
     photoFetchAttempted.current = true;
+    placeDetailsFetchDone.current = true;
     fetchPlaceDetails(stop.placeId).then(details => {
       if (details?.photo_ref) setFallbackPhotoRef(details.photo_ref);
+      if (details?.rating_count != null) setPlaceRatingCount(details.rating_count);
+      if (details?.review_summary) setPlaceReviewSummary(details.review_summary);
     }).catch(() => {});
   }, [active, stop.imageUrl, stop.photoRef, stop.placeId]);
+
+  // Fetch rating_count + review_summary on expand when photo was already available (so photo-fetch above was skipped)
+  useEffect(() => {
+    if (!expanded || !stop.placeId || placeDetailsFetchDone.current) return;
+    placeDetailsFetchDone.current = true;
+    fetchPlaceDetails(stop.placeId).then(details => {
+      if (details?.photo_ref && !fallbackPhotoRef) setFallbackPhotoRef(details.photo_ref);
+      if (details?.rating_count != null) setPlaceRatingCount(details.rating_count);
+      if (details?.review_summary) setPlaceReviewSummary(details.review_summary);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, stop.placeId]);
 
   const handlePhotoFinalError = () => {
     if (placeImageAttempted.current) return;
@@ -413,7 +440,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   const hasConflict = isRaining && !!walkSig;
 
   const stageLabel = stop.stage === 'hidden_gem'
-    ? { text: 'Hidden gem',                    icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
+    ? { text: 'Off the beaten path',           icon: 'diamond',      color: T.sage,                 bg: T.sageBg,                   bdr: T.sageBdr }
     : stop.stage === 'rising' && (stop.velocityRatio ?? 0) >= 2.0
     ? { text: 'Getting noticed',               icon: 'trending_up',  color: '#e07050',              bg: 'rgba(212,100,50,0.12)',     bdr: 'rgba(212,100,50,0.28)' }
     : stop.stage === 'rising'
@@ -461,10 +488,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
     const durLabel = stop.durationMin >= 60 ? `${(stop.durationMin / 60).toFixed(1).replace(/\.0$/, '')} hr` : `${stop.durationMin} min`;
     allPills.push({ icon: 'timer', label: durLabel, urgent: false, detail: null });
   }
-  const displayRating = stop.rating;
-  if (displayRating != null && displayRating > 0) {
-    allPills.push({ icon: 'star', label: `${displayRating} ★`, urgent: false, detail: null, color: T.gold });
-  }
+  // Rating shown as full-width tappable row in expanded view — not as a pill
   const price = priceLabel(stop.priceLevel);
   if (price) {
     allPills.push({ icon: 'attach_money', label: price, urgent: false, detail: null });
@@ -674,93 +698,62 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
         }}
           onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
         >
-          {/* Stop counter row: left-aligned counter, right-aligned delete */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)' }}>
-              Stop {card.stopNumber} of {card.totalStops}
-            </span>
-            {onRemove && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onRemove?.(); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(200,60,60,.15)', border: '1px solid rgba(200,60,60,.28)', borderRadius: 8, padding: '5px 9px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-              >
-                <span className="ms" style={{ fontSize: 18, color: 'rgba(230,100,90,.85)' }}>delete_outline</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(230,100,90,.75)', letterSpacing: '.04em' }}>Remove</span>
-              </button>
+          {/* Stop counter */}
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)', marginBottom: 10 }}>
+            Stop {card.stopNumber} of {card.totalStops}
+          </span>
+
+          {/* Badge row: place type + provenance */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {stop.category && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 6, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.10)', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.55)' }}>
+                <span>{CAT_EMOJI[stop.category] ?? '📍'}</span>
+                <span>{categoryLabel(stop.category)}</span>
+              </div>
+            )}
+            {stop.isUserAdded && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}`, fontSize: 12, fontWeight: 700, color: T.gold }}>
+                ✦ You added this
+              </div>
+            )}
+            {stop.isEngineAdded && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 6, background: T.skyBg, border: `1px solid ${T.skyBdr}`, fontSize: 12, fontWeight: 700, color: T.sky }}>
+                <span className="ms" style={{ fontSize: 12 }}>auto_awesome</span> Our pick
+              </div>
             )}
           </div>
 
-          {/* Title — single line with ellipsis (matches proto .c-title) */}
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: T.text1, lineHeight: 1.15, margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {/* Title */}
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 27, fontWeight: 700, color: T.text1, lineHeight: 1.15, margin: '0 0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {stop.title}
           </h2>
 
-          {/* Time + provenance badge row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            {stop.time && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.text3 }}>
-                <span className="ms" style={{ fontSize: 14 }}>schedule</span>
-                <span>~{fmt12h(stop.time)}</span>
-                {stop.durationMin > 0 && (
-                  <><span style={{ opacity: 0.4 }}>→ leave</span><span>~{addMinutes(stop.time, stop.durationMin)}</span></>
-                )}
-              </div>
-            )}
-            {(stop.isEngineAdded || stop.isUserAdded) && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8, padding: '3px 9px', borderRadius: 6,
-                background: stop.isEngineAdded ? T.skyBg : T.goldBg,
-                border: `1px solid ${stop.isEngineAdded ? T.skyBdr : T.goldBdr}`,
-              }}>
-                <span className="ms" style={{ fontSize: 12, color: stop.isEngineAdded ? T.sky : T.gold }}>
-                  {stop.isEngineAdded ? 'auto_awesome' : 'bookmark'}
-                </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: stop.isEngineAdded ? T.sky : T.gold }}>
-                  {stop.isEngineAdded ? 'Our pick' : 'You added this'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Description — expandable 2-line clamp */}
-          {(descriptionText || reasonText) && (
-            <div style={{ marginBottom: 10 }}>
-              <p style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(242,237,230,.58)', margin: '0 0 4px',
-                ...(descExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' })
-              }}>
-                {descriptionText || reasonText}
-              </p>
-              {(descriptionText || reasonText || '').length > 100 && (
-                <button onClick={(e) => { e.stopPropagation(); setDescExpanded(v => !v); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, color: 'rgba(242,237,230,.35)' }}>
-                  <span className="ms" style={{ fontSize: 16, lineHeight: 1 }}>{descExpanded ? 'expand_less' : 'expand_more'}</span>
-                </button>
-              )}
+          {/* Time row */}
+          {stop.time && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 600, color: T.text1, marginBottom: 5 }}>
+              <span className="ms" style={{ fontSize: 15, color: T.text3 }}>schedule</span>
+              <span>~{fmt12h(stop.time)}</span>
+              <span style={{ color: T.text3, fontWeight: 400, fontSize: 12 }}>→</span>
+              <span style={{ color: T.text3, fontWeight: 400, fontSize: 13 }}>leave ~{addMinutes(stop.time, stop.durationMin)}</span>
             </div>
           )}
 
-          {/* Identity chips — arrival/departure/resequence notes only; stageLabel shown in expanded view */}
-          {(card.movedFrom != null || card.arrivalNote || card.departureNote) && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-              {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
-              {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
-              {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
-            </div>
-          )}
-
-          {/* Next leg */}
-          {card.nextLeg && (() => {
-            const leg = card.nextLeg!;
-            const isWalk = leg.mode === 'walk';
-            const distStr = leg.distKm < 1 ? `${Math.round(leg.distKm * 1000)} m` : `${leg.distKm} km`;
+          {/* Location */}
+          {(stop.area || stop.city) && (() => {
+            const areaLabel = stop.area?.includes(',') ? null : stop.area;
             return (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 13, color: 'rgba(255,255,255,.30)', marginTop: 2 }}>
-                <span className="ms" style={{ fontSize: 16, color: 'rgba(255,255,255,.28)', marginTop: 1, flexShrink: 0 }}>{isWalk ? 'directions_walk' : 'directions_car'}</span>
-                <div>
-                  <div><span style={{ color: 'rgba(242,237,230,.55)', fontWeight: 600 }}>{distStr} · ~{leg.durationMin} min</span></div>
-                  <div style={{ fontSize: 12, marginTop: 1 }}>to {leg.nextStopTitle}</div>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(255,255,255,.30)', marginBottom: 12 }}>
+                <span className="ms" style={{ fontSize: 14 }}>location_on</span>
+                {areaLabel && stop.city ? `${areaLabel} · ${stop.city}` : (areaLabel || stop.city)}
               </div>
             );
           })()}
+
+          {/* Expand hint */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'rgba(255,255,255,.28)', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+            <span className="ms" style={{ fontSize: 17, lineHeight: 1 }}>expand_more</span>
+            See details
+          </div>
         </div>
 
         {/* ── EXPANDED — fades in on expand ────────────────────────── */}
@@ -849,13 +842,28 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
               </div>
             )}
 
-            {/* Identity chips */}
-            {(stageLabel || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
+            {/* Identity chips: category type, stage, movement notes */}
+            {(stop.category || stageLabel || card.movedFrom != null || card.arrivalNote || card.departureNote) && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                {stop.category && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 6, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.10)', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,.55)' }}>
+                    <span>{CAT_EMOJI[stop.category] ?? '📍'}</span>
+                    <span>{categoryLabel(stop.category)}</span>
+                  </div>
+                )}
                 {stageLabel && (<div style={{ ...chipBase, background: stageLabel.bg, border: `1px solid ${stageLabel.bdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: stageLabel.color }}>{stageLabel.icon}</span><span style={{ color: stageLabel.color }}>{stageLabel.text}</span></div>)}
                 {card.movedFrom != null && (<div style={{ ...chipBase, background: 'rgba(232,160,48,.12)', border: '1px solid rgba(232,160,48,.25)' }}><span className="ms" style={{ fontSize: T.fsXs, color: '#e8a030' }}>swap_horiz</span><span style={{ color: '#e8a030' }}>Moved from #{card.movedFrom}</span></div>)}
                 {card.arrivalNote && (<div style={{ ...chipBase, background: T.skyBg, border: `1px solid ${T.skyBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.sky }}>flight_land</span><span style={{ color: T.sky }}>{card.arrivalNote}</span></div>)}
                 {card.departureNote && (<div style={{ ...chipBase, background: T.goldBg, border: `1px solid ${T.goldBdr}` }}><span className="ms" style={{ fontSize: T.fsXs, color: T.gold }}>flight_takeoff</span><span style={{ color: T.gold }}>{card.departureNote}</span></div>)}
+              </div>
+            )}
+
+            {/* Place description from Google (review_summary via fetchPlaceDetails on expand) */}
+            {placeReviewSummary && (
+              <div style={{ ...grpSep }}>
+                <p style={{ fontSize: 15, lineHeight: 1.68, color: 'rgba(242,237,230,.58)', margin: 0 }}>
+                  {placeReviewSummary}
+                </p>
               </div>
             )}
 
@@ -918,22 +926,53 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
             {/* ── Group 2: At this stop ───────────────────────── */}
             <div data-group="at-this-stop" style={grpSep}>
               <div style={grpLabel()}>At this stop</div>
-              {/* crowdNote with hyphen stripping */}
-              {crowdRow && (() => {
-                const cleanNote = crowdRow.text.replace(/ [—–] /g, '. ').replace(/^[—–] /, '').trim();
-                return (
-                  <div className="crowd-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 8, padding: '3px 10px', borderRadius: 999, background: crowdRow.isBusy ? 'rgba(200,80,50,.14)' : 'rgba(107,148,112,.12)', border: `1px solid ${crowdRow.isBusy ? 'rgba(200,80,50,.28)' : 'rgba(107,148,112,.22)'}` }}>
-                    <span className="ms" style={{ fontSize: 12, color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'person_raised_hand' : 'sentiment_satisfied'}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: crowdRow.isBusy ? '#e07060' : T.sage }}>{crowdRow.isBusy ? 'Busy period' : 'Good window'}</span>
-                    {cleanNote && <span style={{ fontSize: 11, color: crowdRow.isBusy ? 'rgba(224,112,96,.7)' : 'rgba(107,148,112,.7)', marginLeft: 2 }}>{cleanNote}</span>}
-                  </div>
-                );
-              })()}
+
+              {/* Pills: visit time, timing notes, transit, hours — not rating (shown as row below) */}
               {allPills.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14 }}>
                   {allPills.filter(p => p.label !== stageLabel?.text).map((pill, i) => renderPill(pill, i))}
                 </div>
               )}
+
+              {/* Full-width rating row — links to Google Maps */}
+              {stop.rating != null && stop.rating > 0 && (
+                <a
+                  href={stop.googleMapsUrl ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`${stop.rating.toFixed(1)} stars${placeRatingCount ? `, ${placeRatingCount.toLocaleString()} reviews` : ''} — open in Google Maps`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', marginBottom: 12, borderTop: '1px solid rgba(255,255,255,.07)', borderBottom: '1px solid rgba(255,255,255,.07)', textDecoration: 'none', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 26, fontWeight: 800, color: T.text1, letterSpacing: '-.5px', lineHeight: 1 }}>{stop.rating.toFixed(1)}</span>
+                    <div>
+                      <div style={{ fontSize: 15, color: T.gold, marginBottom: 3, letterSpacing: 1 }}>{'★'.repeat(Math.min(5, Math.round(stop.rating)))}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>
+                        {placeRatingCount ? `${placeRatingCount.toLocaleString()} reviews · Google` : 'Google'}
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 20, color: T.gold }} aria-hidden="true">↗</span>
+                </a>
+              )}
+
+              {/* Crowd tip — inline plain language, no "GOOD WINDOW" jargon */}
+              {crowdRow && (() => {
+                const cleanNote = crowdRow.text.replace(/ [—–] /g, '. ').replace(/^[—–] /, '').trim();
+                return (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+                    <span style={{ fontSize: 15, flexShrink: 0, lineHeight: 1 }}>{crowdRow.isBusy ? '⚠️' : '🕗'}</span>
+                    <span style={{ fontSize: 14, color: 'rgba(242,237,230,.65)', lineHeight: 1.5 }}>
+                      <strong style={{ color: crowdRow.isBusy ? '#e07060' : 'rgba(80,210,140,.85)', fontWeight: 700 }}>
+                        {crowdRow.isBusy ? 'Busy now' : 'Good timing'}
+                      </strong>
+                      {' — '}{cleanNote}
+                    </span>
+                  </div>
+                );
+              })()}
+
               {pillDetail && (
                 <div style={{ marginTop: 9, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 5 }}>{pillDetail.title}</div>

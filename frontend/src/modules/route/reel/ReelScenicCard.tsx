@@ -30,7 +30,18 @@ const DIMENSION_MAP: Record<string, { icon: string; color: string }> = {
   local:      { icon: 'storefront',      color: '#c0b0a4' },
 };
 
-// ── "Along the way" pills ─────────────────────────────────────────────────────
+// ── "Along the way" — plain English sentence per dimension ────────────────────
+const DIMENSION_TEXT: Record<string, { emoji: string; text: string }> = {
+  natural:    { emoji: '🌿', text: 'Tree-lined streets, shaded for most of the walk' },
+  viewpoint:  { emoji: '🔭', text: 'Open views and good vantage points along the route' },
+  historic:   { emoji: '🏛️', text: 'Ancient ruins and monuments visible from the street' },
+  vibrant:    { emoji: '✨', text: 'Lively area with local shops and street life' },
+  photogenic: { emoji: '📷', text: 'Several good photo spots along the route' },
+  waterfront: { emoji: '🌊', text: 'Walk along the water with open views' },
+  local:      { emoji: '🏘️', text: 'Quiet neighbourhood streets, away from tourist crowds' },
+};
+
+// ── "Along the way" pills (used by non-walk scenic cards) ─────────────────────
 function AlongTheWay({ dims }: { dims: Record<string, number> }) {
   const top = Object.entries(dims)
     .sort((a, b) => b[1] - a[1])
@@ -305,8 +316,8 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
   const [fallbackDestUrl, setFallbackDestUrl] = useState<string | null>(null);
   const fetchAttempted = useRef(false);
 
+  // Prefetch on mount (not gated on active) so photo is ready when card scrolls into view
   useEffect(() => {
-    if (!active) return;
     const needsOrigin = !card.originPhotoUrl && (!!card.originPlaceId || !!card.from);
     const needsDest = !card.destPhotoUrl && (!!card.destPlaceId || !!card.to);
     if (!needsOrigin && !needsDest) return;
@@ -322,183 +333,143 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
         .then(url => { if (url) setFallbackDestUrl(url); })
         .catch(() => {});
     }
-  }, [active, card.originPhotoUrl, card.destPhotoUrl, card.originPlaceId, card.destPlaceId, card.from, card.to]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const photoUrl = (card.destPhotoUrl ?? fallbackDestUrl) ?? (card.originPhotoUrl ?? fallbackOriginUrl) ?? card.photoUrl;
 
+  // Parse distance into number + unit for big stat display
+  const [distNum, distUnit] = (() => {
+    if (realDistM !== null) {
+      return realDistM < 1000
+        ? [`${realDistM}`, 'm']
+        : [`${(realDistM / 1000).toFixed(1)}`, 'km'];
+    }
+    const m = distValue.match(/^([0-9.]+)\s*(km|m)$/i);
+    return m ? [m[1], m[2].toLowerCase()] : [distValue, ''];
+  })();
+
   return (
-    <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: isHighWalk ? 'linear-gradient(160deg,#0a1218 0%,#0f1a22 40%,#0c1015 100%)' : '#0a0a0d' }}>
+    <div style={{ width: '100%', height: '100dvh', overflow: 'hidden', position: 'relative', background: '#0a0a0d' }}>
       {/* Background photo */}
       {photoUrl && (
         <img src={photoUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', zIndex: 0 }} />
       )}
-      {/* Dark overlay scrim */}
-      {photoUrl && (
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,.80) 100%)', zIndex: 1 }} />
-      )}
-      {/* Subtle radial glow — only for high-walk variant */}
-      {isHighWalk && (
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 280px 350px at 50% 35%,rgba(79,143,171,.12),transparent)', pointerEvents: 'none', zIndex: 2 }} />
-      )}
+      {/* Dark scrim */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.55) 50%,rgba(0,0,0,.82) 100%)', zIndex: 1 }} />
 
-      {/* Mode chip topbar — top matches stop card (below back button + safe area) */}
-      <div className="rsc-topbar" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 52px)', left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 99, background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,.09)', fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.82)', whiteSpace: 'nowrap' }}>
+      {/* Topbar: mode pill + side-trip badge */}
+      <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 52px)', left: 16, right: 16, zIndex: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,.09)', fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.82)' }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: card.accent, boxShadow: `0 0 5px ${card.accent}` }} />
           <span>{card.modeIcon === 'walk' ? 'Walk' : 'Drive'}</span>
-          <span style={{ width: 1, height: 9, background: 'rgba(255,255,255,.14)', margin: '0 3px', display: 'inline-block' }} />
-          <span style={{ fontWeight: 600, color: 'rgba(255,255,255,.45)' }}>{card.detourKm} km · {card.detourMin} min</span>
         </div>
+        {!isHighWalk && card.detourMin > 0 && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 999, background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(14px)', border: `1px solid ${card.accent}45`, fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: card.accent }}>
+            <span className="ms" style={{ fontSize: 13, lineHeight: 1 }}>fork_right</span>
+            Side trip · +{card.detourMin} min
+          </div>
+        )}
       </div>
 
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: '52px 0 0', zIndex: 5 }}>
-        {/* Spacer — pushes content to bottom */}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', zIndex: 5 }}>
         <div style={{ flex: 1 }} />
-        {/* Dark panel — same treatment as stop card so text is always readable */}
-        <div style={{ background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none', padding: '16px 20px calc(88px + env(safe-area-inset-bottom, 0px))' }}>
+        {/* Panel — no drag handle (walk cards don't expand) */}
+        <div style={{ background: 'rgba(8,9,16,.97)', backdropFilter: 'blur(32px)', WebkitBackdropFilter: 'blur(32px)', borderRadius: '22px 22px 0 0', border: '1px solid rgba(255,255,255,.07)', borderBottom: 'none', padding: '20px 20px calc(88px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* Route label heading + breadcrumb */}
-        <div style={{ marginBottom: 8 }}>
+          {/* Route name */}
           {card.routeLabel && (
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: isHighWalk ? 34 : 28, fontWeight: 600, color: '#f5f0ea', lineHeight: 1.1, margin: '0 0 4px' }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 26, fontWeight: 700, color: '#f5f0ea', lineHeight: 1.12, margin: 0 }}>
               {card.routeLabel}
             </h2>
           )}
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: isHighWalk ? 'rgba(79,143,171,.8)' : 'rgba(196,181,253,.6)', marginBottom: 5 }}>
-            {isHighWalk ? `${distValue} · ${timeValue} on foot` : distValue}
-          </div>
-          {/* Breadcrumb row + optional detour badge */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <div style={{ fontSize: 12, color: '#a08d80' }}>
-              <span style={{ color: '#a08d80' }}>{card.from}</span>
-              {' → '}
-              <span style={{ color: '#a08d80' }}>{card.to}</span>
-              {' · '}
-              {card.detourMin} min {card.modeIcon === 'walk' ? 'walk' : 'drive'}
+
+          {/* Route line: from → dashed + walk pill → to */}
+          <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: card.accent, boxShadow: `0 0 8px ${card.accent}88` }} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 84, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.from}</div>
             </div>
-            {!isHighWalk && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8, padding: '3px 9px', borderRadius: 6, background: 'rgba(196,181,253,.10)', border: '1px solid rgba(196,181,253,.25)' }}>
-                <span className="ms" style={{ fontSize: 12, color: 'rgba(196,181,253,.85)' }}>directions_walk</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(196,181,253,.85)' }}>Optional detour</span>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 8px', marginTop: -1 }}>
+              <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 26 }}>
+                <div style={{ position: 'absolute', left: 0, right: 0, height: 2, background: `repeating-linear-gradient(90deg,${card.accent}55 0 5px,transparent 5px 10px)` }} />
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 999, background: 'rgba(8,9,16,.97)', border: `1px solid ${card.accent}45`, fontSize: 12, fontWeight: 700, color: card.accent, position: 'relative', zIndex: 1 }}>
+                  <span className="ms" style={{ fontSize: 14, lineHeight: 1 }}>directions_walk</span>
+                  {walkMins} min
+                </div>
               </div>
-            )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'transparent', border: `2px solid ${card.accent}60` }} />
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.55)', maxWidth: 84, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.to}</div>
+            </div>
           </div>
-          {!isHighWalk && (
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,.3)', marginTop: 3 }}>
-              {transitLabel
-                ? `or ${transitLabel} in ~${transitMins} min`
-                : viaStreets
-                  ? `via ${viaStreets.slice(0, 2).join(' · ')}`
-                  : 'on foot'}
+
+          {/* 2 stat blocks — time + distance only */}
+          <div style={{ display: 'flex' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '13px 8px', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: '10px 0 0 10px' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f5f0ea', letterSpacing: '-.5px', lineHeight: 1 }}>{walkMins}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.35)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '.06em' }}>min walk</div>
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '13px 8px', background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderLeft: 'none', borderRadius: '0 10px 10px 0' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f5f0ea', letterSpacing: '-.5px', lineHeight: 1 }}>{distNum}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(242,237,230,.35)', marginTop: 3, textTransform: 'uppercase', letterSpacing: '.06em' }}>{distUnit || 'km'}</div>
+            </div>
+          </div>
+
+          {/* Skip row — only shown when real transit data is available */}
+          {hasRealTransit && transitMins != null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderRadius: 10, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }} role="note">
+              <span className="ms" style={{ fontSize: 18, color: 'rgba(255,255,255,.35)', flexShrink: 0 }}>bolt</span>
+              <span style={{ fontSize: 14, color: 'rgba(242,237,230,.6)', lineHeight: 1.4 }}>
+                Skip the walk — <strong style={{ color: '#f5f0ea', fontWeight: 700 }}>
+                  <span className="ms" style={{ fontSize: 13, verticalAlign: 'middle' }}>subway</span>{' '}
+                  {transitMins} min {transitLabel}
+                </strong>
+              </span>
             </div>
           )}
-          {!isHighWalk && card.detourMin > 0 && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 11px', borderRadius: 99, background: 'rgba(196,181,253,.08)', border: '1px solid rgba(196,181,253,.2)' }}>
-              <span className="ms" style={{ fontSize: 15, color: 'rgba(196,181,253,.7)' }}>add_circle</span>
-              <span style={{ fontSize: 13, color: 'rgba(196,181,253,.75)' }}>+{card.detourMin} min · adds {card.detourKm} km to your day</span>
+
+          {/* Why */}
+          {card.why && (
+            <p style={{ fontSize: 14, color: 'rgba(242,237,230,.65)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+              {card.why}
+            </p>
+          )}
+
+          {/* Along the way — plain English sentences per dimension */}
+          {card.characterDimensions && !Array.isArray(card.characterDimensions) && (() => {
+            const top = Object.entries(card.characterDimensions)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([key]) => key)
+              .filter(key => DIMENSION_TEXT[key]);
+            if (!top.length) return null;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(242,237,230,.35)' }}>Along the way</div>
+                {top.map(key => {
+                  const d = DIMENSION_TEXT[key];
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                      <span style={{ fontSize: 20, flexShrink: 0, width: 28, textAlign: 'center' }}>{d.emoji}</span>
+                      <span style={{ fontSize: 14, color: 'rgba(242,237,230,.6)', lineHeight: 1.45 }}>{d.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Condition note */}
+          {card.conditionNote && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 12, color: 'rgba(212,168,83,.8)', background: 'rgba(212,168,83,.07)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(212,168,83,.15)' }}>
+              <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>wb_sunny</span>
+              <span>{card.conditionNote}</span>
             </div>
           )}
+
         </div>
-
-        {/* Why — persona voice */}
-        <div style={{ fontSize: isHighWalk ? 15 : 15, color: isHighWalk ? 'rgba(255,255,255,.75)' : 'rgba(255,255,255,.6)', lineHeight: 1.55, fontStyle: 'italic', marginBottom: 10 }}>
-          {card.why}
-        </div>
-
-        {/* Stats bar */}
-        <div style={{ display: 'flex', borderRadius: 8, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.09)', overflow: 'hidden' }}>
-          {isHighWalk ? (
-            <>
-              {/* High-walk: time · distance · path type */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1 }}>
-                <span className="ms" style={{ fontSize: 15, color: 'rgba(79,143,171,.7)' }}>timer</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea' }}>{timeValue}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>on foot</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 15, color: 'rgba(79,143,171,.7)' }}>straighten</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea' }}>{distValue}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>flat route</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
-                <span className="ms" style={{ fontSize: 15, color: 'rgba(107,148,112,.7)', flexShrink: 0 }}>route</span>
-                <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#f5f0ea', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {viaStreets ? viaStreets[0] : 'local path'}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>
-                    {viaStreets && viaStreets.length > 1 ? `via ${viaStreets.slice(1, 3).join(', ')}` : 'on foot'}
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Walk chip — always shown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: transitLabel ? 1 : 2 }}>
-                <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>directions_walk</span>
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,.8)' }}>{timeValue} walk</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,.4)' }}>on foot</div>
-                </div>
-              </div>
-              {/* Transit chip — only shown when city has real transit */}
-              {transitLabel && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                  <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>subway</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>{transitMins ?? '?'} min {transitLabel}</div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,.28)' }}>{transitSubLabel}</div>
-                  </div>
-                </div>
-              )}
-              {/* Rideshare chip — always shown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', flex: 1, borderLeft: '1px solid rgba(255,255,255,.08)' }}>
-                <span className="ms" style={{ fontSize: 15, color: 'rgba(255,255,255,.25)' }}>local_taxi</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.7)' }}>~{rideMins} min ride</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,.28)' }}>rideshare</div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Along the way — characterDimensions pills */}
-        {card.characterDimensions && !Array.isArray(card.characterDimensions) && (
-          <div style={{ marginTop: 12 }}>
-            <AlongTheWay dims={card.characterDimensions} />
-          </div>
-        )}
-
-        {/* Landmark peek */}
-        {card.landmarkPeek && card.landmarkPeek.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8, fontSize: 12, color: 'rgba(79,143,171,.85)' }}>
-            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>visibility</span>
-            <span>
-              {card.landmarkPeek.slice(0, 2).map((lm, i) => (
-                <span key={lm}>
-                  {i > 0 && <span style={{ color: 'rgba(255,255,255,.25)', margin: '0 4px' }}>·</span>}
-                  Glimpse of {lm}
-                </span>
-              ))}
-              <span style={{ color: '#726559', marginLeft: 5 }}>✦</span>
-            </span>
-          </div>
-        )}
-
-        {/* Condition note */}
-        {card.conditionNote && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginTop: 10, fontSize: 12, color: 'rgba(212,168,83,.8)', background: 'rgba(212,168,83,.07)', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(212,168,83,.15)' }}>
-            <span className="ms" style={{ fontSize: 14, flexShrink: 0 }}>wb_sunny</span>
-            <span>{card.conditionNote}</span>
-          </div>
-        )}
-        </div>{/* close dark panel */}
       </div>
     </div>
   );
