@@ -4,7 +4,6 @@ import { SavedEventCard } from './SavedEventCard';
 
 interface CityGroup {
   city: string;
-  emoji: string;
   pins: FavouritedPin[];
   events: SavedEvent[];
 }
@@ -14,17 +13,13 @@ function buildCityGroups(pins: FavouritedPin[], events: SavedEvent[]): CityGroup
 
   for (const pin of pins) {
     const c = pin.city || 'Other';
-    if (!cityMap.has(c)) {
-      cityMap.set(c, { city: c, emoji: '🌍', pins: [], events: [] });
-    }
+    if (!cityMap.has(c)) cityMap.set(c, { city: c, pins: [], events: [] });
     cityMap.get(c)!.pins.push(pin);
   }
 
   for (const event of events) {
     const c = event.city || 'Other';
-    if (!cityMap.has(c)) {
-      cityMap.set(c, { city: c, emoji: '🌍', pins: [], events: [] });
-    }
+    if (!cityMap.has(c)) cityMap.set(c, { city: c, pins: [], events: [] });
     cityMap.get(c)!.events.push(event);
   }
 
@@ -70,7 +65,6 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
           <div key={group.city} className="mb-6">
             {/* City header */}
             <div className="flex items-center gap-2 px-4 mb-3 mt-4">
-              <span style={{ fontSize: 20 }}>{group.emoji}</span>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-bold text-[var(--color-text-1)]">{group.city}</span>
                 {countLabel && (
@@ -89,6 +83,7 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
                     category={pin.category ?? 'place'}
                     tall={i === 0}
                     onRemove={onRemovePin}
+                    onClick={() => onOpenMap(group.city)}
                   />
                 ))}
               </div>
@@ -102,22 +97,6 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
                 ))}
               </div>
             )}
-
-            {/* Open on map CTA */}
-            <div className="px-4">
-              <button
-                onClick={() => onOpenMap(group.city)}
-                className="w-full py-3 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2"
-                style={{
-                  background: 'var(--color-surface2)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text-2)',
-                }}
-              >
-                <span className="ms text-sm">map</span>
-                Open {group.city} on map
-              </button>
-            </div>
           </div>
         );
       })}
