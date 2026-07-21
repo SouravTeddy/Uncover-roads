@@ -42,7 +42,7 @@ export function ProfileScreen() {
 
   const rawAnswers = state.rawOBAnswers;
   const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
-  const archetypeKey = state.personaProfile?.archetype ?? persona?.archetype ?? MOOD_ARCHETYPE[primaryMood] ?? 'explorer';
+  const archetypeKey = persona?.archetype ?? state.personaProfile?.archetype ?? MOOD_ARCHETYPE[primaryMood] ?? 'explorer';
   const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
   const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
   const hasArchetype = !!(state.personaProfile || persona);

@@ -190,7 +190,12 @@ export function PinCard({
 
   const { insight: personaInsight } = usePersonaInsight(place, persona, 'map', insightCache)
 
-  useSheetDismiss(onClose, true)
+  // Use a ref so the dismiss handler always reflects current galleryOpen state
+  // without re-registering the back button listener on every toggle.
+  const dismissActionRef = useRef<() => void>(() => onClose())
+  dismissActionRef.current = galleryOpen ? () => setGalleryOpen(false) : () => onClose()
+  const stableDismiss = useCallback(() => dismissActionRef.current(), [])
+  useSheetDismiss(stableDismiss, true)
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY
@@ -470,27 +475,6 @@ export function PinCard({
           )}
         </div>
 
-        {/* Thumbnail strip — only when multiple images loaded */}
-        {imgSrcs.length > 1 && (
-          <div style={{
-            display: 'flex', gap: 5, padding: '8px 14px 0',
-            overflowX: 'auto', scrollbarWidth: 'none', flexShrink: 0,
-          }}>
-            {imgSrcs.map((src, i) => (
-              <div
-                key={i}
-                onClick={() => { setSlideIdx(i); setGalleryOpen(true); setGalleryIdx(i) }}
-                style={{
-                  width: 54, height: 46, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-                  border: i === slideIdx ? '2px solid #d4a853' : '2px solid transparent',
-                  cursor: 'pointer', transition: 'border-color 0.15s',
-                }}
-              >
-                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Scrollable body */}
         <div
@@ -1083,9 +1067,11 @@ export function PinCard({
                   width: 30, height: 30, borderRadius: '50%',
                   background: 'rgba(255,255,255,.12)', border: 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontSize: 14, cursor: 'pointer',
+                  color: '#fff', cursor: 'pointer',
                 }}
-              >✕</button>
+              >
+                <span className="ms" style={{ fontSize: 18 }}>arrow_back</span>
+              </button>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{place.title}</div>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,.45)', marginTop: 2 }}>
@@ -1109,7 +1095,7 @@ export function PinCard({
             </div>
 
             {/* Dots */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '8px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '12px 0 20px' }}>
               {imgSrcs.map((_, i) => (
                 <div key={i} style={{
                   height: 3, borderRadius: 2,
@@ -1117,24 +1103,6 @@ export function PinCard({
                   background: i === galleryIdx ? '#fff' : 'rgba(255,255,255,.25)',
                   transition: 'all 0.2s',
                 }} />
-              ))}
-            </div>
-
-            {/* Thumbnail strip */}
-            <div style={{ display: 'flex', gap: 6, padding: '0 14px 18px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {imgSrcs.map((src, i) => (
-                <div
-                  key={i}
-                  onClick={() => setGalleryIdx(i)}
-                  style={{
-                    width: 56, height: 50, borderRadius: 8, flexShrink: 0, overflow: 'hidden',
-                    opacity: i === galleryIdx ? 1 : 0.5,
-                    border: `2px solid ${i === galleryIdx ? '#d4a853' : 'transparent'}`,
-                    cursor: 'pointer', transition: 'all 0.15s',
-                  }}
-                >
-                  <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
               ))}
             </div>
           </div>

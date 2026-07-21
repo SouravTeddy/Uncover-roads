@@ -105,6 +105,7 @@ def check(
                     rating=4.0,
                     neighborhood=None,
                     is_user_added=False,
+                    city=stop.city,
                 )
                 result.append(_best_stop)
                 messages.append(_emit_swap(stop, _best_stop, reason))
