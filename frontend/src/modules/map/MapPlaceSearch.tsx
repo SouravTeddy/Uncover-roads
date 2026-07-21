@@ -50,14 +50,76 @@ function findMatchingPlace(mainText: string, places: Place[]): Place | null {
 }
 
 function placeIcon(types: string[]): string {
-  if (types.some(t => ['restaurant', 'food', 'meal_takeaway', 'cafe', 'bakery', 'bar'].includes(t))) return 'restaurant';
+  if (types.some(t => ['restaurant', 'food', 'meal_takeaway', 'bakery'].includes(t))) return 'restaurant';
+  if (types.some(t => ['cafe', 'coffee_shop'].includes(t))) return 'local_cafe';
+  if (types.some(t => ['bar', 'night_club'].includes(t))) return 'local_bar';
   if (types.some(t => ['museum', 'art_gallery'].includes(t))) return 'museum';
   if (types.some(t => ['park', 'natural_feature', 'campground'].includes(t))) return 'park';
   if (types.some(t => ['lodging'].includes(t))) return 'hotel';
   if (types.some(t => ['transit_station', 'subway_station', 'bus_station', 'train_station'].includes(t))) return 'directions_subway';
   if (types.some(t => ['shopping_mall', 'store', 'clothing_store'].includes(t))) return 'shopping_bag';
+  if (types.some(t => ['tourist_attraction', 'point_of_interest'].includes(t))) return 'photo_camera';
   return 'place';
 }
+
+function placeTypeLabel(types: string[]): string {
+  if (types.some(t => ['restaurant', 'food', 'meal_takeaway', 'bakery'].includes(t))) return 'Restaurant';
+  if (types.some(t => ['cafe', 'coffee_shop'].includes(t))) return 'Café';
+  if (types.some(t => ['bar', 'night_club'].includes(t))) return 'Bar';
+  if (types.some(t => ['museum'].includes(t))) return 'Museum';
+  if (types.some(t => ['art_gallery'].includes(t))) return 'Gallery';
+  if (types.some(t => ['park', 'natural_feature'].includes(t))) return 'Park';
+  if (types.some(t => ['lodging'].includes(t))) return 'Hotel';
+  if (types.some(t => ['transit_station', 'subway_station', 'train_station'].includes(t))) return 'Transit';
+  if (types.some(t => ['shopping_mall', 'store'].includes(t))) return 'Shopping';
+  if (types.some(t => ['tourist_attraction', 'point_of_interest'].includes(t))) return 'Attraction';
+  if (types.some(t => ['establishment'].includes(t))) return 'Place';
+  return 'Place';
+}
+
+const BADGE: React.CSSProperties = {
+  flexShrink: 0,
+  padding: '4px 10px',
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '.04em',
+  whiteSpace: 'nowrap',
+  background: 'rgba(255,255,255,.06)',
+  border: '1px solid rgba(255,255,255,.12)',
+  color: 'rgba(255,255,255,.45)',
+};
+
+const GROUP_BOX: React.CSSProperties = {
+  margin: '12px 16px 0',
+  background: 'rgba(255,255,255,.03)',
+  border: '1px solid rgba(255,255,255,.07)',
+  borderRadius: 16,
+  overflow: 'hidden',
+};
+
+const GROUP_LABEL: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: '.10em',
+  textTransform: 'uppercase',
+  color: 'rgba(255,255,255,.25)',
+  padding: '10px 16px 6px',
+};
+
+const ROW: React.CSSProperties = {
+  width: '100%', display: 'flex', alignItems: 'center', gap: 13,
+  padding: '13px 16px', background: 'none', border: 'none',
+  borderTop: '1px solid rgba(255,255,255,.05)',
+  cursor: 'pointer', textAlign: 'left',
+};
+
+const ROW_ICON: React.CSSProperties = {
+  width: 40, height: 40, borderRadius: 12,
+  background: 'rgba(255,255,255,.06)',
+  border: '1px solid rgba(255,255,255,.08)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+};
 
 export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCitySelect, onClear, onSearchOpen, onSearchClose }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -269,76 +331,67 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           )}
 
           {!loading && (cityResults.length > 0 || results.length > 0) && (
-            <div style={{ overflowY: 'auto', flex: 1 }}>
-              {/* City results — shown above place results, distinct style */}
-              {cityResults.map((c, i) => (
-                <button
-                  key={`city-${c.name}-${i}`}
-                  onClick={() => pickCity(c)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '13px 16px', background: 'none', border: 'none',
-                    borderBottom: '1px solid rgba(255,255,255,.05)',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      background: 'rgba(212,168,83,.12)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}
-                  >
-                    <span className="ms" style={{ fontSize: 17, color: 'var(--color-primary)', lineHeight: 1 }}>travel_explore</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {c.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-4)', marginTop: 2 }}>{c.country}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-primary)', background: 'rgba(212,168,83,.12)', borderRadius: 6, padding: '2px 7px', flexShrink: 0 }}>
-                    Go to city
-                  </span>
-                </button>
-              ))}
+            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 24 }}>
 
-              {/* Place results */}
-              {results.map((item, i) => (
-                <button
-                  key={item.autocomplete.place_id}
-                  onClick={() => pick(item)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '13px 16px', background: 'none', border: 'none',
-                    borderBottom: i < results.length - 1 ? '1px solid rgba(255,255,255,.05)' : 'none',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 36, height: 36, borderRadius: '50%',
-                      background: 'rgba(255,255,255,.06)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}
-                  >
-                    <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', lineHeight: 1 }}>
-                      {placeIcon(item.autocomplete.types ?? [])}
-                    </span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.autocomplete.main_text}
-                    </div>
-                    {item.autocomplete.secondary_text && (
-                      <div style={{ fontSize: 12, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.autocomplete.secondary_text}
+              {/* Cities group — only rendered when city results exist */}
+              {cityResults.length > 0 && (
+                <div style={GROUP_BOX}>
+                  <div style={GROUP_LABEL}>Cities</div>
+                  {cityResults.map((c, i) => (
+                    <button
+                      key={`city-${c.name}-${i}`}
+                      onClick={() => pickCity(c)}
+                      style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop }}
+                    >
+                      <div style={ROW_ICON}>
+                        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)', lineHeight: 1 }}>travel_explore</span>
                       </div>
-                    )}
-                  </div>
-                  <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-4)', lineHeight: 1, flexShrink: 0 }}>chevron_right</span>
-                </button>
-              ))}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.name}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-4)', marginTop: 2 }}>{c.country}</div>
+                      </div>
+                      <span style={BADGE}>City</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Places group — only rendered when place results exist */}
+              {results.length > 0 && (
+                <div style={{ ...GROUP_BOX, marginTop: cityResults.length > 0 ? 10 : 12 }}>
+                  <div style={GROUP_LABEL}>Places</div>
+                  {results.map((item, i) => {
+                    const types = item.autocomplete.types ?? [];
+                    return (
+                      <button
+                        key={item.autocomplete.place_id}
+                        onClick={() => pick(item)}
+                        style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop }}
+                      >
+                        <div style={ROW_ICON}>
+                          <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)', lineHeight: 1 }}>
+                            {placeIcon(types)}
+                          </span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.autocomplete.main_text}
+                          </div>
+                          {item.autocomplete.secondary_text && (
+                            <div style={{ fontSize: 13, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.autocomplete.secondary_text}
+                            </div>
+                          )}
+                        </div>
+                        <span style={BADGE}>{placeTypeLabel(types)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
             </div>
           )}
 

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Search Redesign Proto</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0c0d11;
+    font-family: -apple-system, 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+    min-height: 100vh;
+  }
+  .phone {
+    width: 390px;
+    background: #0c0d11;
+    border-radius: 40px;
+    border: 1.5px solid #2a2b30;
+    overflow: hidden;
+    padding: 16px 0 32px;
+  }
+
+  /* Search bar */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px 16px;
+  }
+  .back-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #1c1d22;
+    border: 1px solid #2a2b30;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .back-btn svg { width: 18px; height: 18px; stroke: #a3a0a8; fill: none; stroke-width: 2; }
+  .search-input-wrap {
+    flex: 1;
+    display: flex; align-items: center; gap: 10px;
+    background: #1c1d22;
+    border: 1px solid #2a2b30;
+    border-radius: 14px;
+    padding: 0 14px;
+    height: 44px;
+  }
+  .search-icon { color: #6b6870; font-size: 18px; }
+  .search-input-wrap span.query {
+    font-size: 17px;
+    font-weight: 500;
+    color: #f2ede6;
+    flex: 1;
+  }
+  .clear-btn { color: #6b6870; font-size: 16px; cursor: pointer; }
+
+  /* Results */
+  .results { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* Group box */
+  .group {
+    background: #13141a;
+    border: 1px solid #22232a;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .group-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+    color: #4a4850;
+    padding: 10px 16px 6px;
+  }
+
+  /* Row */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px 16px;
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .row:not(:last-child) { border-bottom: 1px solid #1c1d22; }
+  .row:hover { background: rgba(255,255,255,.03); }
+
+  /* Icon */
+  .row-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: #1c1d22;
+    border: 1px solid #2a2b30;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+
+  /* Text */
+  .row-text { flex: 1; min-width: 0; }
+  .row-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #f2ede6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+  }
+  .row-sub {
+    font-size: 13px;
+    color: #6b6870;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Badge */
+  .badge {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    white-space: nowrap;
+  }
+  .badge-city,
+  .badge-landmark,
+  .badge-tourist,
+  .badge-cafe,
+  .badge-museum,
+  .badge-park {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: #a3a0a8;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Search bar -->
+  <div class="search-bar">
+    <div class="back-btn">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <span class="query">To</span>
+      <span class="clear-btn">✕</span>
+    </div>
+  </div>
+
+  <div class="results">
+
+    <!-- Cities group -->
+    <div class="group">
+      <div class="group-label">Cities</div>
+
+      <div class="row">
+        <div class="row-icon">🌍</div>
+        <div class="row-text">
+          <div class="row-title">Tonga</div>
+          <div class="row-sub">Tonga</div>
+        </div>
+        <span class="badge badge-city">City</span>
+      </div>
+
+      <div class="row">
+        <div class="row-icon">🌍</div>
+        <div class="row-text">
+          <div class="row-title">Tocantins</div>
+          <div class="row-sub">Brazil</div>
+        </div>
+        <span class="badge badge-city">City</span>
+      </div>
+
+      <div class="row">
+        <div class="row-icon">🌍</div>
+        <div class="row-text">
+          <div class="row-title">Turin</div>
+          <div class="row-sub">Italy</div>
+        </div>
+        <span class="badge badge-city">City</span>
+      </div>
+
+    </div>
+
+    <!-- Places group -->
+    <div class="group">
+      <div class="group-label">Places</div>
+
+      <div class="row">
+        <div class="row-icon">🗼</div>
+        <div class="row-text">
+          <div class="row-title">Tour Eiffel</div>
+          <div class="row-sub">Avenue Gustave Eiffel, Paris</div>
+        </div>
+        <span class="badge badge-landmark">Landmark</span>
+      </div>
+
+      <div class="row">
+        <div class="row-icon">☕</div>
+        <div class="row-text">
+          <div class="row-title">Torino Espresso</div>
+          <div class="row-sub">Champs-Élysées, Paris</div>
+        </div>
+        <span class="badge badge-cafe">Café</span>
+      </div>
+
+      <div class="row">
+        <div class="row-icon">🏛️</div>
+        <div class="row-text">
+          <div class="row-title">Tokyo National Museum</div>
+          <div class="row-sub">Ueno Park, Tokyo</div>
+        </div>
+        <span class="badge badge-museum">Museum</span>
+      </div>
+
+      <div class="row">
+        <div class="row-icon">🌿</div>
+        <div class="row-text">
+          <div class="row-title">Tojiin Garden</div>
+          <div class="row-sub">Kinkaku-ji, Kyoto</div>
+        </div>
+        <span class="badge badge-park">Park</span>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
