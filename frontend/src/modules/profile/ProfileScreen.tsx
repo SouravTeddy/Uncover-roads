@@ -4,22 +4,37 @@ import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
 import { PrivacyScreen } from './sub-screens/PrivacyScreen';
 import { SubscriptionDetailsScreen } from './sub-screens/SubscriptionDetailsScreen';
-import { ARCHETYPE_COLORS } from '../persona/types';
+import { ARCHETYPE_COLORS, PERSONA_DEFINITIONS } from '../persona/types';
 
 type ProfileView = 'main' | 'privacy' | 'subscription-details';
 
 const MOOD_ARCHETYPE: Record<string, string> = {
-  explore:   'explorer',
-  relax:     'slowtraveller',
-  eat_drink: 'epicurean',
-  culture:   'historian',
+  explore:   'flaneur',
+  relax:     'neighbourhoodLocal',
+  eat_drink: 'gastronaut',
+  culture:   'slowScholar',
 };
 
 const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: string }> = {
+  // Current archetypes — derived from PERSONA_DEFINITIONS
+  ...Object.fromEntries(
+    Object.values(PERSONA_DEFINITIONS).map(d => [
+      d.key,
+      {
+        name: d.name.charAt(0) + d.name.slice(1).toLowerCase().replace(/_/g, ' '),
+        tagline: d.headline,
+        emoji: d.heroEmoji,
+      },
+    ])
+  ),
+  // Legacy stored-persona keys — kept for users who completed old onboarding
   explorer:      { name: 'The Explorer',       emoji: '◆', tagline: 'You thrive on discovery — no plan survives contact with a great street.' },
   slowtraveller: { name: 'The Slow Traveller', emoji: '◇', tagline: 'One great café beats ten tourist spots. You\'re here to be, not to tick.' },
   epicurean:     { name: 'The Epicurean',      emoji: '◉', tagline: 'You travel stomach-first. Markets and hidden tables are your map.' },
   historian:     { name: 'The Scholar',        emoji: '◎', tagline: 'Every city has layers. You\'re the one who finds the story behind the sign.' },
+  voyager:       { name: 'Voyager',            emoji: '✦', tagline: 'Always somewhere new.' },
+  wanderer:      { name: 'Wanderer',           emoji: '◈', tagline: 'No fixed plan, just momentum.' },
+  pulse:         { name: 'Pulse Seeker',       emoji: '◈', tagline: 'You follow the energy.' },
 };
 
 export function ProfileScreen() {
