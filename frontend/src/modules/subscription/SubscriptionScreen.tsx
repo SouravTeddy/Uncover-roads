@@ -158,10 +158,9 @@ export function SubscriptionScreen() {
           ) : (
             <button
               onClick={handlePurchase}
-              className="w-full flex items-center justify-center gap-2 py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80"
+              className="w-full flex items-center justify-center py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px]"
               style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
             >
-              <span className="ms" style={{ fontSize: 17 }}>bolt</span>
               Go Pro · ₹299/mo
             </button>
           )}
