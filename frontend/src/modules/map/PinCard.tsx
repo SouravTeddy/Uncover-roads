@@ -256,7 +256,6 @@ export function PinCard({
   const rating = details?.rating ?? place.rating ?? null
   const ratingCount = details?.rating_count ?? null
   const weekdayText = details?.weekday_text ?? []
-  const priceLevel = details?.price_level ?? null
   const phone = details?.phone ?? null
   const website = details?.website ?? null
   const description = details?.editorial_summary ?? null
