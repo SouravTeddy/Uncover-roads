@@ -2,12 +2,11 @@ import { useState, type ReactNode, type CSSProperties } from 'react';
 import { useAppStore } from '../../shared/store';
 import { useProfile } from './useProfile';
 import { supabase } from '../../shared/supabase';
-import { NotificationsScreen } from './sub-screens/NotificationsScreen';
 import { PrivacyScreen } from './sub-screens/PrivacyScreen';
 import { SubscriptionDetailsScreen } from './sub-screens/SubscriptionDetailsScreen';
 import { ARCHETYPE_COLORS } from '../persona/types';
 
-type ProfileView = 'main' | 'notifications' | 'privacy' | 'subscription-details';
+type ProfileView = 'main' | 'privacy' | 'subscription-details';
 
 const MOOD_ARCHETYPE: Record<string, string> = {
   explore:   'explorer',
@@ -75,7 +74,6 @@ export function ProfileScreen() {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  if (view === 'notifications') return <NotificationsScreen onBack={() => setView('main')} />;
   if (view === 'privacy') return <PrivacyScreen onBack={() => setView('main')} onSignOut={handleSignOut} />;
   if (view === 'subscription-details') return <SubscriptionDetailsScreen onBack={() => setView('main')} />;
 
@@ -171,12 +169,8 @@ export function ProfileScreen() {
           />
         </div>
 
-        {/* Preferences card — Notifications + Appearance */}
+        {/* Preferences card — Appearance */}
         <div className="rounded-[20px] overflow-hidden border border-[var(--color-border)] mx-4 mt-3" style={{ background: 'var(--color-surface)' }}>
-          <SettingsRow
-            label="Notifications"
-            onTap={() => setView('notifications')}
-          />
           {/* Appearance row */}
           <div className="flex items-center justify-between py-3.5 px-4 border-t border-[var(--color-divider)]">
             <div className="flex items-center gap-3">
