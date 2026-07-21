@@ -234,6 +234,8 @@ export interface ReelDayTransitionCard {
   prevStopCount: number;
   prevStartTime: string | null;
   prevEndTime: string | null;
+  prevDayWalkKm: number;
+  prevDayRideKm: number;
   // Next day preview
   nextDay: number;
   nextCity: string;

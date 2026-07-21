@@ -5944,6 +5944,22 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             print(f"[reco_inject] day {i+1} setup error: {_reco_err}")
             # Non-fatal: reco injection failure doesn't break the itinerary
 
+        # Fix up whyForYou for reco-injected stops: the trigger phrase (e.g. "A place to
+        # end the evening") is assigned at trigger-fire time, but the scheduler may place
+        # the stop at a different time of day. Re-derive from actual scheduled time.
+        _RECO_STATIC = {
+            "A good spot for lunch near your route.", "Worth stopping for dinner.",
+            "A place to end the evening.", "A quiet spot to take a break.",
+            "A cultural stop that fits the day.", "Somewhere to sit and watch the city.",
+            "Off the main circuit — worth knowing about.", "Local food that doesn't make the guidebooks.",
+            "A landmark worth seeing while you're here.", "An addition based on your plan.",
+        }
+        for _s in stops_out:
+            if _s.get("whyForYou") in _RECO_STATIC and _s.get("time"):
+                _new_why = _why_for_you(_s.get("category", "place"), weights_for_why, _s["time"], 0, day.date or "")
+                if _new_why:
+                    _s["whyForYou"] = _new_why
+
         # Build scenic corridor cards keyed by origin stop id.
         # Kept SEPARATE from stops_out so the frontend can insert them precisely
         # between their stop pair without mixing them into the stop list (which

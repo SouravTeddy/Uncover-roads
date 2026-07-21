@@ -627,6 +627,7 @@ export function buildReelCards(
       }
 
       const { walkKm: nextDayWalkKm, rideKm: nextDayRideKm } = dayDistanceSplit(day.stops);
+      const { walkKm: prevDayWalkKm, rideKm: prevDayRideKm } = dayDistanceSplit(prevDay.stops);
       const transitionCard: ReelDayTransitionCard = {
         type: 'day_transition',
         prevDay: prevDay.day,
@@ -635,6 +636,8 @@ export function buildReelCards(
         prevStopCount: prevDay.stops.length,
         prevStartTime: prevFirst?.time ?? null,
         prevEndTime: prevEndMin !== null ? minutesToTime(prevEndMin) : null,
+        prevDayWalkKm,
+        prevDayRideKm,
         nextDay: day.day,
         nextCity: thisCity,
         nextDate: day.date,
