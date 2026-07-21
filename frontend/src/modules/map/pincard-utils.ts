@@ -1,6 +1,7 @@
 const NOISE_TYPES = new Set([
   'point_of_interest', 'establishment', 'food', 'store', 'premise',
   'subpremise', 'geocode', 'street_address', 'route', 'locality', 'political',
+  'tourist_attraction',
 ]);
 
 /** Filter Google types[], remove noise, title-case, max 3. */

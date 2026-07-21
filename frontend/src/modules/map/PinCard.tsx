@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { Place, PlaceDetails, Persona } from '../../shared/types'
 import { CATEGORY_ICONS, CATEGORY_LABELS } from './types'
 import { getPlacePhotoUrl, api } from '../../shared/api'
-import { computeAnalysisInsights, getTravelDateBadge, filterTypes, getDirectionsUrl } from './pincard-utils'
+import { computeAnalysisInsights, getTravelDateBadge, filterTypes } from './pincard-utils'
 import type { OurPickBadge } from './pincard-utils'
 import { useSheetDismiss } from '../../shared/useSheetDismiss'
 import { usePersonaInsight } from './pincard-persona'
@@ -260,8 +260,9 @@ export function PinCard({
   const website = details?.website ?? null
   const description = details?.editorial_summary ?? null
   const whyForYouText = personaInsight ?? place.reason ?? null
-  const placeTypes = details?.types ? filterTypes(details.types).slice(0, 2) : []
-  const directionsUrl = (details?.lat && details?.lon) ? getDirectionsUrl(details.lat, details.lon) : null
+  const placeTypes = details?.types
+    ? filterTypes(details.types).filter(t => t.toLowerCase() !== categoryLabel.toLowerCase()).slice(0, 2)
+    : []
 
   const resolvedStart = travelStartDate ?? travelDate ?? null
   const resolvedEnd = travelEndDate ?? travelDate ?? null
@@ -736,22 +737,22 @@ export function PinCard({
             <div style={{ ...shimmerBase, height: 72, width: '100%', borderRadius: 10, marginBottom: 10 }} />
           ) : details?.reviews && details.reviews.length > 0 ? (
             <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 12, marginBottom: 2, animation: 'sectionReveal 360ms 80ms cubic-bezier(.22,1,.36,1) both' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, color: 'var(--color-text-4)', marginBottom: 7 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, color: 'var(--color-text-4)', marginBottom: 7 }}>
                 What visitors say
               </div>
-              <p style={{ fontSize: '0.82rem', lineHeight: 1.55, fontStyle: 'italic', color: 'rgba(242,237,230,.72)', marginBottom: 7, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+              <p style={{ fontSize: '0.9rem', lineHeight: 1.55, fontStyle: 'italic', color: 'rgba(242,237,230,.72)', marginBottom: 7, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
                 "{details.reviews[0].text}"
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                   {details.reviews[0].author_name?.[0]?.toUpperCase() ?? 'G'}
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--color-text-4)' }}>{details.reviews[0].author_name || 'Google reviewer'}</span>
-                <span style={{ fontSize: 10, color: 'var(--color-amber)', marginLeft: 'auto' }}>{'★'.repeat(Math.round(details.reviews[0].rating))}</span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-4)' }}>{details.reviews[0].author_name || 'Google reviewer'}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-amber)', marginLeft: 'auto' }}>{'★'.repeat(Math.round(details.reviews[0].rating))}</span>
               </div>
               {ratingCount !== null && (
-                <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: 'var(--color-primary)', display: 'block', marginTop: 6, textDecoration: 'none' }}>
-                  See all {(ratingCount as number).toLocaleString()} reviews on Google →
+                <a href={`https://www.google.com/search?q=${encodeURIComponent(place.title + ' ' + city)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 13, color: 'var(--color-primary)', display: 'block', marginTop: 6, textDecoration: 'none' }}>
+                  See all →
                 </a>
               )}
             </div>
@@ -790,15 +791,19 @@ export function PinCard({
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                         <div style={{ paddingBottom: 12 }}>
                           {description && (
-                            <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-text-2)', lineHeight: 1.55 }}>{description}</p>
+                            <p style={{ margin: '0 0 8px', fontSize: '0.9rem', color: 'var(--color-text-2)', lineHeight: 1.55 }}>{description}</p>
                           )}
                           {(website || phone) && (
-                            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: description ? 8 : 0 }}>
                               {website && (
-                                <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>Official website ↗</a>
+                                <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} aria-label="Official website" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                  <span className="ms" style={{ fontSize: 18 }}>language</span>
+                                </a>
                               )}
                               {phone && (
-                                <a href={`tel:${phone}`} onClick={e => e.stopPropagation()} style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'underline' }}>{phone}</a>
+                                <a href={`tel:${phone}`} onClick={e => e.stopPropagation()} aria-label={`Call ${phone}`} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', textDecoration: 'none' }}>
+                                  <span className="ms" style={{ fontSize: 18 }}>call</span>
+                                </a>
                               )}
                             </div>
                           )}
@@ -844,11 +849,11 @@ export function PinCard({
                     {bestHereOpen && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                         <div style={{ paddingBottom: 12 }}>
-                          <p style={{ margin: '0 0 8px', fontSize: '0.82rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
+                          <p style={{ margin: '0 0 8px', fontSize: '0.9rem', color: 'var(--color-primary)', lineHeight: 1.55 }}>
                             {details?.review_summary ?? whyForYouText}
                           </p>
                           {details?.review_summary && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem', color: 'var(--color-text-4)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.75rem', color: 'var(--color-text-4)' }}>
                               <span className="ms fill" style={{ fontSize: 10 }}>auto_awesome</span>
                               AI summary from thousands of reviews
                             </div>
@@ -886,20 +891,20 @@ export function PinCard({
                           <div style={{ paddingBottom: 12, display: 'flex', flexDirection: 'column', gap: 9 }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                               <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 8 }} />
-                              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                              <span style={{ fontSize: '0.88rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
                                 Allow <strong style={{ color: 'var(--color-text-1)' }}>{duration}</strong> for a comfortable visit
                               </span>
                             </div>
                             {bestTime && (
                               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                 <div style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--color-primary)', flexShrink: 0, marginTop: 8 }} />
-                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>Best visited {bestTime}</span>
+                                <span style={{ fontSize: '0.88rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>Best visited {bestTime}</span>
                               </div>
                             )}
                             {website && (
                               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                                 <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#6b9470', flexShrink: 0, marginTop: 8 }} />
-                                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
+                                <span style={{ fontSize: '0.88rem', color: 'var(--color-text-2)', lineHeight: 1.45 }}>
                                   Check for reservations or tickets —{' '}
                                   <a href={website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>official website ↗</a>
                                 </span>
@@ -951,7 +956,7 @@ export function PinCard({
                       display: 'flex', alignItems: 'flex-start', gap: 6,
                     }}>
                       <div style={{ width: 4, height: 4, borderRadius: '50%', background: dotColor, flexShrink: 0, marginTop: 7 }} />
-                      <span style={{ fontSize: '0.75rem', color: textColor, lineHeight: 1.45 }}>
+                      <span style={{ fontSize: '0.85rem', color: textColor, lineHeight: 1.45 }}>
                         {insight.text}
                         {insight.linkLabel && details?.website && (
                           <a
@@ -1009,7 +1014,7 @@ export function PinCard({
                           return line.startsWith(day)
                         })() : false
                         return (
-                          <p key={i} style={{ margin: 0, fontSize: '0.75rem', color: isVisitDay ? 'var(--color-text-2)' : 'var(--color-text-3)', fontWeight: isVisitDay ? 600 : 400 }}>
+                          <p key={i} style={{ margin: 0, fontSize: '0.85rem', color: isVisitDay ? 'var(--color-text-2)' : 'var(--color-text-3)', fontWeight: isVisitDay ? 600 : 400 }}>
                             {line}{isVisitDay ? ' ← your visit' : ''}
                           </p>
                         )
@@ -1025,29 +1030,11 @@ export function PinCard({
         </div>
 
         {/* Pinned CTA footer — paddingBottom clears the floating BottomNav (~72px from bottom) */}
-        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)', display: 'flex', gap: 8 }}>
+        <div style={{ flexShrink: 0, padding: '10px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)', borderTop: '1px solid var(--color-border)' }}>
           {!detailsLoaded ? (
             <div style={{ ...shimmerBase, height: 42, width: '100%', borderRadius: 12 }} />
           ) : (
             <>
-              {directionsUrl && (
-                <a
-                  href={directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  aria-label="Get directions"
-                  style={{
-                    flexShrink: 0, width: 44, height: 44, borderRadius: 12,
-                    border: '1px solid var(--color-border)',
-                    background: 'var(--color-surface2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'var(--color-text-2)', textDecoration: 'none',
-                  }}
-                >
-                  <span className="ms" style={{ fontSize: 18 }}>directions</span>
-                </a>
-              )}
               <button
                 onClick={isBuildingActive ? undefined : onAdd}
                 style={{
@@ -1078,6 +1065,7 @@ export function PinCard({
             </>
           )}
         </div>
+
 
         {/* Gallery overlay */}
         {galleryOpen && imgSrcs.length > 0 && (
