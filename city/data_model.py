@@ -27,6 +27,7 @@ class InsertCandidate:
     time_of_day_match: list[str]
     price_level: int | None = None   # Google price_level: 1=cheap 2=moderate 3=exp 4=very exp
     rating_count: int | None = None  # Google user_ratings_total — proxy for popularity/crowds
+    city: str | None = None          # city slug this candidate belongs to, e.g. "tokyo", "paris"
 
 
 @dataclass

@@ -5500,7 +5500,10 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             if _pcity and _pcity not in _city_latlon:
                 _city_latlon[_pcity] = (_p.lat, _p.lon)
 
-        _all_ics = list(city_data.insert_candidates)
+        from dataclasses import replace as _ic_replace
+        # Stamp primary-city slug on every insert candidate so the insert engine
+        # can distinguish candidates by city, not just proximity.
+        _all_ics = [_ic_replace(ic, city=city_slug) for ic in city_data.insert_candidates]
         _seen_pids = {ic.place_id for ic in _all_ics}
         for _other_city in body.cities:
             _other_slug = _other_city.lower().replace(" ", "_")
@@ -5555,7 +5558,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 _city_data_map[_other_slug] = _other_data
                 for ic in _other_data.insert_candidates:
                     if ic.place_id not in _seen_pids:
-                        _all_ics.append(ic)
+                        _all_ics.append(_ic_replace(ic, city=_other_slug))
                         _seen_pids.add(ic.place_id)
             except Exception:
                 pass

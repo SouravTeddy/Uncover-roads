@@ -57,30 +57,48 @@ _DINNER_FALLBACK_TYPES = ("lunch", "restaurant", "food", "street_food", "bakery"
 def _best_candidate(
     type_: str, ctx: EngineContext, near_lat: float, near_lon: float,
     seen_ids: set[str] | None = None,
+    anchor_city: str | None = None,
 ) -> InsertCandidate | None:
     archetype = ctx.persona.get("archetype", "wanderer")
     weights = ctx.persona.get("weights", {})
     w_budget = weights.get("w_budget_sensitivity", 0.4)
     w_crowd  = weights.get("w_crowd_aversion", 0.5)
 
-    # Hard proximity cutoff: never insert a candidate from a different city.
-    # Without this, high-affinity candidates (e.g. a Paris restaurant) can outscore
-    # nearby local candidates even when inserting between Tokyo stops, because the
-    # distance penalty caps at 0.4 while affinity can contribute 0.7.
-    candidates = [
-        c for c in ctx.city.insert_candidates
-        if c.type == type_ and _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 20.0
-    ]
+    # Hybrid filtering: prefer candidates that match the anchor stop's city slug.
+    # If none match (city field not stamped, or candidate pool is sparse), fall
+    # back to a 40 km proximity cutoff — wide enough for large metros like Greater
+    # Tokyo but tight enough to exclude international candidates (Paris from Tokyo).
+    all_typed = [c for c in ctx.city.insert_candidates if c.type == type_]
     if seen_ids:
-        candidates = [c for c in candidates if c.place_id not in seen_ids]
+        all_typed = [c for c in all_typed if c.place_id not in seen_ids]
+
+    if anchor_city:
+        city_matched = [c for c in all_typed if c.city == anchor_city]
+        candidates = city_matched if city_matched else [
+            c for c in all_typed if _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 40.0
+        ]
+    else:
+        candidates = [
+            c for c in all_typed if _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 40.0
+        ]
+
     # Dinner fallback: any food-capable place works if no dinner-tagged candidate exists
     if not candidates and type_ == "dinner":
-        candidates = [
-            c for c in ctx.city.insert_candidates
-            if c.type in _DINNER_FALLBACK_TYPES and _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 20.0
+        all_food = [
+            c for c in ctx.city.insert_candidates if c.type in _DINNER_FALLBACK_TYPES
         ]
         if seen_ids:
-            candidates = [c for c in candidates if c.place_id not in seen_ids]
+            all_food = [c for c in all_food if c.place_id not in seen_ids]
+        if anchor_city:
+            city_matched_food = [c for c in all_food if c.city == anchor_city]
+            candidates = city_matched_food if city_matched_food else [
+                c for c in all_food if _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 40.0
+            ]
+        else:
+            candidates = [
+                c for c in all_food if _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 40.0
+            ]
+
     if not candidates:
         return None
 
@@ -228,7 +246,7 @@ def detect(
         # Coffee/café insert — fires when no rest break since persona-scaled gap.
         # Uses time-window only; mins_since_rest resets naturally when a café is encountered.
         if mins_since_rest >= coffee_gap_min:
-            c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids)
+            c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
                 coffee_reason = "No break yet today." if mins_since_rest >= 600 else f"No break in the last {mins_since_rest // 60}h {mins_since_rest % 60}m."
@@ -248,7 +266,7 @@ def detect(
                 None
             )
             if route:
-                c = _best_candidate("scenic_walk", ctx, mid_lat, mid_lon, seen_ids)
+                c = _best_candidate("scenic_walk", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
                     messages.append(_make_insert_message(c, "Scenic route detected between neighborhoods."))
@@ -260,7 +278,7 @@ def detect(
         if not has_breakfast_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 7 <= sh <= 10:
-                c = _best_candidate("breakfast", ctx, mid_lat, mid_lon, seen_ids)
+                c = _best_candidate("breakfast", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
                     messages.append(_make_insert_message(c, "Morning window reached with no breakfast planned."))
@@ -273,7 +291,7 @@ def detect(
         if not has_lunch_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 11 <= sh <= 14:
-                c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids)
+                c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
                     messages.append(_make_insert_message(c, "Lunch window reached with no meal planned."))
@@ -286,7 +304,7 @@ def detect(
         if not has_dinner_today and stop.scheduled_time:
             sh = int(stop.scheduled_time.split(":")[0])
             if 18 <= sh <= 20:
-                c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids)
+                c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
                     messages.append(_make_insert_message(c, "Evening window reached with no dinner planned."))
@@ -297,7 +315,7 @@ def detect(
 
         # Rest insert — fires for all personas; threshold is persona-scaled
         if consecutive >= rest_threshold:
-            c = _best_candidate("rest", ctx, mid_lat, mid_lon, seen_ids)
+            c = _best_candidate("rest", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
                 messages.append(_make_insert_message(c, f"You've visited {consecutive} stops without a break."))
@@ -310,7 +328,7 @@ def detect(
     # dinner after the last stop at whatever time the day ends.
     if not has_dinner_today and result:
         last = result[-1]
-        c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids)
+        c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
         if c:
             result.append(_candidate_to_stop(c, city=last.city))
             messages.append(_make_insert_message(c, "No restaurant in your plan — added dinner to close the day."))
@@ -329,7 +347,7 @@ def detect(
                 fills = 0
                 # 1. Coffee/café break if no recent rest
                 if mins_since_rest >= coffee_gap_min and fills < _EARLY_DAY_MAX_FILLS:
-                    c = _best_candidate("coffee", ctx, last.lat, last.lon, seen_ids)
+                    c = _best_candidate("coffee", ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
                     if c:
                         result.append(_candidate_to_stop(c, city=last.city))
                         messages.append(_make_insert_message(c, "Added a break to fill your afternoon."))
@@ -341,7 +359,7 @@ def detect(
                 for fill_type in ("scenic_walk", "rest", "coffee", "lunch"):
                     if fills >= _EARLY_DAY_MAX_FILLS:
                         break
-                    c = _best_candidate(fill_type, ctx, last.lat, last.lon, seen_ids)
+                    c = _best_candidate(fill_type, ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
                     if c:
                         result.append(_candidate_to_stop(c, city=last.city))
                         messages.append(_make_insert_message(c, "Added an afternoon stop to fill your day."))
