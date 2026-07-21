@@ -214,7 +214,7 @@ export function SubscriptionScreen() {
 
           {/* Buy row */}
           <div
-            className="flex items-center gap-3 p-[11px] rounded-[14px]"
+            className="flex items-center gap-2 p-[11px] rounded-[14px]"
             style={{ border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.03)' }}
           >
             <div
@@ -225,9 +225,9 @@ export function SubscriptionScreen() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[14px] font-semibold text-[var(--color-text-1)]">5 Trips</div>
-              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5">₹19/trip · full experience</div>
+              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5 whitespace-nowrap">₹19/trip · full experience</div>
             </div>
-            <div className="flex items-center gap-2.5 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹99</span>
               <button
                 onClick={handlePurchase}
