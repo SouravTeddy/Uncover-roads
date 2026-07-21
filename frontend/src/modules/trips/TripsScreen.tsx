@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAppStore } from '../../shared/store';
-import type { SavedItinerary } from '../../shared/types';
+import type { SavedItinerary, FavouritedPin } from '../../shared/types';
 import { getPlacePhotoUrl } from '../../shared/api';
 import { useCityPhoto } from '../destination/useCityPhoto';
 import { formatCityLabel } from '../../shared/cityPhoto';
@@ -8,6 +8,7 @@ import { SmartUpdates } from './SmartUpdates';
 import { RecalibrationStack } from './RecalibrationStack';
 import { ItineraryReelScreen } from '../route/reel';
 import { SavedPlacesTab } from './SavedPlacesTab';
+import { DateRangeCalendar } from '../destination/DateRangeCalendar';
 
 // ── Utilities ────────────────────────────────────────────────
 
@@ -412,6 +413,41 @@ export function TripsScreen() {
   const { savedItineraries, tripsActiveTab, hasBuiltThisSession, reelSavedId, favouritedPins, savedEvents, activeBuild } = state;
   const [tabBarHidden, setTabBarHidden] = useState(false);
 
+  // Calendar overlay for opening a saved pin on the map
+  const [pendingPin, setPendingPin] = useState<FavouritedPin | null>(null);
+  const [showPinCalendar, setShowPinCalendar] = useState(false);
+  const [pinCalStart, setPinCalStart] = useState<string | null>(null);
+  const [pinCalEnd, setPinCalEnd] = useState<string | null>(null);
+
+  function openPinCalendar(pin: FavouritedPin) {
+    dispatch({ type: 'SET_CITY', city: pin.city });
+    setPendingPin(pin);
+    setPinCalStart(null);
+    setPinCalEnd(null);
+    setShowPinCalendar(true);
+  }
+
+  function handlePinCalendarDone() {
+    if (!pendingPin || !pinCalStart || !pinCalEnd) return;
+    dispatch({ type: 'SET_CITY_GEO', geo: {
+      lat: pendingPin.lat, lon: pendingPin.lon,
+      bbox: [pendingPin.lat - 0.15, pendingPin.lat + 0.15, pendingPin.lon - 0.15, pendingPin.lon + 0.15],
+    }});
+    dispatch({ type: 'SET_TRAVEL_DATES', startDate: pinCalStart, endDate: pinCalEnd });
+    dispatch({ type: 'SET_PENDING_PLACE', place: {
+      id: pendingPin.placeId,
+      title: pendingPin.title,
+      lat: pendingPin.lat,
+      lon: pendingPin.lon,
+      category: pendingPin.category ?? 'place',
+      place_id: pendingPin.placeId.startsWith('osm-') ? undefined : pendingPin.placeId,
+      photo_ref: pendingPin.photoRef ?? undefined,
+    }});
+    setShowPinCalendar(false);
+    setPendingPin(null);
+    dispatch({ type: 'GO_TO', screen: 'map' });
+  }
+
   const sorted = [...savedItineraries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
@@ -536,12 +572,7 @@ export function TripsScreen() {
           <SavedPlacesTab
             favouritedPins={favouritedPins}
             savedEvents={savedEvents}
-            onOpenMap={(city) => {
-              const pin = favouritedPins.find(p => p.city === city);
-              dispatch({ type: 'SET_CITY', city });
-              if (pin) dispatch({ type: 'SET_CITY_GEO', geo: { lat: pin.lat, lon: pin.lon, bbox: [pin.lat - 0.15, pin.lat + 0.15, pin.lon - 0.15, pin.lon + 0.15] } });
-              dispatch({ type: 'GO_TO', screen: 'map' });
-            }}
+            onOpenMap={openPinCalendar}
             onRemovePin={(placeId) => {
               const pin = favouritedPins.find(p => p.placeId === placeId);
               if (pin) dispatch({ type: 'TOGGLE_FAVOURITE', pin });
@@ -589,6 +620,65 @@ export function TripsScreen() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Pin calendar overlay — opened from saved place card tap ── */}
+      {showPinCalendar && pendingPin && (
+        <>
+          <div
+            onClick={() => { setShowPinCalendar(false); setPendingPin(null); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.01)' }}
+          />
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 50,
+              background: 'var(--color-bg)',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 flex-shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)', paddingBottom: 12, borderBottom: '1px solid var(--color-divider)' }}>
+              <button
+                className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
+                onClick={() => { setShowPinCalendar(false); setPendingPin(null); }}
+              >
+                <span className="ms text-[var(--color-text-2)]" style={{ fontSize: 18 }}>arrow_back</span>
+              </button>
+              <div>
+                <div className="text-[16px] font-semibold text-[var(--color-text-1)] tracking-tight">{pendingPin.city}</div>
+                <div className="text-[12px] text-[var(--color-text-3)]">{pendingPin.title}</div>
+              </div>
+            </div>
+            {/* Calendar */}
+            <div className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 200px)' }}>
+              <DateRangeCalendar
+                key={pendingPin.placeId}
+                city={pendingPin.city}
+                maxDays={14}
+                onSelect={(start, end) => { setPinCalStart(start); setPinCalEnd(end); }}
+              />
+            </div>
+            {/* Done CTA */}
+            {pinCalStart && pinCalEnd && (
+              <div style={{
+                position: 'fixed', left: 0, right: 0,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
+                zIndex: 51, height: 90,
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
+                padding: '0 16px 12px',
+                background: 'linear-gradient(to top, var(--color-bg) 70%, transparent)',
+              }}>
+                <button
+                  onClick={handlePinCalendarDone}
+                  className="text-sm font-semibold text-[var(--color-primary)] px-5 py-2 rounded-full"
+                  style={{ background: 'var(--color-primary-bg)' }}
+                >
+                  Open on map
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

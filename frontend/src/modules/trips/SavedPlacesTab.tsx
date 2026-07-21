@@ -29,7 +29,7 @@ function buildCityGroups(pins: FavouritedPin[], events: SavedEvent[]): CityGroup
 interface Props {
   favouritedPins: FavouritedPin[];
   savedEvents: SavedEvent[];
-  onOpenMap: (city: string) => void;
+  onOpenMap: (pin: FavouritedPin) => void;
   onRemovePin: (placeId: string) => void;
   onRemoveEvent: (id: string) => void;
 }
@@ -83,7 +83,7 @@ export function SavedPlacesTab({ favouritedPins, savedEvents, onOpenMap, onRemov
                     category={pin.category ?? 'place'}
                     tall={i === 0}
                     onRemove={onRemovePin}
-                    onClick={() => onOpenMap(group.city)}
+                    onClick={() => onOpenMap(pin)}
                   />
                 ))}
               </div>
