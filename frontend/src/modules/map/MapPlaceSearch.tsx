@@ -26,9 +26,14 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function findMatchingPlace(mainText: string, places: Place[]): Place | null {
+function findMatchingPlace(mainText: string, placeId: string, places: Place[]): Place | null {
+  // Direct Google place_id match — most reliable, avoids false city-prefix matches
+  if (placeId) {
+    const byId = places.find(p => p.place_id === placeId);
+    if (byId) return byId;
+  }
   const g = normalize(mainText);
-  // Exact match
+  // Exact name match
   let m = places.find(p => normalize(p.title) === g);
   if (m) return m;
   // Substring (one contains the other)
@@ -37,14 +42,15 @@ function findMatchingPlace(mainText: string, places: Place[]): Place | null {
     return g.includes(pn) || pn.includes(g);
   });
   if (m) return m;
-  // Word overlap — 60% of the shorter string's significant words must match
+  // Word overlap — use Math.max (not min) so short place names don't over-match
+  // e.g. "Hong Kong Cafe" must not match query "Hong Kong Disneyland"
   m = places.find(p => {
     const pWords = normalize(p.title).split(' ').filter(w => w.length > 2);
     const gWords = g.split(' ').filter(w => w.length > 2);
     if (!pWords.length || !gWords.length) return false;
     const pSet = new Set(pWords);
     const common = gWords.filter(w => pSet.has(w)).length;
-    return common / Math.min(pWords.length, gWords.length) >= 0.6;
+    return common / Math.max(pWords.length, gWords.length) >= 0.6;
   });
   return m ?? null;
 }
@@ -79,11 +85,11 @@ function placeTypeLabel(types: string[]): string {
 
 const BADGE: React.CSSProperties = {
   flexShrink: 0,
-  padding: '4px 10px',
+  padding: '5px 11px',
   borderRadius: 999,
-  fontSize: 11,
+  fontSize: 13,
   fontWeight: 700,
-  letterSpacing: '.04em',
+  letterSpacing: '.03em',
   whiteSpace: 'nowrap',
   background: 'rgba(255,255,255,.06)',
   border: '1px solid rgba(255,255,255,.12)',
@@ -99,23 +105,23 @@ const GROUP_BOX: React.CSSProperties = {
 };
 
 const GROUP_LABEL: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   fontWeight: 700,
   letterSpacing: '.10em',
   textTransform: 'uppercase',
   color: 'rgba(255,255,255,.25)',
-  padding: '10px 16px 6px',
+  padding: '11px 16px 7px',
 };
 
 const ROW: React.CSSProperties = {
   width: '100%', display: 'flex', alignItems: 'center', gap: 13,
-  padding: '13px 16px', background: 'none', border: 'none',
+  padding: '15px 16px', background: 'none', border: 'none',
   borderTop: '1px solid rgba(255,255,255,.05)',
   cursor: 'pointer', textAlign: 'left',
 };
 
 const ROW_ICON: React.CSSProperties = {
-  width: 40, height: 40, borderRadius: 12,
+  width: 44, height: 44, borderRadius: 13,
   background: 'rgba(255,255,255,.06)',
   border: '1px solid rgba(255,255,255,.08)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -190,7 +196,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
         // Only keep place results that match an existing pin
         const matched: MatchedResult[] = [];
         for (const r of raw) {
-          const place = findMatchingPlace(r.main_text, places);
+          const place = findMatchingPlace(r.main_text, r.place_id, places);
           if (place) matched.push({ autocomplete: r, place });
         }
 
@@ -314,7 +320,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder={`Search in ${city}…`}
-                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: 'var(--color-text-1)', caretColor: 'var(--color-primary)' }}
+                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 17, color: 'var(--color-text-1)', caretColor: 'var(--color-primary)' }}
               />
               {query && (
                 <button onClick={() => setQuery('')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -331,7 +337,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           )}
 
           {!loading && (cityResults.length > 0 || results.length > 0) && (
-            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 24 }}>
+            <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}>
 
               {/* Cities group — only rendered when city results exist */}
               {cityResults.length > 0 && (
@@ -344,13 +350,13 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
                       style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop }}
                     >
                       <div style={ROW_ICON}>
-                        <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)', lineHeight: 1 }}>travel_explore</span>
+                        <span className="ms" style={{ fontSize: 20, color: 'var(--color-text-3)', lineHeight: 1 }}>travel_explore</span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {c.name}
                         </div>
-                        <div style={{ fontSize: 13, color: 'var(--color-text-4)', marginTop: 2 }}>{c.country}</div>
+                        <div style={{ fontSize: 14, color: 'var(--color-text-4)', marginTop: 2 }}>{c.country}</div>
                       </div>
                       <span style={BADGE}>City</span>
                     </button>
@@ -371,16 +377,16 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
                         style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop }}
                       >
                         <div style={ROW_ICON}>
-                          <span className="ms" style={{ fontSize: 18, color: 'var(--color-text-3)', lineHeight: 1 }}>
+                          <span className="ms" style={{ fontSize: 20, color: 'var(--color-text-3)', lineHeight: 1 }}>
                             {placeIcon(types)}
                           </span>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--color-text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {item.autocomplete.main_text}
                           </div>
                           {item.autocomplete.secondary_text && (
-                            <div style={{ fontSize: 13, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 14, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {item.autocomplete.secondary_text}
                             </div>
                           )}
