@@ -503,6 +503,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   const onPanelTouchEnd = (e: React.TouchEvent) => {
     const dy = e.changedTouches[0].clientY - panelTouchY.current;
     if (Math.abs(dy) < 24) return; // too small — let click fire normally
+    // Only intercept when expanded — when collapsed, let the scroll container handle pan-y
+    if (!expandedRef.current) return;
     e.preventDefault(); // prevent the subsequent synthetic click
     if (dy < 0) setExpandedSync(true);
     if (dy > 0) { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }

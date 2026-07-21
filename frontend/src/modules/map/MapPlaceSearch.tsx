@@ -50,7 +50,7 @@ function findMatchingPlace(mainText: string, placeId: string, places: Place[]): 
     if (!pWords.length || !gWords.length) return false;
     const pSet = new Set(pWords);
     const common = gWords.filter(w => pSet.has(w)).length;
-    return common / Math.max(pWords.length, gWords.length) >= 0.6;
+    return common / Math.min(pWords.length, gWords.length) >= 0.6;
   });
   return m ?? null;
 }
