@@ -258,7 +258,7 @@ export function PinCard({
   const weekdayText = details?.weekday_text ?? []
   const phone = details?.phone ?? null
   const website = details?.website ?? null
-  const description = details?.editorial_summary ?? null
+  const description = details?.editorial_summary ?? place.reason ?? null
   const whyForYouText = personaInsight ?? place.reason ?? null
   const placeTypes = details?.types
     ? filterTypes(details.types).filter(t => t.toLowerCase() !== categoryLabel.toLowerCase()).slice(0, 2)
@@ -1038,7 +1038,7 @@ export function PinCard({
               <button
                 onClick={isBuildingActive ? undefined : onAdd}
                 style={{
-                  flex: 1, padding: '13px 0', borderRadius: 14,
+                  width: '100%', padding: '13px 0', borderRadius: 14,
                   border: isSelected
                     ? '1px solid rgba(212,168,83,.35)'
                     : (trendingLocked || isBuildingActive) ? '1px solid var(--color-border)' : 'none',
