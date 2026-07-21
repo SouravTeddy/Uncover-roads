@@ -6,13 +6,11 @@ import { supabase } from './supabase';
 
 const POLL_MS = 5_000;
 const STALE_MS = 10 * 60 * 1000; // 10 minutes — consider build stalled
-const MAX_WALL_MS = 3 * 60 * 1000; // 3 minutes absolute ceiling regardless of server state
 
 export function useBuildStatus(): void {
   const { state, dispatch } = useAppStore();
   const { activeBuild } = state;
   const intervalRef = useRef<number | null>(null);
-  const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     const isActive = activeBuild?.status === 'pending' || activeBuild?.status === 'running';
@@ -21,19 +19,10 @@ export function useBuildStatus(): void {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-      startedAtRef.current = null;
       return;
     }
 
-    if (startedAtRef.current === null) startedAtRef.current = Date.now();
-
     const poll = async () => {
-      // Hard ceiling — give up after MAX_WALL_MS regardless of server state
-      if (startedAtRef.current !== null && Date.now() - startedAtRef.current > MAX_WALL_MS) {
-        dispatch({ type: 'SET_ACTIVE_BUILD', build: { ...activeBuild, status: 'failed' } });
-        return;
-      }
-
       try {
         const res = await api.engineItinerary.status(activeBuild.id);
         if (res.status === 'done') {
