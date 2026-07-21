@@ -430,15 +430,10 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     buffer_min = int(ctx.persona.get("day_buffer_min", 30))
 
     # Group stops by city, preserving optimized order within each city.
-    # Stops with no city inherit the last known city so they don't create
-    # a spurious "__unknown__" city group that corrupts date allocation.
     city_order: list[str] = []
     city_stop_map: dict[str, list[EngineStop]] = {}
-    _last_known_city: str | None = None
     for stop in stops:
-        city = stop.city or _last_known_city or "__unknown__"
-        if stop.city:
-            _last_known_city = stop.city
+        city = stop.city or "__unknown__"
         if city not in city_stop_map:
             city_stop_map[city] = []
             city_order.append(city)
