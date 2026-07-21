@@ -218,32 +218,19 @@ export function SubscriptionScreen() {
             </div>
           )}
 
-          {/* Buy row */}
-          <div
-            className="flex items-center gap-2 p-[11px] rounded-[14px]"
-            style={{ border: '1px solid rgba(212,168,83,.2)', background: 'rgba(212,168,83,.03)' }}
-          >
-            <div
-              className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--color-primary-bg)' }}
-            >
-              <span className="ms text-[var(--color-primary)]" style={{ fontSize: 16 }}>travel_explore</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[14px] font-semibold text-[var(--color-text-1)]">5 Trips</div>
-              <div className="text-[13px] text-[var(--color-text-3)] mt-0.5 whitespace-nowrap">₹19/trip · full experience</div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-[14px] font-bold text-[var(--color-text-1)]">₹99</span>
-              <button
-                onClick={handlePurchase}
-                className="h-8 px-3 rounded-[10px] text-[12px] font-bold text-[#0f0d0c] active:opacity-80"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
-              >
-                Buy
-              </button>
-            </div>
+          {/* Price + CTA */}
+          <div className="flex items-baseline gap-1 mb-0.5">
+            <span className="text-[34px] font-bold text-[var(--color-text-1)]" style={{ fontFamily: 'var(--font-heading)' }}>₹99</span>
+            <span className="text-[13px] text-[var(--color-text-3)]">one-time</span>
           </div>
+          <div className="text-[13px] text-[var(--color-text-3)] mb-4">5 trips · ₹19/trip · full experience</div>
+          <button
+            onClick={handlePurchase}
+            className="w-full flex items-center justify-center gap-2 py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px]"
+            style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
+          >
+            Buy Trip Pack
+          </button>
 
           {isPro && (
             <div className="text-[11px] text-[var(--color-text-4)] text-center pt-2.5">
