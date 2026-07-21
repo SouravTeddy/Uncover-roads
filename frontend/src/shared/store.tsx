@@ -390,6 +390,7 @@ export type Action =
   | { type: 'SET_CITY_COUNTRY'; city: string; country: string }
   | { type: 'UPDATE_CITY_LABEL'; city: string }
   | { type: 'SET_CITY_GEO'; geo: GeoData }
+  | { type: 'SET_VIEWPORT_CITY'; city: string; geo: GeoData }
   | { type: 'SET_PLACES'; places: Place[] }
   | { type: 'MERGE_PLACES'; places: Place[] }
   | { type: 'TOGGLE_PLACE'; place: Place }
@@ -526,6 +527,19 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'UPDATE_CITY_LABEL':
       ssSave('ur_ss_city', action.city);
       return { ...state, city: action.city };
+
+    case 'SET_VIEWPORT_CITY':
+      // Switch the map viewport to a new city without wiping the itinerary.
+      // Only clears discovery places; selectedPlaces/footprints/dates are preserved.
+      ssSave('ur_ss_city', action.city);
+      ssSave('ur_ss_geo', action.geo);
+      ssSave('ur_ss_places', []);
+      return {
+        ...state,
+        city: action.city,
+        cityGeo: action.geo,
+        places: [],
+      };
 
     case 'SET_CITY_GEO':
       ssSave('ur_ss_geo', action.geo);

@@ -61,6 +61,15 @@ export function MapScreen() {
   const { pendingActivePlace } = state;
   const personaProfile = state.personaProfile ?? null;
 
+  // Lock the trip city (top-right label) to the city set when the trip was created.
+  // It must never change when the user searches a different viewport city mid-session.
+  const tripCityRef = useRef(city);
+  const tripStartRef = useRef(state.travelStartDate);
+  const tripEndRef = useRef(state.travelEndDate);
+
+  // Search bar placeholder tracks the current viewport city (can differ from trip city).
+  const [searchBarCity, setSearchBarCity] = useState(city);
+
   // New store state for phase 4
   const { activePinId, cityContexts, activeCityIndex, favouritedPins, cityFootprints, theme, screenStack } = state;
   const recoFocusPlaces = state.recoFocusPlaces ?? [];
@@ -300,6 +309,21 @@ export function MapScreen() {
     if (activeFilter !== 'all') setFilter('all');
     handleAreaLoad(cityGeo.lat, cityGeo.lon, 5000, true);
   }, [city, cityGeo, handleAreaLoad]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update search bar placeholder when user pans to a new city (2s debounce).
+  const reverseGeoDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!mapCenter) return;
+    if (reverseGeoDebounce.current) clearTimeout(reverseGeoDebounce.current);
+    reverseGeoDebounce.current = setTimeout(async () => {
+      const result = await reverseGeocodeCity(mapCenter.lat, mapCenter.lon);
+      const detected = result?.city ?? result?.state ?? null;
+      if (detected && detected.toLowerCase() !== searchBarCity.toLowerCase()) {
+        setSearchBarCity(detected);
+      }
+    }, 2000);
+    return () => { if (reverseGeoDebounce.current) clearTimeout(reverseGeoDebounce.current); };
+  }, [mapCenter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { handleMoveEnd, setLastFetch } = useMapMove({
     onFetch: useCallback((center: [number, number], _zoom: number, isPrefetch: boolean) => {
@@ -749,7 +773,7 @@ export function MapScreen() {
       {/* Place search bar — between back button and city label */}
       {city && (
         <MapPlaceSearch
-          city={city}
+          city={searchBarCity}
           cityLat={mapCenter?.lat ?? cityGeo?.lat ?? null}
           cityLon={mapCenter?.lon ?? cityGeo?.lon ?? null}
           places={places}
@@ -760,10 +784,12 @@ export function MapScreen() {
             mapHandleRef.current?.flyTo(place.lat, place.lon, 13);
           }}
           onCitySelect={(name, lat, lon) => {
-            // Switch the active city while keeping the itinerary (selectedPlaces) intact
-            dispatch({ type: 'SET_CITY', city: name });
-            dispatch({ type: 'SET_CITY_GEO', geo: { lat, lon, bbox: [lat - 0.1, lat + 0.1, lon - 0.1, lon + 0.1] } });
-            dispatch({ type: 'SET_PLACES', places: [] });
+            dispatch({
+              type: 'SET_VIEWPORT_CITY',
+              city: name,
+              geo: { lat, lon, bbox: [lat - 0.1, lat + 0.1, lon - 0.1, lon + 0.1] },
+            });
+            setSearchBarCity(name);
             mapHandleRef.current?.flyTo(lat, lon, 13);
           }}
           onClear={() => {
@@ -903,8 +929,8 @@ export function MapScreen() {
         </div>
       </div>
 
-      {/* Right column — city name (always show when city is set) */}
-      {city && (
+      {/* Right column — locked trip city + travel dates; never changes when user pans/searches new city */}
+      {tripCityRef.current && (
         <span
           style={{
             position: 'absolute',
@@ -915,6 +941,10 @@ export function MapScreen() {
             fontSize: 18,
             fontWeight: 700,
             lineHeight: 1,
+            maxWidth: 'calc(100vw - 180px)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
             background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))',
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
@@ -922,10 +952,10 @@ export function MapScreen() {
             color: 'transparent',
           }}
         >
-          {city}
+          {tripCityRef.current}
         </span>
       )}
-      {state.travelStartDate && state.travelEndDate && (
+      {tripStartRef.current && tripEndRef.current && (
         <span
           style={{
             position: 'absolute',
@@ -938,9 +968,9 @@ export function MapScreen() {
             lineHeight: 1,
           }}
         >
-          {new Date(state.travelStartDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {new Date(tripStartRef.current + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           {' – '}
-          {new Date(state.travelEndDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {new Date(tripEndRef.current + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </span>
       )}
 
