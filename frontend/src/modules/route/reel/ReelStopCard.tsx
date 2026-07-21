@@ -301,13 +301,12 @@ interface CardPill {
 }
 
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove, onRegisterPanelControl }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove: _onRemove, onRegisterPanelControl }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
   const [pillDetail, setPillDetail] = useState<{ title: string; body: string } | null>(null);
   const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
-  const [descExpanded, setDescExpanded] = useState(false);
   const [placeRatingCount, setPlaceRatingCount] = useState<number | null>(null);
   const [placeReviewSummary, setPlaceReviewSummary] = useState<string | null>(null);
   const placeDetailsFetchDone = useRef(false);

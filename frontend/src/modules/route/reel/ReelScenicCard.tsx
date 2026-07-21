@@ -282,7 +282,7 @@ function getTransitLabel(type: string | null | undefined, lineName: string | nul
   }
 }
 
-function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: boolean }) {
+function WalkCorridorCard({ card }: { card: ReelScenicCardType; active: boolean }) {
   const isHighWalk = card.persona.includes('walk') || card.persona.includes('hike') || card.persona.includes('slow');
 
   const ti = card.transitInfo;
@@ -291,7 +291,6 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
   // Prefer real Google Directions walking data; fall back to haversine estimates
   const realDistM   = ti?.walk_distance_m ?? null;
   const realWalkMin = ti?.walk_duration_min ?? null;
-  const viaStreets  = ti?.walk_via?.length ? ti.walk_via : null;
 
   const distValue = realDistM !== null
     ? (realDistM < 1000 ? `${realDistM} m` : `${(realDistM / 1000).toFixed(1)} km`)
@@ -301,15 +300,10 @@ function WalkCorridorCard({ card, active }: { card: ReelScenicCardType; active: 
     ? realWalkMin
     : (() => { const m = card.sensory.match(/~?(\d+)\s*min/i); return m ? parseInt(m[1], 10) : 15; })();
 
-  const timeValue = `~${walkMins} min`;
-  const rideMins = Math.max(3, Math.round(walkMins * 0.4));
   const transitLabel = hasRealTransit
     ? getTransitLabel(ti!.transit_type, ti!.line_name)
     : null;
   const transitMins = hasRealTransit ? ti!.duration_min : null;
-  const transitSubLabel = hasRealTransit && ti!.departure_stop
-    ? `board at ${ti!.departure_stop}`
-    : hasRealTransit ? 'nearest stop' : null;
 
   // Lazy-fetch photos from placeId when originPhotoUrl/destPhotoUrl are absent
   const [fallbackOriginUrl, setFallbackOriginUrl] = useState<string | null>(null);
