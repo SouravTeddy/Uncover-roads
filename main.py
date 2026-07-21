@@ -5793,6 +5793,33 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         stops_out = []
         _day_sig_state = DaySignalState()
         _cumulative_mins = 0
+
+        # Pre-fetch walk routes for all close stop pairs in parallel so the
+        # serialization loop below doesn't block serially on each Google Routes call.
+        _walk_route_cache: dict[tuple, dict | None] = {}
+        if GOOGLE_PLACES_API_KEY and len(day.stops) > 1:
+            from concurrent.futures import ThreadPoolExecutor as _WR_TPE, as_completed as _wrac
+            _wr_pairs: list[tuple] = []
+            for _wi in range(1, len(day.stops)):
+                _wa = day.stops[_wi - 1]
+                _wb = day.stops[_wi]
+                _wd = math.hypot(
+                    (_wb.lat - _wa.lat) * 110.574,
+                    (_wb.lon - _wa.lon) * 111.320 * math.cos(math.radians(_wb.lat)),
+                )
+                if _wd < 4.0:
+                    _wr_pairs.append((_wa.lat, _wa.lon, _wb.lat, _wb.lon))
+            if _wr_pairs:
+                def _do_walk(p):
+                    return p, _fetch_walk_route(*p)
+                with _WR_TPE(max_workers=min(8, len(_wr_pairs))) as _wrpool:
+                    for _wrf in _wrac([_wrpool.submit(_do_walk, p) for p in _wr_pairs]):
+                        try:
+                            _wrk, _wrv = _wrf.result()
+                            _walk_route_cache[_wrk] = _wrv
+                        except Exception:
+                            pass
+
         for s_idx, s in enumerate(day.stops):
             cat_idx = _category_counters.get(s.category, 0)
             _category_counters[s.category] = cat_idx + 1
@@ -5829,9 +5856,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 )
                 _mode = _prev.transition_to_next or "walk"
                 _transit_from_prev = {"mode": _mode, "distanceKm": round(_dist_km, 2)}
-                # Fetch real walking route from Google Routes API for walkable pairs (< 4 km)
                 if _dist_km < 4.0:
-                    _walk_from_prev = _fetch_walk_route(_prev.lat, _prev.lon, s.lat, s.lon)
+                    _walk_from_prev = _walk_route_cache.get((_prev.lat, _prev.lon, s.lat, s.lon))
 
             stops_out.append({
                 "id": str(uuid.uuid4()),
@@ -5964,6 +5990,29 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         # Kept SEPARATE from stops_out so the frontend can insert them precisely
         # between their stop pair without mixing them into the stop list (which
         # caused the reel-builder to crash on missing time/title/id fields).
+
+        # Pre-fetch route profiles for all stop pairs in parallel — the serial
+        # fallback (ORS 15s + OSRM 15s per pair) was the primary cause of
+        # 10-minute build hangs on cold cities with many stops.
+        _rp_prefetch: dict[tuple, dict] = {}
+        if len(stops_out) > 1:
+            from concurrent.futures import ThreadPoolExecutor as _RP_TPE, as_completed as _rpac
+            _rp_input_pairs = [
+                (_s2.get("lat"), _s2.get("lon"), stops_out[_pi + 1].get("lat"), stops_out[_pi + 1].get("lon"))
+                for _pi, _s2 in enumerate(stops_out[:-1])
+                if all(v is not None for v in [_s2.get("lat"), _s2.get("lon"), stops_out[_pi + 1].get("lat"), stops_out[_pi + 1].get("lon")])
+            ]
+            if _rp_input_pairs:
+                def _do_rp(p):
+                    return p, _fetch_route_profile(*p)
+                with _RP_TPE(max_workers=min(8, len(_rp_input_pairs))) as _rppool:
+                    for _rpf in _rpac([_rppool.submit(_do_rp, p) for p in _rp_input_pairs]):
+                        try:
+                            _rpk, _rpv = _rpf.result()
+                            _rp_prefetch[_rpk] = _rpv
+                        except Exception:
+                            pass
+
         scenic_corridors_out: list[dict] = []
         scenic_pos = 0
         for _i, _s in enumerate(stops_out):
@@ -5975,7 +6024,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 _dest_lon = _next_s.get("lon")
                 if all(v is not None for v in [_orig_lat, _orig_lon, _dest_lat, _dest_lon]):
                     try:
-                        _rp = _fetch_route_profile(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
+                        _rp = _rp_prefetch.get((_orig_lat, _orig_lon, _dest_lat, _dest_lon)) or _fetch_route_profile(_orig_lat, _orig_lon, _dest_lat, _dest_lon)
                         _visit_time = None
                         try:
                             from datetime import date as _date
