@@ -768,7 +768,7 @@ export function PinCard({
             <div style={{ animation: 'sectionReveal 360ms 180ms cubic-bezier(.22,1,.36,1) both' }}>
 
               {/* ① Description */}
-              {(description || website || phone) && (
+              {description && (
                 <div style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <button
                     onClick={() => setDescOpen(o => !o)}
