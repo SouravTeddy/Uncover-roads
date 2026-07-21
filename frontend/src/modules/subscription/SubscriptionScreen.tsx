@@ -161,7 +161,7 @@ export function SubscriptionScreen() {
               className="w-full flex items-center justify-center py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px]"
               style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
             >
-              Go Pro · ₹299/mo
+              Go Pro
             </button>
           )}
         </div>
