@@ -63,12 +63,22 @@ def _best_candidate(
     w_budget = weights.get("w_budget_sensitivity", 0.4)
     w_crowd  = weights.get("w_crowd_aversion", 0.5)
 
-    candidates = [c for c in ctx.city.insert_candidates if c.type == type_]
+    # Hard proximity cutoff: never insert a candidate from a different city.
+    # Without this, high-affinity candidates (e.g. a Paris restaurant) can outscore
+    # nearby local candidates even when inserting between Tokyo stops, because the
+    # distance penalty caps at 0.4 while affinity can contribute 0.7.
+    candidates = [
+        c for c in ctx.city.insert_candidates
+        if c.type == type_ and _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 20.0
+    ]
     if seen_ids:
         candidates = [c for c in candidates if c.place_id not in seen_ids]
     # Dinner fallback: any food-capable place works if no dinner-tagged candidate exists
     if not candidates and type_ == "dinner":
-        candidates = [c for c in ctx.city.insert_candidates if c.type in _DINNER_FALLBACK_TYPES]
+        candidates = [
+            c for c in ctx.city.insert_candidates
+            if c.type in _DINNER_FALLBACK_TYPES and _haversine_km(c.lat, c.lon, near_lat, near_lon) <= 20.0
+        ]
         if seen_ids:
             candidates = [c for c in candidates if c.place_id not in seen_ids]
     if not candidates:

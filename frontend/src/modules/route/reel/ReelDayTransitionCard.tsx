@@ -58,32 +58,6 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
-function DistanceStats({ totalKm, walkKm, tense }: { totalKm: number; walkKm: number; tense: 'past' | 'future' }) {
-  if (totalKm <= 0 && walkKm <= 0) return null;
-  return (
-    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-      {totalKm > 0 && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.09)' }}>
-          <span className="ms fill" style={{ fontSize: 13, color: T.text3 }}>straighten</span>
-          <div>
-            <div style={{ fontSize: T.fsMicro, color: T.text3, marginBottom: 1 }}>{tense === 'past' ? 'Total distance' : 'Total distance'}</div>
-            <div style={{ fontSize: T.fsXs, fontWeight: 700, color: T.text1 }}>{totalKm} km</div>
-          </div>
-        </div>
-      )}
-      {walkKm > 0 && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, background: 'rgba(79,143,171,.06)', border: '1px solid rgba(79,143,171,.14)' }}>
-          <span className="ms fill" style={{ fontSize: 13, color: T.sky }}>directions_walk</span>
-          <div>
-            <div style={{ fontSize: T.fsMicro, color: T.text3, marginBottom: 1 }}>On foot</div>
-            <div style={{ fontSize: T.fsXs, fontWeight: 700, color: T.text1 }}>{walkKm} km</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function fmtDur(m: number): string {
   const h = Math.floor(m / 60);
   const min = m % 60;
@@ -217,14 +191,6 @@ export function ReelDayTransitionCard({ card, active }: Props) {
           <p style={{ fontFamily: "'Playfair Display', serif", fontSize: T.fsTitle, fontWeight: 600, color: T.text1, lineHeight: 1.05, marginBottom: 10 }}>
             {card.prevCity}
           </p>
-          {/* Stat block — total + on foot */}
-          {card.isCityChange && (
-            <DistanceStats
-              totalKm={Math.round((card.prevDayWalkKm + card.prevDayRideKm) * 10) / 10}
-              walkKm={card.prevDayWalkKm}
-              tense="past"
-            />
-          )}
         </div>
 
         {/* ── TRANSIT connector ──────────────────────────── */}
@@ -320,16 +286,6 @@ export function ReelDayTransitionCard({ card, active }: Props) {
             </span>
           </div>
 
-          {/* Distance stats for next city */}
-          {card.isCityChange && (
-            <div style={{ marginTop: 12 }}>
-              <DistanceStats
-                totalKm={Math.round((card.nextDayWalkKm + card.nextDayRideKm) * 10) / 10}
-                walkKm={card.nextDayWalkKm}
-                tense="future"
-              />
-            </div>
-          )}
         </div>
 
       </div>
