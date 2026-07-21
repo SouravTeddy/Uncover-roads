@@ -42,7 +42,7 @@ export function ProfileScreen() {
 
   const rawAnswers = state.rawOBAnswers;
   const primaryMood = rawAnswers?.mood?.[0] ?? 'explore';
-  const archetypeKey = MOOD_ARCHETYPE[primaryMood] ?? (persona?.archetype ?? 'explorer');
+  const archetypeKey = state.personaProfile?.archetype ?? persona?.archetype ?? MOOD_ARCHETYPE[primaryMood] ?? 'explorer';
   const archetypeMeta = ARCHETYPE_META[archetypeKey] ?? ARCHETYPE_META.explorer;
   const archetypeColor = ARCHETYPE_COLORS[archetypeKey] ?? { primary: '#d4a853', glow: 'rgba(212,168,83,.22)' };
   const hasArchetype = !!(state.personaProfile || persona);
@@ -116,11 +116,13 @@ export function ProfileScreen() {
 
           {/* Persona row — inside same card */}
           {archetypeData && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 relative overflow-hidden"
+            <button
+              onClick={startOBRedo}
+              className="w-full flex items-center gap-3 px-4 py-3.5 relative overflow-hidden active:opacity-70 text-left"
               style={{
                 borderTop: '1px solid var(--color-divider)',
                 background: `linear-gradient(135deg, ${archetypeData.glow}, transparent)`,
+                cursor: 'pointer',
               }}
             >
               <div
@@ -128,34 +130,21 @@ export function ProfileScreen() {
                 style={{ background: `radial-gradient(ellipse at left, ${archetypeData.primary}14, transparent 70%)` }}
               />
               <span
-                className="text-[20px] relative flex-shrink-0"
+                className="text-[22px] relative flex-shrink-0"
                 style={{ filter: `drop-shadow(0 0 8px ${archetypeData.primary}70)` }}
               >
                 {archetypeData.emoji}
               </span>
               <div className="flex-1 min-w-0 relative">
-                <div className="text-[13px] font-semibold" style={{ color: 'var(--color-text-1)' }}>
+                <div className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>
                   {archetypeData.name}
                 </div>
-                <div className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-4)' }}>
+                <div className="text-[13px] mt-0.5" style={{ color: 'var(--color-text-4)' }}>
                   Travel persona
                 </div>
               </div>
-              <button
-                onClick={startOBRedo}
-                className="relative flex-shrink-0 flex items-center gap-1"
-                style={{
-                  fontSize: 11, fontWeight: 600,
-                  color: 'var(--color-primary)',
-                  background: 'var(--color-primary-bg)',
-                  border: '1px solid rgba(212,168,83,.22)',
-                  padding: '4px 10px', borderRadius: 99,
-                }}
-              >
-                <span className="ms" style={{ fontSize: 12, color: 'var(--color-primary)' }}>tune</span>
-                Retune
-              </button>
-            </div>
+              <span className="ms relative flex-shrink-0" style={{ fontSize: 18, color: 'var(--color-primary)', opacity: 0.7 }}>tune</span>
+            </button>
           )}
         </div>
 
@@ -260,11 +249,11 @@ function PlanRow({
           <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>star</span>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-[10px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
-          <p className="text-[13px] font-semibold" style={{ color: 'var(--color-text-1)' }}>Pro · Unlimited trips</p>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-3)' }}>{`Renews ${formatRenewal()}`}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
+          <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>Pro · Unlimited trips</p>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--color-text-3)' }}>{`Renews ${formatRenewal()}`}</p>
         </div>
-        <span className="text-[11px] font-bold" style={{ color: 'var(--color-primary)' }}>Manage →</span>
+        <span className="ms flex-shrink-0" style={{ fontSize: 18, color: 'var(--color-primary)' }}>chevron_right</span>
       </button>
     );
   }
@@ -280,10 +269,10 @@ function PlanRow({
           <span className="ms" style={{ fontSize: 18, color: 'var(--color-primary)' }}>confirmation_number</span>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-[10px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
-          <p className="text-[13px] font-semibold" style={{ color: 'var(--color-text-1)' }}>Trip Pack</p>
+          <p className="text-[11px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
+          <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>Trip Pack</p>
         </div>
-        <span className="text-[11px] font-bold" style={{ color: 'var(--color-primary)' }}>Manage →</span>
+        <span className="ms flex-shrink-0" style={{ fontSize: 18, color: 'var(--color-primary)' }}>chevron_right</span>
       </button>
     );
   }
@@ -302,7 +291,7 @@ function PlanRow({
       </div>
       <div className="flex-1 min-w-0 text-left">
         <p className="text-[10px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
-        <p className="text-[13px] font-semibold" style={{ color: 'var(--color-text-1)' }}>
+        <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>
           {`Free · ${usedDots} of 3 trips used`}
         </p>
         <div className="flex gap-1 mt-1">
@@ -315,7 +304,7 @@ function PlanRow({
           ))}
         </div>
       </div>
-      <span className="text-[11px] font-bold flex-shrink-0" style={{ color: 'var(--color-primary)' }}>Upgrade →</span>
+      <span className="ms flex-shrink-0" style={{ fontSize: 18, color: 'var(--color-primary)' }}>chevron_right</span>
     </button>
   );
 }
