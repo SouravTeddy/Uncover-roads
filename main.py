@@ -4428,13 +4428,6 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
         return Response(content=data, media_type=ct,
                         headers={"Cache-Control": "public, max-age=86400"})
 
-    # New Places API v1 resource names start with "places/"
-    # Raw new-format tokens (>300 chars, no "places/" prefix) cannot be served — caller
-    # should have nullified these so the frontend falls back to placeImage by name.
-    if len(photo_ref) > 300 and not photo_ref.startswith("places/"):
-        print(f"[place-photo] unwrapped new-format ref, cannot proxy: {photo_ref[:60]}")
-        raise HTTPException(status_code=422, detail="New-format photo ref requires full resource name")
-
     use_new_api = photo_ref.startswith("places/")
 
     def _fetch_new_api_photo(name: str) -> Optional[requests.Response]:
