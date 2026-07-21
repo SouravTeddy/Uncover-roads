@@ -126,7 +126,6 @@ export function SubscriptionScreen() {
                 ['all_inclusive', 'Unlimited trips'],
                 ['star',         'Our Picks + Live Events'],
                 ['face',         'Full persona experience'],
-                ['bookmark',     'Save & share itineraries'],
               ].map(([icon, label]) => (
                 <div key={label} className="flex items-center gap-2">
                   <span className="ms text-[var(--color-sage)]" style={{ fontSize: 15 }}>{icon}</span>
