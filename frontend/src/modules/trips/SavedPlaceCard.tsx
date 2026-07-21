@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FavouritedPin } from '../../shared/types';
-import { getPlacePhotoUrl } from '../../shared/api';
-import { api } from '../../shared/api';
+import { getPlacePhotoUrl, api } from '../../shared/api';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   historic: '🏛',
@@ -27,16 +26,23 @@ export function SavedPlaceCard({ pin, category, tall = false, onRemove, onClick 
   const [imgSrc, setImgSrc] = useState<string | null>(
     pin.photoRef ? getPlacePhotoUrl(pin.photoRef, 600) : null
   );
+  const fetchedFallback = useRef(false);
 
-  // If no photoRef at mount, try fetching from Google after 1.5s
+  async function fetchFallback() {
+    if (fetchedFallback.current) return;
+    fetchedFallback.current = true;
+    const url = await api.placeImage(pin.title, pin.city, pin.placeId);
+    if (url) setImgSrc(url);
+    else setImgSrc(null);
+  }
+
+  // If photoRef was null at mount, try api.placeImage after 1.5s
   useEffect(() => {
     if (pin.photoRef) return;
-    const timer = setTimeout(async () => {
-      const url = await api.placeImage(pin.title, pin.city, pin.placeId);
-      if (url) setImgSrc(url);
-    }, 1500);
+    const timer = setTimeout(fetchFallback, 1500);
     return () => clearTimeout(timer);
-  }, [pin.photoRef, pin.title, pin.city, pin.placeId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <button
@@ -54,7 +60,7 @@ export function SavedPlaceCard({ pin, category, tall = false, onRemove, onClick 
           src={imgSrc}
           alt={pin.title}
           className="absolute inset-0 w-full h-full object-cover"
-          onError={() => setImgSrc(null)}
+          onError={fetchFallback}
         />
       ) : (
         <div
