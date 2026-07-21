@@ -84,22 +84,6 @@ function DistanceStats({ totalKm, walkKm, tense }: { totalKm: number; walkKm: nu
   );
 }
 
-function dayNarrative(prevCity: string, prevStopCount: number, prevStartTime: string | null, prevEndTime: string | null): string {
-  const stops = `${prevStopCount} stop${prevStopCount !== 1 ? 's' : ''}`;
-  if (prevStartTime && prevEndTime) {
-    const [sh, sm] = prevStartTime.split(':').map(Number);
-    const [eh, em] = prevEndTime.split(':').map(Number);
-    const durMin = (eh * 60 + em) - (sh * 60 + sm);
-    if (durMin > 0) {
-      const h = Math.floor(durMin / 60);
-      const m = durMin % 60;
-      const durStr = h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
-      return `${stops} across ${prevCity} — ${durStr} on the ground.`;
-    }
-  }
-  return `${stops} across ${prevCity}.`;
-}
-
 function fmtDur(m: number): string {
   const h = Math.floor(m / 60);
   const min = m % 60;

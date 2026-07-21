@@ -243,7 +243,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   })();
   const cityDisplayName = formatCityLabel(itinCities.length > 0 ? itinCities : [item.city]);
 
-  const { status, daysUntil } = getTripStatus(item);
+  const { status } = getTripStatus(item);
 
   // Hero photo: first stop with a photo → city Google photo
   const heroStop = allStops.find((s: any) => s.imageUrl || s.photoRef);
@@ -301,30 +301,9 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
             background: 'linear-gradient(180deg, rgba(10,9,8,.22) 0%, rgba(10,9,8,.04) 30%, rgba(10,9,8,.55) 58%, rgba(10,9,8,.96) 100%)',
           }} />
 
-          {/* Top row */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* Date/status pill */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', borderRadius: 999,
-              fontSize: 10.5, fontWeight: 600, letterSpacing: '0.01em',
-              backdropFilter: 'blur(12px)',
-              ...(status === 'ongoing'
-                ? { background: 'rgba(107,148,112,.2)', color: '#82c087', border: '1px solid rgba(107,148,112,.32)' }
-                : status === 'upcoming'
-                ? { background: 'rgba(212,168,83,.16)', color: '#d4a853', border: '1px solid rgba(212,168,83,.28)' }
-                : { background: 'rgba(255,255,255,.07)', color: 'rgba(242,237,230,.45)', border: '1px solid rgba(255,255,255,.1)' }),
-            }}>
-              <span className="ms" style={{ fontSize: 11 }}>calendar_month</span>
-              {status === 'ongoing'
-                ? `Today · ${item.travelDate ? new Date(item.travelDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}`
-                : status === 'upcoming' && daysUntil !== null
-                ? `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''} · ${dateLabel}`
-                : dateLabel}
-            </div>
-
-            {/* Right pill: alert if changes, visited if past, else nothing */}
-            {hasUnresolvedSwaps && (
+          {/* Top row — updates badge only */}
+          {hasUnresolvedSwaps && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 padding: '4px 9px', borderRadius: 999,
@@ -335,8 +314,8 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                 <span className="ms" style={{ fontSize: 11 }}>warning</span>
                 Updates
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Bottom: city + stats + arrow */}
           <div style={{
@@ -351,16 +330,8 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
                   <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.60)' }}>route</span>
                   {allStops.length} stop{allStops.length !== 1 ? 's' : ''}
                   {numDays > 1 && ` · ${numDays} days`}
+                  {item.travelDate && ` · ${dateLabel}`}
                 </span>
-                {isPast && (
-                  <>
-                    <div style={{ width: 1, height: 10, background: 'rgba(255,255,255,.25)' }} />
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 13, color: 'rgba(255,255,255,.80)', fontWeight: 500 }}>
-                      <span className="ms" style={{ fontSize: 14, color: 'rgba(255,255,255,.60)' }}>history</span>
-                      {timeAgo(item.travelDate ?? item.date)}
-                    </span>
-                  </>
-                )}
               </div>
               {/* City name */}
               <div style={{
