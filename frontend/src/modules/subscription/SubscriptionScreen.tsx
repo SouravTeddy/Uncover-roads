@@ -5,7 +5,13 @@ export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
   const { userTier, tripPacks, packTripsRemaining, generationCount } = state;
 
-  function back() { dispatch({ type: 'GO_BACK' }); }
+  function back() {
+    if (state.screenStack.length > 1) {
+      dispatch({ type: 'GO_BACK' });
+    } else {
+      dispatch({ type: 'GO_TO', screen: 'profile' });
+    }
+  }
 
   function handlePurchase() {
     alert('Payment integration in progress.');
