@@ -5142,16 +5142,39 @@ def _resolve_reco_trigger(
         google_types = _TRIGGER_TYPES.get(trig, ["restaurant"])
     radius = _TRIGGER_RADIUS.get(trig, 1000)
 
+    # Dietary keyword for food triggers — best-effort, not verified
+    _FOOD_TRIGGERS = {"lunch", "dinner", "local_food", "rest"}
+    _DIETARY_KEYWORD: dict[str, str] = {
+        "halal":       "halal",
+        "plant_based": "vegetarian",
+        "kosher":      "kosher",
+    }
+    dietary_keyword: str | None = None
+    if signal and signal.dietary and trig in _FOOD_TRIGGERS:
+        for _d in signal.dietary:
+            if _d in _DIETARY_KEYWORD:
+                dietary_keyword = _DIETARY_KEYWORD[_d]
+                break
+
+    # Budget → price_level penalty thresholds
+    _BUDGET_PENALTY: dict[str, dict[int, float]] = {
+        "budget":    {3: 0.25, 4: 0.45},
+        "mid_range": {4: 0.15},
+    }
+
     best: dict | None = None
     best_score = -1.0
 
-    print(f"[reco_resolve] trigger={trig} lat={lat} lon={lon} radius={radius} types={google_types}")
+    print(f"[reco_resolve] trigger={trig} lat={lat} lon={lon} radius={radius} types={google_types} dietary_kw={dietary_keyword}")
     for gtype in google_types:
         try:
+            params: dict = {"location": f"{lat},{lon}", "radius": radius,
+                            "type": gtype, "key": google_api_key}
+            if dietary_keyword:
+                params["keyword"] = dietary_keyword
             resp = requests.get(
                 f"{GOOGLE_PLACES_BASE}/nearbysearch/json",
-                params={"location": f"{lat},{lon}", "radius": radius,
-                        "type": gtype, "key": google_api_key},
+                params=params,
                 timeout=5,
             )
             data = resp.json()
@@ -5168,9 +5191,23 @@ def _resolve_reco_trigger(
                     continue
                 user_ratings = place.get("user_ratings_total") or 0
                 if user_ratings < 5:
-                    continue  # filter places with almost no reviews
+                    continue
                 rating = place.get("rating") or 0
-                score = rating / 5.0
+                # Persona affinity: take max affinity across all place types
+                place_types_list = place.get("types") or []
+                if signal:
+                    affinity = max(
+                        (get_persona_affinity(t).get(signal.archetype, 0.5) for t in place_types_list),
+                        default=0.5,
+                    )
+                else:
+                    affinity = 0.5
+                score = (rating / 5.0) * 0.6 + affinity * 0.4
+                # Budget soft penalty — reduces score but never hard-blocks
+                price_level = place.get("price_level")
+                if signal and signal.budget and price_level:
+                    penalty = _BUDGET_PENALTY.get(signal.budget, {}).get(price_level, 0.0)
+                    score -= penalty
                 if score > best_score:
                     best_score = score
                     best = place
@@ -5990,6 +6027,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             _mood = _raw.get("mood") or []
             _budget = _raw.get("budget") or None
             _evening_pref = _raw.get("evening") or None
+            _dietary = _raw.get("dietary") or []
             _reco_signal = RecoSignal(
                 weights=persona,
                 archetype=archetype,
@@ -6005,6 +6043,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 mood=_mood,
                 budget=_budget,
                 evening_pref=_evening_pref,
+                dietary=_dietary,
             )
             from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
             _base_pids: set[str] = {s.get("placeId", "") for s in stops_out if s.get("placeId")}

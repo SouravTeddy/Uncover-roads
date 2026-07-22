@@ -109,10 +109,13 @@ class RecoSignal:
     mood: list = None            # ['culture', 'eat_drink', 'explore', 'relax']
     budget: Optional[str] = None # 'budget' | 'mid' | 'splurge'
     evening_pref: Optional[str] = None  # 'nightlife' | 'dinner' | 'early_night'
+    dietary: list = None         # ['halal', 'plant_based', 'kosher', 'allergy']
 
     def __post_init__(self):
         if self.mood is None:
             self.mood = []
+        if self.dietary is None:
+            self.dietary = []
 
 
 _ARCHETYPE_GROUPS: dict[str, str] = {
@@ -282,6 +285,18 @@ def derive_day_recos(
     rest_target    = min(1.0, w.get("w_rest_need", 0.3) * 0.7 + (0.3 if signal.pace == "slow" else 0))
     social_target  = 0.6 if signal.archetype_group == "social" else 0.2
     hidden_gem_target = w.get("w_spontaneity", 0.4) * 0.6
+
+    # Mood amplification — trip-level OB preference boosts relevant targets
+    _mood = signal.mood or []
+    if "eat_drink" in _mood:
+        dinner_target = min(1.0, dinner_target + 0.3)
+        lunch_target  = min(1.0, lunch_target  + 0.1)
+    if "culture" in _mood:
+        culture_target = min(1.0, culture_target + 0.25)
+    if "relax" in _mood:
+        rest_target = min(1.0, rest_target + 0.25)
+    if "explore" in _mood:
+        hidden_gem_target = min(1.0, hidden_gem_target + 0.20)
 
     print(f"[reco_engine] day flags: has_lunch={has_lunch} has_dinner={has_dinner} has_evening={has_evening} has_culture={has_culture} has_rest={has_rest} has_social={has_social} has_landmark={has_landmark} has_hidden_gem={has_hidden_gem}")
     print(f"[reco_engine] targets: lunch={lunch_target:.2f} dinner={dinner_target:.2f} evening={evening_target:.2f} culture={culture_target:.2f} rest={rest_target:.2f} social={social_target:.2f}")

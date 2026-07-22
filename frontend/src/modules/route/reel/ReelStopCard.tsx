@@ -579,7 +579,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   });
 
   return (
-    <div className="reel-card" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
+    <div className="reel-card" data-theme="dark" style={{ position: 'relative', width: '100%', height: '100dvh', overflow: 'hidden', background: T.bg }}>
       <style>{`
         @keyframes badgePopOrange {
           0%, 60%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(224,120,64,0); }
