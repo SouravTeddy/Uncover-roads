@@ -55,19 +55,6 @@ function getTripStatus(item: SavedItinerary): { status: TripStatus; daysUntil: n
   return { status: 'past', daysUntil: null };
 }
 
-function buildGoogleMapsUrl(stops: any[]): string | null {
-  const pts = stops
-    .filter((s: any) => typeof s.lat === 'number' && typeof s.lon === 'number')
-    .map((s: any) => ({ lat: s.lat as number, lon: s.lon as number }));
-  if (pts.length < 2) return null;
-  const origin = `${pts[0].lat},${pts[0].lon}`;
-  const dest = `${pts[pts.length - 1].lat},${pts[pts.length - 1].lon}`;
-  const middle = pts.slice(1, -1).slice(0, 8);
-  const base = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=walking`;
-  return middle.length > 0
-    ? `${base}&waypoints=${middle.map(p => `${p.lat},${p.lon}`).join('|')}`
-    : base;
-}
 
 // ── Trip Card ────────────────────────────────────────────────
 
