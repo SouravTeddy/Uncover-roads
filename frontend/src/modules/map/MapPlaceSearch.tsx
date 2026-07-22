@@ -91,15 +91,15 @@ const BADGE: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: '.03em',
   whiteSpace: 'nowrap',
-  background: 'rgba(255,255,255,.06)',
-  border: '1px solid rgba(255,255,255,.12)',
-  color: 'rgba(255,255,255,.45)',
+  background: 'var(--color-surface2)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-text-3)',
 };
 
 const GROUP_BOX: React.CSSProperties = {
   margin: '12px 16px 0',
-  background: 'rgba(255,255,255,.03)',
-  border: '1px solid rgba(255,255,255,.07)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
   borderRadius: 16,
   overflow: 'hidden',
 };
@@ -109,21 +109,21 @@ const GROUP_LABEL: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: '.10em',
   textTransform: 'uppercase',
-  color: 'rgba(255,255,255,.25)',
+  color: 'var(--color-text-4)',
   padding: '11px 16px 7px',
 };
 
 const ROW: React.CSSProperties = {
   width: '100%', display: 'flex', alignItems: 'center', gap: 13,
   padding: '15px 16px', background: 'none', border: 'none',
-  borderTop: '1px solid rgba(255,255,255,.05)',
+  borderTop: '1px solid var(--color-divider)',
   cursor: 'pointer', textAlign: 'left',
 };
 
 const ROW_ICON: React.CSSProperties = {
   width: 44, height: 44, borderRadius: 13,
-  background: 'rgba(255,255,255,.06)',
-  border: '1px solid rgba(255,255,255,.08)',
+  background: 'var(--color-surface2)',
+  border: '1px solid var(--color-border)',
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
 };
 
@@ -261,9 +261,9 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           gap: 8,
           padding: '0 12px 0 10px',
           borderRadius: 20,
-          background: 'rgba(15,20,30,.82)',
+          background: 'rgba(var(--color-bg-raw, 15,13,12), 0.88)',
           backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,.1)',
+          border: '1px solid var(--color-border)',
           cursor: selectedName ? 'default' : 'pointer',
           overflow: 'hidden',
         }}
@@ -300,7 +300,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
               onClick={close}
               style={{
                 width: 40, height: 40, borderRadius: '50%',
-                background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',
+                background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', flexShrink: 0, padding: 0,
               }}
@@ -311,7 +311,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
               style={{
                 flex: 1, height: 40, display: 'flex', alignItems: 'center', gap: 8,
                 padding: '0 10px', borderRadius: 20,
-                background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)',
+                background: 'var(--color-surface2)', border: '1px solid var(--color-border)',
               }}
             >
               <span className="ms" style={{ fontSize: 17, color: 'var(--color-text-3)', lineHeight: 1, flexShrink: 0 }}>search</span>
@@ -330,7 +330,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
             </div>
           </div>
 
-          <div style={{ height: 1, background: 'rgba(255,255,255,.06)', marginTop: 16 }} />
+          <div style={{ height: 1, background: 'var(--color-divider)', marginTop: 16 }} />
 
           {loading && (
             <div style={{ padding: '20px 16px', color: 'var(--color-text-4)', fontSize: 13, textAlign: 'center' }}>Searching…</div>

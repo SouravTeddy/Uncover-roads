@@ -49,6 +49,8 @@
 
   /* Nav bg */
   --nav-bg:           rgba(17,17,17,.92);
+  /* Raw RGB triplet for rgba() composition (e.g. blurred backdrops) */
+  --color-bg-raw:     15,13,12;
 }
 
 [data-theme=light] {
@@ -71,9 +73,31 @@
   --shadow-lg:        0 16px 40px rgba(44,36,32,.18);
   --shadow-primary:   0 6px 20px rgba(212,168,83,.20);
   --nav-bg:           rgba(250,248,244,.94);
+  --color-bg-raw:     250,248,244;
 }
 [data-theme=light] .shimmer::after {
   background: linear-gradient(90deg, transparent, rgba(44,36,32,.05), transparent);
+}
+
+/* Forced dark subtree — overrides light-mode root vars for components that must stay dark
+   (e.g. onboarding shell, overlays with their own dark background) */
+[data-theme=dark] {
+  --color-bg:         #0f0d0c;
+  --color-bg2:        #0a0a0a;
+  --color-surface:    #1a1714;
+  --color-surface2:   #221e1b;
+  --color-text-1:     #f5f0ea;
+  --color-text-2:     #c0b0a4;
+  --color-text-3:     #a08d80;
+  --color-text-4:     #726559;
+  --color-border:     rgba(255,255,255,.09);
+  --color-border-m:   rgba(255,255,255,.16);
+  --color-divider:    rgba(255,255,255,.06);
+  --color-primary-text: #d4a853;
+  --color-primary-bg: rgba(212,168,83,.14);
+  --color-primary-glow: rgba(212,168,83,.22);
+  --nav-bg:           rgba(17,17,17,.92);
+  --color-bg-raw:     15,13,12;
 }
 
 /* ── Global resets ────────────────────────────────── */

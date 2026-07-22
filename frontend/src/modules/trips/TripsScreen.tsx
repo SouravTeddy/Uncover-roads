@@ -202,10 +202,10 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
               onClick={e => { e.stopPropagation(); handlePlay(); }}
               style={{
                 flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
-                border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.1)',
+                border: '1px solid rgba(255,255,255,.35)', background: 'rgba(255,255,255,.18)',
                 backdropFilter: 'blur(10px)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'rgba(255,255,255,.8)', cursor: 'pointer',
+                color: '#fff', cursor: 'pointer',
               }}
             >
               <span className="ms" style={{ fontSize: 15 }}>arrow_forward</span>
