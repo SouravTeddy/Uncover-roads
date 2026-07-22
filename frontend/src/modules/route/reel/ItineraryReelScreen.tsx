@@ -194,8 +194,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // Refs for async callbacks — avoids stale closures in lazy-fetch and write-back
   const reelSavedIdRef = useRef(reelSavedId);
   const activeItineraryRef = useRef(activeItinerary);
-  // True when this reel was opened from TripsScreen (vs freshly built) — write-back is safe
-  const isReopenedSavedTripRef = useRef(!!savedItem);
   // Persistent image cache — survives Supabase sync overwrites
   const imgCacheRef = useRef<Map<string, string>>(loadImgCache());
 
