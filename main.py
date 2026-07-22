@@ -5095,6 +5095,7 @@ def _resolve_reco_trigger(
         "moving_company", "painter", "general_contractor", "storage",
         # Professional services
         "accounting", "lawyer", "insurance_agency", "real_estate_agency",
+        "marketing_agency", "consulting", "employment_agency",
         # Healthcare (non-tourist)
         "doctor", "dentist", "physiotherapist", "veterinary_care",
         "hospital", "pharmacy",
@@ -5102,9 +5103,25 @@ def _resolve_reco_trigger(
         "atm", "bank", "finance",
         # Non-destination retail
         "hardware_store", "home_goods_store", "furniture_store",
-        "bicycle_store",
+        "bicycle_store", "electronics_store", "car_parts_store",
         # Other
-        "funeral_home",
+        "funeral_home", "laundry",
+    }
+
+    # Per-trigger allowlist: at least one of a place's types must be in this set.
+    # Prevents irrelevant places that pass broad Google type searches (e.g. "market")
+    # from appearing as recos (marketing agencies, car battery shops, etc.).
+    _TRIGGER_ALLOWED_TYPES: dict[str, frozenset] = {
+        "lunch":       frozenset({"restaurant", "food", "cafe", "bakery", "meal_delivery", "meal_takeaway", "bar"}),
+        "dinner":      frozenset({"restaurant", "food", "bar", "meal_delivery", "meal_takeaway", "night_club"}),
+        "local_food":  frozenset({"restaurant", "food", "cafe", "bakery", "grocery_or_supermarket", "meal_delivery", "meal_takeaway"}),
+        "coffee":      frozenset({"cafe", "bakery", "food", "restaurant"}),
+        "rest":        frozenset({"cafe", "park", "food", "bakery", "restaurant"}),
+        "culture":     frozenset({"museum", "art_gallery", "church", "place_of_worship", "tourist_attraction", "point_of_interest", "library"}),
+        "hidden_gem":  frozenset({"tourist_attraction", "point_of_interest", "park", "cafe", "art_gallery", "museum", "natural_feature"}),
+        "famous_spots":frozenset({"tourist_attraction", "landmark", "amusement_park", "museum", "point_of_interest", "natural_feature"}),
+        "social_gap":  frozenset({"bar", "cafe", "restaurant", "park", "night_club", "food"}),
+        "evening":     frozenset({"bar", "restaurant", "night_club", "food", "tourist_attraction", "point_of_interest"}),
     }
     # Blocked types are allowed when the place is also tagged as a destination
     _DESTINATION_TYPES = {"tourist_attraction", "landmark", "point_of_interest"}
@@ -5189,8 +5206,14 @@ def _resolve_reco_trigger(
                     continue
                 if not _place_is_allowed(place):
                     continue
+                # Per-trigger type allowlist: reject places with no relevant type for this trigger
+                _allowed_for_trig = _TRIGGER_ALLOWED_TYPES.get(trig)
+                if _allowed_for_trig:
+                    _place_types_set = set(place.get("types") or [])
+                    if not (_place_types_set & _allowed_for_trig):
+                        continue
                 user_ratings = place.get("user_ratings_total") or 0
-                if user_ratings < 5:
+                if user_ratings < 20:
                     continue
                 rating = place.get("rating") or 0
                 # Persona affinity: take max affinity across all place types

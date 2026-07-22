@@ -160,14 +160,14 @@ _PERSONA_TYPE_MAP: dict = {
         "social":   ["restaurant", "bar"],
         "cultural": ["restaurant", "cafe"],
         "sensory":  ["restaurant"],
-        "explorer": ["restaurant", "market"],
+        "explorer": ["restaurant", "cafe"],
     },
     "dinner": {
         "family":   ["restaurant"],
         "social":   ["restaurant", "bar"],
         "cultural": ["restaurant"],
         "sensory":  ["restaurant"],
-        "explorer": ["restaurant", "market"],
+        "explorer": ["restaurant", "bar"],
     },
     "evening": {
         "family":   ["restaurant"],
@@ -198,7 +198,7 @@ _PERSONA_TYPE_MAP: dict = {
         "explorer": ["point_of_interest", "establishment"],
     },
     "local_food": {
-        "_all": ["restaurant", "market", "cafe"],
+        "_all": ["restaurant", "grocery_or_supermarket", "cafe"],
     },
     "famous_spots": {
         "family":   ["amusement_park", "tourist_attraction", "landmark"],

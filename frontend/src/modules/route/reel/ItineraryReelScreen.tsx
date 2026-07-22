@@ -322,12 +322,13 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         }
       }
 
-      // Eager batch: only first 10 stops without images — rest lazy-load on scroll
+      // Eager batch: all stops without images that also have no photoRef
+      // (stops with photoRef already have an image source — no need for placeImage call)
       const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
         (d.stops ?? [])
-          .filter(s => !s.imageUrl && s.title)
+          .filter(s => !s.imageUrl && !s.photoRef && s.title)
           .map(s => ({ stop: s, city: s.city ?? d.city ?? primaryCity }))
-      ).slice(0, 10);
+      ).slice(0, 20);
       // Pre-mark eager stops as fetched so lazy effect skips them
       for (const { stop } of stopsNeedingImages) lazyFetchedRef.current.add(stop.title);
 
@@ -375,6 +376,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           appendImgCache(stop?.placeId, r.title, r.url);
           lazyUsedUrlsRef.current.add(r.url); // seed dedup set so lazy-fetch won't reuse
         }
+      }
+      // Seed city photo URLs so lazy-fetch skips them and each stop gets a unique image
+      for (const [, url] of builtCityPhotoMap) {
+        if (url) lazyUsedUrlsRef.current.add(url);
       }
       setResolvedStopImages(newStopImages);
 
@@ -454,7 +459,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     for (const card of upcoming) {
       if (card.type !== 'stop') continue;
       const { stop } = card;
-      if (stop.imageUrl || stop.photoRef) continue;
+      if (stop.imageUrl || stop.photoRef || imgCacheRef.current.has(imgCacheKey(stop.placeId, stop.title))) continue;
       if (!stop.title) continue;
       if (lazyFetchedRef.current.has(stop.title)) continue;
       lazyFetchedRef.current.add(stop.title);
