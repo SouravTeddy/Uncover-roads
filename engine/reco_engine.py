@@ -9,11 +9,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-FOOD_CATS  = {"restaurant", "cafe", "bakery", "street_food", "market"}
+FOOD_CATS  = {"restaurant", "cafe", "bakery", "street_food", "market",
+              "lunch", "dinner", "breakfast"}          # inserts.py vocabulary
 CULTURE_CATS = {"museum", "gallery", "historic", "heritage", "library", "spiritual"}
 OUTDOOR_CATS = {"park", "viewpoint", "beach", "zoo", "aquarium", "amusement_park"}
 SOCIAL_CATS  = {"bar", "nightlife", "market", "restaurant"}
-REST_CATS    = {"cafe", "park"}
+REST_CATS    = {"cafe", "park", "coffee", "coffee_shop", "rest", "scenic_walk"}  # inserts.py vocabulary
 LANDMARK_CATS = {"museum", "historic", "tourism", "gallery", "amusement_park", "zoo", "aquarium"}
 
 # City character — matches profile.ts CITY_CHARACTER
