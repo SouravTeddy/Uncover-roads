@@ -308,24 +308,24 @@ export function PersonaScreen() {
       }}>
         {/* Eyebrow */}
         <p style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
-          color: 'rgba(255,255,255,.38)', marginBottom: 20,
+          fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase',
+          color: 'rgba(255,255,255,.55)', marginBottom: 18,
         }}>
           Based on your answers
         </p>
 
         {/* We think you love */}
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(100,220,255,.7)', marginBottom: 10 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.85)', marginBottom: 10 }}>
           We think you love
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
           {loveChips.map((chip, i) => (
             <div key={i} style={{
-              padding: '7px 15px', borderRadius: 999,
-              background: 'rgba(56,210,255,.12)',
-              border: '1px solid rgba(56,210,255,.45)',
-              color: '#38D2FF',
-              fontSize: 13, fontWeight: 600,
+              padding: '8px 16px', borderRadius: 999,
+              background: 'rgba(56,210,255,.18)',
+              border: '1px solid rgba(56,210,255,.55)',
+              color: '#fff',
+              fontSize: 14, fontWeight: 600,
             }}>
               {chip}
             </div>
@@ -333,17 +333,17 @@ export function PersonaScreen() {
         </div>
 
         {/* We'll surface */}
-        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.38)', marginBottom: 10 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 10 }}>
           We'll surface
         </p>
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 32 }}>
           {surfaceChips.map((chip, i) => (
             <div key={i} style={{
-              padding: '6px 13px', borderRadius: 999,
-              background: 'rgba(255,255,255,.07)',
-              border: '1px solid rgba(255,255,255,.16)',
-              color: 'rgba(255,255,255,.75)',
-              fontSize: 12, fontWeight: 500,
+              padding: '7px 14px', borderRadius: 999,
+              background: 'rgba(255,255,255,.12)',
+              border: '1px solid rgba(255,255,255,.24)',
+              color: 'rgba(255,255,255,.90)',
+              fontSize: 13, fontWeight: 500,
             }}>
               {chip}
             </div>

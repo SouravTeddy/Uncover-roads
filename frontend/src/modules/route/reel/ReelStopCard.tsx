@@ -656,7 +656,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
           return (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: wxIsRain ? 'rgba(79,120,171,.18)' : 'rgba(0,0,0,.28)', border: `1px solid ${wxIsRain ? 'rgba(79,120,171,.35)' : 'rgba(255,255,255,.10)'}`, borderRadius: 20, padding: '5px 11px', backdropFilter: 'blur(12px)' }}>
               <span className="ms" style={{ fontSize: T.fsSm, color: wxIsRain ? '#5d9bc9' : '#f5a623' }}>{wxIcon(card.weather!.condition ?? '')}</span>
-              <span style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°</span>
+              <span style={{ fontSize: T.fsSm, fontWeight: 700, color: T.text1 }}>{card.weather!.temp != null ? Math.round(card.weather!.temp) : '--'}°C</span>
             </div>
           );
         })()}

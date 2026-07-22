@@ -25,6 +25,19 @@ import { computeGoldenHour } from './golden-hour';
 import type { ReelScenicCard as ReelScenicCardType, ReelDayDividerCard as ReelDayDividerCardType } from './types';
 import { supabase } from '../../../shared/supabase';
 import { syncSavedItinerary } from '../../../shared/userSync';
+const IMG_CACHE_KEY = 'ur_img_cache';
+function loadImgCache(): Map<string, string> {
+  try { return new Map(Object.entries(JSON.parse(localStorage.getItem(IMG_CACHE_KEY) ?? '{}'))) as Map<string, string>; }
+  catch { return new Map(); }
+}
+function appendImgCache(title: string, url: string): void {
+  try {
+    const obj = JSON.parse(localStorage.getItem(IMG_CACHE_KEY) ?? '{}');
+    obj[title] = url;
+    localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(obj));
+  } catch { /* ignore */ }
+}
+
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -183,6 +196,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const activeItineraryRef = useRef(activeItinerary);
   // True when this reel was opened from TripsScreen (vs freshly built) — write-back is safe
   const isReopenedSavedTripRef = useRef(!!savedItem);
+  // Persistent image cache — survives Supabase sync overwrites
+  const imgCacheRef = useRef<Map<string, string>>(loadImgCache());
 
   useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
@@ -204,6 +219,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // Rebalance stops across days for even distribution before building reel cards.
     const balancedItinerary = baseItinerary ? rebalanceItinerary(baseItinerary) : baseItinerary;
 
+    // Merge in-session resolved images with the persistent cache — cache wins for
+    // saved trips because the itinerary's own imageUrl may have been wiped by Supabase sync.
+    const mergedImages = new Map([...imgCacheRef.current, ...stopImages]);
+
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
     const itineraryForBuild = {
@@ -211,8 +230,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       days: balancedItinerary!.days.map(day => ({
         ...day,
         stops: day.stops.map(stop =>
-          (stopImages.size > 0 && !stop.imageUrl && stopImages.has(stop.title))
-            ? { ...stop, imageUrl: stopImages.get(stop.title)! }
+          (!stop.imageUrl && mergedImages.has(stop.title))
+            ? { ...stop, imageUrl: mergedImages.get(stop.title)! }
             : stop
         ),
       })),
@@ -223,7 +242,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // Also patch any stop cards that still have no image (title-lookup fallback)
     for (const card of built) {
       if (card.type === 'stop' && !card.stop.imageUrl) {
-        const url = stopImages.get(card.stop.title);
+        const url = mergedImages.get(card.stop.title);
         if (url) card.stop.imageUrl = url;
       }
     }
@@ -318,29 +337,13 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
         if (r.url) {
           newStopImages.set(r.title, r.url);
+          // Persist to the image cache so saved-trip re-opens survive Supabase sync overwrites
+          imgCacheRef.current.set(r.title, r.url);
+          appendImgCache(r.title, r.url);
           lazyUsedUrlsRef.current.add(r.url); // seed dedup set so lazy-fetch won't reuse
         }
       }
       setResolvedStopImages(newStopImages);
-
-      // Persist resolved imageUrls into the saved itinerary so re-opens are instant.
-      // Run before setCards so the store is updated before scenic enrichment can overwrite.
-      const savedIdAtBuild = reelSavedIdRef.current;
-      if (savedIdAtBuild && newStopImages.size > 0) {
-        dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedIdAtBuild, patch: {
-          itinerary: {
-            ...activeItinerary,
-            days: (activeItinerary.days ?? []).map(d => ({
-              ...d,
-              stops: (d.stops ?? []).map(s =>
-                !s.imageUrl && s.title && newStopImages.has(s.title)
-                  ? { ...s, imageUrl: newStopImages.get(s.title)! }
-                  : s
-              ),
-            })),
-          } as any,
-        }});
-      }
 
       // Build cards — backend already injected reco stops into the itinerary
       setLoadingStep(1);
@@ -429,28 +432,14 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
           // Skip if this exact URL is already used by another card (prevents duplicates)
           if (lazyUsedUrlsRef.current.has(url)) return;
           lazyUsedUrlsRef.current.add(url);
+          // Persist to the image cache — survives Supabase sync which can wipe itinerary imageUrls
+          imgCacheRef.current.set(stop.title, url);
+          appendImgCache(stop.title, url);
           setCards(prev => prev.map(c =>
             c.type === 'stop' && c.stop.title === stop.title && !c.stop.imageUrl
               ? { ...c, stop: { ...c.stop, imageUrl: url } }
               : c
           ));
-          // Write imageUrl back into the saved itinerary so future re-opens don't re-fetch.
-          // Only for re-opened saved trips — new builds use scenic enrichment which owns setCards.
-          const savedId = reelSavedIdRef.current;
-          const itin = activeItineraryRef.current;
-          if (isReopenedSavedTripRef.current && savedId && itin) {
-            dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedId, patch: {
-              itinerary: {
-                ...itin,
-                days: (itin.days ?? []).map(d => ({
-                  ...d,
-                  stops: (d.stops ?? []).map(s =>
-                    s.title === stop.title && !s.imageUrl ? { ...s, imageUrl: url } : s
-                  ),
-                })),
-              } as any,
-            }});
-          }
         })
         .catch(() => {});
     }

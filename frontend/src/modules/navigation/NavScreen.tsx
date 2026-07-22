@@ -256,7 +256,7 @@ export function NavScreen() {
           <div
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-[var(--color-border)] flex-shrink-0 bg-[var(--color-surface)]"
           >
-            <span className="text-[var(--color-text-1)] text-[13px] font-bold">{weather.temp}°</span>
+            <span className="text-[var(--color-text-1)] text-[13px] font-bold">{weather.temp}°C</span>
             <span className="text-[var(--color-text-3)] text-[13px]">{weather.condition}</span>
           </div>
         )}

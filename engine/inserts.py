@@ -255,10 +255,17 @@ def detect(
     has_dinner_today = _has_meal_in_window(17, 23) or user_dinner_count > 0
 
     consecutive = 0
+    food_in_a_row = 0  # consecutive food/café stops added to result
     seen_ids: set[str] = {s.place_id for s in stops if s.place_id}
+
+    _ALL_FOOD_CATS = _DINING_CATS | _REST_CATS
 
     for i, stop in enumerate(stops):
         result.append(stop)
+        if stop.category in _ALL_FOOD_CATS or stop.type in _ALL_FOOD_CATS:
+            food_in_a_row += 1
+        else:
+            food_in_a_row = 0
         if stop.category in _REST_CATS or stop.type in _REST_CATS:
             mins_since_rest = 0
         mins_since_rest += stop.duration_min
@@ -278,10 +285,11 @@ def detect(
         # Uses time-window only; mins_since_rest resets naturally when a café is encountered.
         _insert_est_time = _add_min_to_time(stop.scheduled_time, stop.duration_min)
 
-        if mins_since_rest >= coffee_gap_min:
+        if mins_since_rest >= coffee_gap_min and food_in_a_row < 2:
             c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
+                food_in_a_row += 1
                 coffee_reason = "No break yet today." if mins_since_rest >= 600 else f"No break in the last {mins_since_rest // 60}h {mins_since_rest % 60}m."
                 messages.append(_make_insert_message(c, coffee_reason, estimated_time=_insert_est_time))
                 seen_ids.add(c.place_id)
@@ -302,18 +310,20 @@ def detect(
                 c = _best_candidate("scenic_walk", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
+                    food_in_a_row = 0
                     messages.append(_make_insert_message(c, "Scenic route detected between neighborhoods.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     consecutive = 0
                     continue
 
         # Breakfast insert (7:00–10:00 window)
-        if not has_breakfast_today and stop.scheduled_time:
+        if not has_breakfast_today and stop.scheduled_time and food_in_a_row < 2:
             sh = int(stop.scheduled_time.split(":")[0])
             if 7 <= sh <= 10:
                 c = _best_candidate("breakfast", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
+                    food_in_a_row += 1
                     messages.append(_make_insert_message(c, "Morning window reached with no breakfast planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_breakfast_today = True
@@ -321,12 +331,13 @@ def detect(
                     continue
 
         # Lunch insert (11:00–14:00 window) — café stops do NOT satisfy this
-        if not has_lunch_today and stop.scheduled_time:
+        if not has_lunch_today and stop.scheduled_time and food_in_a_row < 2:
             sh = int(stop.scheduled_time.split(":")[0])
             if 11 <= sh <= 14:
                 c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
+                    food_in_a_row += 1
                     messages.append(_make_insert_message(c, "Lunch window reached with no meal planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_lunch_today = True
@@ -334,12 +345,13 @@ def detect(
                     continue
 
         # Dinner insert (18:00–20:00 window) — café stops do NOT satisfy this
-        if not has_dinner_today and stop.scheduled_time:
+        if not has_dinner_today and stop.scheduled_time and food_in_a_row < 2:
             sh = int(stop.scheduled_time.split(":")[0])
             if 18 <= sh <= 20:
                 c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
+                    food_in_a_row += 1
                     messages.append(_make_insert_message(c, "Evening window reached with no dinner planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_dinner_today = True

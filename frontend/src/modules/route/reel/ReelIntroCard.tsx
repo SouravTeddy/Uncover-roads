@@ -118,7 +118,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails: _onShowTripDeta
       {card.weather?.temp != null && (
         <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, ...CHIP, background: 'rgba(9,12,22,.82)' }}>
           <span className="ms fill" style={{ fontSize: 13, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°C</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', fontFamily: 'var(--font-sans)' }}>{card.weather.condition ?? ''}</span>
         </div>
       )}
@@ -135,6 +135,13 @@ export function ReelIntroCard({ card, active, onShowTripDetails: _onShowTripDeta
 
       {/* Gradient scrim */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: REEL_SCRIM, pointerEvents: 'none' }} />
+
+      {/* Soft overlay behind bottom text for readability */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 9,
+        height: '55%', pointerEvents: 'none',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.18) 60%, transparent 100%)',
+      }} />
 
       {/* Content */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10, padding: REEL_CONTENT_PADDING_INTRO }}>

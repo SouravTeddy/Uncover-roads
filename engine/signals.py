@@ -462,12 +462,6 @@ def _sig_content(
             text += "…"
         day_state.record("content")
         return StopSignal(type="content", text=_cap_text(text, 80), icon="info", priority=7)
-    elif top_review and len(top_review) > 20:
-        snippet = top_review[:70].rstrip()
-        if len(top_review) > 70:
-            snippet += "…"
-        day_state.record("content")
-        return StopSignal(type="content", text=f'"{_cap_text(snippet, 75)}"', icon="format_quote", priority=7)
     return None
 
 
