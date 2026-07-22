@@ -415,11 +415,13 @@ function buildIntelItems(
 
 // ── Transit mode derivation ──────────────────────────────────
 
-function deriveTransitMode(distKm: number): 'flight' | 'drive' | 'train' | null {
+function deriveTransitMode(distKm: number): 'drive' | 'train' | null {
   if (distKm < 30) return null;        // same metro area — no dedicated transit card needed
   if (distKm < 80) return 'drive';
-  if (distKm < 600) return 'train';
-  return 'flight';
+  return 'train';
+  // Flight is NEVER auto-derived — it only appears from an explicit journeyLeg.
+  // Without a user-provided leg, we can't distinguish "long train" from "flight",
+  // and a wrong flight card is more jarring than a missing one.
 }
 
 

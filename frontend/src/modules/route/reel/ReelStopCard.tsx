@@ -714,7 +714,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
             )}
             {stop.isUserAdded && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 6, background: T.goldBg, border: `1px solid ${T.goldBdr}`, fontSize: 12, fontWeight: 700, color: T.gold }}>
-                ✦ You added this
+                <span className="ms" style={{ fontSize: 12 }}>bookmark</span> You added this
               </div>
             )}
             {stop.isEngineAdded && (
@@ -782,15 +782,15 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
 
             {/* Provenance label */}
             {stop.isUserAdded && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(212,168,83,.72)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'rgba(212,168,83,.72)' }}>
                 <span className="ms" style={{ fontSize: 14 }}>bookmark</span>
                 You added this
               </div>
             )}
             {stop.isEngineAdded && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'rgba(79,143,171,.72)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'rgba(79,143,171,.72)' }}>
                 <span className="ms" style={{ fontSize: 14 }}>auto_awesome</span>
-                We added this
+                Our pick
               </div>
             )}
 

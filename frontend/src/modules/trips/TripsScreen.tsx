@@ -6,8 +6,6 @@ import { deleteFavouritePin, deleteSavedEvent } from '../../shared/userSync';
 import { supabase } from '../../shared/supabase';
 import { useCityPhoto } from '../destination/useCityPhoto';
 import { formatCityLabel } from '../../shared/cityPhoto';
-import { SmartUpdates } from './SmartUpdates';
-import { RecalibrationStack } from './RecalibrationStack';
 import { ItineraryReelScreen } from '../route/reel';
 import { SavedPlacesTab } from './SavedPlacesTab';
 import { DateRangeCalendar } from '../destination/DateRangeCalendar';
@@ -71,138 +69,6 @@ function buildGoogleMapsUrl(stops: any[]): string | null {
     : base;
 }
 
-// ── Nudge Sheet ──────────────────────────────────────────────
-
-function NudgeSheet({
-  item, cityDisplayName, allStops, numDays, status, photoUrl, onClose, onPlay,
-}: {
-  item: SavedItinerary;
-  cityDisplayName: string;
-  allStops: any[];
-  numDays: number;
-  status: TripStatus;
-  photoUrl: string | null;
-  onClose: () => void;
-  onPlay: () => void;
-}) {
-  const dateLabel = item.travelDate
-    ? formatDateRange(item.travelDate, numDays)
-    : timeAgo(item.date);
-
-  const subLabel = `${dateLabel} · ${allStops.length} stop${allStops.length !== 1 ? 's' : ''}${numDays > 1 ? ` · ${numDays} days` : ''}`;
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(3px)',
-          zIndex: 50,
-        }}
-      />
-      {/* Sheet */}
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'var(--color-surface)',
-        borderRadius: '24px 24px 0 0',
-        borderTop: '1px solid var(--color-border)',
-        zIndex: 51,
-        animation: 'springUp 0.3s cubic-bezier(.32,1,.46,1) both',
-      }}>
-        {/* Handle */}
-        <div style={{ width: 34, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '10px auto 0' }} />
-
-        {/* Trip identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px 12px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-            background: 'var(--color-surface2)',
-            backgroundImage: photoUrl ? `url('${photoUrl}')` : undefined,
-            backgroundSize: 'cover', backgroundPosition: 'center',
-            overflow: 'hidden',
-          }} />
-          <div>
-            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: 'var(--color-text-1)', lineHeight: 1 }}>
-              {cityDisplayName}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--color-text-4)', marginTop: 3 }}>{subLabel}</div>
-          </div>
-        </div>
-
-        {/* Smart updates / changes */}
-        <div style={{ padding: '12px 18px' }}>
-          {status !== 'past'
-            ? <SmartUpdates trip={item} />
-            : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,255,255,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="ms" style={{ fontSize: 16, color: 'var(--color-text-4)' }}>history</span>
-                </div>
-                <span style={{ fontSize: 12, color: 'var(--color-text-4)', lineHeight: 1.45 }}>This trip is complete. Replay the reel to revisit it.</span>
-              </div>
-            )
-          }
-          <RecalibrationStack trip={item} autoRun={false} />
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '8px 18px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Primary CTA */}
-          <button
-            onClick={onPlay}
-            style={{
-              width: '100%', padding: '14px 0', borderRadius: 14,
-              border: '1px solid rgba(212,168,83,.4)',
-              background: 'rgba(212,168,83,.15)',
-              fontSize: 14, fontWeight: 700, color: 'var(--color-primary)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            }}
-          >
-            <span className="ms fill" style={{ fontSize: 16 }}>play_circle</span>
-            Open plan
-          </button>
-          {/* Secondary row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {(() => {
-              const mapsUrl = buildGoogleMapsUrl(allStops);
-              return mapsUrl ? (
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 11,
-                    border: '1px solid var(--color-border-m)',
-                    background: 'var(--color-surface)',
-                    fontSize: 12, fontWeight: 600, color: 'var(--color-text-2)',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <span className="ms" style={{ fontSize: 14, color: '#4285f4' }}>map</span>
-                  Google Maps
-                </a>
-              ) : null;
-            })()}
-            <button
-              onClick={onClose}
-              style={{
-                padding: '10px 18px', borderRadius: 11,
-                border: '1px solid var(--color-border)', background: 'none',
-                fontSize: 12, fontWeight: 600, color: 'var(--color-text-4)', cursor: 'pointer',
-              }}
-            >
-              Later
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ── Trip Card ────────────────────────────────────────────────
 
 function buildMonthGroups(items: SavedItinerary[]): { label: string; items: SavedItinerary[] }[] {
@@ -221,7 +87,6 @@ const GROUP_THRESHOLD = 5;
 
 function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const { dispatch } = useAppStore();
-  const [nudgeOpen, setNudgeOpen] = useState(false);
 
   const engineDays = (item.itinerary as any)?.days as any[] | undefined;
   const allStops: any[] = engineDays
@@ -261,7 +126,6 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const hasUnresolvedSwaps = (item.pendingSwapCards ?? []).some((c: any) => !c.resolved);
 
   function handlePlay() {
-    setNudgeOpen(false);
     dispatch({ type: 'SET_REEL_SAVED_ID', id: item.id });
     dispatch({ type: 'SET_TRIPS_TAB', tab: 'current' });
   }
@@ -346,9 +210,9 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
               </div>
             </div>
 
-            {/* Arrow button — opens nudge sheet with smart updates */}
+            {/* Arrow button — opens the reel directly */}
             <button
-              onClick={e => { e.stopPropagation(); setNudgeOpen(true); }}
+              onClick={e => { e.stopPropagation(); handlePlay(); }}
               style={{
                 flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
                 border: '1px solid rgba(255,255,255,.2)', background: 'rgba(255,255,255,.1)',
@@ -362,19 +226,6 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
           </div>
         </div>
       </div>
-
-      {nudgeOpen && (
-        <NudgeSheet
-          item={item}
-          cityDisplayName={cityDisplayName}
-          allStops={allStops}
-          numDays={numDays}
-          status={status}
-          photoUrl={photoUrl}
-          onClose={() => setNudgeOpen(false)}
-          onPlay={handlePlay}
-        />
-      )}
     </>
   );
 }

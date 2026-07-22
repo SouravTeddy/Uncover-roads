@@ -46,7 +46,7 @@ export function ReelFinaleCard({ card, active }: Props) {
 
       <h2 style={{
         fontFamily: 'var(--font-heading)', fontSize: 54, fontWeight: 700,
-        fontStyle: 'italic', color: 'var(--color-text-1)',
+        color: 'var(--color-text-1)',
         textAlign: 'center', lineHeight: 1.0, marginBottom: 20,
         animation: active ? 'fadeUp .4s .16s both' : 'none',
       }}>

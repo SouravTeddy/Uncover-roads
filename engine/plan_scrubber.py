@@ -28,6 +28,14 @@ _BLOCKED_CATEGORIES: frozenset[str] = frozenset({
     "transit_station", "subway_station", "bus_station", "train_station",
 })
 
+# Name fragments that reveal a utility regardless of how Google categorised it.
+# Checked against the normalised (ascii-lowercase) place name.
+_BLOCKED_NAME_TOKENS: frozenset[str] = frozenset({
+    "parking", "parked", "car park", "bike park",
+    "petrol", "fuel station", "gas station",
+    "atm", "cash machine",
+})
+
 
 # ── 2. Quality floor by city tier ───────────────────────────────────────────
 # CityData.tier is 1 (well-mapped) / 2 (partially mapped) / 3 (thinly mapped).
@@ -129,6 +137,12 @@ def _reject_reason(stop, seen_ids, seen_titles, min_rating, min_reviews) -> str 
     cat = (stop.category or "").lower().strip()
     if cat in _BLOCKED_CATEGORIES:
         return f"'{cat}' is not a valid tourist stop category."
+
+    # Name-based block — catches mis-categorised places (e.g. "Bike parked" tagged as "park")
+    norm_name = _normalise(stop.name)
+    for token in _BLOCKED_NAME_TOKENS:
+        if token in norm_name:
+            return f"Place name '{stop.name}' matches blocked pattern '{token}'."
 
     # ── 3. Quality floor (engine-added stops only) ─────────────────────────
     if not stop.is_user_added:
