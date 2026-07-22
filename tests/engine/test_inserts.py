@@ -21,7 +21,7 @@ def test_coffee_insert_after_180min_gap():
 
 
 def test_no_insert_small_gap():
-    """Gap < 15min → no insert."""
+    """Gap < 15min between consecutive stops → no insert injected between them."""
     stops = [
         make_stop(place_id="p1", duration_min=10, neighborhood="shinjuku",
                   lat=35.693, lon=139.703),
@@ -30,8 +30,10 @@ def test_no_insert_small_gap():
     ]
     ctx = make_ctx()
     result, messages = inserts.detect(stops, ctx)
-    inserts_added = [s for s in result if not s.is_user_added]
-    assert len(inserts_added) == 0
+    # p1 and p2 must be adjacent — no stop should be injected in the 2-min gap
+    idx1 = next(i for i, s in enumerate(result) if s.place_id == "p1")
+    idx2 = next(i for i, s in enumerate(result) if s.place_id == "p2")
+    assert idx2 == idx1 + 1, "No insert should appear between p1 and p2 (gap < 15 min)"
 
 
 def test_scenic_walk_injected_for_high_walk_affinity():

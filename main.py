@@ -4752,6 +4752,8 @@ async def build_itinerary_endpoint(
     )
 
     result = await build_itinerary(engine_stops, ctx)
+    from engine.plan_scrubber import scrub as _scrub
+    result = _scrub(result, ctx)
 
     return {
         "generation_id": result.generation_id,
@@ -5602,6 +5604,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             neighborhood=None,
             is_user_added=True,
             city=p.city or body.city,
+            rating_count=_pre_details_map.get(p.place_id or p.id, {}).get("rating_count"),
         )
         for p in body.selectedPlaces
     ]
@@ -5617,6 +5620,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
     )
 
     result = await build_itinerary(engine_stops, ctx)
+    from engine.plan_scrubber import scrub as _scrub
+    result = _scrub(result, ctx)
 
     # Inject short-trip warning when selected stops clearly underfill the trip
     _stops_per_day = len(engine_stops) / max(days, 1)

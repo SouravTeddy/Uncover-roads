@@ -26,6 +26,8 @@ class EngineStop:
     type: str | None = None                    # 'coffee'|'lunch'|'scenic_walk'|'rest'
     tags: list = field(default_factory=list)
     city: str | None = None                    # city this stop belongs to (multi-city trips)
+    rating_count: int | None = None            # Google user_ratings_total — used by plan scrubber
+    time_of_day_match: list[str] = field(default_factory=list)  # declared valid time windows, e.g. ['morning','afternoon']
 
     @property
     def outdoor(self) -> bool:

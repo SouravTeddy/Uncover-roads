@@ -339,6 +339,7 @@ def apply_swapper(
                 is_user_added=False,
                 scheduled_time=stop.scheduled_time,
                 city=stop.city,
+                rating_count=best_ic.rating_count,
             )
             day.stops[i] = replacement
             all_place_ids.discard(stop.place_id)

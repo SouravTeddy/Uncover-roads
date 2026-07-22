@@ -143,6 +143,8 @@ def _candidate_to_stop(c: InsertCandidate, city: str | None = None) -> EngineSto
         is_user_added=False,
         type=c.type,
         city=city,
+        rating_count=c.rating_count,
+        time_of_day_match=list(c.time_of_day_match or []),
     )
 
 
