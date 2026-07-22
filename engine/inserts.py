@@ -148,11 +148,40 @@ def _candidate_to_stop(c: InsertCandidate, city: str | None = None) -> EngineSto
     )
 
 
-def _make_insert_message(candidate: InsertCandidate, reason: str) -> EngineMessage:
+def _time_of_day_ctx(time_str: str | None) -> str:
+    """Returns a time-of-day sentence for the narrator to write time-appropriate prose."""
+    if not time_str:
+        return ""
+    try:
+        h = int(time_str.split(":")[0])
+    except (ValueError, IndexError):
+        return ""
+    if h < 12:
+        return " It's morning."
+    if h < 17:
+        return " It's afternoon."
+    if h < 21:
+        return " It's evening."
+    return " It's night."
+
+
+def _add_min_to_time(time_str: str | None, minutes: int) -> str | None:
+    """'09:30' + 90 → '11:00'"""
+    if not time_str:
+        return None
+    try:
+        h, m = (int(x) for x in time_str.split(":"))
+        total = h * 60 + m + minutes
+        return f"{total // 60:02d}:{total % 60:02d}"
+    except (ValueError, IndexError):
+        return None
+
+
+def _make_insert_message(candidate: InsertCandidate, reason: str, estimated_time: str | None = None) -> EngineMessage:
     return EngineMessage(
         type="insert",
         what=f"Added {candidate.name} ({candidate.type}) to your itinerary.",
-        why=reason,
+        why=reason + _time_of_day_ctx(estimated_time),
         consequence=f"This adds ~{candidate.time_cost_min} minutes to your day.",
         dismissable=True,
         undo_key=f"insert_{candidate.place_id}",
@@ -247,12 +276,14 @@ def detect(
 
         # Coffee/café insert — fires when no rest break since persona-scaled gap.
         # Uses time-window only; mins_since_rest resets naturally when a café is encountered.
+        _insert_est_time = _add_min_to_time(stop.scheduled_time, stop.duration_min)
+
         if mins_since_rest >= coffee_gap_min:
             c = _best_candidate("coffee", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
                 coffee_reason = "No break yet today." if mins_since_rest >= 600 else f"No break in the last {mins_since_rest // 60}h {mins_since_rest % 60}m."
-                messages.append(_make_insert_message(c, coffee_reason))
+                messages.append(_make_insert_message(c, coffee_reason, estimated_time=_insert_est_time))
                 seen_ids.add(c.place_id)
                 mins_since_rest = 0
                 consecutive = 0
@@ -271,7 +302,7 @@ def detect(
                 c = _best_candidate("scenic_walk", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Scenic route detected between neighborhoods."))
+                    messages.append(_make_insert_message(c, "Scenic route detected between neighborhoods.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     consecutive = 0
                     continue
@@ -283,7 +314,7 @@ def detect(
                 c = _best_candidate("breakfast", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Morning window reached with no breakfast planned."))
+                    messages.append(_make_insert_message(c, "Morning window reached with no breakfast planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_breakfast_today = True
                     consecutive = 0
@@ -296,7 +327,7 @@ def detect(
                 c = _best_candidate("lunch", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Lunch window reached with no meal planned."))
+                    messages.append(_make_insert_message(c, "Lunch window reached with no meal planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_lunch_today = True
                     consecutive = 0
@@ -309,7 +340,7 @@ def detect(
                 c = _best_candidate("dinner", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
                 if c:
                     result.append(_candidate_to_stop(c, city=stop.city))
-                    messages.append(_make_insert_message(c, "Evening window reached with no dinner planned."))
+                    messages.append(_make_insert_message(c, "Evening window reached with no dinner planned.", estimated_time=_insert_est_time))
                     seen_ids.add(c.place_id)
                     has_dinner_today = True
                     consecutive = 0
@@ -320,7 +351,7 @@ def detect(
             c = _best_candidate("rest", ctx, mid_lat, mid_lon, seen_ids, anchor_city=stop.city)
             if c:
                 result.append(_candidate_to_stop(c, city=stop.city))
-                messages.append(_make_insert_message(c, f"You've visited {consecutive} stops without a break."))
+                messages.append(_make_insert_message(c, f"You've visited {consecutive} stops without a break.", estimated_time=_insert_est_time))
                 seen_ids.add(c.place_id)
                 mins_since_rest = 0
                 consecutive = 0
@@ -333,7 +364,8 @@ def detect(
         c = _best_candidate("dinner", ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
         if c:
             result.append(_candidate_to_stop(c, city=last.city))
-            messages.append(_make_insert_message(c, "No restaurant in your plan — added dinner to close the day."))
+            _dinner_est = _add_min_to_time(last.scheduled_time, last.duration_min)
+            messages.append(_make_insert_message(c, "No restaurant in your plan — added dinner to close the day.", estimated_time=_dinner_est))
             seen_ids.add(c.place_id)
 
     # Early-day gap fill: if the day ends before _EARLY_DAY_CUTOFF_HOUR (15:00) and the user
@@ -352,7 +384,8 @@ def detect(
                     c = _best_candidate("coffee", ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
                     if c:
                         result.append(_candidate_to_stop(c, city=last.city))
-                        messages.append(_make_insert_message(c, "Added a break to fill your afternoon."))
+                        _fill_est = _add_min_to_time(last.scheduled_time, last.duration_min)
+                        messages.append(_make_insert_message(c, "Added a break to fill your afternoon.", estimated_time=_fill_est))
                         seen_ids.add(c.place_id)
                         last = result[-1]
                         fills += 1
@@ -364,7 +397,8 @@ def detect(
                     c = _best_candidate(fill_type, ctx, last.lat, last.lon, seen_ids, anchor_city=last.city)
                     if c:
                         result.append(_candidate_to_stop(c, city=last.city))
-                        messages.append(_make_insert_message(c, "Added an afternoon stop to fill your day."))
+                        _fill_est = _add_min_to_time(last.scheduled_time, last.duration_min)
+                        messages.append(_make_insert_message(c, "Added an afternoon stop to fill your day.", estimated_time=_fill_est))
                         seen_ids.add(c.place_id)
                         last = result[-1]
                         fills += 1

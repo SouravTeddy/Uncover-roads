@@ -250,20 +250,18 @@ def _sig_crowd(
     if not day_state.can_fire("crowd"):
         return None
     cps = _crowd_pressure(stop, ctx, date_str, popular_times)
-    h, _ = _parse_hm(stop.scheduled_time) if stop.scheduled_time else (12, 0)
-    arrive = stop.scheduled_time or "?"
 
     if cps < 0.25:
-        text = f"Quiet window at {arrive} — you'll have space here"
+        text = "Quiet window — you'll have space here"
         icon = "groups"
     elif cps < 0.5:
-        text = f"Light crowds at {arrive} — solid timing"
+        text = "Light crowds — solid timing"
         icon = "groups"
     elif cps < 0.75:
-        text = f"Moderate traffic at {arrive} — build in 15 extra min"
+        text = "Moderate traffic — build in 15 extra min"
         icon = "warning"
     else:
-        text = f"Peak crowd window at {arrive} — arrive early or push later"
+        text = "Peak crowd window — arrive early or push later"
         icon = "warning"
 
     day_state.record("crowd")
