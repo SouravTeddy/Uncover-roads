@@ -178,10 +178,17 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
   const tripDetailsRef = useRef<TripDetails | null>(savedItem?.tripDetails ?? state.pendingTripDetails ?? null);
+  // Refs for async callbacks — avoids stale closures in lazy-fetch and write-back
+  const reelSavedIdRef = useRef(reelSavedId);
+  const activeItineraryRef = useRef(activeItinerary);
+  // True when this reel was opened from TripsScreen (vs freshly built) — write-back is safe
+  const isReopenedSavedTripRef = useRef(!!savedItem);
 
   useEffect(() => { weatherByCityRef.current = weatherByCity; }, [weatherByCity]);
   useEffect(() => { personaNameRef.current = personaName; }, [personaName]);
   useEffect(() => { tripDetailsRef.current = savedItem?.tripDetails ?? state.pendingTripDetails ?? null; }, [savedItem?.tripDetails, state.pendingTripDetails]);
+  useEffect(() => { reelSavedIdRef.current = reelSavedId; }, [reelSavedId]);
+  useEffect(() => { activeItineraryRef.current = activeItinerary; }, [activeItinerary]);
 
   function buildFiltered(
     itinerary: typeof activeItinerary,
@@ -316,6 +323,25 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       }
       setResolvedStopImages(newStopImages);
 
+      // Persist resolved imageUrls into the saved itinerary so re-opens are instant.
+      // Run before setCards so the store is updated before scenic enrichment can overwrite.
+      const savedIdAtBuild = reelSavedIdRef.current;
+      if (savedIdAtBuild && newStopImages.size > 0) {
+        dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedIdAtBuild, patch: {
+          itinerary: {
+            ...activeItinerary,
+            days: (activeItinerary.days ?? []).map(d => ({
+              ...d,
+              stops: (d.stops ?? []).map(s =>
+                !s.imageUrl && s.title && newStopImages.has(s.title)
+                  ? { ...s, imageUrl: newStopImages.get(s.title)! }
+                  : s
+              ),
+            })),
+          } as any,
+        }});
+      }
+
       // Build cards — backend already injected reco stops into the itinerary
       setLoadingStep(1);
       const filtered = buildFiltered(
@@ -384,10 +410,11 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // Keep a live snapshot of cards for the lazy-fetch effect (avoids stale closure)
   useEffect(() => { cardsDataRef.current = cards; }, [cards]);
 
-  // Lazy-fetch images for the next 3 stop cards as the user scrolls
+  // Lazy-fetch images for the current card and next 3 stop cards as the user scrolls
   useEffect(() => {
     if (!imagesReady) return;
-    const upcoming = cardsDataRef.current.slice(activeIdx + 1, activeIdx + 4);
+    // Include activeIdx so the very first card always gets an image
+    const upcoming = cardsDataRef.current.slice(activeIdx, activeIdx + 4);
     for (const card of upcoming) {
       if (card.type !== 'stop') continue;
       const { stop } = card;
@@ -407,6 +434,23 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
               ? { ...c, stop: { ...c.stop, imageUrl: url } }
               : c
           ));
+          // Write imageUrl back into the saved itinerary so future re-opens don't re-fetch.
+          // Only for re-opened saved trips — new builds use scenic enrichment which owns setCards.
+          const savedId = reelSavedIdRef.current;
+          const itin = activeItineraryRef.current;
+          if (isReopenedSavedTripRef.current && savedId && itin) {
+            dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: savedId, patch: {
+              itinerary: {
+                ...itin,
+                days: (itin.days ?? []).map(d => ({
+                  ...d,
+                  stops: (d.stops ?? []).map(s =>
+                    s.title === stop.title && !s.imageUrl ? { ...s, imageUrl: url } : s
+                  ),
+                })),
+              } as any,
+            }});
+          }
         })
         .catch(() => {});
     }
