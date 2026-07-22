@@ -30,10 +30,15 @@ function loadImgCache(): Map<string, string> {
   try { return new Map(Object.entries(JSON.parse(localStorage.getItem(IMG_CACHE_KEY) ?? '{}'))) as Map<string, string>; }
   catch { return new Map(); }
 }
-function appendImgCache(title: string, url: string): void {
+// Key by placeId when available — title-only keys are ambiguous across cities/trips
+function imgCacheKey(placeId: string | undefined | null, title: string): string {
+  return placeId ? `pid:${placeId}` : `title:${title}`;
+}
+function appendImgCache(placeId: string | undefined | null, title: string, url: string): void {
   try {
     const obj = JSON.parse(localStorage.getItem(IMG_CACHE_KEY) ?? '{}');
-    obj[title] = url;
+    obj[imgCacheKey(placeId, title)] = url;
+    obj[`title:${title}`] = url; // legacy key for backward compat reads
     localStorage.setItem(IMG_CACHE_KEY, JSON.stringify(obj));
   } catch { /* ignore */ }
 }
@@ -221,6 +226,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // saved trips because the itinerary's own imageUrl may have been wiped by Supabase sync.
     const mergedImages = new Map([...imgCacheRef.current, ...stopImages]);
 
+    // Helper: look up image by placeId first (exact), then by title (legacy fallback)
+    const getCachedImage = (placeId: string | undefined | null, title: string) =>
+      (placeId ? mergedImages.get(`pid:${placeId}`) : undefined)
+      ?? mergedImages.get(`title:${title}`)
+      ?? mergedImages.get(title); // pre-existing cache entries without prefix
+
     // Dedup stops globally across days — guards against backend sending the same
     // place_id on multiple days (can happen when inserts have a null place_id gap
     // or the swapper picks a replacement already used on another day).
@@ -242,11 +253,11 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       ...balancedItinerary!,
       days: dedupedDays.map(day => ({
         ...day,
-        stops: day.stops.map(stop =>
-          (!stop.imageUrl && mergedImages.has(stop.title))
-            ? { ...stop, imageUrl: mergedImages.get(stop.title)! }
-            : stop
-        ),
+        stops: day.stops.map(stop => {
+          if (stop.imageUrl) return stop;
+          const url = getCachedImage(stop.placeId, stop.title);
+          return url ? { ...stop, imageUrl: url } : stop;
+        }),
       })),
     };
 
@@ -255,7 +266,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // Also patch any stop cards that still have no image (title-lookup fallback)
     for (const card of built) {
       if (card.type === 'stop' && !card.stop.imageUrl) {
-        const url = mergedImages.get(card.stop.title);
+        const url = getCachedImage(card.stop.placeId, card.stop.title);
         if (url) card.stop.imageUrl = url;
       }
     }
@@ -304,6 +315,13 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       lazyFetchedRef.current = new Set();
       lazyUsedUrlsRef.current = new Set();
 
+      // Seed used-URLs set from images already in cards so lazy-fetch can't reuse them
+      for (const day of activeItinerary.days ?? []) {
+        for (const s of day.stops ?? []) {
+          if (s.imageUrl) lazyUsedUrlsRef.current.add(s.imageUrl);
+        }
+      }
+
       // Eager batch: only first 10 stops without images — rest lazy-load on scroll
       const stopsNeedingImages = (activeItinerary.days ?? []).flatMap(d =>
         (d.stops ?? [])
@@ -347,12 +365,14 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
       // Store resolved stop images so enrichment rebuilds keep them
       const newStopImages = new Map<string, string>();
+      const eagerStopsByTitle = new Map(stopsNeedingImages.map(({ stop }) => [stop.title, stop]));
       for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
         if (r.url) {
           newStopImages.set(r.title, r.url);
-          // Persist to the image cache so saved-trip re-opens survive Supabase sync overwrites
-          imgCacheRef.current.set(r.title, r.url);
-          appendImgCache(r.title, r.url);
+          const stop = eagerStopsByTitle.get(r.title);
+          // Persist to image cache keyed by placeId (exact) + title (legacy)
+          imgCacheRef.current.set(imgCacheKey(stop?.placeId, r.title), r.url);
+          appendImgCache(stop?.placeId, r.title, r.url);
           lazyUsedUrlsRef.current.add(r.url); // seed dedup set so lazy-fetch won't reuse
         }
       }
@@ -439,22 +459,31 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       if (lazyFetchedRef.current.has(stop.title)) continue;
       lazyFetchedRef.current.add(stop.title);
       const city = stop.city ?? lazyPrimaryCity.current;
-      api.placeImage(stop.title, city, stop.placeId ?? undefined)
-        .then(url => {
-          if (!url) return;
-          // Skip if this exact URL is already used by another card (prevents duplicates)
-          if (lazyUsedUrlsRef.current.has(url)) return;
-          lazyUsedUrlsRef.current.add(url);
-          // Persist to the image cache — survives Supabase sync which can wipe itinerary imageUrls
-          imgCacheRef.current.set(stop.title, url);
-          appendImgCache(stop.title, url);
-          setCards(prev => prev.map(c =>
-            c.type === 'stop' && c.stop.title === stop.title && !c.stop.imageUrl
-              ? { ...c, stop: { ...c.stop, imageUrl: url } }
-              : c
-          ));
-        })
-        .catch(() => {});
+      const attemptFetch = (isRetry: boolean) => {
+        api.placeImage(stop.title, city, stop.placeId ?? undefined)
+          .then(url => {
+            if (!url) {
+              // Retry once at 1.5s — backend may have been slow or Google hit a transient error
+              if (!isRetry) setTimeout(() => attemptFetch(true), 1500);
+              return;
+            }
+            // Skip if this exact URL is already used by another card (prevents duplicates)
+            if (lazyUsedUrlsRef.current.has(url)) return;
+            lazyUsedUrlsRef.current.add(url);
+            // Persist to image cache keyed by placeId (exact) + title (legacy)
+            imgCacheRef.current.set(imgCacheKey(stop.placeId, stop.title), url);
+            appendImgCache(stop.placeId, stop.title, url);
+            setCards(prev => prev.map(c =>
+              c.type === 'stop' && c.stop.title === stop.title && !c.stop.imageUrl
+                ? { ...c, stop: { ...c.stop, imageUrl: url } }
+                : c
+            ));
+          })
+          .catch(() => {
+            if (!isRetry) setTimeout(() => attemptFetch(true), 1500);
+          });
+      };
+      attemptFetch(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIdx, imagesReady]);

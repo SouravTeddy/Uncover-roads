@@ -116,7 +116,7 @@ export function ReelIntroCard({ card, active, onShowTripDetails: _onShowTripDeta
 
       {/* Weather pill */}
       {card.weather?.temp != null && (
-        <div style={{ position: 'absolute', top: 48, left: 13, zIndex: 11, ...CHIP, background: 'rgba(9,12,22,.82)' }}>
+        <div style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top, 0px) + 68px)', left: 13, zIndex: 11, ...CHIP, background: 'rgba(9,12,22,.82)' }}>
           <span className="ms fill" style={{ fontSize: 13, color: '#38bdf8' }}>{WEATHER_ICON[card.weather.condition?.toLowerCase() ?? ''] ?? 'wb_sunny'}</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'var(--font-sans)' }}>{card.weather.temp}°C</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', fontFamily: 'var(--font-sans)' }}>{card.weather.condition ?? ''}</span>

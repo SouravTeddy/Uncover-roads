@@ -59,7 +59,7 @@ export function MapLoadingOverlay({ visible }: { visible: boolean }) {
     >
       <div
         style={{
-          background: 'rgba(15,20,30,0.93)',
+          background: 'rgba(var(--color-bg-raw), 0.93)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           border: '1px solid var(--color-border-m)',

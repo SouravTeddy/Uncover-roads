@@ -38,7 +38,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           padding: '20px 20px 32px',
         }}
       >
-        <div style={{ width: 36, height: 4, borderRadius: 99, background: 'rgba(255,255,255,.12)', margin: '0 auto 20px' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '0 auto 20px' }} />
 
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8 }}>
           A heads up
@@ -58,8 +58,8 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           />
           <div style={{
             width: 20, height: 20, borderRadius: 6, flexShrink: 0,
-            border: checked ? 'none' : '1.5px solid rgba(255,255,255,.2)',
-            background: checked ? 'var(--color-primary)' : 'rgba(255,255,255,.04)',
+            border: checked ? 'none' : '1.5px solid var(--color-border)',
+            background: checked ? 'var(--color-primary)' : 'var(--color-surface2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'all .15s',
           }}>
@@ -69,7 +69,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
               </span>
             )}
           </div>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', lineHeight: 1.5 }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text-2)', lineHeight: 1.5 }}>
             I understand some content is AI-generated and may need verification
           </span>
         </label>
@@ -79,10 +79,10 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           disabled={!checked}
           style={{
             width: '100%', height: 48, borderRadius: 14,
-            background: checked ? 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))' : 'rgba(255,255,255,.08)',
+            background: checked ? 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dk))' : 'var(--color-surface2)',
             border: 'none',
             fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700,
-            color: checked ? 'var(--color-bg)' : 'rgba(255,255,255,.25)',
+            color: checked ? 'var(--color-bg)' : 'var(--color-text-3)',
             cursor: checked ? 'pointer' : 'not-allowed',
             transition: 'all .2s',
           }}
@@ -90,7 +90,7 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           Continue
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,.25)', marginTop: 10 }}>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-text-3)', marginTop: 10 }}>
           Won't show again after this
         </p>
       </div>

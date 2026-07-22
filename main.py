@@ -1858,13 +1858,36 @@ def _cache_photo_ref_bg(pid: str, photo_ref: str) -> None:
 @app.get("/place-image")
 def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query(default="")):
     """
-    Resolve an image for a named place. When Google Text Search succeeds and a
-    place ID is supplied (pid), the found photo_ref is written back to the
-    map_data_cache tile in the background so the next load skips this call.
+    Resolve an image for a named place.
+    Resolution order:
+      1. New Places API by place_id (exact match — no name ambiguity)
+      2. Old Places Text Search (fallback when no pid or step 1 fails)
+      3. Wikipedia thumbnail
+      4. Wikimedia Commons
+    When a pid is known, step 1 guarantees we fetch photos for THAT specific place,
+    preventing wrong images from name-based text search collisions.
     """
     VALID_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 
-    # 1. Google Places Text Search — most accurate for specific venues
+    # 1. New Places API by place_id — exact, no name-collision risk
+    if pid and GOOGLE_PLACES_API_KEY:
+        try:
+            details = requests.get(
+                f"https://places.googleapis.com/v1/places/{pid}",
+                params={"fields": "photos"},
+                headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY},
+                timeout=5,
+            ).json()
+            photos = details.get("photos", [])
+            if photos:
+                fresh_name = photos[0]["name"]
+                import threading
+                threading.Thread(target=_cache_photo_ref_bg, args=(pid, fresh_name), daemon=True).start()
+                return {"image": f"/place-photo?photo_ref={fresh_name}&max_width=800"}
+        except Exception as e:
+            print(f"[place-image] new Places API by pid failed for {pid}: {e}")
+
+    # 2. Google Places Text Search — fallback when no pid or step 1 returned no photos
     if GOOGLE_PLACES_API_KEY:
         try:
             ts = requests.get(
@@ -5057,10 +5080,59 @@ def _resolve_reco_trigger(
         "culture":    (540,  960),   # 09:00 – 16:00
         "famous_spots": (540, 960),
     }
-    # Place types that should never be recommended
-    _EXCLUDED_TYPES = {"lodging", "local_government_office", "political",
-                       "community_center", "neighborhood", "sublocality",
-                       "administrative_area_level_1", "administrative_area_level_2"}
+    # Place types that should never be recommended — unless co-typed as tourist_attraction or landmark
+    _EXCLUDED_TYPES = {
+        # Admin / political
+        "lodging", "local_government_office", "political", "community_center",
+        "neighborhood", "sublocality",
+        "administrative_area_level_1", "administrative_area_level_2",
+        # Transportation
+        "parking", "gas_station", "transit_station", "bus_station",
+        "train_station", "subway_station", "taxi_stand", "airport",
+        "car_rental", "car_repair", "car_wash", "car_dealer",
+        # Home services / contractors
+        "electrician", "plumber", "locksmith", "roofing_contractor",
+        "moving_company", "painter", "general_contractor", "storage",
+        # Professional services
+        "accounting", "lawyer", "insurance_agency", "real_estate_agency",
+        # Healthcare (non-tourist)
+        "doctor", "dentist", "physiotherapist", "veterinary_care",
+        "hospital", "pharmacy",
+        # Finance
+        "atm", "bank", "finance",
+        # Non-destination retail
+        "hardware_store", "home_goods_store", "furniture_store",
+        "bicycle_store",
+        # Other
+        "funeral_home",
+    }
+    # Blocked types are allowed when the place is also tagged as a destination
+    _DESTINATION_TYPES = {"tourist_attraction", "landmark", "point_of_interest"}
+
+    _NAME_BLOCK_TERMS = {
+        # Adult content
+        "adult", "xxx", "erotic", " nude", "strip club",
+        "gentleman's club", "bordello", "escort", "pornograph",
+        # Industrial / corporate (space-prefixed to avoid false positives)
+        " ltd", " limited", " pvt", " inc.", " corp.", " industries",
+        " steelage", " steel works", " manufacturing", " factory",
+        " cement", " chemicals", " petroleum", " refinery",
+        # Weapons
+        "gun shop", "firearms store", "ammunition store", "arms dealer",
+        # Drug paraphernalia (dispensary intentionally excluded — legal in many destinations)
+        "head shop",
+    }
+
+    def _place_is_allowed(place: dict) -> bool:
+        place_types = set(place.get("types") or [])
+        name = (place.get("name") or "").lower()
+        # Industrial/adult name check — always blocks regardless of tourist tag
+        if any(term in name for term in _NAME_BLOCK_TERMS):
+            return False
+        # Destination co-type bypass: a historic train station or famous hospital is fine
+        if place_types & _EXCLUDED_TYPES:
+            return bool(place_types & _DESTINATION_TYPES)
+        return True
 
     trig = trigger["trigger"]
     # Persona-aware type selection when signal is available
@@ -5092,9 +5164,11 @@ def _resolve_reco_trigger(
                 pid = place.get("place_id", "")
                 if not pid or pid in existing_place_ids:
                     continue
-                place_types = set(place.get("types") or [])
-                if place_types & _EXCLUDED_TYPES:
+                if not _place_is_allowed(place):
                     continue
+                user_ratings = place.get("user_ratings_total") or 0
+                if user_ratings < 5:
+                    continue  # filter places with almost no reviews
                 rating = place.get("rating") or 0
                 score = rating / 5.0
                 if score > best_score:

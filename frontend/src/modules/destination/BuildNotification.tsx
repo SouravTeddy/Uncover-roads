@@ -59,7 +59,7 @@ export function BuildNotification({ activeBuild }: Props) {
       <>
         <style>{`@keyframes buildPulse { 0%,100%{opacity:1} 50%{opacity:.35} }`}</style>
         <div style={outer}>
-          <div style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(212,168,83,0.28)' }}>
+          <div style={{ ...card, background: 'rgba(var(--color-bg-raw), 0.88)', border: '1px solid rgba(212,168,83,0.28)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-primary)', animation: 'buildPulse 1.4s ease-in-out infinite', flexShrink: 0 }} />
             <span style={{ flex: 1, fontSize: 16, fontWeight: 700, fontFamily: "'Playfair Display', serif", color: 'var(--color-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Building your plan{countdown ? ` · ${countdown}` : ''}
@@ -85,7 +85,7 @@ export function BuildNotification({ activeBuild }: Props) {
           tabIndex={0}
           onClick={() => dispatch({ type: 'CLEAR_ACTIVE_BUILD' })}
           onKeyDown={e => e.key === 'Enter' && dispatch({ type: 'CLEAR_ACTIVE_BUILD' })}
-          style={{ ...card, background: 'rgba(14,18,28,0.88)', border: '1px solid rgba(180,60,60,0.3)', cursor: 'pointer' }}
+          style={{ ...card, background: 'rgba(var(--color-bg-raw), 0.88)', border: '1px solid rgba(180,60,60,0.3)', cursor: 'pointer' }}
         >
           <span style={{ fontSize: 13, flexShrink: 0 }}>⚠</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#c87070' }}>Build failed · tap to dismiss</span>
