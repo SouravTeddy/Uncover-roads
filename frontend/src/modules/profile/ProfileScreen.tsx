@@ -82,6 +82,7 @@ export function ProfileScreen() {
     localStorage.removeItem('ur_gen_count');
     localStorage.removeItem('ur_notif_prefs');
     localStorage.removeItem('ur_units');
+    localStorage.removeItem('ur_raw_ob_answers');
     dispatch({ type: 'GO_TO', screen: 'login' });
   }
 

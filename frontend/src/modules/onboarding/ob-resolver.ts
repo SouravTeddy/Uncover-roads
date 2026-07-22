@@ -2,6 +2,7 @@ import type {
   RawOBAnswers, PersonaProfile, ResolvedConflict,
   SocialFlag, DietaryFlag, VenueType, OBDayOpen, OBEvening,
 } from '../../shared/types';
+import { resolvePersonaKey } from '../persona/persona-resolver';
 import {
   detectHardConflict, ANSWER_WEIGHTS, DIETARY_FLAG_MAP,
 } from './ob-conflict-map';
@@ -120,7 +121,7 @@ export function resolveOBAnswers(
     evening_end_time: eveningWeights.evening_end_time,
     social_flags,
     dietary,
-    archetype:        'wanderer', // resolved server-side; placeholder for client
+    archetype:        resolvePersonaKey(raw),
     resolved_conflicts: conflicts,
     auto_blend:       autoBlend,
   };

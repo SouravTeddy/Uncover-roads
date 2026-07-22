@@ -771,7 +771,7 @@ export function MapScreen() {
           cursor: 'pointer', padding: 0,
         }}
       >
-        <span className="ms text-text-2 text-base">arrow_back</span>
+        <span className="ms text-base" style={{ color: '#fff' }}>arrow_back</span>
       </button>
 
       {/* Place search bar — between back button and city label */}

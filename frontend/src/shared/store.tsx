@@ -217,6 +217,15 @@ function getStoredPersona(): Persona | null {
   }
 }
 
+function getStoredRawOBAnswers(): RawOBAnswers | null {
+  try {
+    const stored = localStorage.getItem('ur_raw_ob_answers');
+    return stored ? (JSON.parse(stored) as RawOBAnswers) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getStoredPersonaProfile(): PersonaProfile | null {
   try {
     const stored = localStorage.getItem('ur_persona_profile');
@@ -314,7 +323,7 @@ export const initialState: AppState = {
   currentScreen: getInitialScreen(),
   screenStack: [getInitialScreen()],
   obAnswers: defaultObAnswers,
-  rawOBAnswers: null,
+  rawOBAnswers: getStoredRawOBAnswers(),
   personaProfile: getStoredPersonaProfile(),
   obPreResolved: [],
   persona: getStoredPersona(),
@@ -713,17 +722,17 @@ export function reducer(state: AppState, action: Action): AppState {
         travelEndDate: null, route: null, weather: null,
       };
 
-    case 'SET_RAW_OB_ANSWER':
-      return {
-        ...state,
-        rawOBAnswers: {
-          ...(state.rawOBAnswers ?? {
-            group: null, mood: [], pace: [], day_open: null,
-            dietary: [], budget: null, evening: null,
-          }),
-          [action.key]: action.value,
-        } as RawOBAnswers,
-      };
+    case 'SET_RAW_OB_ANSWER': {
+      const updatedRawOB: RawOBAnswers = {
+        ...(state.rawOBAnswers ?? {
+          group: null, mood: [], pace: [], day_open: null,
+          dietary: [], budget: null, evening: null,
+        }),
+        [action.key]: action.value,
+      } as RawOBAnswers;
+      try { localStorage.setItem('ur_raw_ob_answers', JSON.stringify(updatedRawOB)); } catch { /* ignore */ }
+      return { ...state, rawOBAnswers: updatedRawOB };
+    }
 
     case 'SET_OB_PRE_RESOLVED':
       return { ...state, obPreResolved: action.value };
