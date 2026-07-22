@@ -70,7 +70,7 @@ def _best_candidate(
     # Tokyo but tight enough to exclude international candidates (Paris from Tokyo).
     all_typed = [c for c in ctx.city.insert_candidates if c.type == type_]
     if seen_ids:
-        all_typed = [c for c in all_typed if c.place_id not in seen_ids]
+        all_typed = [c for c in all_typed if c.place_id and c.place_id not in seen_ids]
 
     if anchor_city:
         city_matched = [c for c in all_typed if c.city == anchor_city]
@@ -88,7 +88,7 @@ def _best_candidate(
             c for c in ctx.city.insert_candidates if c.type in _DINNER_FALLBACK_TYPES
         ]
         if seen_ids:
-            all_food = [c for c in all_food if c.place_id not in seen_ids]
+            all_food = [c for c in all_food if c.place_id and c.place_id not in seen_ids]
         if anchor_city:
             city_matched_food = [c for c in all_food if c.city == anchor_city]
             candidates = city_matched_food if city_matched_food else [

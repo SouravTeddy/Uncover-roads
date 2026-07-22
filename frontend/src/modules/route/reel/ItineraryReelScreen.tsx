@@ -221,11 +221,26 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // saved trips because the itinerary's own imageUrl may have been wiped by Supabase sync.
     const mergedImages = new Map([...imgCacheRef.current, ...stopImages]);
 
+    // Dedup stops globally across days — guards against backend sending the same
+    // place_id on multiple days (can happen when inserts have a null place_id gap
+    // or the swapper picks a replacement already used on another day).
+    const seenPlaceIds = new Set<string>();
+    const dedupedDays = balancedItinerary!.days.map(day => ({
+      ...day,
+      stops: day.stops.filter(stop => {
+        const pid = stop.placeId;
+        if (!pid) return true; // keep stops without a placeId — can't dedup by id
+        if (seenPlaceIds.has(pid)) return false;
+        seenPlaceIds.add(pid);
+        return true;
+      }),
+    }));
+
     // Pre-inject resolved stop images so scenic cards (built inside buildReelCards)
     // also get originPhotoUrl/destPhotoUrl from stops that lacked photoRef at save time.
     const itineraryForBuild = {
       ...balancedItinerary!,
-      days: balancedItinerary!.days.map(day => ({
+      days: dedupedDays.map(day => ({
         ...day,
         stops: day.stops.map(stop =>
           (!stop.imageUrl && mergedImages.has(stop.title))
@@ -453,18 +468,29 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     el.scrollTop = activeIdxRef.current * el.clientHeight;
   }, [cards]);
 
-  // Enrichment-only updates — when weatherByCity or personaName arrive.
-  // Do NOT set restoreScrollRef here: these don't change card count, so scrollTop is
-  // already correct. Touching scrollTop mid-swipe is what causes "same card again" bug.
+  // Deferred enrichment rebuild — avoids calling setCards mid-swipe which causes
+  // iOS scroll-snap to re-snap to the wrong card ("same card again" bug).
+  const isScrollingRef = useRef(false);
+  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingEnrichmentRef = useRef<ReelCard[] | null>(null);
+
+  function applyEnrichment(newCards: ReelCard[]) {
+    if (isScrollingRef.current) {
+      pendingEnrichmentRef.current = newCards;
+    } else {
+      setCards(newCards);
+    }
+  }
+
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weatherByCity, personaName));
+    applyEnrichment(buildFiltered(activeItinerary, weatherByCity, personaName));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weatherByCity, personaName]);
 
   useEffect(() => {
     if (!activeItinerary || cards.length === 0) return;
-    setCards(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
+    applyEnrichment(buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current, cityPhotoMap));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityPhotoMap]);
 
@@ -540,11 +566,29 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       }
     };
     // RAF-debounce collapses many scroll events per frame into one update,
-    // preventing mid-snap re-renders that can cause iOS scroll-snap to get stuck
+    // preventing mid-snap re-renders that can cause iOS scroll-snap to get stuck.
+    // Also tracks scroll activity so enrichment setCards calls are deferred until
+    // the snap settles — prevents "same card appears again" on swipe.
     let rafId = 0;
-    const handleScroll = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
+    const handleScroll = () => {
+      isScrollingRef.current = true;
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+        if (pendingEnrichmentRef.current) {
+          setCards(pendingEnrichmentRef.current);
+          pendingEnrichmentRef.current = null;
+        }
+      }, 200);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    };
     el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => { el.removeEventListener('scroll', handleScroll); cancelAnimationFrame(rafId); };
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      cancelAnimationFrame(rafId);
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards.length, imagesReady, onTabBarScroll]);
 
