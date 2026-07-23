@@ -445,8 +445,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary, removedStopIds, reelSavedId, journey]);
 
-  // Keep activeIdxRef in sync so the scroll restore effect can read it synchronously
-  useEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
+  // Keep activeIdxRef in sync synchronously so the layout-effect scroll restore reads
+  // the correct value even when activeIdx and cards update in the same React commit.
+  useLayoutEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
 
   // Keep a live snapshot of cards for the lazy-fetch effect (avoids stale closure)
   useEffect(() => { cardsDataRef.current = cards; }, [cards]);
@@ -512,6 +513,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     if (isScrollingRef.current) {
       pendingEnrichmentRef.current = newCards;
     } else {
+      restoreScrollRef.current = true;
       setCards(newCards);
     }
   }
@@ -610,6 +612,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       scrollEndTimerRef.current = setTimeout(() => {
         isScrollingRef.current = false;
         if (pendingEnrichmentRef.current) {
+          restoreScrollRef.current = true;
           setCards(pendingEnrichmentRef.current);
           pendingEnrichmentRef.current = null;
         }

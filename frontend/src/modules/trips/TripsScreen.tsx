@@ -4,7 +4,7 @@ import type { SavedItinerary, FavouritedPin } from '../../shared/types';
 import { getPlacePhotoUrl } from '../../shared/api';
 import { deleteFavouritePin, deleteSavedEvent } from '../../shared/userSync';
 import { supabase } from '../../shared/supabase';
-import { useCityPhoto } from '../destination/useCityPhoto';
+import { useCityPhotoBatch } from '../destination/useCityPhoto';
 import { formatCityLabel } from '../../shared/cityPhoto';
 import { ItineraryReelScreen } from '../route/reel';
 import { SavedPlacesTab } from './SavedPlacesTab';
@@ -72,7 +72,7 @@ function buildMonthGroups(items: SavedItinerary[]): { label: string; items: Save
 
 const GROUP_THRESHOLD = 5;
 
-function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
+function TripCard({ item, index, cityPhoto }: { item: SavedItinerary; index: number; cityPhoto?: string | null }) {
   const { dispatch } = useAppStore();
 
   const engineDays = (item.itinerary as any)?.days as any[] | undefined;
@@ -103,8 +103,7 @@ function TripCard({ item, index }: { item: SavedItinerary; index: number }) {
   const heroStop = allStops.find((s: any) => s.imageUrl || s.photoRef);
   const stopPhoto = heroStop?.imageUrl
     ?? (heroStop?.photoRef ? getPlacePhotoUrl(heroStop.photoRef, 600) : null);
-  const cityPhoto = useCityPhoto(item.city);
-  const photoUrl = stopPhoto ?? cityPhoto;
+  const photoUrl = stopPhoto ?? cityPhoto ?? null;
 
   const dateLabel = item.travelDate
     ? formatDateRange(item.travelDate, numDays)
@@ -262,6 +261,9 @@ export function TripsScreen() {
   const sorted = [...savedItineraries].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
+
+  const allCities = [...new Set(sorted.map(s => s.city).filter(Boolean))];
+  const cityPhotoMap = useCityPhotoBatch(allCities);
 
   const setTab = useCallback((tab: 'current' | 'saved' | 'places') => {
     dispatch({ type: 'SET_TRIPS_TAB', tab });
@@ -426,7 +428,7 @@ export function TripsScreen() {
             </div>
           ) : sorted.length <= GROUP_THRESHOLD ? (
             <div style={{ padding: '8px 16px 112px' }}>
-              {sorted.map((item, idx) => <TripCard key={item.id} item={item} index={idx} />)}
+              {sorted.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
             </div>
           ) : (
             <div style={{ padding: '8px 16px 112px' }}>
@@ -435,7 +437,7 @@ export function TripsScreen() {
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
                     {group.label}
                   </div>
-                  {group.items.map((item, idx) => <TripCard key={item.id} item={item} index={idx} />)}
+                  {group.items.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
                 </div>
               ))}
             </div>
@@ -514,6 +516,9 @@ export function TripsList() {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
+  const allCities = [...new Set(sorted.map(s => s.city).filter(Boolean))];
+  const cityPhotoMap = useCityPhotoBatch(allCities);
+
   if (sorted.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center', gap: 16 }}>
@@ -536,7 +541,7 @@ export function TripsList() {
     return (
       <div style={{ padding: '8px 16px 16px' }}>
         {sorted.map((item, idx) => (
-          <TripCard key={item.id} item={item} index={idx} />
+          <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />
         ))}
       </div>
     );
@@ -550,7 +555,7 @@ export function TripsList() {
             {group.label}
           </div>
           {group.items.map((item, idx) => (
-            <TripCard key={item.id} item={item} index={idx} />
+            <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />
           ))}
         </div>
       ))}
