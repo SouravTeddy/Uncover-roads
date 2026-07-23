@@ -584,6 +584,30 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeItinerary]);
 
+  // Write resolved stop imageUrls back into the saved itinerary so TripCard can use
+  // them directly (from the store) instead of re-fetching on every Trips screen mount.
+  // Fires once when both reelSavedId and resolvedStopImages are ready (eager batch done).
+  useEffect(() => {
+    if (!reelSavedId || resolvedStopImages.size === 0) return;
+    const savedEntry = savedItineraries.find(s => s.id === reelSavedId);
+    if (!savedEntry) return;
+    const rawItinerary = savedEntry.itinerary as any;
+    if (!rawItinerary?.days) return;
+    const updatedItinerary = {
+      ...rawItinerary,
+      days: rawItinerary.days.map((day: any) => ({
+        ...day,
+        stops: (day.stops ?? []).map((stop: any) => {
+          const url = resolvedStopImages.get(stop.title);
+          return url && !stop.imageUrl ? { ...stop, imageUrl: url } : stop;
+        }),
+      })),
+    };
+    dispatch({ type: 'UPDATE_SAVED_ITINERARY', id: reelSavedId, patch: { itinerary: updatedItinerary as any } });
+    // savedItineraries intentionally omitted — reading it once on fire is correct
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reelSavedId, resolvedStopImages]);
+
   // Scroll-based active card tracking + tab bar hide/show for parent TripsScreen
   // NOTE: imagesReady is in the deps because the scroll container only mounts after
   // imagesReady=true. Without it, scrollRef.current is null when cards.length first

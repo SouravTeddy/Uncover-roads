@@ -314,14 +314,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   // Keep expandedRef in sync so PanelControl.isExpanded() always reads current value
   const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
 
-  // Register expand/collapse handles with the parent (ItineraryReelScreen gesture handler)
+  // Register expand/collapse handles with the parent (ItineraryReelScreen gesture handler).
+  // No cleanup null-out: when scrolling UP to a lower-index card, React runs sibling effects
+  // in DOM order (lower index first), so the new card registers before the old card's cleanup
+  // fires — the cleanup would clobber panelControlRef with null before the parent's collapse
+  // effect runs. Without the null-out, the ref always holds the most recently registered control.
   useEffect(() => {
     onRegisterPanelControl?.({
       expand:     () => setExpandedSync(true),
       collapse:   () => { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); },
       isExpanded: () => expandedRef.current,
     });
-    return () => onRegisterPanelControl?.(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onRegisterPanelControl]);
   const { stop } = card;
