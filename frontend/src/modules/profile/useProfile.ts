@@ -15,6 +15,7 @@ export function useProfile() {
     persona: state.persona,
     userTier: state.userTier,
     generationCount: state.generationCount,
+    packTripsRemaining: state.packTripsRemaining,
     startOBRedo,
     goToSubscription,
   };

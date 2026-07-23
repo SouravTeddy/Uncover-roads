@@ -368,13 +368,13 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
       const newStopImages = new Map<string, string>();
       const eagerStopsByTitle = new Map(stopsNeedingImages.map(({ stop }) => [stop.title, stop]));
       for (const r of stopImageResults as Array<{ title: string; url: string | null }>) {
-        if (r.url) {
+        if (r.url && !lazyUsedUrlsRef.current.has(r.url)) {
+          lazyUsedUrlsRef.current.add(r.url); // seed before setting so concurrent results dedup
           newStopImages.set(r.title, r.url);
           const stop = eagerStopsByTitle.get(r.title);
           // Persist to image cache keyed by placeId (exact) + title (legacy)
           imgCacheRef.current.set(imgCacheKey(stop?.placeId, r.title), r.url);
           appendImgCache(stop?.placeId, r.title, r.url);
-          lazyUsedUrlsRef.current.add(r.url); // seed dedup set so lazy-fetch won't reuse
         }
       }
       // Seed city photo URLs so lazy-fetch skips them and each stop gets a unique image

@@ -321,11 +321,11 @@ export function PersonaScreen() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
           {loveChips.map((chip, i) => (
             <div key={i} style={{
-              padding: '8px 16px', borderRadius: 999,
+              padding: '7px 14px', borderRadius: 999,
               background: 'rgba(56,210,255,.18)',
               border: '1px solid rgba(56,210,255,.55)',
               color: '#fff',
-              fontSize: 14, fontWeight: 600,
+              fontSize: 13, fontWeight: 500,
             }}>
               {chip}
             </div>

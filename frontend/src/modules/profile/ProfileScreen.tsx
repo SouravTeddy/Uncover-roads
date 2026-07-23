@@ -39,7 +39,7 @@ const ARCHETYPE_META: Record<string, { name: string; tagline: string; emoji: str
 
 export function ProfileScreen() {
   const { dispatch, state } = useAppStore();
-  const { persona, userTier, generationCount, startOBRedo, goToSubscription } = useProfile();
+  const { persona, userTier, generationCount, packTripsRemaining, startOBRedo, goToSubscription } = useProfile();
   const [view, setView] = useState<ProfileView>('main');
   const [signingOut, setSigningOut] = useState(false);
 
@@ -286,7 +286,14 @@ function PlanRow({
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[11px] font-bold uppercase tracking-[.07em] mb-0.5" style={{ color: 'var(--color-text-4)' }}>Your Plan</p>
-          <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>Trip Pack</p>
+          <p className="text-[15px] font-semibold" style={{ color: 'var(--color-text-1)' }}>
+            {`Trip Pack · ${packTripsRemaining} trip${packTripsRemaining !== 1 ? 's' : ''} left`}
+          </p>
+          <div className="flex gap-1 mt-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-1 rounded-full flex-1" style={{ background: i < packTripsRemaining ? 'var(--color-primary)' : 'rgba(255,255,255,.12)' }} />
+            ))}
+          </div>
         </div>
         <span className="ms flex-shrink-0" style={{ fontSize: 18, color: 'var(--color-primary)' }}>chevron_right</span>
       </button>
