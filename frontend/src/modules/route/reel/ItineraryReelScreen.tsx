@@ -10,7 +10,7 @@ import { ReelDayDividerCard } from './ReelDayDividerCard';
 import { ReelDayTransitionCard } from './ReelDayTransitionCard';
 import type { ReelCard, ReelStopCard as ReelStopCardType } from './types';
 import type { WeatherData, TripDetails } from '../../../shared/types';
-import { api } from '../../../shared/api';
+import { api, authHeaders } from '../../../shared/api';
 import { useCityPhotoBatch } from '../../destination/useCityPhoto';
 import { getPreloadedUrls } from '../../../shared/imagePreloader';
 import { ReelBalanceCard } from './ReelBalanceCard';
@@ -434,7 +434,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
       // Async transit enrichment — fires in background, updates scenic cards
       // when transit data arrives without blocking the reel from showing
-      enrichScenicCardsWithTransit(filtered, apiBase)
+      authHeaders().then(hdrs => enrichScenicCardsWithTransit(filtered, apiBase, hdrs))
         .then(enriched => enrichPhotoMomentCards(enriched, () => cancelled))
         .then(withMoments => {
           if (cancelled) return;

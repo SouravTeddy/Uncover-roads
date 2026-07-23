@@ -1,14 +1,9 @@
 import type { ReelCard, TransitInfo } from './types';
 
-/**
- * Fetches real transit data for every scenic walk card in the reel
- * and returns an updated copy of the cards array.
- * All requests fire in parallel. Cards without lat/lon are skipped.
- * Never throws — failures leave transitInfo as null.
- */
 export async function enrichScenicCardsWithTransit(
   cards: ReelCard[],
   apiBase: string,
+  headers: Record<string, string> = {},
 ): Promise<ReelCard[]> {
   const targets: Array<{
     idx: number;
@@ -43,6 +38,7 @@ export async function enrichScenicCardsWithTransit(
     targets.map(t =>
       fetch(
         `${apiBase}/transit-corridor?origin_lat=${t.originLat}&origin_lon=${t.originLon}&dest_lat=${t.destLat}&dest_lon=${t.destLon}`,
+        { headers },
       ).then(r => (r.ok ? (r.json() as Promise<TransitInfo>) : null)),
     ),
   );

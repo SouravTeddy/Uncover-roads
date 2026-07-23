@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, memo } from 'react';
 import type { ReelStopCard as ReelStopCardType, TransitInfo } from './types';
 import { ReelImg } from './ReelImg';
-import { getPlacePhotoUrl, fetchPlaceDetails, BASE, api } from '../../../shared/api';
+import { getPlacePhotoUrl, fetchPlaceDetails, BASE, api, authHeaders } from '../../../shared/api';
 import {
   REEL_SCRIM,
   todDotColor, todLabel, skyTintForCondition,
@@ -356,12 +356,15 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
     if (!expanded || !card.prevStopLat || !card.prevStopLon || fetchedTransit) return;
     if (card.transitInfo !== null && card.transitInfo !== undefined) return; // already have data
     setTransitLoading(true);
-    fetch(
-      `${BASE}/transit-corridor?origin_lat=${card.prevStopLat}&origin_lon=${card.prevStopLon}&dest_lat=${stop.lat}&dest_lon=${stop.lon}`
-    )
-      .then(r => r.json())
-      .then((data: TransitInfo) => { setFetchedTransit(data); setTransitLoading(false); })
-      .catch(() => { setTransitLoading(false); });
+    authHeaders().then(headers =>
+      fetch(
+        `${BASE}/transit-corridor?origin_lat=${card.prevStopLat}&origin_lon=${card.prevStopLon}&dest_lat=${stop.lat}&dest_lon=${stop.lon}`,
+        { headers },
+      )
+        .then(r => r.json())
+        .then((data: TransitInfo) => { setFetchedTransit(data); setTransitLoading(false); })
+        .catch(() => { setTransitLoading(false); })
+    ).catch(() => { setTransitLoading(false); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, card.prevStopLat, card.prevStopLon, stop.lat, stop.lon]);
 
