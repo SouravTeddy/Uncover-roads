@@ -99,7 +99,7 @@ export async function mapData(
     radius_m:   String(radiusM),
   });
   try {
-    const res = await fetch(`${BASE}/map-data?${params}`, { signal });
+    const res = await fetch(`${BASE}/map-data?${params}`, { signal, headers: await authHeaders() });
     if (res.ok) {
       const data: Place[] = await res.json();
       const limited = data.slice(0, 150);
@@ -204,7 +204,7 @@ export const api = {
     if (cities.length === 0) return {};
     try {
       const params = new URLSearchParams({ names: cities.join(',') });
-      const res = await fetch(`${BASE}/api/cities/photos?${params}`);
+      const res = await fetch(`${BASE}/api/cities/photos?${params}`, { headers: await authHeaders() });
       return res.ok ? res.json() : {};
     } catch { return {}; }
   },
@@ -267,7 +267,7 @@ export const api = {
         radius:   '1000',
         limit:    String(opts.limit),
       });
-      const res = await fetch(`${BASE}/nearby?${params}`);
+      const res = await fetch(`${BASE}/nearby?${params}`, { headers: await authHeaders() });
       if (!res.ok) return [];
       const data: NearbyResult[] = await res.json();
       return (Array.isArray(data) ? data : []).map(r => ({
@@ -340,7 +340,7 @@ export async function placesAutocomplete(
     params.set('lat', String(lat));
     params.set('lon', String(lon));
   }
-  const res = await fetch(`${BASE}/places-autocomplete?${params}`);
+  const res = await fetch(`${BASE}/places-autocomplete?${params}`, { headers: await authHeaders() });
   if (!res.ok) return [];
   const data = await res.json();
   const predictions = data.predictions;
@@ -352,7 +352,7 @@ export async function geocodePlace(
   sessionId: string
 ): Promise<{ lat: number; lon: number; name: string; address: string } | null> {
   const params = new URLSearchParams({ place_id: placeId, session_id: sessionId });
-  const res = await fetch(`${BASE}/geocode-place?${params}`);
+  const res = await fetch(`${BASE}/geocode-place?${params}`, { headers: await authHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.lat || !data.lon) return null;
@@ -361,7 +361,7 @@ export async function geocodePlace(
 
 export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
   const params = new URLSearchParams({ place_id: placeId });
-  const res = await fetch(`${BASE}/place-details?${params}`);
+  const res = await fetch(`${BASE}/place-details?${params}`, { headers: await authHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.place_id) return null;
@@ -374,7 +374,7 @@ export async function findPlaceId(
   lon: number
 ): Promise<string | null> {
   const params = new URLSearchParams({ name, lat: String(lat), lon: String(lon) });
-  const res = await fetch(`${BASE}/find-place-id?${params}`);
+  const res = await fetch(`${BASE}/find-place-id?${params}`, { headers: await authHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   return data.place_id ?? null;
@@ -390,7 +390,7 @@ export async function fetchPinDetails(
 ): Promise<PlaceDetails | null> {
   const params = new URLSearchParams({ lat: String(lat), lon: String(lon), name, category });
   if (placeId) params.set('place_id', placeId);
-  const res = await fetch(`${BASE}/pin-details?${params}`);
+  const res = await fetch(`${BASE}/pin-details?${params}`, { headers: await authHeaders() });
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.place_id) return null;
@@ -409,7 +409,7 @@ export async function fetchNearby(
     radius: '500',
     limit: '3',
   });
-  const res = await fetch(`${BASE}/nearby?${params}`);
+  const res = await fetch(`${BASE}/nearby?${params}`, { headers: await authHeaders() });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -429,7 +429,7 @@ export async function searchNearby(
     radius: String(radius),
     limit: String(limit),
   });
-  const res = await fetch(`${BASE}/nearby?${params}`);
+  const res = await fetch(`${BASE}/nearby?${params}`, { headers: await authHeaders() });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data : [];
@@ -452,7 +452,7 @@ export async function reverseGeocodeCity(
 ): Promise<{ city: string | null; state: string | null; country: string | null } | null> {
   try {
     const params = new URLSearchParams({ lat: String(lat), lon: String(lon) });
-    const res = await fetch(`${BASE}/api/geocode/reverse?${params}`);
+    const res = await fetch(`${BASE}/api/geocode/reverse?${params}`, { headers: await authHeaders() });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -489,7 +489,7 @@ export async function fetchRouteProfile(
       origin_lat: String(originLat), origin_lon: String(originLon),
       dest_lat: String(destLat), dest_lon: String(destLon),
     });
-    const res = await fetch(`${BASE}/route-profile?${params}`);
+    const res = await fetch(`${BASE}/route-profile?${params}`, { headers: await authHeaders() });
     if (!res.ok) return null;
     return await res.json();
   } catch {
