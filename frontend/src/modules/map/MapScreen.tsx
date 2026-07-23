@@ -393,6 +393,7 @@ export function MapScreen() {
 
   useEffect(() => {
     if (!city) { setLiveEvents([]); return }
+    if (activeFilter !== 'curated') return   // only load events when on the curated tab
 
     const startDate = state.travelStartDate
     const endDate   = state.travelEndDate

@@ -598,7 +598,36 @@ def run_conflict_check(city: str, persona: dict, travel_date: str = None) -> dic
         })
 
     # ── CATEGORY B: Ramadan ──
-    if city_profile.get("ramadan_affected") and month in [3, 4]:
+    # Approximate Gregorian start dates (month, day) — Ramadan shifts ~11 days/year
+    _RAMADAN = {
+        2024: (3, 11), 2025: (3, 1),  2026: (2, 18),
+        2027: (2, 7),  2028: (1, 28), 2029: (1, 16), 2030: (1, 5),
+    }
+    def _in_ramadan(m: int, y: int) -> bool:
+        entry = _RAMADAN.get(y)
+        if not entry:
+            return False
+        import calendar
+        start_m, start_d = entry
+        # Ramadan lasts ~30 days; check if current month overlaps the window
+        start_abs = y * 12 + start_m - 1
+        end_abs   = start_abs + 1  # spans into next month sometimes
+        cur_abs   = y * 12 + m - 1
+        return cur_abs in (start_abs, end_abs)
+    if city_profile.get("ramadan_affected") and travel_date:
+        try:
+            import datetime as _dt
+            td = _dt.datetime.strptime(travel_date, "%Y-%m-%d")
+            _ramadan_active = _in_ramadan(td.month, td.year)
+        except Exception:
+            _ramadan_active = False
+    elif city_profile.get("ramadan_affected"):
+        import datetime as _dt
+        _now = _dt.datetime.now()
+        _ramadan_active = _in_ramadan(_now.month, _now.year)
+    else:
+        _ramadan_active = False
+    if _ramadan_active:
         conflicts.append({
             "severity": "high",
             "message": f"Ramadan is likely in effect in {city}. Daytime dining is very limited.",

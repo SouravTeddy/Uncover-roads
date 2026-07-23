@@ -4233,7 +4233,7 @@ def place_details(request: Request, place_id: str, _user=Depends(get_current_use
             "open_now": None, "weekday_text": [], "photo_ref": None, "types": []
         }
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
 
     # 1. Check Supabase cache — cache hits bypass rate limit entirely
     if _supabase:
