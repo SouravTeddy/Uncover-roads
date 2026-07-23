@@ -318,10 +318,11 @@ function getStoredUnits(): 'km' | 'miles' {
   } catch { return 'km'; }
 }
 
+const _initialScreen = getInitialScreen();
 export const initialState: AppState = {
   theme: 'dark',
-  currentScreen: getInitialScreen(),
-  screenStack: [getInitialScreen()],
+  currentScreen: _initialScreen,
+  screenStack: [_initialScreen],
   obAnswers: defaultObAnswers,
   rawOBAnswers: getStoredRawOBAnswers(),
   personaProfile: getStoredPersonaProfile(),

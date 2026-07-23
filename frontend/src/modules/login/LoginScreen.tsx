@@ -199,8 +199,8 @@ export function LoginScreen() {
 
               <p className="text-center text-[0.68rem] text-white/20 leading-relaxed mt-5">
                 By continuing, you agree to our{' '}
-                <span className="text-white/40 cursor-pointer">Terms</span> and{' '}
-                <span className="text-white/40 cursor-pointer">Privacy Policy</span>.
+                <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="text-white/40 underline">Terms</a> and{' '}
+                <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="text-white/40 underline">Privacy Policy</a>.
               </p>
             </>
           )}

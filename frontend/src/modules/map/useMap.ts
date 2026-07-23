@@ -32,13 +32,14 @@ export function useMap(activeCategories: string[] = []) {
 
   const { city, places, selectedPlaces, activeFilter, cityGeo, persona, favouritedPins } = state;
 
-  // Recommended places load once we have places to filter against
+  // Recommended places load once we have places and persona to filter against.
+  // persona?.archetype is in deps so a persona change (re-onboarding) triggers a fresh load.
   useEffect(() => {
     if (city && persona && places.length > 0 && recommendedPlaces.length === 0) {
       loadRecommended();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city, places.length]);
+  }, [city, places.length, persona?.archetype]);
 
   /** Call this whenever the user opens a place card — tracks browsing behavior for Our Picks */
   function trackViewedCategory(category: string) {

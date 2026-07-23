@@ -513,16 +513,6 @@ CITY_PROFILES = {
         "street_food": True, "luxury_supply": 1,
         "terrain_hilly": False,
     },
-    "dubai": {
-        "nightlife": 2, "heritage": 1, "nature": 1, "alcohol": True,
-        "walkability": 1, "transit": 2, "cost_tier": 4,
-        "climate_hot": [4,5,6,7,8,9,10],
-        "elevation": 10, "meal_times": {"lunch":"13:00","dinner":"21:00"},
-        "english_signage": 3, "religious_sensitivity": True,
-        "ramadan_affected": True, "tourist_only": False,
-        "street_food": False, "luxury_supply": 3,
-        "terrain_hilly": False,
-    },
     "abu dhabi": {
         "nightlife": 1, "heritage": 2, "nature": 1, "alcohol": True,
         "walkability": 1, "transit": 1, "cost_tier": 4,

@@ -183,6 +183,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const [rebuildingReel, setRebuildingReel] = useState(false);
   const [arrowVisible, setArrowVisible] = useState(false);
   const arrowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lazyRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSavedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Lazy image loading: track fetched stop titles and used image URLs (to prevent duplicates)
@@ -469,14 +472,11 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         api.placeImage(stop.title, city, stop.placeId ?? undefined)
           .then(url => {
             if (!url) {
-              // Retry once at 1.5s — backend may have been slow or Google hit a transient error
-              if (!isRetry) setTimeout(() => attemptFetch(true), 1500);
+              if (!isRetry) { lazyRetryTimer.current = setTimeout(() => attemptFetch(true), 1500); }
               return;
             }
-            // Skip if this exact URL is already used by another card (prevents duplicates)
             if (lazyUsedUrlsRef.current.has(url)) return;
             lazyUsedUrlsRef.current.add(url);
-            // Persist to image cache keyed by placeId (exact) + title (legacy)
             imgCacheRef.current.set(imgCacheKey(stop.placeId, stop.title), url);
             appendImgCache(stop.placeId, stop.title, url);
             setCards(prev => prev.map(c =>
@@ -486,13 +486,14 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             ));
           })
           .catch(() => {
-            if (!isRetry) setTimeout(() => attemptFetch(true), 1500);
+            if (!isRetry) { lazyRetryTimer.current = setTimeout(() => attemptFetch(true), 1500); }
           });
       };
       attemptFetch(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIdx, imagesReady]);
+  useEffect(() => () => { if (lazyRetryTimer.current) clearTimeout(lazyRetryTimer.current); }, []);
 
   // After secondary card rebuilds (weather/persona/photos), restore scroll so the
   // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
@@ -670,6 +671,11 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     arrowTimer.current = setTimeout(() => setArrowVisible(false), 1000);
     return () => { if (arrowTimer.current) clearTimeout(arrowTimer.current); };
   }, [activeIdx]);
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
+  }, []);
 
   const handleCloseTripDetails = useCallback(() => setShowTripDetails(false), []);
   const registerPanelControl = useCallback((ctrl: import('./ReelStopCard').PanelControl | null) => { panelControlRef.current = ctrl; }, []);
@@ -1298,12 +1304,14 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             }
             setShowTripDetails(false);
             setTripDetailsSavedToast(true);
-            setTimeout(() => setTripDetailsSavedToast(false), 3000);
+            if (toastTimer.current) clearTimeout(toastTimer.current);
+            toastTimer.current = setTimeout(() => setTripDetailsSavedToast(false), 3000);
             // Rebuild reel with new trip details and reveal after brief loading animation
             if (activeItinerary) {
               setRebuildingReel(true);
               tripDetailsRef.current = details;
-              setTimeout(() => {
+              if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
+              rebuildTimer.current = setTimeout(() => {
                 const freshCards = buildFiltered(activeItinerary, weatherByCityRef.current, personaNameRef.current);
                 setCards(freshCards);
                 const adjusted = new Set<string>(
