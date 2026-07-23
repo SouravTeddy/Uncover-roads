@@ -2891,7 +2891,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
 def admin_login_get(error: str = Query(default="")):
     err_cls = "show" if error else ""
     err_msg = "Incorrect password." if error else ""
-    return HTMLResponse(_LOGIN_HTML.format(err_cls=err_cls, err_msg=err_msg))
+    return HTMLResponse(_LOGIN_HTML.replace("{err_cls}", err_cls).replace("{err_msg}", err_msg))
 
 
 @app.post("/admin/login")
