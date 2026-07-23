@@ -1,6 +1,9 @@
-from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks
+from fastapi import FastAPI, Query, HTTPException, Request, Response, Depends, Header, BackgroundTasks, Form
 from fastapi.responses import JSONResponse
 from typing import Optional
+import hmac
+import hashlib
+import secrets
 from fastapi.responses import RedirectResponse, StreamingResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import re
@@ -98,6 +101,24 @@ async def add_security_headers(request: Request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
+
+# ── Global auth middleware ────────────────────────────────────────────────────
+# All routes require a valid Bearer token EXCEPT the admin UI and health check.
+# Seed/admin-only routes additionally require X-Admin-Secret header (checked in
+# the route handler via _require_admin_key dependency).
+_AUTH_EXEMPT_PATHS = {"/", "/admin/login", "/admin/logout", "/admin/dashboard", "/place-photo"}
+
+@app.middleware("http")
+async def require_bearer_middleware(request: Request, call_next):
+    path = request.url.path
+    if request.method == "OPTIONS" or path in _AUTH_EXEMPT_PATHS:
+        return await call_next(request)
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return JSONResponse({"detail": "not_authenticated"}, status_code=401)
+    return await call_next(request)
+
+
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
 OPENWEATHER_KEY    = os.environ.get("OPENWEATHER_KEY", "")
 TICKETMASTER_KEY   = os.environ.get("TICKETMASTER_KEY", "")
@@ -109,8 +130,10 @@ REDDIT_CLIENT_SECRET   = os.environ.get("REDDIT_CLIENT_SECRET", "")
 FOURSQUARE_API_KEY     = os.environ.get("FOURSQUARE_API_KEY", "")
 
 # In-memory event cache — keyed by "city|start_date|end_date", expires after 1 hour
+# Capped at 200 entries; oldest entries evicted when full.
 _events_cache: dict[str, tuple[float, list]] = {}
 _EVENTS_CACHE_TTL = 3600  # seconds
+_EVENTS_CACHE_MAX = 200
 
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY", "")
 GOOGLE_PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
@@ -411,7 +434,7 @@ OVERPASS_ENDPOINTS = [
 # GEOCODE
 # =========================================
 @app.get("/geocode")
-def geocode(request: Request, city: str = Query(...)):
+def geocode(request: Request, city: str = Query(...), _user=Depends(get_current_user)):
     ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(ip):
         raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
@@ -718,6 +741,7 @@ def map_data(
     west:  float = Query(None),
     north: float = Query(None),
     east:  float = Query(None),
+    _user=Depends(get_current_user),
 ):
     """
     Returns nearby places. Primary: Google Nearby Search (rich data).
@@ -893,7 +917,7 @@ def map_data(
 # HEATMAP SEED
 # =========================================
 @app.get("/heatmap-seed")
-def heatmap_seed(lat: float, lon: float, radius_km: int = 80):
+def heatmap_seed(lat: float, lon: float, radius_km: int = 80, _user=Depends(get_current_user)):
     """Lightweight city-wide heatmap anchor points.
 
     Returns tourism/leisure node coordinates for heatmap rendering only.
@@ -963,7 +987,7 @@ out 100;
 # CITY SEARCH (autocomplete dropdown)
 # =========================================
 @app.get("/city-search")
-def city_search(request: Request, q: str = Query(...)):
+def city_search(request: Request, q: str = Query(...), _user=Depends(get_current_user)):
     ip = request.client.host if request.client else "unknown"
     if not _check_rate_limit(ip):
         raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
@@ -1008,7 +1032,7 @@ def city_search(request: Request, q: str = Query(...)):
 # ROUTE
 # =========================================
 @app.post("/route")
-def route(body: dict):
+def route(body: dict, _user=Depends(get_current_user)):
     points = body.get("points", [])
     if len(points) < 2:
         return {"error": "Need at least 2 points"}
@@ -1385,6 +1409,7 @@ def route_profile(
     origin_lon: float = Query(...),
     dest_lat:   float = Query(...),
     dest_lon:   float = Query(...),
+    _user=Depends(get_current_user),
 ):
     """
     Returns road elevation and character profile between two coordinates.
@@ -1609,7 +1634,7 @@ Return ONLY a valid JSON object, no markdown, no explanation:
         raise HTTPException(status_code=422, detail="AI returned invalid JSON")
     except Exception as e:
         print("AI ITINERARY ERROR:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="itinerary_generation_failed")
 
 
 # =========================================
@@ -1816,7 +1841,7 @@ CRITICAL RULES — FOLLOW STRICTLY:
 # WEATHER
 # =========================================
 @app.get("/weather")
-def weather(city: str = Query(...)):
+def weather(city: str = Query(...), _user=Depends(get_current_user)):
     try:
         if not OPENWEATHER_KEY:
             return {"error": "No weather API key set"}
@@ -1856,7 +1881,7 @@ def _cache_photo_ref_bg(pid: str, photo_ref: str) -> None:
 
 
 @app.get("/place-image")
-def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query(default="")):
+def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query(default=""), _user=Depends(get_current_user)):
     """
     Resolve an image for a named place.
     Resolution order:
@@ -1979,7 +2004,7 @@ def place_image(name: str = Query(...), city: str = Query(...), pid: str = Query
 # REFERENCE PINS — LLM-generated ghost pins
 # =========================================
 @app.post("/reference-pins")
-def reference_pins_endpoint(body: dict):
+def reference_pins_endpoint(body: dict, _user=Depends(get_current_user)):
     """
     Generate 8-10 reference pins for a city, persona-filtered.
     Optionally takes prev_city_context to chain multi-city recommendations.
@@ -2100,7 +2125,7 @@ def _pick_reason(archetype: str, category: str, all_filters: list[str], score: f
 # RECOMMENDED PLACES — deterministic persona scoring engine
 # =========================================
 @app.post("/recommended-places")
-def recommended_places_endpoint(body: dict):
+def recommended_places_endpoint(body: dict, _user=Depends(get_current_user)):
     """Score map places by persona affinity. Deterministic — no LLM."""
     archetype      = body.get("persona_archetype", "explorer").lower()
     venue_filters  = [v.lower() for v in body.get("venue_filters", [])]
@@ -2135,7 +2160,7 @@ def recommended_places_endpoint(body: dict):
 
 
 @app.post("/persona-insight")
-def persona_insight_endpoint(body: dict):
+def persona_insight_endpoint(body: dict, _user=Depends(get_current_user)):
     """
     Generate a short persona-matched insight for a single place.
     mode='map'       → 1 sentence, ≤20 words
@@ -2227,7 +2252,7 @@ def persona_insight_endpoint(body: dict):
 
 
 @app.post("/recalibrate")
-def recalibrate_endpoint(body: dict):
+def recalibrate_endpoint(body: dict, _user=Depends(get_current_user)):
     """
     Day-of recalibration: given current stops, time, and live conditions,
     return only stops that benefit from a timing/routing adjustment.
@@ -2314,7 +2339,7 @@ Rules:
 # PERSONA ENGINE (protected — logic in ip_engine.py)
 # =========================================
 @app.post("/persona")
-def persona_endpoint(body: dict):
+def persona_endpoint(body: dict, _user=Depends(get_current_user)):
     """
     Takes OB answers, returns archetype + conflict payload + city profile.
     All scoring logic is server-side — not exposed to browser.
@@ -2331,7 +2356,7 @@ def persona_endpoint(body: dict):
 
 
 @app.get("/city-profile")
-def city_profile_endpoint(city: str = Query(...)):
+def city_profile_endpoint(city: str = Query(...), _user=Depends(get_current_user)):
     """Returns city profile data for a given city."""
     try:
         profile = get_city_profile(city)
@@ -2381,6 +2406,7 @@ def events(
     lon:        float = Query(None),
     start_date: str   = Query(...),   # YYYY-MM-DD
     end_date:   str   = Query(...),   # YYYY-MM-DD
+    _user=Depends(get_current_user),
 ):
     if not TICKETMASTER_KEY:
         return {"error": "No Ticketmaster API key configured"}
@@ -2571,6 +2597,9 @@ def events(
         print(f"EVENTS (Eventbrite): added {len(eb_raw)} raw events")
 
         print(f"EVENTS: {len(places)} total events for {city} ({start_date}–{end_date})")
+        if len(_events_cache) >= _EVENTS_CACHE_MAX:
+            oldest_key = min(_events_cache, key=lambda k: _events_cache[k][0])
+            _events_cache.pop(oldest_key, None)
         _events_cache[cache_key] = (_time(), places)
         return {"places": places}
 
@@ -2779,11 +2808,118 @@ def _estimate_google_spend(sb: dict) -> dict:
 
 
 _ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
+_ADMIN_COOKIE  = "ur_admin_session"
+_SESSION_TTL   = 86400  # 24 hours
+
+
+def _make_session_token() -> str:
+    nonce     = secrets.token_hex(16)
+    timestamp = str(int(datetime.now(timezone.utc).timestamp()))
+    payload   = f"{nonce}:{timestamp}"
+    sig       = hmac.new(_ADMIN_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}:{sig}"
+
+
+def _verify_session_token(token: str) -> bool:
+    try:
+        parts = token.split(":")
+        if len(parts) != 3:
+            return False
+        nonce, timestamp, sig = parts
+        payload = f"{nonce}:{timestamp}"
+        expected = hmac.new(_ADMIN_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            return False
+        age = int(datetime.now(timezone.utc).timestamp()) - int(timestamp)
+        return age < _SESSION_TTL
+    except Exception:
+        return False
+
+
+def _require_admin_session(request: Request) -> None:
+    token = request.cookies.get(_ADMIN_COOKIE, "")
+    if not _ADMIN_SECRET or not token or not _verify_session_token(token):
+        raise HTTPException(status_code=303, headers={"Location": "/admin/login"})
+
+
+def _require_admin_key(x_admin_secret: str = Header(default="")) -> None:
+    if not _ADMIN_SECRET or not hmac.compare_digest(_ADMIN_SECRET, x_admin_secret):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+
+_LOGIN_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Login — Uncover Roads</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0f0d0c;color:#f5f0ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;
+       padding:40px 36px;width:100%;max-width:360px}
+  h1{font-size:20px;font-weight:700;margin-bottom:4px}
+  .sub{font-size:12px;color:rgba(255,255,255,.38);margin-bottom:28px}
+  label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+        color:rgba(255,255,255,.45);display:block;margin-bottom:6px}
+  input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+        border-radius:8px;color:#f5f0ea;font-size:15px;padding:10px 14px;outline:none;margin-bottom:20px}
+  input:focus{border-color:rgba(212,168,83,.5)}
+  button{width:100%;background:#d4a853;border:none;border-radius:8px;color:#0f0d0c;
+         font-size:14px;font-weight:700;padding:12px;cursor:pointer}
+  .err{font-size:12px;color:#e07070;margin-bottom:16px;display:none}
+  .err.show{display:block}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Uncover Roads</h1>
+  <div class="sub">Admin dashboard access</div>
+  <form method="POST" action="/admin/login">
+    <label for="pw">Password</label>
+    <input id="pw" name="password" type="password" autofocus autocomplete="current-password">
+    <div class="err {err_cls}">{err_msg}</div>
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+</body>
+</html>"""
+
+
+@app.get("/admin/login", response_class=HTMLResponse)
+def admin_login_get(error: str = Query(default="")):
+    err_cls = "show" if error else ""
+    err_msg = "Incorrect password." if error else ""
+    return HTMLResponse(_LOGIN_HTML.format(err_cls=err_cls, err_msg=err_msg))
+
+
+@app.post("/admin/login")
+async def admin_login_post(response: Response, password: str = Form(...)):
+    if not _ADMIN_SECRET or not hmac.compare_digest(_ADMIN_SECRET, password):
+        return RedirectResponse("/admin/login?error=1", status_code=303)
+    token = _make_session_token()
+    resp  = RedirectResponse("/admin/dashboard", status_code=303)
+    resp.set_cookie(
+        _ADMIN_COOKIE,
+        token,
+        max_age=_SESSION_TTL,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
+    return resp
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    resp = RedirectResponse("/admin/login", status_code=303)
+    resp.delete_cookie(_ADMIN_COOKIE)
+    return resp
+
 
 @app.get("/admin/dashboard", response_class=HTMLResponse)
-def admin_dashboard(token: str = Query(default="")):
-    if not _ADMIN_SECRET or token != _ADMIN_SECRET:
-        raise HTTPException(status_code=403, detail="forbidden")
+def admin_dashboard(_auth=Depends(_require_admin_session)):
     sb      = _dashboard_supabase()
     rail    = _dashboard_railway()
     google  = _estimate_google_spend(sb)
@@ -2935,7 +3071,7 @@ def admin_dashboard(token: str = Query(default="")):
   </div>
 </section>
 
-<div class="footer">Supabase data is live · Railway data via GraphQL API · Google costs estimated from cache table row counts</div>
+<div class="footer">Supabase data is live · Railway data via GraphQL API · Google costs estimated from cache table row counts &nbsp;·&nbsp; <a href="/admin/logout" style="color:rgba(255,255,255,.3);text-decoration:none">Sign out</a></div>
 </body>
 </html>"""
     return HTMLResponse(content=html)
@@ -2961,6 +3097,7 @@ def places_autocomplete(
     lat: Optional[float] = None,
     lon: Optional[float] = None,
     radius_m: int = 20000,
+    _user=Depends(get_current_user),
 ):
     """
     Google Places Autocomplete with session tokens.
@@ -3019,7 +3156,7 @@ def places_autocomplete(
 # GEOCODE PLACE
 # =========================================
 @app.get("/geocode-place")
-def geocode_place(request: Request, place_id: str, session_id: str):
+def geocode_place(request: Request, place_id: str, session_id: str, _user=Depends(get_current_user)):
     """
     Get lat/lon + name from a place_id after autocomplete selection.
     This ENDS the session token (billing event: $0.017).
@@ -3065,7 +3202,7 @@ def geocode_place(request: Request, place_id: str, session_id: str):
 _reverse_geocode_cache: dict[str, dict] = {}
 
 @app.get("/api/geocode/reverse")
-async def reverse_geocode(lat: float, lon: float):
+async def reverse_geocode(lat: float, lon: float, _user=Depends(get_current_user)):
     """
     Returns {city, state, country} for a coordinate pair.
     Uses Google Geocoding API (same key as Places). Falls back to Nominatim.
@@ -3136,7 +3273,7 @@ async def reverse_geocode(lat: float, lon: float):
 # FIND PLACE ID
 # =========================================
 @app.get("/find-place-id")
-def find_place_id(request: Request, name: str, lat: float, lon: float):
+def find_place_id(request: Request, name: str, lat: float, lon: float, _user=Depends(get_current_user)):
     """
     Resolve Google place_id from coordinates (primary) or name (fallback).
 
@@ -4043,6 +4180,7 @@ def transit_corridor(
     origin_lon: float = Query(...),
     dest_lat:   float = Query(...),
     dest_lon:   float = Query(...),
+    _user=Depends(get_current_user),
 ):
     """
     Returns transit options between two coordinates.
@@ -4057,7 +4195,7 @@ def transit_corridor(
 # PLACE DETAILS
 # =========================================
 @app.get("/place-details")
-def place_details(request: Request, place_id: str):
+def place_details(request: Request, place_id: str, _user=Depends(get_current_user)):
     """
     Fetch Google Place Details. Cost: $0.017/call.
     Checks Supabase cache first (24hr TTL) — cache hit = $0.
@@ -4230,7 +4368,7 @@ _CATEGORY_TO_GOOGLE_TYPE = {
 }
 
 @app.get("/pin-details")
-def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query(""), category: str = Query(""), place_id: str = Query("")):
+def pin_details(request: Request, lat: float = Query(...), lon: float = Query(...), name: str = Query(""), category: str = Query(""), place_id: str = Query(""), _user=Depends(get_current_user)):
     """
     Single-call endpoint: resolves place_id from coords + fetches full details.
     Replaces the two-step /find-place-id → /place-details round trip.
@@ -4591,7 +4729,7 @@ class ReelRecoRequest(BaseModel):
 
 
 @app.post("/reel-reco")
-def reel_reco(body: ReelRecoRequest, request: Request, response: Response):
+def reel_reco(body: ReelRecoRequest, request: Request, response: Response, _user=Depends(get_current_user)):
     """Persona-scored nearby recommendations for reel reco cards. No LLM."""
     if not GOOGLE_PLACES_API_KEY:
         return {"places": []}
@@ -4678,6 +4816,7 @@ def nearby(
     type: str = Query(...),
     radius: int = Query(500),
     limit: int = Query(3),
+    _user=Depends(get_current_user),
 ):
     """
     Google Places Nearby Search — called only on expand chip tap.
@@ -5543,7 +5682,7 @@ def _why_for_you(
 
 
 @app.post("/engine-itinerary")
-async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=Depends(get_current_user)):
+async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=Depends(require_auth_or_pack)):
     """Build an itinerary from user-selected places. Called from MapScreen Build button."""
     from datetime import date as _date, timedelta as _td
 
@@ -5843,7 +5982,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "city_id": body.city,
                 "stage": _stage,
                 "signals": _signals,
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             })
         if _seed_rows:
             try:
@@ -5858,7 +5997,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             except Exception:
                 pass  # signals degrade gracefully if seed fails
 
-    now_str = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
     # Build lookup: place_id → photo_ref (from submitted places)
     _photo_ref_lookup: dict[str, str] = {
@@ -6565,7 +6704,7 @@ def _fetch_city_wiki_photo(city_name: str) -> Optional[str]:
 
 
 @app.get("/api/cities/photos")
-async def cities_photos(names: str):
+async def cities_photos(names: str, _user=Depends(get_current_user)):
     """Batch image URL lookup by city name. Returns {name: proxy_path|null}.
 
     DB miss → auto-fetch from Google Places and persist.
@@ -6653,10 +6792,8 @@ async def cities_map_pins(city_id: str, _user=Depends(get_current_user)):
 
 
 @app.post("/api/cities/seed")
-def ensure_city_seeded(city_id: str = Query(...)):
-    """Ensures city_data row exists for city_id. Called by frontend on map load.
-    No auth required — seeding is idempotent and read-only from the user's perspective.
-    """
+def ensure_city_seeded(city_id: str = Query(...), _user=Depends(get_current_user)):
+    """Ensures city_data row exists for city_id."""
     if _supabase is None:
         return {"status": "unavailable"}
     try:
@@ -6682,11 +6819,11 @@ def ensure_city_seeded(city_id: str = Query(...)):
         return {"status": "not_found"}
     except Exception as exc:
         print(f"[ensure_city_seeded] error for {city_id}: {exc}")
-        return {"status": "error", "detail": str(exc)}
+        return {"status": "error"}
 
 
 @app.get("/api/cities/picks", response_model=list[PlacePick])
-async def cities_picks(city_id: str, lat: float = None, lon: float = None, background_tasks: BackgroundTasks = None):
+async def cities_picks(city_id: str, lat: float = None, lon: float = None, background_tasks: BackgroundTasks = None, _user=Depends(get_current_user)):
     """Pro: curated picks with trend stage badges.
     Uses pre-seeded data enriched with stage signals from place_dynamic_profiles.
 
@@ -6797,7 +6934,7 @@ async def cities_picks(city_id: str, lat: float = None, lon: float = None, backg
             seed_rows.append({
                 "place_id": ic.place_id, "city_id": city_id,
                 "stage": stage, "signals": signals,
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             })
         if seed_rows:
             try:
@@ -6881,7 +7018,7 @@ def _stage_and_signals(
 
 
 @app.post("/api/places/seed-profiles")
-async def seed_place_profiles(city_id: str = Query(...)):
+async def seed_place_profiles(city_id: str = Query(...), _admin=Depends(_require_admin_key)):
     """Seed place_dynamic_profiles for all insert_candidates in a city.
 
     Reads rating + rating_count from place_details_cache (no Google API calls).
@@ -6932,7 +7069,7 @@ async def seed_place_profiles(city_id: str = Query(...)):
             "city_id":    city_id,
             "stage":      stage,
             "signals":    signals,
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         })
 
     if not rows:
@@ -6943,7 +7080,7 @@ async def seed_place_profiles(city_id: str = Query(...)):
 
 
 @app.post("/api/places/seed-trends")
-def seed_place_trends(city_id: str = Query(...)):
+def seed_place_trends(city_id: str = Query(...), _admin=Depends(_require_admin_key)):
     """Seed real trend velocity scores for all places in a city.
 
     Fetches signals from YouTube, Wikimedia, Foursquare, and Reddit (if credentials
@@ -6984,7 +7121,7 @@ def seed_place_trends(city_id: str = Query(...)):
 
 
 @app.api_route("/api/places/seed-trends/all", methods=["GET", "POST"])
-async def seed_all_city_trends(background_tasks: BackgroundTasks):
+async def seed_all_city_trends(background_tasks: BackgroundTasks, _admin=Depends(_require_admin_key)):
     """Trigger trend velocity refresh for every city in place_dynamic_profiles.
 
     Runs in the background — returns immediately. Cities seeded within the
@@ -7091,7 +7228,8 @@ async def surprise_me(body: SurpriseMeRequest, user=Depends(require_auth_or_pack
             raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
         claude_data = json.loads(raw)
     except (json.JSONDecodeError, Exception) as e:
-        raise HTTPException(status_code=502, detail=f"claude_error: {str(e)}")
+        print("CLAUDE SURPRISE ME ERROR:", e)
+        raise HTTPException(status_code=502, detail="ai_response_failed")
 
     # Step 2: Convert Claude's place list to EngineStop objects
     engine_stops: list[EngineStop] = []

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../../shared/supabase'
+import { BASE, authHeaders } from '../../shared/api'
 import type { Place } from '../../shared/types'
 
 export interface AreaNeighborhood {
@@ -28,7 +29,6 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
   useEffect(() => {
     if (!city) return
     const slug = city.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-    const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
     void (async () => {
       const { data } = await supabase.from('city_data').select('data').eq('id', slug).maybeSingle()
@@ -37,7 +37,8 @@ export function useNeighborhoods(city: string | null, places: Place[]): AreaNeig
 
       // city_data not yet seeded — ask backend to seed, then retry once
       try {
-        await fetch(`${BASE}/api/cities/seed?city_id=${encodeURIComponent(slug)}`, { method: 'POST' })
+        const headers = await authHeaders()
+        await fetch(`${BASE}/api/cities/seed?city_id=${encodeURIComponent(slug)}`, { method: 'POST', headers })
       } catch { /* network error — skip */ }
 
       const retry = await supabase.from('city_data').select('data').eq('id', slug).maybeSingle()

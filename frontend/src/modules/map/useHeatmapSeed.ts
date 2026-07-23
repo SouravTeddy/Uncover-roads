@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { BASE, authHeaders } from '../../shared/api'
 
 export interface HeatmapPoint { lat: number; lon: number }
-
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const RETRIGGER_KM = 10  // re-fetch when center moves this far (~half the 20km tile radius)
 
 function distKm(a: HeatmapPoint, b: HeatmapPoint): number {
@@ -16,7 +15,8 @@ function distKm(a: HeatmapPoint, b: HeatmapPoint): number {
 
 async function fetchSeeds(lat: number, lon: number): Promise<HeatmapPoint[]> {
   try {
-    const res = await fetch(`${BASE}/heatmap-seed?lat=${lat}&lon=${lon}`)
+    const headers = await authHeaders()
+    const res = await fetch(`${BASE}/heatmap-seed?lat=${lat}&lon=${lon}`, { headers })
     if (!res.ok) return []
     const data = await res.json()
     return Array.isArray(data.points) ? data.points : []

@@ -86,10 +86,11 @@ def check(
 ) -> tuple[list[EngineStop], list[EngineMessage]]:
     messages: list[EngineMessage] = []
     result: list[EngineStop] = []
+    already_placed = {s.place_id for s in stops}
     for stop in stops:
         score = _swap_score(stop, ctx)
         if score > SWAP_THRESHOLD:
-            alternatives = _find_alternatives(stop, ctx, excluded_place_ids=set())
+            alternatives = _find_alternatives(stop, ctx, excluded_place_ids=already_placed)
             reason = f"Composite conflict score {score:.2f} exceeds threshold {SWAP_THRESHOLD}."
             if alternatives:
                 _best_score, _best_stop_ic = alternatives[0]

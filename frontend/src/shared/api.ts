@@ -17,7 +17,7 @@ import { supabase } from './supabase';
 
 export const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
-async function authHeaders(): Promise<Record<string, string>> {
+export async function authHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -507,8 +507,9 @@ export async function* aiItineraryStream(
     signal: AbortSignal.timeout(120_000),
   });
   if (!res.ok) throw new Error(`Stream ${res.status}`);
+  if (!res.body) throw new Error('Stream response has no body');
 
-  const reader = res.body!.getReader();
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
 

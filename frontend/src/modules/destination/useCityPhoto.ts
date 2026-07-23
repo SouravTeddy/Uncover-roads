@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { preloadImages } from '../../shared/imagePreloader';
-
-const BASE = import.meta.env.VITE_API_URL ?? '';
+import { BASE, authHeaders } from '../../shared/api';
 
 // DB stores either a Google proxy path ("/place-photo?...") or null.
 // Old Unsplash short IDs are treated as missing.
@@ -29,7 +28,8 @@ export function useCityPhoto(cityName: string | null): string | null {
       return;
     }
     const params = new URLSearchParams({ names: cityName });
-    fetch(`${BASE}/api/cities/photos?${params}`)
+    authHeaders().then(headers =>
+    fetch(`${BASE}/api/cities/photos?${params}`, { headers }))
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
         if (!data) return;
@@ -60,7 +60,8 @@ export function useCityPhotoBatch(cities: string[]): Map<string, string | null> 
     if (missing.length === 0) return;
 
     const params = new URLSearchParams({ names: missing.join(',') });
-    fetch(`${BASE}/api/cities/photos?${params}`)
+    authHeaders().then(headers =>
+    fetch(`${BASE}/api/cities/photos?${params}`, { headers }))
       .then(r => r.ok ? r.json() : null)
       .then((data: Record<string, string | null> | null) => {
         const updated = new Map(photoMap);
