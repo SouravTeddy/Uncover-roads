@@ -169,6 +169,7 @@ export function ProfileScreen() {
           <PlanRow
             userTier={userTier}
             generationCount={generationCount}
+            packTripsRemaining={packTripsRemaining}
             onUpgrade={goToSubscription}
             onManage={() => setView('subscription-details')}
           />
@@ -243,11 +244,13 @@ export function ProfileScreen() {
 function PlanRow({
   userTier,
   generationCount,
+  packTripsRemaining,
   onUpgrade,
   onManage,
 }: {
   userTier: string;
   generationCount: number;
+  packTripsRemaining: number;
   onUpgrade: () => void;
   onManage: () => void;
 }) {
