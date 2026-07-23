@@ -99,6 +99,10 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
     if request.url.scheme == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    if request.url.path.startswith("/admin"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'"
+        )
     return response
 
 
@@ -335,6 +339,7 @@ async def require_auth_or_pack(user=Depends(get_current_user)):
 # ── Per-user rate limiting ────────────────────────────────────────────────────
 
 _user_rate_buckets: dict[str, list[float]] = defaultdict(list)
+_USER_RATE_BUCKETS_MAX_KEYS = 100000
 
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     # route_group: (max_requests, window_seconds)
@@ -358,6 +363,9 @@ def check_user_rate_limit(user_id: str, route_group: str) -> None:
             detail="rate_limit_exceeded",
             headers={"Retry-After": str(window)},
         )
+    if len(_user_rate_buckets) >= _USER_RATE_BUCKETS_MAX_KEYS and key not in _user_rate_buckets:
+        oldest = next(iter(_user_rate_buckets))
+        _user_rate_buckets.pop(oldest, None)
     _user_rate_buckets[key].append(now)
 
 
@@ -391,8 +399,18 @@ _SESSION_TOKEN_MAX = 10000  # max concurrent sessions to prevent unbounded growt
 
 # Rate limiting for Google Places API calls per IP per hour
 _rate_limit: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT_MAX_KEYS = 50000  # evict oldest key when dict exceeds this size
 RATE_LIMIT_WINDOW = 3600
 RATE_LIMIT_MAX = 100
+
+
+def _client_ip(request: Request) -> str:
+    """Return the real client IP, reading X-Forwarded-For first (Railway is behind a proxy)."""
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
 
 def _validate_coords(*pairs: tuple[float, float]) -> None:
     """Raise 422 if any lat/lon pair is out of valid range."""
@@ -409,6 +427,9 @@ def _check_rate_limit(ip: str) -> bool:
         return False
     recent.append(now)
     if recent:
+        if len(_rate_limit) >= _RATE_LIMIT_MAX_KEYS and ip not in _rate_limit:
+            oldest = next(iter(_rate_limit))
+            _rate_limit.pop(oldest, None)
         _rate_limit[ip] = recent
     elif ip in _rate_limit:
         del _rate_limit[ip]
@@ -435,7 +456,7 @@ OVERPASS_ENDPOINTS = [
 # =========================================
 @app.get("/geocode")
 def geocode(request: Request, city: str = Query(...), _user=Depends(get_current_user)):
-    ip = request.client.host if request.client else "unknown"
+    ip = _client_ip(request)
     if not _check_rate_limit(ip):
         raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
     try:
@@ -471,7 +492,7 @@ def geocode(request: Request, city: str = Query(...), _user=Depends(get_current_
         }
     except Exception as e:
         print("GEOCODE ERROR:", e)
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 # =========================================
@@ -844,7 +865,6 @@ def map_data(
                 break
 
         if _is_new_city:
-            import threading as _threading
             def _bg_seed_city(cid: str, cname: str, lat: float, lon: float) -> None:
                 try:
                     from city.seed_builder import build_city_seed as _build_city_seed
@@ -882,7 +902,7 @@ def map_data(
                         print(f"MAP DATA BG: seeded {len(_seeded.insert_candidates)} candidates for {cid}")
                 except Exception as _e:
                     print(f"MAP DATA BG: seed failed for {cid}: {_e}")
-            _threading.Thread(target=_bg_seed_city, args=(city_id, city, clat, clon), daemon=True).start()
+            background_tasks.add_task(_bg_seed_city, city_id, city, clat, clon)
 
     # No cache at all — first visit, must fetch synchronously
     if not _supabase:
@@ -988,7 +1008,7 @@ out 100;
 # =========================================
 @app.get("/city-search")
 def city_search(request: Request, q: str = Query(...), _user=Depends(get_current_user)):
-    ip = request.client.host if request.client else "unknown"
+    ip = _client_ip(request)
     if not _check_rate_limit(ip):
         raise HTTPException(status_code=429, detail="rate_limit_exceeded", headers={"Retry-After": str(RATE_LIMIT_WINDOW)})
     try:
@@ -1103,7 +1123,7 @@ def route(body: dict, _user=Depends(get_current_user)):
         }
     except Exception as e:
         print(f"ROUTE OSRM fallback: {e}")
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 # =========================================
@@ -1656,10 +1676,15 @@ def ai_itinerary_stream(body: dict, user=Depends(require_auth_or_pack)):
     if not ANTHROPIC_API_KEY:
         return {"error": "No Anthropic API key configured"}
 
-    # Increment generation count server-side for fresh generations only
+    # Atomic generation check+increment — prevents over-limit users from streaming
     if not is_rebuild and _supabase:
         try:
-            _supabase.rpc("increment_generation_count", {"uid": str(user.id)}).execute()
+            result = _supabase.rpc("check_and_increment_generation", {"uid": str(user.id)}).execute()
+            outcome = result.data if result else None
+            if outcome and not outcome.get("allowed"):
+                raise HTTPException(status_code=403, detail="generation_limit_reached")
+        except HTTPException:
+            raise
         except Exception:
             pass
 
@@ -1864,7 +1889,7 @@ def weather(city: str = Query(...), _user=Depends(get_current_user)):
         }
     except Exception as e:
         print("WEATHER ERROR:", e)
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 # =========================================
@@ -2082,7 +2107,7 @@ Rules:
         return {"pins": [], "storyCards": []}
     except Exception as e:
         print(f"REFERENCE PINS ERROR: {e}")
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 # ── Persona scoring engine ─────────────────────────────────────────────────
@@ -2352,7 +2377,7 @@ def persona_endpoint(body: dict, _user=Depends(get_current_user)):
         return result
     except Exception as e:
         print("PERSONA ERROR:", e)
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 @app.get("/city-profile")
@@ -2362,7 +2387,7 @@ def city_profile_endpoint(city: str = Query(...), _user=Depends(get_current_user
         profile = get_city_profile(city)
         return {"city": city, "profile": profile, "found": bool(profile)}
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 def _fetch_eventbrite(
@@ -2605,7 +2630,7 @@ def events(
 
     except Exception as e:
         print("EVENTS ERROR:", e)
-        return {"error": str(e)}
+        return {"error": "internal_error"}
 
 
 # =========================================
@@ -3107,7 +3132,7 @@ def places_autocomplete(
     if not GOOGLE_PLACES_API_KEY:
         return {"predictions": []}
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -3149,7 +3174,7 @@ def places_autocomplete(
             ]
         }
     except Exception as e:
-        return {"predictions": [], "error": str(e)}
+        return {"predictions": [], "error": "internal_error"}
 
 
 # =========================================
@@ -3164,7 +3189,7 @@ def geocode_place(request: Request, place_id: str, session_id: str, _user=Depend
     if not GOOGLE_PLACES_API_KEY:
         return {"lat": None, "lon": None}
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -3193,7 +3218,7 @@ def geocode_place(request: Request, place_id: str, session_id: str, _user=Depend
             "address": result.get("formatted_address"),
         }
     except Exception as e:
-        return {"lat": None, "lon": None, "error": str(e)}
+        return {"lat": None, "lon": None, "error": "internal_error"}
 
 
 # =========================================
@@ -3293,7 +3318,7 @@ def find_place_id(request: Request, name: str, lat: float, lon: float, _user=Dep
     if not GOOGLE_PLACES_API_KEY:
         return {"place_id": None}
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -4327,7 +4352,7 @@ def place_details(request: Request, place_id: str, _user=Depends(get_current_use
             "lat": None, "lon": None, "rating": None, "rating_count": None,
             "phone": None, "website": None, "price_level": None,
             "open_now": None, "weekday_text": [], "photo_ref": None,
-            "types": [], "error": str(e)
+            "types": [], "error": "internal_error"
         }
 
 
@@ -4384,7 +4409,7 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
     if not GOOGLE_PLACES_API_KEY:
         return {"place_id": None}
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -4563,13 +4588,14 @@ def pin_details(request: Request, lat: float = Query(...), lon: float = Query(..
 
         return details
     except Exception as e:
-        return {"place_id": None, "error": str(e)}
+        return {"place_id": None, "error": "internal_error"}
 
 
 
 # ── Photo byte cache: photo_ref → bytes, stored in memory (max 500 entries) ──
 _photo_cache: dict[str, tuple[bytes, str]] = {}   # ref → (bytes, content_type)
-_PHOTO_CACHE_MAX = 500
+_PHOTO_CACHE_MAX_BYTES = 50 * 1024 * 1024  # 50 MB total
+_photo_cache_bytes = 0
 
 @app.get("/place-photo")
 def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = Query(800)):
@@ -4577,7 +4603,9 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
     Handles both old-format photo_reference (CmRa…) and new Places API v1
     resource names (places/{id}/photos/{token}).
     """
-    client_ip = request.client.host if request.client else "unknown"
+    if len(photo_ref) > 500:
+        raise HTTPException(status_code=422, detail="invalid_photo_ref")
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     if not GOOGLE_PLACES_API_KEY:
@@ -4654,9 +4682,13 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
 
         ct = r.headers.get("Content-Type", "image/jpeg")
         data = r.content
-        if len(_photo_cache) >= _PHOTO_CACHE_MAX:
-            _photo_cache.pop(next(iter(_photo_cache)))
+        global _photo_cache_bytes
+        while _photo_cache_bytes + len(data) > _PHOTO_CACHE_MAX_BYTES and _photo_cache:
+            evict_key, (evict_data, _) = next(iter(_photo_cache.items()))
+            _photo_cache.pop(evict_key)
+            _photo_cache_bytes -= len(evict_data)
         _photo_cache[cache_key] = (data, ct)
+        _photo_cache_bytes += len(data)
         return Response(content=data, media_type=ct,
                         headers={"Cache-Control": "public, max-age=86400"})
     except HTTPException:
@@ -4734,7 +4766,7 @@ def reel_reco(body: ReelRecoRequest, request: Request, response: Response, _user
     if not GOOGLE_PLACES_API_KEY:
         return {"places": []}
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -4825,7 +4857,7 @@ def nearby(
     _validate_coords((lat, lon))
     if not GOOGLE_PLACES_API_KEY:
         return []
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
@@ -6464,7 +6496,7 @@ async def engine_itinerary_start(
     body: EngineItineraryPayload,
     background_tasks: BackgroundTasks,
     request: Request,
-    user=Depends(get_current_user),
+    user=Depends(require_auth_or_pack),
 ):
     """Start a background itinerary build. Returns {buildId, status} immediately (non-blocking)."""
     client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
@@ -6519,7 +6551,8 @@ async def engine_itinerary_start(
             }).execute()
             build_id = row.data[0]["id"]
         except Exception as _e:
-            raise HTTPException(status_code=500, detail=f"Could not create build record: {_e}")
+            logging.error("[build] could not create build record: %s", _e)
+            raise HTTPException(status_code=500, detail="build_record_failed")
 
     # Enforce free-tier generation limit and increment — atomic to prevent race conditions
     if _supabase:
