@@ -38,6 +38,22 @@ export function LoginScreen() {
     dispatch({ type: 'GO_TO', screen: seen ? 'ob1' : 'walkthrough' });
   }
 
+  // Reset authLoading if the in-app browser closes without completing sign-in
+  useEffect(() => {
+    let removeBrowserListener: (() => void) | undefined;
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (!Capacitor.isNativePlatform()) return;
+      import('@capacitor/browser').then(({ Browser }) => {
+        Browser.addListener('browserFinished', () => {
+          setAuthLoading(false);
+        }).then((handle: { remove: () => void }) => {
+          removeBrowserListener = handle.remove;
+        });
+      });
+    });
+    return () => { removeBrowserListener?.(); };
+  }, []);
+
   async function signInWithGoogle() {
     setAuthLoading(true);
     setError(null);
@@ -46,14 +62,10 @@ export function LoginScreen() {
     const isNative = Capacitor.isNativePlatform();
 
     if (isNative) {
-      // On native (Android/iOS) we must not let the system browser handle the
-      // OAuth redirect — the WebView would never receive the ?code= callback.
-      // Instead: get the OAuth URL, open it in the Capacitor in-app browser,
-      // and let the appUrlOpen listener in App.tsx exchange the code.
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'https://uncover-roads.vercel.app',
+          redirectTo: 'uncoverroads://login-callback',
           skipBrowserRedirect: true,
         },
       });

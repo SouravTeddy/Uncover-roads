@@ -115,7 +115,7 @@ function ScreenRouter() {
       import('@capacitor/app').then(({ App: CapApp }) => {
         import('@capacitor/browser').then(({ Browser }) => {
           CapApp.addListener('appUrlOpen', async ({ url }: { url: string }) => {
-            if (url.includes('uncover-roads.vercel.app')) {
+            if (url.startsWith('uncoverroads://') || url.includes('uncover-roads.vercel.app')) {
               await Browser.close();
               const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
               if (!error && session?.user) {
