@@ -117,16 +117,28 @@ function ScreenRouter() {
           CapApp.addListener('appUrlOpen', async ({ url }: { url: string }) => {
             if (url.startsWith('uncoverroads://') || url.includes('uncover-roads.vercel.app')) {
               await Browser.close();
-              const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
-              if (error) {
-                console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
-                // Fallback: session might already be set (e.g. implicit flow or retry)
-                const { data: { session: fallback } } = await supabase.auth.getSession();
-                if (fallback?.user) {
-                  handleSignedIn(fallback.user);
+              if (url.includes('#access_token=')) {
+                // Implicit flow — token is in the URL hash fragment
+                const hash = url.split('#')[1] ?? '';
+                const params = new URLSearchParams(hash);
+                const accessToken = params.get('access_token') ?? '';
+                const refreshToken = params.get('refresh_token') ?? '';
+                const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+                if (!error && data.session?.user) {
+                  handleSignedIn(data.session.user);
+                } else {
+                  console.error('[OAuth] setSession failed:', error?.message);
                 }
-              } else if (session?.user) {
-                handleSignedIn(session.user);
+              } else {
+                // PKCE flow — exchange code for session
+                const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
+                if (error) {
+                  console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
+                  const { data: { session: fallback } } = await supabase.auth.getSession();
+                  if (fallback?.user) handleSignedIn(fallback.user);
+                } else if (session?.user) {
+                  handleSignedIn(session.user);
+                }
               }
             }
           }).then((handle: { remove: () => void }) => {
