@@ -75,9 +75,11 @@ app = FastAPI()
 # CORS origins — web PWA + Capacitor native WebViews (Android/iOS)
 _DEFAULT_ORIGINS = [
     "https://uncover-roads.vercel.app",
-    "capacitor://localhost",   # iOS Capacitor native WebView
-    "http://localhost",         # Android Capacitor native WebView
+    "capacitor://localhost",    # iOS Capacitor native WebView
+    "https://localhost",        # Android Capacitor native WebView (androidScheme: https)
+    "http://localhost",         # Android fallback / older Capacitor
     "http://localhost:5173",    # local Vite dev server
+    "https://localhost:5173",   # local Vite dev server (HTTPS)
 ]
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", ",".join(_DEFAULT_ORIGINS)).split(",")
 
