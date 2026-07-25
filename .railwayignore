@@ -1,0 +1,12 @@
+frontend/
+node_modules/
+.claude/
+docs/
+downloads/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.local
+.git/
+city/_geonames_cities15000.txt

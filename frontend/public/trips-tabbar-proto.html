@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trips Tab Bar — Dark & Light</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Exact tokens from index.css ── */
+.dark {
+  --color-bg:       #0f0d0c;
+  --color-surface:  #1a1714;
+  --color-surface2: #221e1b;
+  --color-primary:  #d4a853;
+  --color-text-1:   #f5f0ea;
+  --color-text-2:   #c0b0a4;
+  --color-text-3:   #a08d80;
+  --color-text-4:   #726559;
+  --color-border:   rgba(255,255,255,.09);
+  --color-border-m: rgba(255,255,255,.16);
+  --nav-bg:         rgba(17,17,17,.92);
+  --tab-bar-bg:     rgba(15,13,12,.82);
+  --tab-bar-border: rgba(255,255,255,.09);
+}
+.light {
+  --color-bg:       #faf8f4;
+  --color-surface:  #ffffff;
+  --color-surface2: #f8f4ef;
+  --color-primary:  #d4a853;
+  --color-primary-text: #7a5c18;
+  --color-text-1:   #2c2420;
+  --color-text-2:   #6b5e57;
+  --color-text-3:   #7e7068;
+  --color-text-4:   #9a8c84;
+  --color-border:   rgba(44,36,32,.08);
+  --color-border-m: rgba(44,36,32,.14);
+  --nav-bg:         rgba(250,248,244,.94);
+  --tab-bar-bg:     rgba(250,248,244,.88);
+  --tab-bar-border: rgba(44,36,32,.08);
+}
+
+.ms {
+  font-family: 'Material Symbols Rounded';
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 24px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  user-select: none;
+}
+
+body {
+  background: #888;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 48px;
+  padding: 48px 24px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* ── Phone shell ── */
+.phone {
+  width: 390px;
+  border-radius: 44px;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.15);
+  position: relative;
+}
+
+/* ── Content behind the bar (city photo) ── */
+.content-dark {
+  height: 240px;
+  background: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80') center/cover;
+  filter: brightness(.55) saturate(.8);
+}
+.content-light {
+  height: 240px;
+  background: url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80') center/cover;
+  filter: brightness(.85) saturate(.7);
+}
+
+/* ── Tab bar ── */
+.tab-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 44px 20px 0;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  background: var(--tab-bar-bg);
+  border-bottom: 1px solid var(--tab-bar-border);
+}
+
+.tab-row {
+  display: flex;
+  align-items: center;
+  padding-bottom: 0;
+}
+
+.tab {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text-3);
+  padding: 0 0 12px;
+  margin-right: 28px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  letter-spacing: -.01em;
+  position: relative;
+  bottom: -1px;
+  transition: color .2s, border-color .2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.tab.active {
+  color: var(--color-text-1);
+  border-bottom-color: var(--color-primary);
+}
+
+.heart-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e05c7a;
+  padding: 0 0 12px;
+  display: flex;
+  align-items: center;
+  transition: transform .15s;
+}
+.heart-btn:active { transform: scale(.82); }
+.heart-btn .ms { font-size: 22px; }
+</style>
+</head>
+<body>
+
+<!-- DARK -->
+<div>
+  <div class="label">Dark theme</div>
+  <div class="phone dark" style="background:var(--color-bg)">
+    <div class="content-dark"></div>
+    <div class="tab-bar">
+      <div class="tab-row">
+        <div class="tab active">Current</div>
+        <div class="tab">Saved</div>
+        <button class="heart-btn"><span class="ms">favorite</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHT -->
+<div>
+  <div class="label">Light theme</div>
+  <div class="phone light" style="background:var(--color-bg)">
+    <div class="content-light"></div>
+    <div class="tab-bar">
+      <div class="tab-row">
+        <div class="tab active">Current</div>
+        <div class="tab">Saved</div>
+        <button class="heart-btn"><span class="ms">favorite</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

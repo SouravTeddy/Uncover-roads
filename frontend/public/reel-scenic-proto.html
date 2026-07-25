@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Walk Corridor Card Proto</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; }
+
+  :root[data-theme="dark"] {
+    --bg-page:    #080910;
+    --border-ui:  #1e1f28;
+    --panel-bg:   rgba(8,9,16,.97);
+    --text-1:     #f2ede6;
+    --text-2:     rgba(242,237,230,.6);
+    --text-3:     rgba(242,237,230,.35);
+    --divider:    rgba(255,255,255,.07);
+    --stat-bg:    rgba(255,255,255,.05);
+    --stat-bdr:   rgba(255,255,255,.08);
+    --skip-bg:    rgba(255,255,255,.04);
+    --skip-bdr:   rgba(255,255,255,.08);
+    --along-bg:   rgba(255,255,255,.03);
+    --along-bdr:  rgba(255,255,255,.07);
+    --accent:     #a78bfa;
+    --accent-bg:  rgba(167,139,250,.06);
+    --accent-bdr: rgba(167,139,250,.25);
+  }
+  :root[data-theme="light"] {
+    --bg-page:    #e8e6e0;
+    --border-ui:  #d8d4cc;
+    --panel-bg:   rgba(245,243,239,.98);
+    --text-1:     #1a1814;
+    --text-2:     rgba(26,24,20,.6);
+    --text-3:     rgba(26,24,20,.38);
+    --divider:    rgba(0,0,0,.08);
+    --stat-bg:    rgba(0,0,0,.04);
+    --stat-bdr:   rgba(0,0,0,.08);
+    --skip-bg:    rgba(0,0,0,.03);
+    --skip-bdr:   rgba(0,0,0,.07);
+    --along-bg:   rgba(0,0,0,.02);
+    --along-bdr:  rgba(0,0,0,.07);
+    --accent:     #6340d8;
+    --accent-bg:  rgba(99,64,216,.06);
+    --accent-bdr: rgba(99,64,216,.22);
+  }
+
+  body {
+    background: var(--bg-page);
+    font-family: -apple-system, 'Inter', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 64px; transition: background .25s;
+  }
+
+  .theme-toggle {
+    display: flex; margin-bottom: 28px;
+    border: 1px solid var(--border-ui); border-radius: 10px; overflow: hidden;
+  }
+  .theme-toggle button {
+    padding: 8px 20px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    transition: background .15s, color .15s;
+  }
+  .theme-toggle button.active { background: var(--accent); color: #fff; }
+  .theme-toggle button:not(.active) { background: var(--stat-bg); color: var(--text-3); }
+
+  .cards-row {
+    display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+  }
+
+  .col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .col-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--text-3); text-align: center;
+  }
+
+  .phone {
+    width: 375px; height: 720px;
+    border-radius: 44px; border: 1.5px solid var(--border-ui);
+    overflow: hidden; position: relative; background: #0a0a0d;
+  }
+
+  /* Background */
+  .bg { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; justify-content: center; font-size: 80px; }
+  .bg-walk-dark  { background: linear-gradient(160deg,#0a1a0a,#1a3020 40%,#0f2218 70%,#081008); }
+  .bg-walk-light { background: linear-gradient(160deg,#c8dcc8,#a8c8a8 40%,#90b890 70%,#78a878); }
+  .scrim-dark  { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg,rgba(0,0,0,.3) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.88) 100%); }
+  .scrim-light { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.15) 45%,rgba(245,243,239,.97) 100%); }
+
+  /* Top bar */
+  .topbar {
+    position: absolute; top: 58px; left: 16px; right: 16px; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mode-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(0,0,0,.4); backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.12);
+    font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: rgba(255,255,255,.9);
+  }
+  .mode-pill-light {
+    background: rgba(255,255,255,.7); backdrop-filter: blur(14px);
+    border: 1px solid rgba(0,0,0,.12); color: rgba(26,24,20,.85);
+  }
+  .mode-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .side-trip-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 11px; border-radius: 999px;
+    background: rgba(0,0,0,.4); backdrop-filter: blur(14px);
+    border: 1px solid var(--accent-bdr);
+    font-size: 12px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--accent);
+  }
+  .side-trip-badge-light {
+    background: rgba(255,255,255,.7); backdrop-filter: blur(14px);
+  }
+
+  /* Panel */
+  .panel {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 5;
+    background: var(--panel-bg); backdrop-filter: blur(32px);
+    border-radius: 22px 22px 0 0;
+    border: 1px solid var(--divider); border-bottom: none;
+    padding: 18px 20px 36px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .handle-bar {
+    width: 36px; height: 4px; border-radius: 2px;
+    background: var(--text-3); margin: 0 auto 4px;
+  }
+
+  /* Route name — accessible 26px */
+  .route-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px; font-weight: 700; color: var(--text-1); line-height: 1.12;
+  }
+
+  /* Route line visual */
+  .route-line { display: flex; align-items: center; gap: 0; }
+  .stop-node { display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0; }
+  .stop-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .stop-name { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+
+  .line-track {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 0; padding: 0 8px;
+    margin-top: -18px; /* align with dots */
+  }
+  .walk-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 999px;
+    background: var(--panel-bg); border: 1px solid var(--accent-bdr);
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    position: relative; z-index: 1;
+  }
+  .walk-pill .ms { font-size: 15px; }
+
+  /* Stats: 2 blocks only (time + distance) */
+  .stats-hero { display: flex; gap: 0; }
+  .stat-block {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 13px 8px;
+    background: var(--stat-bg); border: 1px solid var(--stat-bdr);
+  }
+  .stat-block:first-child { border-radius: 10px 0 0 10px; }
+  .stat-block:last-child  { border-radius: 0 10px 10px 0; border-left: none; }
+  /* Accessible: large number + clear label */
+  .stat-num  { font-size: 28px; font-weight: 800; color: var(--text-1); letter-spacing: -.5px; line-height: 1; }
+  .stat-unit { font-size: 12px; font-weight: 600; color: var(--text-3); margin-top: 3px; text-transform: uppercase; letter-spacing: .06em; }
+
+  /* Skip section */
+  .skip-row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 11px 13px; border-radius: 10px;
+    background: var(--skip-bg); border: 1px solid var(--skip-bdr);
+  }
+  .skip-row .ms { font-size: 18px; color: var(--text-3); flex-shrink: 0; }
+  .skip-text { font-size: 14px; color: var(--text-2); line-height: 1.4; }
+  .skip-text strong { color: var(--text-1); font-weight: 700; }
+  .skip-text .or { color: var(--text-3); font-weight: 400; margin: 0 4px; }
+
+  /* Why text */
+  .why-text { font-size: 14px; color: var(--text-2); line-height: 1.6; }
+
+  /* Along the way */
+  .along-section { display: flex; flex-direction: column; gap: 10px; }
+  .along-label { font-size: 11px; font-weight: 700; letter-spacing: .10em; text-transform: uppercase; color: var(--text-3); }
+  .along-item { display: flex; align-items: center; gap: 11px; }
+  .along-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+  .along-text { font-size: 14px; color: var(--text-2); line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<div class="theme-toggle">
+  <button class="active" onclick="setTheme('dark',this)">Dark</button>
+  <button onclick="setTheme('light',this)">Light</button>
+</div>
+
+<div class="cards-row">
+
+<!-- ════════ DARK ════════ -->
+<div class="col" id="dark-col">
+  <div class="col-label">Walk · Dark</div>
+  <div class="phone">
+    <div class="bg bg-walk-dark">🌿</div>
+    <div class="scrim-dark"></div>
+
+    <div class="topbar">
+      <div class="mode-pill">
+        <div class="mode-dot" style="background:var(--accent);box-shadow:0 0 5px var(--accent)"></div>
+        Walk
+      </div>
+      <div class="side-trip-badge" aria-label="Side trip, adds 15 minutes">
+        <span class="ms" style="font-size:13px">fork_right</span>
+        Side trip · +15 min
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="handle-bar"></div>
+
+      <div class="route-name">Walk through Monti</div>
+
+      <!-- Route line: from → walk pill → to -->
+      <div class="route-line">
+        <div class="stop-node">
+          <div class="stop-dot" style="background:var(--accent);box-shadow:0 0 8px rgba(167,139,250,.5)"></div>
+          <div class="stop-name">Roman Forum</div>
+        </div>
+        <div class="line-track">
+          <div style="position:relative;width:100%;display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,rgba(167,139,250,.4) 0 5px,transparent 5px 10px)"></div>
+            <div class="walk-pill">
+              <span class="ms">directions_walk</span> 15 min
+            </div>
+          </div>
+        </div>
+        <div class="stop-node">
+          <div class="stop-dot" style="background:transparent;border:2px solid rgba(167,139,250,.5)"></div>
+          <div class="stop-name">Colosseum</div>
+        </div>
+      </div>
+
+      <!-- 2 stats only: time + distance -->
+      <div class="stats-hero">
+        <div class="stat-block">
+          <div class="stat-num">15</div>
+          <div class="stat-unit">min walk</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num">1.2</div>
+          <div class="stat-unit">km</div>
+        </div>
+      </div>
+
+      <!-- Skip the walk: single sentence with OR — no side-by-side cards -->
+      <div class="skip-row" role="note">
+        <span class="ms">bolt</span>
+        <span class="skip-text">
+          Skip the walk —
+          <strong><span class="ms" style="font-size:14px;vertical-align:middle">subway</span> 8 min metro</strong>
+          <span class="or">or</span>
+          <strong><span class="ms" style="font-size:14px;vertical-align:middle">local_taxi</span> 6 min taxi</strong>
+        </span>
+      </div>
+
+      <!-- Why -->
+      <div class="why-text">Backstreets of Monti — morning light, no tour groups, good espresso on the way.</div>
+
+      <!-- Along the way: icon + plain sentence per dimension -->
+      <div class="along-section">
+        <div class="along-label">Along the way</div>
+        <div class="along-item">
+          <span class="along-icon" style="color:rgba(212,168,83,.8)">🏛️</span>
+          <span class="along-text">Ancient ruins and monuments visible from the street</span>
+        </div>
+        <div class="along-item">
+          <span class="along-icon" style="color:rgba(79,143,171,.8)">📷</span>
+          <span class="along-text">Several good photo spots along the route</span>
+        </div>
+        <div class="along-item">
+          <span class="along-icon" style="color:rgba(107,148,112,.8)">🌿</span>
+          <span class="along-text">Tree-lined streets, shaded for most of the walk</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ LIGHT ════════ -->
+<div class="col" id="light-col" style="display:none">
+  <div class="col-label">Walk · Light</div>
+  <div class="phone" style="background:#b8ceb8">
+    <div class="bg bg-walk-light">🌿</div>
+    <div class="scrim-light"></div>
+
+    <div class="topbar">
+      <div class="mode-pill mode-pill-light">
+        <div class="mode-dot" style="background:var(--accent)"></div>
+        Walk
+      </div>
+      <div class="side-trip-badge side-trip-badge-light" aria-label="Side trip, adds 15 minutes">
+        <span class="ms" style="font-size:13px">fork_right</span>
+        Side trip · +15 min
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="handle-bar" style="background:rgba(0,0,0,.18)"></div>
+
+      <div class="route-name">Walk through Monti</div>
+
+      <div class="route-line">
+        <div class="stop-node">
+          <div class="stop-dot" style="background:var(--accent)"></div>
+          <div class="stop-name">Roman Forum</div>
+        </div>
+        <div class="line-track">
+          <div style="position:relative;width:100%;display:flex;align-items:center;justify-content:center;">
+            <div style="position:absolute;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,rgba(99,64,216,.35) 0 5px,transparent 5px 10px)"></div>
+            <div class="walk-pill">
+              <span class="ms">directions_walk</span> 15 min
+            </div>
+          </div>
+        </div>
+        <div class="stop-node">
+          <div class="stop-dot" style="background:transparent;border:2px solid rgba(99,64,216,.45)"></div>
+          <div class="stop-name">Colosseum</div>
+        </div>
+      </div>
+
+      <div class="stats-hero">
+        <div class="stat-block">
+          <div class="stat-num">15</div>
+          <div class="stat-unit">min walk</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num">1.2</div>
+          <div class="stat-unit">km</div>
+        </div>
+      </div>
+
+      <div class="skip-row" role="note">
+        <span class="ms">bolt</span>
+        <span class="skip-text">
+          Skip the walk —
+          <strong><span class="ms" style="font-size:14px;vertical-align:middle">subway</span> 8 min metro</strong>
+          <span class="or">or</span>
+          <strong><span class="ms" style="font-size:14px;vertical-align:middle">local_taxi</span> 6 min taxi</strong>
+        </span>
+      </div>
+
+      <div class="why-text">Backstreets of Monti — morning light, no tour groups, good espresso on the way.</div>
+
+      <div class="along-section">
+        <div class="along-label">Along the way</div>
+        <div class="along-item">
+          <span class="along-icon">🏛️</span>
+          <span class="along-text">Ancient ruins and monuments visible from the street</span>
+        </div>
+        <div class="along-item">
+          <span class="along-icon">📷</span>
+          <span class="along-text">Several good photo spots along the route</span>
+        </div>
+        <div class="along-item">
+          <span class="along-icon">🌿</span>
+          <span class="along-text">Tree-lined streets, shaded for most of the walk</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  function setTheme(t, btn) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('.theme-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // show/hide the right phone
+    document.getElementById('dark-col').style.display = t === 'dark' ? '' : 'none';
+    document.getElementById('light-col').style.display = t === 'light' ? '' : 'none';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>City Breadcrumb Proto</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+  :root {
+    --color-bg:       #0f0d0c;
+    --color-surface:  #1a1714;
+    --color-surface2: #221e1b;
+    --color-primary:  #d4a853;
+    --color-primary-dk: #b8892e;
+    --color-text-1:   #f5f0ea;
+    --color-text-2:   #c0b0a4;
+    --color-text-3:   #a08d80;
+    --color-text-4:   #726559;
+    --color-border:   rgba(255,255,255,.09);
+    --color-border-m: rgba(255,255,255,.16);
+    --font-sans:      'DM Sans', sans-serif;
+    --font-heading:   'Playfair Display', serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #070605;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    gap: 56px;
+    padding: 56px 24px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-text-4);
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .context-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-4);
+    margin-bottom: 10px;
+  }
+
+  /* ── Map shell ── */
+  .map-shell {
+    width: 340px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    background: #1c2030;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+
+  .map-bg {
+    width: 100%;
+    height: 260px;
+    background:
+      radial-gradient(ellipse at 30% 60%, rgba(34,197,94,.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 30%, rgba(59,130,246,.06) 0%, transparent 50%),
+      #1c2030;
+    position: relative;
+  }
+
+  /* Fake map grid lines */
+  .map-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .map-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* FilterBar mock */
+  .filter-bar {
+    display: flex;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .filter-chip {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(15,20,30,.82);
+    border: 1px solid rgba(255,255,255,.1);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+
+  .filter-chip.active {
+    background: rgba(212,168,83,.14);
+    border-color: rgba(212,168,83,.35);
+    color: var(--color-primary);
+  }
+
+  /* ── CURRENT (broken) ── */
+  .breadcrumb-current {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pill-current {
+    height: 26px;
+    padding: 0 10px;
+    background: rgba(59,130,246,.12);
+    border: 1px solid rgba(59,130,246,.25);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #93c5fd;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-heading);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .arrow-current {
+    font-family: 'Material Symbols Outlined';
+    font-size: 13px;
+    color: rgba(148,163,184,.4);
+  }
+
+  /* ── OPTION A — Dark glass pills, gold ── */
+  .breadcrumb-a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pill-a {
+    height: 26px;
+    padding: 0 10px;
+    background: rgba(15,20,30,.82);
+    border: 1px solid rgba(212,168,83,.25);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-heading);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+
+  .arrow-a {
+    font-family: 'Material Symbols Outlined';
+    font-size: 13px;
+    color: rgba(212,168,83,.45);
+  }
+
+  /* ── OPTION B — Text only, editorial ── */
+  .breadcrumb-b {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .city-b {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-1);
+    font-family: var(--font-heading);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+  }
+
+  .arrow-b {
+    font-family: 'Material Symbols Outlined';
+    font-size: 12px;
+    color: rgba(255,255,255,.22);
+  }
+
+  /* ── OPTION C — Compact chips, muted surface ── */
+  .breadcrumb-c {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pill-c {
+    height: 24px;
+    padding: 0 9px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-2);
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .arrow-c {
+    font-family: 'Material Symbols Outlined';
+    font-size: 12px;
+    color: rgba(255,255,255,.2);
+    flex-shrink: 0;
+  }
+
+  .ms {
+    font-family: 'Material Symbols Outlined';
+    font-variation-settings: 'FILL' 0, 'wght' 300;
+    display: inline-block;
+    line-height: 1;
+  }
+
+  .badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--color-text-4);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- CURRENT (broken) -->
+  <div>
+    <div class="section-label">Current — broken (blue, off-brand)</div>
+    <div class="map-shell">
+      <div class="map-bg"></div>
+      <div class="map-overlay">
+        <div class="filter-bar">
+          <div class="filter-chip active"><span class="ms">tune</span> All</div>
+          <div class="filter-chip">Food</div>
+          <div class="filter-chip">Museums</div>
+          <div class="filter-chip">Parks</div>
+        </div>
+        <div class="breadcrumb-current">
+          <span class="pill-current">Tokyo</span>
+          <span class="arrow-current">arrow_forward</span>
+          <span class="pill-current">Kyoto</span>
+          <span class="arrow-current">arrow_forward</span>
+          <span class="pill-current">Osaka</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION A -->
+  <div>
+    <div class="section-label">Option A — Dark glass pills, gold accent</div>
+    <div class="map-shell">
+      <div class="map-bg"></div>
+      <div class="map-overlay">
+        <div class="filter-bar">
+          <div class="filter-chip active"><span class="ms">tune</span> All</div>
+          <div class="filter-chip">Food</div>
+          <div class="filter-chip">Museums</div>
+          <div class="filter-chip">Parks</div>
+        </div>
+        <div class="breadcrumb-a">
+          <span class="pill-a">Tokyo</span>
+          <span class="arrow-a">arrow_forward</span>
+          <span class="pill-a">Kyoto</span>
+          <span class="arrow-a">arrow_forward</span>
+          <span class="pill-a">Osaka</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B -->
+  <div>
+    <div class="section-label">Option B — Text only, editorial</div>
+    <div class="map-shell">
+      <div class="map-bg"></div>
+      <div class="map-overlay">
+        <div class="filter-bar">
+          <div class="filter-chip active"><span class="ms">tune</span> All</div>
+          <div class="filter-chip">Food</div>
+          <div class="filter-chip">Museums</div>
+          <div class="filter-chip">Parks</div>
+        </div>
+        <div class="breadcrumb-b">
+          <span class="city-b">Tokyo</span>
+          <span class="arrow-b">arrow_forward</span>
+          <span class="city-b">Kyoto</span>
+          <span class="arrow-b">arrow_forward</span>
+          <span class="city-b">Osaka</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C -->
+  <div>
+    <div class="section-label">Option C — Muted surface chips, subtle</div>
+    <div class="map-shell">
+      <div class="map-bg"></div>
+      <div class="map-overlay">
+        <div class="filter-bar">
+          <div class="filter-chip active"><span class="ms">tune</span> All</div>
+          <div class="filter-chip">Food</div>
+          <div class="filter-chip">Museums</div>
+          <div class="filter-chip">Parks</div>
+        </div>
+        <div class="breadcrumb-c">
+          <span class="pill-c">Tokyo</span>
+          <span class="arrow-c">arrow_forward</span>
+          <span class="pill-c">Kyoto</span>
+          <span class="arrow-c">arrow_forward</span>
+          <span class="pill-c">Osaka</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

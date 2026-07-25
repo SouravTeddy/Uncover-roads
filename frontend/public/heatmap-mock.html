@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heatmap zoom behaviour mock</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0e18; color: #e2e8f0; font-family: system-ui, sans-serif; }
+
+  h1 { text-align: center; padding: 20px 0 4px; font-size: 1rem; font-weight: 700; color: #d4a853; letter-spacing: 0.06em; text-transform: uppercase; }
+  p.sub { text-align: center; font-size: 0.75rem; color: #64748b; margin-bottom: 20px; }
+
+  .stages { display: flex; gap: 0; width: 100%; }
+
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid #1e293b;
+  }
+  .stage:last-child { border-right: none; }
+
+  .label {
+    padding: 10px 0 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+  .zoom-tag {
+    font-size: 0.68rem;
+    color: #475569;
+    margin-bottom: 8px;
+  }
+
+  canvas { display: block; }
+
+  .desc {
+    padding: 10px 12px 14px;
+    font-size: 0.72rem;
+    color: #64748b;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 200px;
+  }
+  .desc strong { color: #94a3b8; }
+
+  .arrow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 6px 0 0;
+  }
+  .arrow {
+    width: 33.33%;
+    text-align: center;
+    font-size: 1.4rem;
+    color: #334155;
+  }
+  .arrow-label {
+    width: 33.33%;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #475569;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Heatmap zoom behaviour</h1>
+<p class="sub">Proposed: heatmap dominant when zoomed out → fade as pins appear when zooming in</p>
+
+<div class="stages">
+  <div class="stage">
+    <div class="label">City overview</div>
+    <div class="zoom-tag">zoom ~8–10</div>
+    <canvas id="c1" width="140" height="200"></canvas>
+    <div class="desc"><strong>Heatmap at full opacity.</strong> Broad blobs show where interesting areas cluster. Pins present but tiny — heatmap dominates.</div>
+  </div>
+  <div class="stage">
+    <div class="label">District view</div>
+    <div class="zoom-tag">zoom ~11–13</div>
+    <canvas id="c2" width="140" height="200"></canvas>
+    <div class="desc"><strong>Crossfade zone.</strong> Heatmap softening, pins becoming readable. User is zooming into a blob they found.</div>
+  </div>
+  <div class="stage">
+    <div class="label">Street level</div>
+    <div class="zoom-tag">zoom ~14+</div>
+    <canvas id="c3" width="140" height="200"></canvas>
+    <div class="desc"><strong>Heatmap gone, pins prominent.</strong> Full pin detail — tap to open place cards.</div>
+  </div>
+</div>
+
+<div class="arrow-row">
+  <div class="arrow-label">← zoom out</div>
+  <div class="arrow">↔</div>
+  <div class="arrow-label">zoom in →</div>
+</div>
+
+<script>
+// ── shared pin positions (normalised 0–1 within canvas) ───────────────────────
+const PINS = [
+  // cluster A — top-left area
+  [0.22, 0.28], [0.28, 0.32], [0.18, 0.36], [0.30, 0.24], [0.24, 0.40],
+  [0.34, 0.30], [0.20, 0.22],
+  // cluster B — centre-right
+  [0.62, 0.50], [0.68, 0.44], [0.58, 0.56], [0.72, 0.52], [0.64, 0.60],
+  [0.74, 0.40], [0.60, 0.42],
+  // cluster C — bottom area (parks)
+  [0.40, 0.74], [0.46, 0.70], [0.36, 0.80], [0.50, 0.76], [0.44, 0.82],
+  // scattered singles
+  [0.52, 0.30], [0.38, 0.48], [0.80, 0.70], [0.15, 0.62],
+]
+
+const PARK_IDXS = new Set([16,17,18,19,20]) // park pins → green heatmap
+
+function drawStage(canvasId, heatOpacity, heatRadius, pinOpacity, pinRadius) {
+  const canvas = document.getElementById(canvasId)
+  const W = canvas.width, H = canvas.height
+  const ctx = canvas.getContext('2d')
+
+  // Map background
+  ctx.fillStyle = '#0f141e'
+  ctx.fillRect(0, 0, W, H)
+
+  // Subtle street grid
+  ctx.strokeStyle = 'rgba(30,42,60,0.9)'
+  ctx.lineWidth = 1
+  for (let x = 0; x < W; x += 22) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke() }
+  for (let y = 0; y < H; y += 22) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke() }
+
+  // ── Heatmap blobs ──────────────────────────────────────────────────────────
+  if (heatOpacity > 0.01) {
+    // Draw each pin as a radial gradient blob on an offscreen canvas, then composite
+    const off = document.createElement('canvas')
+    off.width = W; off.height = H
+    const octx = off.getContext('2d')
+
+    for (let i = 0; i < PINS.length; i++) {
+      const [nx, ny] = PINS[i]
+      const x = nx * W, y = ny * H
+      const isPark = PARK_IDXS.has(i)
+      const r = heatRadius
+      const grad = octx.createRadialGradient(x, y, 0, x, y, r)
+      if (isPark) {
+        grad.addColorStop(0,   'rgba(95,165,112,0.55)')
+        grad.addColorStop(0.4, 'rgba(95,165,112,0.20)')
+        grad.addColorStop(1,   'rgba(95,165,112,0)')
+      } else {
+        grad.addColorStop(0,   'rgba(214,170,86,0.55)')
+        grad.addColorStop(0.4, 'rgba(214,170,86,0.20)')
+        grad.addColorStop(1,   'rgba(214,170,86,0)')
+      }
+      octx.fillStyle = grad
+      octx.beginPath()
+      octx.arc(x, y, r, 0, Math.PI * 2)
+      octx.fill()
+    }
+
+    ctx.globalAlpha = heatOpacity
+    ctx.drawImage(off, 0, 0)
+    ctx.globalAlpha = 1
+  }
+
+  // ── Pin dots ───────────────────────────────────────────────────────────────
+  if (pinOpacity > 0.01) {
+    ctx.globalAlpha = pinOpacity
+    for (let i = 0; i < PINS.length; i++) {
+      const [nx, ny] = PINS[i]
+      const x = nx * W, y = ny * H
+      const isPark = PARK_IDXS.has(i)
+      const r = pinRadius
+
+      // Outer glow
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 2.5)
+      glow.addColorStop(0, isPark ? 'rgba(95,165,112,0.3)' : 'rgba(212,168,83,0.3)')
+      glow.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = glow
+      ctx.beginPath()
+      ctx.arc(x, y, r * 2.5, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Pin circle
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fillStyle = isPark ? '#5ca570' : '#d4a853'
+      ctx.fill()
+      ctx.strokeStyle = '#0f141e'
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+  }
+}
+
+// Stage 1: zoomed out — big blobs, tiny faint pins
+drawStage('c1',
+  /* heatOpacity */ 0.92,
+  /* heatRadius  */ 38,
+  /* pinOpacity  */ 0.25,
+  /* pinRadius   */ 1.5
+)
+
+// Stage 2: crossfade — medium blobs, readable pins
+drawStage('c2',
+  /* heatOpacity */ 0.45,
+  /* heatRadius  */ 28,
+  /* pinOpacity  */ 0.75,
+  /* pinRadius   */ 3
+)
+
+// Stage 3: zoomed in — no blobs, full pins
+drawStage('c3',
+  /* heatOpacity */ 0.0,
+  /* heatRadius  */ 18,
+  /* pinOpacity  */ 1.0,
+  /* pinRadius   */ 5
+)
+</script>
+</body>
+</html>

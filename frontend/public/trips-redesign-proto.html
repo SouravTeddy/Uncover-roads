@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Trips Redesign Proto</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.ms{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;-webkit-font-feature-settings:'liga';font-feature-settings:'liga';-webkit-font-smoothing:antialiased}
+:root{
+  --bg:#09080a;
+  --surface:rgba(255,255,255,.05);
+  --surface2:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.08);
+  --border-m:rgba(255,255,255,.14);
+  --text-1:#f5f0ea;
+  --text-2:rgba(245,240,234,.65);
+  --text-3:rgba(245,240,234,.4);
+  --text-4:rgba(245,240,234,.25);
+  --gold:#d4a853;
+  --gold-bg:rgba(212,168,83,.15);
+  --gold-glow:rgba(212,168,83,.3);
+  --gold-border:rgba(212,168,83,.45);
+  --sans:'DM Sans',sans-serif;
+  --serif:'Playfair Display',serif;
+}
+html,body{height:100%;background:#111;display:flex;align-items:center;justify-content:center;font-family:var(--sans)}
+
+/* Phone shell */
+.phone{
+  width:390px;height:812px;
+  background:var(--bg);
+  border-radius:44px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 40px 120px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.06);
+  display:flex;flex-direction:column;
+}
+
+/* ─── BOTTOM NAV ─── */
+.bottom-nav{
+  position:absolute;bottom:0;left:0;right:0;
+  height:72px;
+  background:rgba(12,10,8,.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 8px 10px;
+  z-index:50;
+}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;cursor:pointer;padding:6px 0;color:var(--text-3);font-size:10px;font-weight:600;letter-spacing:.04em;transition:color .2s}
+.nav-item.active{color:var(--gold)}
+.nav-item .ms{font-size:22px}
+
+/* ─── TOP TAB BAR ─── */
+.top-bar{
+  position:absolute;top:0;left:0;right:0;
+  z-index:40;
+  padding:52px 20px 0;
+  background:rgba(9,8,10,.72);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  transition:transform .3s cubic-bezier(.4,0,.2,1), opacity .3s;
+  transform:translateY(0);
+}
+.top-bar.hidden{transform:translateY(-100%);opacity:0}
+.tab-row{
+  display:flex;align-items:center;gap:0;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  padding-bottom:0;
+  position:relative;
+}
+.tab{
+  font-size:17px;font-weight:600;
+  color:rgba(255,255,255,.4);
+  padding:0 0 12px;margin-right:28px;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:color .2s, border-color .2s;
+  letter-spacing:-.01em;
+  position:relative;bottom:-1px;
+  text-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.tab.active{color:#fff;border-bottom-color:var(--gold)}
+.heart-btn{
+  margin-left:auto;
+  background:none;
+  border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  color:#e05c7a;
+  transition:transform .15s;
+  margin-bottom:12px;
+  padding:4px;
+}
+.heart-btn:active{transform:scale(.82)}
+.heart-btn .ms{font-size:22px}
+
+/* ─── SCREEN CONTAINER ─── */
+.screen{
+  position:absolute;inset:0;bottom:72px;
+  overflow:hidden;
+  display:none;
+}
+.screen.active{display:block}
+
+/* ─── CURRENT TAB: REEL ─── */
+#screen-current{
+  overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  overscroll-behavior:none;
+  -webkit-overflow-scrolling:touch;
+}
+#screen-current::-webkit-scrollbar{display:none}
+.reel-card{
+  height:100%;min-height:740px;
+  scroll-snap-align:start;
+  position:relative;
+  overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;
+}
+
+/* Intro card */
+.intro-card{background:linear-gradient(160deg,#1a1208 0%,#0d0a05 50%,#080812 100%)}
+.intro-city-img{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,8,10,0) 0%,rgba(9,8,10,.4) 40%,rgba(9,8,10,.95) 100%);z-index:1}
+.intro-city-bg{position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&q=80') center/cover no-repeat;filter:saturate(0.7) brightness(0.55)}
+.intro-content{position:relative;z-index:2;padding:0 24px calc(88px + env(safe-area-inset-bottom,0px))}
+.intro-persona{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.intro-title{font-family:var(--serif);font-size:42px;font-weight:700;color:var(--text-1);line-height:1.05;margin-bottom:6px}
+.intro-sub{font-size:13px;color:var(--text-2);margin-bottom:18px}
+.intro-pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid var(--border-m);font-size:11px;color:var(--text-2);font-weight:500}
+
+/* Stop card */
+.stop-card-bg{position:absolute;inset:0}
+.stop-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,8,10,0) 0%,rgba(9,8,10,.92) 55%,rgba(9,8,10,.98) 100%)}
+.stop-content{position:relative;z-index:2;padding:0 20px calc(88px + env(safe-area-inset-bottom,0px))}
+.stop-tag{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.stop-name{font-family:var(--serif);font-size:30px;font-weight:700;color:var(--text-1);line-height:1.1;margin-bottom:4px}
+.stop-area{font-size:12px;color:var(--text-2);margin-bottom:14px}
+.stop-why{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--text-2);line-height:1.5;margin-bottom:14px}
+.stop-meta{display:flex;gap:10px;align-items:center}
+.meta-chip{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-3);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:99px;padding:5px 10px}
+
+/* ─── SAVED TAB ─── */
+#screen-saved{
+  overflow-y:scroll;
+  padding:106px 16px 16px;
+}
+#screen-saved::-webkit-scrollbar{display:none}
+.section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px}
+
+.trip-card{
+  border-radius:18px;overflow:hidden;
+  margin-bottom:12px;cursor:pointer;
+  background:rgba(20,18,14,.9);
+  border:1px solid var(--border);
+  transition:transform .15s;
+  position:relative;
+}
+.trip-card:active{transform:scale(.98)}
+.trip-thumb{
+  width:100%;height:148px;
+  object-fit:cover;display:block;
+  background:linear-gradient(135deg,rgba(212,168,83,.1),rgba(79,143,171,.07));
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.trip-thumb-bg{position:absolute;inset:0;background:var(--c,#333);opacity:.5}
+.trip-thumb-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(9,8,10,.7))}
+.trip-thumb-icon{position:relative;z-index:1;font-size:32px;color:rgba(255,255,255,.2)}
+.trip-body{padding:12px 14px 14px}
+.trip-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px;color:var(--text-3)}
+.trip-city{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--text-1)}
+.trip-arrow{position:absolute;bottom:12px;right:12px;width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--border-m);display:flex;align-items:center;justify-content:center;color:var(--text-2)}
+.visited-chip{position:absolute;top:10px;right:10px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);background:rgba(9,8,10,.7);border:1px solid var(--border);border-radius:99px;padding:3px 8px;backdrop-filter:blur(8px)}
+.date-chip{position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-2);background:rgba(9,8,10,.7);border:1px solid var(--border);border-radius:99px;padding:3px 9px;backdrop-filter:blur(8px)}
+
+/* ─── SAVED PLACES SCREEN ─── */
+#screen-places{
+  overflow-y:scroll;
+  padding:0 0 16px;
+}
+#screen-places::-webkit-scrollbar{display:none}
+.places-header{
+  padding:52px 20px 16px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;
+  background:rgba(9,8,10,.92);
+  backdrop-filter:blur(16px);
+  z-index:10;
+}
+.back-btn{width:36px;height:36px;border-radius:50%;background:var(--surface);border:1px solid var(--border-m);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-2);flex-shrink:0}
+.places-title{font-family:var(--serif);font-size:24px;font-weight:600;color:var(--text-1)}
+.place-item{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.place-item:active{background:var(--surface)}
+.place-icon{width:42px;height:42px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-2)}
+.place-info{flex:1;min-width:0}
+.place-name{font-size:15px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place-sub{font-size:11px;color:var(--text-3);margin-top:2px}
+.place-heart{color:#e05c7a;font-size:18px;flex-shrink:0}
+
+/* scroll indicators on reel */
+.scroll-hint{
+  position:absolute;bottom:calc(80px + env(safe-area-inset-bottom,0px));right:16px;
+  z-index:30;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  opacity:.5;animation:bob 1.8s ease-in-out infinite;
+}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+.scroll-hint .ms{font-size:18px;color:#fff}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <!-- ── TOP TAB BAR ── -->
+  <div class="top-bar" id="topBar">
+    <div class="tab-row">
+      <div class="tab active" id="tabCurrent" onclick="switchTab('current')">Current</div>
+      <div class="tab" id="tabSaved" onclick="switchTab('saved')">Saved</div>
+      <div class="heart-btn" id="heartBtn" onclick="openPlaces()">
+        <span class="ms">favorite</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: CURRENT (REEL) ── -->
+  <div class="screen active" id="screen-current">
+
+    <!-- Card 1: Intro -->
+    <div class="reel-card intro-card">
+      <div class="intro-city-bg"></div>
+      <div class="intro-city-img"></div>
+      <div class="intro-content">
+        <div class="intro-persona">
+          <span class="ms" style="font-size:13px">auto_awesome</span>
+          Slow Traveller · Paris
+        </div>
+        <div class="intro-title">Your Paris<br>adventure</div>
+        <div class="intro-sub">3 days · 14 stops · built just now</div>
+        <div class="intro-pills">
+          <span class="pill"><span class="ms" style="font-size:12px">wb_sunny</span>22° Clear</span>
+          <span class="pill"><span class="ms" style="font-size:12px">calendar_today</span>Jul 14–16</span>
+          <span class="pill"><span class="ms" style="font-size:12px">group</span>Solo</span>
+        </div>
+      </div>
+      <div class="scroll-hint">
+        <span class="ms">keyboard_arrow_down</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Stop -->
+    <div class="reel-card" style="background:#0a0c10">
+      <div class="stop-card-bg">
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1499856871958-5b9357976b82?w=800&q=80') center/cover no-repeat;filter:brightness(.45) saturate(.8)"></div>
+        <div class="stop-overlay"></div>
+      </div>
+      <div class="stop-content">
+        <div class="stop-tag"><span class="ms" style="font-size:12px">pin_drop</span>Stop 1 · Day 1 · 9:00 AM</div>
+        <div class="stop-name">Eiffel Tower</div>
+        <div class="stop-area">Champ de Mars, 7th Arrondissement</div>
+        <div class="stop-why">
+          Iconic at any hour, but morning light hits the ironwork gold — arrive before the crowds settle in.
+        </div>
+        <div class="stop-meta">
+          <div class="meta-chip"><span class="ms" style="font-size:12px">schedule</span>90 min</div>
+          <div class="meta-chip"><span class="ms" style="font-size:12px">directions_walk</span>0.4 km from hotel</div>
+          <div class="meta-chip"><span class="ms" style="font-size:12px">star</span>4.7</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Stop -->
+    <div class="reel-card" style="background:#0c0a08">
+      <div class="stop-card-bg">
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1541959833400-049d37f98ccd?w=800&q=80') center/cover no-repeat;filter:brightness(.4) saturate(.75)"></div>
+        <div class="stop-overlay"></div>
+      </div>
+      <div class="stop-content">
+        <div class="stop-tag"><span class="ms" style="font-size:12px">pin_drop</span>Stop 2 · Day 1 · 11:00 AM</div>
+        <div class="stop-name">Musée d'Orsay</div>
+        <div class="stop-area">7th Arrondissement</div>
+        <div class="stop-why">
+          Best Impressionist collection in the world. Skip the Louvre on day one — this is more intimate and less exhausting.
+        </div>
+        <div class="stop-meta">
+          <div class="meta-chip"><span class="ms" style="font-size:12px">schedule</span>2 hrs</div>
+          <div class="meta-chip"><span class="ms" style="font-size:12px">directions_walk</span>1.1 km walk</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Stop (extra) -->
+    <div class="reel-card" style="background:#080c0a">
+      <div class="stop-card-bg">
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80') center/cover no-repeat;filter:brightness(.4) saturate(.75)"></div>
+        <div class="stop-overlay"></div>
+      </div>
+      <div class="stop-content">
+        <div class="stop-tag"><span class="ms" style="font-size:12px">restaurant</span>Lunch · Day 1 · 1:30 PM</div>
+        <div class="stop-name">Café de Flore</div>
+        <div class="stop-area">Saint-Germain-des-Prés</div>
+        <div class="stop-why">
+          Classic Parisian café that still earns its reputation — croques and café crème done right.
+        </div>
+        <div class="stop-meta">
+          <div class="meta-chip"><span class="ms" style="font-size:12px">schedule</span>1 hr</div>
+          <div class="meta-chip"><span class="ms" style="font-size:12px">euro</span>€€</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-current -->
+
+  <!-- ── SCREEN: SAVED ── -->
+  <div class="screen" id="screen-saved">
+    <div class="section-label">3 saved trips</div>
+
+    <div class="trip-card">
+      <div class="trip-thumb">
+        <div class="trip-thumb-bg" style="--c:linear-gradient(135deg,#1a1210,#0d1520)"></div>
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=70') center/cover;opacity:.55"></div>
+        <div class="trip-thumb-overlay"></div>
+      </div>
+      <div class="visited-chip">Visited</div>
+      <div class="date-chip"><span class="ms" style="font-size:11px">calendar_today</span>3 months ago</div>
+      <div class="trip-body">
+        <div class="trip-meta"><span class="ms" style="font-size:11px">pin_drop</span>5 stops · 1 day</div>
+        <div class="trip-city">City of London</div>
+      </div>
+      <div class="trip-arrow"><span class="ms" style="font-size:15px">arrow_forward</span></div>
+    </div>
+
+    <div class="trip-card">
+      <div class="trip-thumb">
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=600&q=70') center/cover;opacity:.55"></div>
+        <div class="trip-thumb-overlay"></div>
+      </div>
+      <div class="visited-chip">Visited</div>
+      <div class="date-chip"><span class="ms" style="font-size:11px">calendar_today</span>3 months ago</div>
+      <div class="trip-body">
+        <div class="trip-meta"><span class="ms" style="font-size:11px">pin_drop</span>4 stops · 2 days</div>
+        <div class="trip-city">Sydney</div>
+      </div>
+      <div class="trip-arrow"><span class="ms" style="font-size:15px">arrow_forward</span></div>
+    </div>
+
+    <div class="trip-card">
+      <div class="trip-thumb">
+        <div style="position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&q=70') center/cover;opacity:.55"></div>
+        <div class="trip-thumb-overlay"></div>
+      </div>
+      <div class="visited-chip">Visited</div>
+      <div class="date-chip"><span class="ms" style="font-size:11px">calendar_today</span>3 months ago</div>
+      <div class="trip-body">
+        <div class="trip-meta"><span class="ms" style="font-size:11px">pin_drop</span>6 stops · 3 days</div>
+        <div class="trip-city">Tokyo</div>
+      </div>
+      <div class="trip-arrow"><span class="ms" style="font-size:15px">arrow_forward</span></div>
+    </div>
+  </div><!-- /screen-saved -->
+
+  <!-- ── SCREEN: SAVED PLACES (heart) ── -->
+  <div class="screen" id="screen-places">
+    <div class="places-header">
+      <div class="back-btn" onclick="closePlaces()">
+        <span class="ms" style="font-size:18px">arrow_back</span>
+      </div>
+      <span class="ms" style="font-size:22px;color:#e05c7a;margin-left:4px">favorite</span>
+    </div>
+
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">museum</span></div>
+      <div class="place-info">
+        <div class="place-name">Centre Pompidou</div>
+        <div class="place-sub">Museum · Paris</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">restaurant</span></div>
+      <div class="place-info">
+        <div class="place-name">Septime</div>
+        <div class="place-sub">Restaurant · Paris</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">local_cafe</span></div>
+      <div class="place-info">
+        <div class="place-name">Café Kitsuné</div>
+        <div class="place-sub">Café · Paris</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">temple_buddhist</span></div>
+      <div class="place-info">
+        <div class="place-name">Senso-ji Temple</div>
+        <div class="place-sub">Landmark · Tokyo</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">landscape</span></div>
+      <div class="place-info">
+        <div class="place-name">Blue Mountains</div>
+        <div class="place-sub">Nature · Sydney</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+    <div class="place-item">
+      <div class="place-icon"><span class="ms" style="font-size:20px">nightlife</span></div>
+      <div class="place-info">
+        <div class="place-name">Trisha's Bar</div>
+        <div class="place-sub">Bar · London</div>
+      </div>
+      <span class="ms place-heart">favorite</span>
+    </div>
+  </div><!-- /screen-places -->
+
+  <!-- ── BOTTOM NAV ── -->
+  <div class="bottom-nav">
+    <div class="nav-item" onclick="goExplore()">
+      <span class="ms">explore</span>Explore
+    </div>
+    <div class="nav-item active" id="navTrips">
+      <span class="ms">luggage</span>Trips
+    </div>
+    <div class="nav-item">
+      <span class="ms">person</span>Profile
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+let activeTab = 'current';
+let placesOpen = false;
+let prevTab = 'current';
+
+const topBar   = document.getElementById('topBar');
+const reelEl   = document.getElementById('screen-current');
+
+/* ── Tab switching ── */
+function switchTab(tab) {
+  if (placesOpen) return;
+  activeTab = tab;
+
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+
+  // Reset top bar visibility when switching tabs
+  topBar.classList.remove('hidden');
+
+  // Show/hide heart button (visible on both tabs)
+  document.getElementById('heartBtn').style.display = 'flex';
+}
+
+/* ── Saved places ── */
+function openPlaces() {
+  placesOpen = true;
+  prevTab = activeTab;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-places').classList.add('active');
+
+  // Hide tab bar — places has its own back header
+  topBar.style.transform = 'translateY(-100%)';
+  topBar.style.opacity   = '0';
+}
+
+function closePlaces() {
+  placesOpen = false;
+  topBar.style.transform = '';
+  topBar.style.opacity   = '';
+  switchTab(prevTab);
+}
+
+/* ── Scroll-aware top bar on reel ── */
+let lastScrollY = 0;
+let hideTimer   = null;
+let reelScrollY = 0;
+
+reelEl.addEventListener('scroll', () => {
+  const cardH    = reelEl.clientHeight;
+  const scrollY  = reelEl.scrollTop;
+  const cardIdx  = Math.round(scrollY / cardH);
+
+  reelScrollY = scrollY;
+
+  // Past card 1 (index 0): arm the hide-on-scroll-down behaviour
+  if (cardIdx >= 1) {
+    if (scrollY > lastScrollY + 4) {
+      // Scrolling down → hide
+      topBar.classList.add('hidden');
+    } else if (scrollY < lastScrollY - 8) {
+      // Scrolling up / pulling down → show
+      topBar.classList.remove('hidden');
+    }
+  } else {
+    // Back at card 0 → always show
+    topBar.classList.remove('hidden');
+  }
+
+  lastScrollY = scrollY;
+}, { passive: true });
+
+/* ── Keyboard shortcut hint in proto ── */
+document.addEventListener('keydown', e => {
+  if (e.key === '1') switchTab('current');
+  if (e.key === '2') switchTab('saved');
+  if (e.key === 'h') openPlaces();
+  if (e.key === 'Escape') { if (placesOpen) closePlaces(); }
+});
+</script>
+</body>
+</html>

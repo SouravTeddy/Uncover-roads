@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reel Card Proto</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .ms { font-family: 'Material Symbols Rounded'; font-style: normal; line-height: 1; }
+
+  :root[data-theme="dark"] {
+    --bg-page:     #080910;
+    --bg-phone:    #0c0d12;
+    --bg-card:     #0c0d12;
+    --bg-pill:     #171820;
+    --border:      #1e1f28;
+    --border-pill: #222336;
+    --text-1:      #f2ede6;
+    --text-2:      rgba(242,237,230,.55);
+    --text-3:      #4a4878;
+    --text-dim:    #313060;
+    --handle:      #2a2b38;
+    --divider:     #181926;
+    --pill-icon:   #5050a0;
+    --pill-lbl:    #404070;
+    --day-bg:      rgba(12,13,18,.8);
+    --fade-to:     #0c0d12;
+    --star:        #d4a853;
+    --gold-bg:     rgba(212,168,83,.08);
+    --gold-bdr:    rgba(212,168,83,.22);
+    --pick-bg:     rgba(79,143,171,.10);
+    --pick-bdr:    rgba(79,143,171,.22);
+    --pick-col:    #4f8fab;
+    --next-bg:     #131420;
+    --next-bdr:    #1e1f2e;
+    --next-icon:   #1a1b2a;
+    --next-name:   #c0bcd8;
+    --tip-col:     rgba(80,210,140,.85);
+    --rating-hover: rgba(255,255,255,.03);
+  }
+  :root[data-theme="light"] {
+    --bg-page:     #e8e6e0;
+    --bg-phone:    #f5f3ef;
+    --bg-card:     #f5f3ef;
+    --bg-pill:     #eceae5;
+    --border:      #d8d4cc;
+    --border-pill: #d0ccc4;
+    --text-1:      #1a1814;
+    --text-2:      rgba(26,24,20,.6);
+    --text-3:      #88807a;
+    --text-dim:    #aaa090;
+    --handle:      #c8c4bc;
+    --divider:     #dedad4;
+    --pill-icon:   #8878a0;
+    --pill-lbl:    #9890a0;
+    --day-bg:      rgba(245,243,239,.9);
+    --fade-to:     #f5f3ef;
+    --star:        #b08010;
+    --gold-bg:     rgba(176,128,16,.08);
+    --gold-bdr:    rgba(176,128,16,.25);
+    --pick-bg:     rgba(51,110,138,.08);
+    --pick-bdr:    rgba(51,110,138,.22);
+    --pick-col:    #336e8a;
+    --next-bg:     #eceae5;
+    --next-bdr:    #d0ccc4;
+    --next-icon:   #e0dcd4;
+    --next-name:   #3a3630;
+    --tip-col:     rgba(20,140,70,.9);
+    --rating-hover: rgba(0,0,0,.03);
+  }
+
+  body {
+    background: var(--bg-page);
+    font-family: -apple-system, 'Inter', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 24px 64px; transition: background .25s;
+  }
+
+  .theme-toggle {
+    display: flex; margin-bottom: 28px;
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .theme-toggle button {
+    padding: 8px 20px; border: none; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    transition: background .15s, color .15s;
+  }
+  .theme-toggle button.active { background: var(--star); color: #fff; }
+  .theme-toggle button:not(.active) { background: var(--bg-pill); color: var(--text-3); }
+
+  .cards-row {
+    display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+  }
+
+  .col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .col-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--text-3); text-align: center;
+  }
+
+  .phone {
+    width: 375px; background: var(--bg-phone);
+    border-radius: 44px; border: 1.5px solid var(--border);
+    overflow: hidden; transition: background .25s, border-color .25s;
+  }
+
+  .day-bar {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; background: var(--bg-phone);
+  }
+  .day-pill {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--day-bg); border: 1px solid var(--border);
+    backdrop-filter: blur(12px); border-radius: 999px; padding: 7px 14px;
+    font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--text-1);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #F5A623; flex-shrink: 0; }
+  .day-meta { font-size: 11px; color: var(--text-2); font-weight: 500; }
+  .weather-pill {
+    background: var(--day-bg); border: 1px solid var(--border);
+    backdrop-filter: blur(12px); border-radius: 999px; padding: 7px 13px;
+    font-size: 13px; font-weight: 600; color: var(--text-1);
+  }
+
+  .photo-wrap { position: relative; }
+  .photo-block {
+    width: 100%; display: flex; align-items: center; justify-content: center; font-size: 64px;
+  }
+  .photo-block.landmark { background: linear-gradient(160deg,#3a2a1a,#5c3d1e 40%,#7a5530 70%,#4a3020); }
+  .photo-block.tall  { height: 280px; }
+  .photo-block.short { height: 160px; }
+  .photo-fade {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 72px;
+    background: linear-gradient(to bottom, transparent, var(--fade-to));
+  }
+
+  .drag-handle { display: flex; justify-content: center; padding: 10px 0 2px; background: var(--bg-card); }
+  .handle-bar { width: 36px; height: 4px; border-radius: 2px; background: var(--handle); }
+
+  .card { background: var(--bg-card); padding: 6px 20px 28px; }
+
+  .stop-counter {
+    display: block; font-size: 11px; font-weight: 700; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px;
+  }
+
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    border-radius: 6px; padding: 4px 9px;
+    font-size: 12px; font-weight: 700;
+  }
+  .b-type  { background: var(--bg-pill); border: 1px solid var(--border-pill); color: var(--text-3); }
+  .b-added { background: var(--gold-bg); border: 1px solid var(--gold-bdr); color: var(--star); }
+  .b-pick  { background: var(--pick-bg); border: 1px solid var(--pick-bdr); color: var(--pick-col); }
+
+  /* Accessible font sizes: title 24px+, body 16px min, label 12px min */
+  .place-name {
+    font-size: 26px; font-weight: 800; color: var(--text-1);
+    line-height: 1.15; letter-spacing: -.3px; margin-bottom: 10px;
+  }
+
+  .time-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; flex-wrap: wrap; }
+  .time-chip { display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 600; color: var(--text-1); }
+  .time-chip .ms { font-size: 15px; color: var(--pill-icon); }
+  .time-chip.muted { color: var(--text-3); }
+  .time-arrow { color: var(--text-dim); font-size: 12px; }
+
+  .loc-row { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-3); }
+  .loc-row .ms { font-size: 14px; }
+
+  .expand-hint {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 13px; color: var(--text-3); margin-top: 12px; cursor: pointer;
+  }
+  .expand-hint .ms { font-size: 17px; }
+
+  .divider { height: 1px; background: var(--divider); margin: 16px -20px; }
+
+  .sec-label {
+    font-size: 11px; font-weight: 700; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;
+  }
+
+  /* Description from review_summary (Google API) */
+  .desc { font-size: 15px; line-height: 1.6; color: var(--text-2); margin-bottom: 16px; }
+
+  .pills-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--bg-pill); border: 1px solid var(--border-pill);
+    border-radius: 8px; padding: 6px 11px;
+    font-size: 13px; font-weight: 600; color: var(--text-1); white-space: nowrap;
+  }
+  .pill .ms { font-size: 14px; color: var(--pill-icon); }
+  .pill-lbl { font-size: 11px; color: var(--pill-lbl); }
+
+  /* Rating row — tappable, full-width, uses googleMapsUrl */
+  .rating-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px; margin: 0 -20px;
+    border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider);
+    text-decoration: none; cursor: pointer; transition: background .12s;
+  }
+  .rating-row:hover, .rating-row:focus { background: var(--rating-hover); outline: none; }
+  .rating-num { font-size: 26px; font-weight: 800; color: var(--text-1); letter-spacing: -.5px; }
+  .rating-stars { font-size: 15px; color: var(--star); margin-bottom: 3px; }
+  /* rating_count from fetchPlaceDetails — shown if available */
+  .rating-sub { font-size: 12px; color: var(--text-3); }
+  .rating-arrow { font-size: 20px; color: var(--star); }
+
+  /* Crowd tip — inline, no box */
+  .crowd-tip {
+    display: flex; align-items: baseline; gap: 7px;
+    font-size: 14px; color: var(--text-2); line-height: 1.5;
+  }
+  .crowd-tip strong { color: var(--tip-col); font-weight: 700; }
+
+  /* Next stop */
+  .next-stop {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--next-bg); border: 1px solid var(--next-bdr);
+    border-radius: 10px; padding: 12px 13px;
+  }
+  .next-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--next-icon); border: 1px solid var(--border-pill);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .next-lbl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 2px; }
+  .next-name { font-size: 15px; font-weight: 700; color: var(--next-name); }
+  .next-sub { font-size: 13px; color: var(--text-3); margin-top: 1px; }
+
+  .tab-bar { display: flex; border-top: 1px solid var(--border); background: var(--bg-card); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 0 14px; }
+  .tab .ms { font-size: 22px; }
+  .tab span { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .tab.active .ms, .tab.active span { color: var(--star); }
+  .tab:not(.active) .ms, .tab:not(.active) span { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="theme-toggle">
+  <button class="active" onclick="setTheme('dark',this)">Dark</button>
+  <button onclick="setTheme('light',this)">Light</button>
+</div>
+
+<div class="cards-row">
+
+<!-- ════════════ COLLAPSED ════════════ -->
+<div class="col">
+  <div class="col-label">Collapsed</div>
+  <div class="phone">
+    <div class="day-bar">
+      <div class="day-pill"><div class="dot"></div> MORNING <span class="day-meta">&nbsp;Fri 24 Jul &nbsp;|&nbsp; Day 1/3</span></div>
+      <div class="weather-pill">☀️ 26°</div>
+    </div>
+    <div class="photo-wrap">
+      <div class="photo-block landmark tall">🏛️</div>
+      <div class="photo-fade"></div>
+    </div>
+    <div class="drag-handle"><div class="handle-bar"></div></div>
+    <div class="card">
+      <span class="stop-counter">STOP 1 OF 15</span>
+      <div class="badges">
+        <div class="badge b-type">🏛️ Landmark</div>
+        <div class="badge b-added">✦ You added this</div>
+      </div>
+      <div class="place-name">Roman Forum</div>
+      <div class="time-row">
+        <span class="time-chip"><span class="ms">schedule</span> ~8:00 AM</span>
+        <span class="time-arrow">→</span>
+        <span class="time-chip muted">leave ~9:40 AM</span>
+      </div>
+      <div class="loc-row"><span class="ms">location_on</span> Rome Center · Rome</div>
+      <div class="expand-hint"><span class="ms">expand_more</span> See details</div>
+    </div>
+    <div class="tab-bar">
+      <div class="tab"><span class="ms">explore</span><span>Explore</span></div>
+      <div class="tab active"><span class="ms">route</span><span>Trips</span></div>
+      <div class="tab"><span class="ms">person</span><span>Profile</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ EXPANDED ════════════ -->
+<div class="col">
+  <div class="col-label">Expanded</div>
+  <div class="phone">
+    <div class="day-bar">
+      <div class="day-pill"><div class="dot"></div> MORNING <span class="day-meta">&nbsp;Fri 24 Jul &nbsp;|&nbsp; Day 1/3</span></div>
+      <div class="weather-pill">☀️ 26°</div>
+    </div>
+    <div class="photo-wrap">
+      <div class="photo-block landmark short">🏛️</div>
+      <div class="photo-fade"></div>
+    </div>
+    <div class="drag-handle"><div class="handle-bar"></div></div>
+    <div class="card">
+      <span class="stop-counter">STOP 1 OF 15</span>
+      <div class="badges">
+        <div class="badge b-type">🏛️ Landmark</div>
+        <div class="badge b-added">✦ You added this</div>
+      </div>
+      <div class="place-name">Roman Forum</div>
+      <div class="time-row">
+        <span class="time-chip"><span class="ms">schedule</span> ~8:00 AM</span>
+        <span class="time-arrow">→</span>
+        <span class="time-chip muted">leave ~9:40 AM</span>
+      </div>
+      <div class="loc-row"><span class="ms">location_on</span> Rome Center · Rome</div>
+
+      <div class="divider"></div>
+
+      <!-- Description from fetchPlaceDetails → review_summary (Google AI summary) -->
+      <div class="desc">The ruins of the ancient Roman government buildings stretch across a valley between the Palatine and Capitoline Hills, dating back to the 7th century BC.</div>
+
+      <div class="sec-label">AT THIS STOP</div>
+
+      <div class="pills-row">
+        <div class="pill"><span class="ms">schedule</span><span class="pill-lbl">Visit</span> ~1.7 hr</div>
+        <div class="pill">🗺️ Off the beaten path</div>
+      </div>
+
+      <!-- Rating row: stop.rating + rating_count from fetchPlaceDetails + stop.googleMapsUrl -->
+      <a class="rating-row" href="#" onclick="return false" role="link" aria-label="4.8 stars, 2,341 reviews — open in Google Maps">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="rating-num">4.8</span>
+          <div>
+            <div class="rating-stars">★★★★★</div>
+            <!-- rating_count from fetchPlaceDetails — lazy fetched same as PinCard -->
+            <div class="rating-sub">2,341 reviews · Google</div>
+          </div>
+        </div>
+        <span class="rating-arrow" aria-hidden="true">↗</span>
+      </a>
+
+      <div class="divider"></div>
+
+      <!-- Crowd tip: plain language, no "GOOD WINDOW" jargon -->
+      <div class="crowd-tip">
+        <span aria-hidden="true">🕗</span>
+        <span><strong>Best before 9 AM</strong> — quieter crowds, gets busy toward midday.</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="sec-label">NEXT STOP</div>
+      <div class="next-stop">
+        <div class="next-icon">🚌</div>
+        <div>
+          <div class="next-lbl">Next stop</div>
+          <div class="next-name">Gran Caffè Vittoriano</div>
+          <div class="next-sub">3 min ride · 0.8 km</div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <div class="tab"><span class="ms">explore</span><span>Explore</span></div>
+      <div class="tab active"><span class="ms">route</span><span>Trips</span></div>
+      <div class="tab"><span class="ms">person</span><span>Profile</span></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+  function setTheme(t, btn) {
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('.theme-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>
