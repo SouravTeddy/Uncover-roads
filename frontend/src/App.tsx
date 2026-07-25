@@ -118,7 +118,14 @@ function ScreenRouter() {
             if (url.startsWith('uncoverroads://') || url.includes('uncover-roads.vercel.app')) {
               await Browser.close();
               const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
-              if (!error && session?.user) {
+              if (error) {
+                console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
+                // Fallback: session might already be set (e.g. implicit flow or retry)
+                const { data: { session: fallback } } = await supabase.auth.getSession();
+                if (fallback?.user) {
+                  handleSignedIn(fallback.user);
+                }
+              } else if (session?.user) {
                 handleSignedIn(session.user);
               }
             }
