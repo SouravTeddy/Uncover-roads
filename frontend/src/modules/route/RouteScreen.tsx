@@ -43,7 +43,7 @@ export function RouteScreen() {
     <div className="fixed inset-0 bg-[var(--color-bg)] flex flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-[var(--color-bg)] border-b border-[var(--color-divider)] px-4 pb-3 flex items-center gap-3" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
         <button
           onClick={() => dispatch({ type: 'GO_BACK' })}
           className="flex items-center justify-center flex-shrink-0"

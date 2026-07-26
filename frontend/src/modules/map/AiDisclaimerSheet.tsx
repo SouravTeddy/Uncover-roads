@@ -35,7 +35,8 @@ export function AiDisclaimerSheet({ onContinue }: Props) {
           width: '100%', background: 'var(--color-surface)',
           borderRadius: '24px 24px 0 0',
           borderTop: '1px solid rgba(212,168,83,.2)',
-          padding: '20px 20px 32px',
+          padding: '20px 20px',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
         }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--color-border)', margin: '0 auto 20px' }} />

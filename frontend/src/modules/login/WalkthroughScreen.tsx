@@ -114,7 +114,7 @@ export function WalkthroughScreen() {
       {/* Skip */}
       <div style={{
         position: 'absolute', zIndex: 10,
-        top: 'calc(env(safe-area-inset-top, 0px) + 52px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
         right: 20,
       }}>
         {!isLast && (
@@ -140,7 +140,7 @@ export function WalkthroughScreen() {
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           padding: '0 28px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 44px)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 34px) + 28px)',
           zIndex: 5,
           animation: exiting ? 'none' : 'fadeUp .5s ease both',
           animationDelay: '.1s',

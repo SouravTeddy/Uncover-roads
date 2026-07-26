@@ -51,7 +51,7 @@ export function BottomNav() {
     <nav
       style={{
         position: 'fixed',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 30,

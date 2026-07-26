@@ -38,7 +38,7 @@ export function SubscriptionScreen() {
     <div className="fixed inset-0 flex flex-col bg-[var(--color-bg)]" style={{ zIndex: 20 }}>
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-divider)] flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 pb-3 border-b border-[var(--color-divider)] flex-shrink-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}>
         <button
           className="w-9 h-9 rounded-full border border-[var(--color-border)] flex items-center justify-center flex-shrink-0"
           onClick={back}

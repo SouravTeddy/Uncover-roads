@@ -49,7 +49,7 @@ export function ProfileScreen() {
   const user: { name: string; avatar: string | null; email: string } | null =
     rawUser ? JSON.parse(rawUser) : null;
 
-  const name = user?.name ?? 'Explorer';
+  const name = user?.name || 'Explorer';
   const email = user?.email ?? '';
   const initial = name[0].toUpperCase();
   const badgeLabel = userTier === 'pro' ? 'PRO' : userTier === 'pack' ? 'PACK' : 'FREE';
@@ -96,7 +96,7 @@ export function ProfileScreen() {
   return (
     <div className="fixed inset-0 bg-bg flex flex-col" style={{ zIndex: 20 }}>
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 flex items-center">
+      <div className="px-4 pb-4 flex items-center" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}>
         <h1 className="font-[family-name:var(--font-heading)] text-[18px] font-bold text-[var(--color-text-1)]">
           Profile
         </h1>

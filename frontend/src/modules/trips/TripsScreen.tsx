@@ -407,42 +407,44 @@ export function TripsScreen() {
 
       {/* ── Saved: trips list ── */}
       {tripsActiveTab === 'saved' && (
-        <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)' } as React.CSSProperties}
-          className="no-scrollbar"
-        >
-          {sorted.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16, padding: '64px 32px', textAlign: 'center' }}>
-              <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
-              </div>
-              <div>
-                <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8, lineHeight: 1.2 }}>No trips yet</p>
-                <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.6 }}>Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
-              </div>
-              <button
-                onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
-                style={{ padding: '12px 28px', borderRadius: 14, background: 'rgba(212,168,83,.15)', border: '1px solid rgba(212,168,83,.4)', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-              >
-                Start exploring
-              </button>
+        sorted.length === 0 ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '32px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="ms" style={{ fontSize: 30, color: 'var(--color-text-4)' }}>route</span>
             </div>
-          ) : sorted.length <= GROUP_THRESHOLD ? (
-            <div style={{ padding: '8px 16px 112px' }}>
-              {sorted.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
+            <div>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 700, color: 'var(--color-text-1)', marginBottom: 8, lineHeight: 1.2 }}>No trips yet</p>
+              <p style={{ fontSize: 13, color: 'var(--color-text-3)', lineHeight: 1.6 }}>Explore a city and build your itinerary.<br />Your trips are saved automatically.</p>
             </div>
-          ) : (
-            <div style={{ padding: '8px 16px 112px' }}>
-              {buildMonthGroups(sorted).map(group => (
-                <div key={group.label}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
-                    {group.label}
+            <button
+              onClick={() => dispatch({ type: 'GO_TO', screen: 'destination' })}
+              style={{ padding: '12px 28px', borderRadius: 14, background: 'rgba(212,168,83,.15)', border: '1px solid rgba(212,168,83,.4)', color: 'var(--color-primary)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Start exploring
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 68px)' } as React.CSSProperties}
+            className="no-scrollbar"
+          >
+            {sorted.length <= GROUP_THRESHOLD ? (
+              <div style={{ padding: '8px 16px 112px' }}>
+                {sorted.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
+              </div>
+            ) : (
+              <div style={{ padding: '8px 16px 112px' }}>
+                {buildMonthGroups(sorted).map(group => (
+                  <div key={group.label}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--color-text-4)', padding: '4px 2px 10px' }}>
+                      {group.label}
+                    </div>
+                    {group.items.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
                   </div>
-                  {group.items.map((item, idx) => <TripCard key={item.id} item={item} index={idx} cityPhoto={cityPhotoMap.get(item.city?.toLowerCase())} />)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* ── Pin calendar overlay — opened from saved place card tap ── */}

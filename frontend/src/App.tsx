@@ -56,8 +56,12 @@ function ScreenRouter() {
 
   async function handleSignedIn(user: User) {
     // Persist user info for the welcome back screen
+    const rawName = user.user_metadata?.full_name ?? user.user_metadata?.name;
+    const resolvedName = typeof rawName === 'object' && rawName !== null
+      ? `${(rawName as Record<string,string>).firstName ?? ''} ${(rawName as Record<string,string>).lastName ?? ''}`.trim()
+      : rawName;
     localStorage.setItem('ur_user', JSON.stringify({
-      name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email ?? '',
+      name: resolvedName || user.email || 'Explorer',
       avatar: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
       email: user.email ?? '',
     }));
@@ -115,6 +119,7 @@ function ScreenRouter() {
       import('@capacitor/app').then(({ App: CapApp }) => {
         import('@capacitor/browser').then(({ Browser }) => {
           CapApp.addListener('appUrlOpen', async ({ url }: { url: string }) => {
+            console.log('[appUrlOpen] received url:', url);
             if (url.startsWith('uncoverroads://') || url.includes('uncover-roads.vercel.app')) {
               await Browser.close();
               if (url.includes('#access_token=')) {
@@ -129,17 +134,26 @@ function ScreenRouter() {
                 } else {
                   console.error('[OAuth] setSession failed:', error?.message);
                 }
+              } else if (url.includes('error=') || url.includes('error_description=')) {
+                const params = new URLSearchParams(url.split('?')[1] ?? url.split('#')[1] ?? '');
+                const errDesc = params.get('error_description') ?? params.get('error') ?? 'Unknown error';
+                console.error('[OAuth] callback error:', errDesc);
               } else {
                 // PKCE flow — exchange code for session
+                console.log('[OAuth] attempting exchangeCodeForSession');
                 const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
+                console.log('[OAuth] exchange result — session:', !!session, 'error:', error?.message);
                 if (error) {
                   console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
                   const { data: { session: fallback } } = await supabase.auth.getSession();
+                  console.log('[OAuth] fallback session:', !!fallback);
                   if (fallback?.user) handleSignedIn(fallback.user);
                 } else if (session?.user) {
                   handleSignedIn(session.user);
                 }
               }
+            } else {
+              console.log('[appUrlOpen] url not matched, ignoring');
             }
           }).then((handle: { remove: () => void }) => {
             removeListener = handle.remove;

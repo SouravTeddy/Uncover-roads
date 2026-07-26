@@ -98,32 +98,21 @@ export function LoginScreen() {
     setError(null);
 
     const { Capacitor } = await import('@capacitor/core');
+    const isNative = Capacitor.isNativePlatform();
 
-    if (Capacitor.getPlatform() === 'ios') {
-      try {
-        const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-        const result = await SignInWithApple.authorize({
-          clientId: 'com.uncoverroadsapp.travel',
-          redirectURI: 'uncoverroads://login-callback',
-          scopes: 'email name',
-        });
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'apple',
-          token: result.response.identityToken,
-        });
-        if (error || !data.session?.user) {
-          setError(error?.message ?? 'Apple sign-in failed');
-          setAuthLoading(false);
-          return;
-        }
-        // handleSignedIn is called via onAuthStateChange in App.tsx
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (!msg.includes('cancel') && !msg.includes('Cancel')) setError('Apple sign-in failed');
+    if (isNative) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: { redirectTo: 'uncoverroads://login-callback', skipBrowserRedirect: true },
+      });
+      if (error || !data?.url) {
+        setError(error?.message ?? 'Apple sign-in failed');
         setAuthLoading(false);
+        return;
       }
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: data.url });
     } else {
-      // Web / Android — OAuth redirect
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: { redirectTo: window.location.origin },
@@ -153,10 +142,17 @@ export function LoginScreen() {
     setAuthLoading(true);
     setError(null);
 
+    const { Capacitor } = await import('@capacitor/core');
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'uncoverroads://login-callback'
+      : `${window.location.origin}/`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, given_name: name.split(' ')[0] } },
+      options: {
+        data: { full_name: name, given_name: name.split(' ')[0] },
+        emailRedirectTo: redirectTo,
+      },
     });
     if (error) {
       setError(error.message);
@@ -241,7 +237,7 @@ export function LoginScreen() {
               </p>
               <button
                 onClick={continueToOnboarding}
-                className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2"
+                className="w-full h-14 rounded-2xl font-sans font-semibold text-white text-base flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #d4a853, #b8893a)', boxShadow: '0 8px 32px rgba(212,168,83,.3)' }}
               >
                 Continue
@@ -317,7 +313,7 @@ export function LoginScreen() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
+                  className="w-full h-14 rounded-2xl font-sans font-semibold text-white text-base flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #d4a853, #b8893a)', boxShadow: '0 8px 32px rgba(212,168,83,.3)' }}
                 >
                   {authLoading
@@ -397,7 +393,7 @@ export function LoginScreen() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full h-14 rounded-2xl font-heading font-bold text-white text-base flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
+                  className="w-full h-14 rounded-2xl font-sans font-semibold text-white text-base flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
                   style={{ background: 'linear-gradient(135deg, #d4a853, #b8893a)', boxShadow: '0 8px 32px rgba(212,168,83,.3)' }}
                 >
                   {authLoading
@@ -431,7 +427,7 @@ export function LoginScreen() {
               <button
                 onClick={signInWithGoogle}
                 disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-heading font-bold text-[0.95rem] disabled:opacity-60 mb-3 active:border-[var(--color-primary)]"
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-sans font-semibold text-[0.95rem] disabled:opacity-60 mb-3 active:border-[var(--color-primary)]"
               >
                 {authLoading ? (
                   <span className="ms text-white animate-spin text-lg">autorenew</span>
@@ -452,7 +448,7 @@ export function LoginScreen() {
               <button
                 onClick={signInWithApple}
                 disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-white text-[#1a1a1a] font-heading font-bold text-[0.95rem] disabled:opacity-60 mb-3"
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-white text-[#1a1a1a] font-sans font-semibold text-[0.95rem] disabled:opacity-60 mb-3"
               >
                 {authLoading ? (
                   <span className="ms text-[#1a1a1a] animate-spin text-lg">autorenew</span>
@@ -477,7 +473,7 @@ export function LoginScreen() {
               <button
                 onClick={() => setMode('email-signin')}
                 disabled={authLoading}
-                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-heading font-bold text-[0.95rem] disabled:opacity-60 active:border-[var(--color-primary)]"
+                className="w-full flex items-center justify-center gap-3 h-14 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] text-white font-sans font-semibold text-[0.95rem] disabled:opacity-60 active:border-[var(--color-primary)]"
               >
                 <span className="ms" style={{ fontSize: 20 }}>mail</span>
                 Continue with Email
