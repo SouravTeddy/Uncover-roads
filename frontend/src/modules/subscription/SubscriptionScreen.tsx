@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { getPackRemainingTrips } from '../../shared/tier';
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
   const { userTier, tripPacks, packTripsRemaining, generationCount } = state;
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   function back() {
     if (state.screenStack.length > 1) {
@@ -14,7 +16,7 @@ export function SubscriptionScreen() {
   }
 
   function handlePurchase() {
-    alert('Payment integration in progress.');
+    setShowComingSoon(true);
   }
 
   function handleDowngrade() {
@@ -249,6 +251,34 @@ export function SubscriptionScreen() {
         )}
 
       </div>
+
+      {/* Coming soon modal */}
+      {showComingSoon && (
+        <div
+          className="fixed inset-0 flex items-center justify-center px-6"
+          style={{ zIndex: 60, background: 'rgba(0,0,0,.7)' }}
+          onClick={() => setShowComingSoon(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl px-6 py-6 text-center"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="ms fill text-[var(--color-primary)] text-4xl mb-3 block">rocket_launch</span>
+            <p className="text-[var(--color-text-1)] font-bold text-base mb-2">Coming soon</p>
+            <p className="text-[var(--color-text-3)] text-sm mb-5 leading-relaxed">
+              In-app purchases are being set up. Check back shortly — Pro and Pack plans will be available here.
+            </p>
+            <button
+              onClick={() => setShowComingSoon(false)}
+              className="w-full h-11 rounded-xl text-sm font-semibold text-[var(--color-bg)]"
+              style={{ background: 'var(--color-primary)' }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

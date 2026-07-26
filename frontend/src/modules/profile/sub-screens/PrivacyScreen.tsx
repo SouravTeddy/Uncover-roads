@@ -25,8 +25,11 @@ export function PrivacyScreen({ onBack, onSignOut }: { onBack: () => void; onSig
     }
   }
 
+  const [exportSent, setExportSent] = useState(false);
+
   function handleExportData() {
-    alert(`Export request sent to ${user?.email ?? 'your email'}.`);
+    setExportSent(true);
+    setTimeout(() => setExportSent(false), 4000);
   }
 
   return (
@@ -64,9 +67,13 @@ export function PrivacyScreen({ onBack, onSignOut }: { onBack: () => void; onSig
             <span className="ms text-[var(--color-text-3)] text-lg">download</span>
             <div className="flex-1">
               <p className="text-[14px] text-[var(--color-text-1)] font-medium">Export my data</p>
-              <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">Sent to your registered email</p>
+              <p className="text-[12px] text-[var(--color-text-3)] mt-0.5">
+                {exportSent ? `Request sent to ${user?.email ?? 'your email'}` : 'Sent to your registered email'}
+              </p>
             </div>
-            <span className="ms text-[var(--color-text-3)]">chevron_right</span>
+            {exportSent
+              ? <span className="ms fill text-green-400 text-lg">check_circle</span>
+              : <span className="ms text-[var(--color-text-3)]">chevron_right</span>}
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}

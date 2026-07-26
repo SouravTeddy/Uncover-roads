@@ -14,8 +14,8 @@ export function MiniPaywall({ onClose, context }: Props) {
   const [purchaseConfirm, setPurchaseConfirm] = useState<{ tripsAdded: number } | null>(null);
 
   function handlePackPurchase(_size: 1 | 5) {
-    // TODO: integrate Google Play Billing / RevenueCat
-    alert('Purchase coming soon. Payment integration in progress.');
+    onClose();
+    dispatch({ type: 'GO_TO', screen: 'subscription' });
   }
 
   function handleViewAllPlans() {
