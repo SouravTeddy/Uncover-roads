@@ -55,6 +55,14 @@ function ScreenRouter() {
   }, []);
 
   async function handleSignedIn(user: User) {
+    // Block email/password users who haven't confirmed their email yet
+    const isEmailProvider = (user.app_metadata?.provider ?? 'email') === 'email';
+    if (isEmailProvider && !user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      dispatch({ type: 'GO_TO', screen: 'login' });
+      return;
+    }
+
     // Persist user info for the welcome back screen
     const rawName = user.user_metadata?.full_name ?? user.user_metadata?.name;
     const resolvedName = typeof rawName === 'object' && rawName !== null

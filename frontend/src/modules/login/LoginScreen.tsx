@@ -129,10 +129,17 @@ export function LoginScreen() {
     setAuthLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
       setAuthLoading(false);
+      return;
+    }
+    if (!data.user?.email_confirmed_at) {
+      await supabase.auth.signOut();
+      setError('Please verify your email before signing in. Check your inbox for the confirmation link.');
+      setAuthLoading(false);
+      return;
     }
     // On success, onAuthStateChange in App.tsx handles navigation
   }
