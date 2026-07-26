@@ -134,13 +134,14 @@ export function WalkthroughScreen() {
         )}
       </div>
 
-      {/* Text block — anchored bottom */}
+      {/* Text + dots — anchored above the CTA button */}
       <div
         key={`text-${animKey}`}
         style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
+          position: 'absolute',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px + 56px + 16px)',
+          left: 0, right: 0,
           padding: '0 28px',
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 34px) + 28px)',
           zIndex: 5,
           animation: exiting ? 'none' : 'fadeUp .5s ease both',
           animationDelay: '.1s',
@@ -151,24 +152,24 @@ export function WalkthroughScreen() {
         {/* Headline */}
         <h1 style={{
           fontFamily: 'var(--font-heading), serif',
-          fontWeight: 700, fontSize: 44,
-          color: '#fff', lineHeight: 1.0,
+          fontWeight: 700, fontSize: 40,
+          color: '#fff', lineHeight: 1.05,
           letterSpacing: '-.02em',
-          margin: '0 0 12px',
+          margin: '0 0 10px',
         }}>
           {card.title}
         </h1>
 
         <p style={{
           fontSize: 14, color: 'rgba(255,255,255,.55)',
-          lineHeight: 1.65, margin: '0 0 28px',
+          lineHeight: 1.65, margin: '0 0 22px',
           maxWidth: 300, fontWeight: 400,
         }}>
           {card.desc}
         </p>
 
         {/* Step dots */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 22, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {CARDS.map((_, i) => (
             <button
               key={i}
@@ -183,8 +184,17 @@ export function WalkthroughScreen() {
             />
           ))}
         </div>
+      </div>
 
-        {/* CTA */}
+      {/* CTA — always pinned at fixed bottom position */}
+      <div style={{
+        position: 'absolute',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
+        left: 28, right: 28,
+        zIndex: 5,
+        opacity: exiting ? 0 : 1,
+        transition: exiting ? 'opacity .2s ease' : 'none',
+      }}>
         <button
           onClick={next}
           style={{
