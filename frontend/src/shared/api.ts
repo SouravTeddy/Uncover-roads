@@ -103,7 +103,7 @@ export async function mapData(
     if (res.ok) {
       const data: Place[] = await res.json();
       const limited = data.slice(0, 150);
-      console.log(`[mapData] ${limited.length} places for ${city}`);
+      if (import.meta.env.DEV) console.log(`[mapData] ${limited.length} places for ${city}`);
       return limited;
     }
   } catch (err) {

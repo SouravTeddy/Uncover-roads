@@ -131,7 +131,7 @@ function ScreenRouter() {
       import('@capacitor/app').then(({ App: CapApp }) => {
         import('@capacitor/browser').then(({ Browser }) => {
           CapApp.addListener('appUrlOpen', async ({ url }: { url: string }) => {
-            console.log('[appUrlOpen] received url:', url);
+            if (import.meta.env.DEV) console.log('[appUrlOpen] received url:', url);
             if (url.startsWith('uncoverroads://') || url.includes('uncover-roads.vercel.app')) {
               await Browser.close();
               if (url.includes('#access_token=')) {
@@ -152,20 +152,20 @@ function ScreenRouter() {
                 console.error('[OAuth] callback error:', errDesc);
               } else {
                 // PKCE flow — exchange code for session
-                console.log('[OAuth] attempting exchangeCodeForSession');
+                if (import.meta.env.DEV) console.log('[OAuth] attempting exchangeCodeForSession');
                 const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
-                console.log('[OAuth] exchange result — session:', !!session, 'error:', error?.message);
+                if (import.meta.env.DEV) console.log('[OAuth] exchange result — session:', !!session, 'error:', error?.message);
                 if (error) {
                   console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
                   const { data: { session: fallback } } = await supabase.auth.getSession();
-                  console.log('[OAuth] fallback session:', !!fallback);
+                  if (import.meta.env.DEV) console.log('[OAuth] fallback session:', !!fallback);
                   if (fallback?.user) handleSignedIn(fallback.user);
                 } else if (session?.user) {
                   handleSignedIn(session.user);
                 }
               }
             } else {
-              console.log('[appUrlOpen] url not matched, ignoring');
+              if (import.meta.env.DEV) console.log('[appUrlOpen] url not matched, ignoring');
             }
           }).then((handle: { remove: () => void }) => {
             removeListener = handle.remove;
