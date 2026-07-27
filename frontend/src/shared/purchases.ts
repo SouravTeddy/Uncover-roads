@@ -61,3 +61,14 @@ export async function checkProEntitlement(): Promise<boolean> {
     return false;
   }
 }
+
+export async function restorePurchases(): Promise<'pro' | 'pack' | 'none' | 'error'> {
+  if (!isIOS()) return 'none';
+  try {
+    const info = await Purchases.restorePurchases();
+    if (info.customerInfo.entitlements.active['pro']) return 'pro';
+    return 'none';
+  } catch {
+    return 'error';
+  }
+}

@@ -11,6 +11,10 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
+# RevenueCat — compiled in as a Capacitor plugin even though purchases are iOS-only
+-keep class com.revenuecat.** { *; }
+-dontwarn com.revenuecat.**
+
 # Suppress warnings for unused platform classes
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**

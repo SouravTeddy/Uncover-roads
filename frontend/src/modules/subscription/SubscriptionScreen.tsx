@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { getPackRemainingTrips } from '../../shared/tier';
-import { purchaseProMonthly, purchaseTripPack } from '../../shared/purchases';
+import { purchaseProMonthly, purchaseTripPack, restorePurchases } from '../../shared/purchases';
 import { Capacitor } from '@capacitor/core';
 
 export function SubscriptionScreen() {
@@ -10,6 +10,8 @@ export function SubscriptionScreen() {
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchaseError, setPurchaseError] = useState('');
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState('');
 
   function back() {
     if (state.screenStack.length > 1) {
@@ -37,6 +39,21 @@ export function SubscriptionScreen() {
       back();
     } else if (result === 'error') {
       setPurchaseError('Purchase failed. Please try again.');
+    }
+  }
+
+  async function handleRestore() {
+    setRestoring(true);
+    setRestoreMsg('');
+    const result = await restorePurchases();
+    setRestoring(false);
+    if (result === 'pro') {
+      dispatch({ type: 'SET_USER_TIER', tier: 'pro' });
+      setRestoreMsg('Pro restored successfully.');
+    } else if (result === 'none') {
+      setRestoreMsg('No previous purchases found.');
+    } else {
+      setRestoreMsg('Restore failed. Please try again.');
     }
   }
 
@@ -270,6 +287,22 @@ export function SubscriptionScreen() {
             style={{ border: '1px solid var(--color-divider)' }}
           >
             <span className="text-[var(--color-text-2)] font-semibold">Free plan</span> includes 3 complete trips. Top up with a 5-trip pack or go Pro for unlimited.
+          </div>
+        )}
+
+        {/* Restore Purchases — required by App Store guideline 3.1.1 */}
+        {Capacitor.isNativePlatform() && (
+          <div className="flex flex-col items-center mt-5 mb-2 gap-2">
+            <button
+              onClick={handleRestore}
+              disabled={restoring || purchasing}
+              className="text-[13px] text-[var(--color-text-3)] underline underline-offset-2 disabled:opacity-40"
+            >
+              {restoring ? 'Restoring…' : 'Restore Purchases'}
+            </button>
+            {restoreMsg ? (
+              <span className="text-[12px] text-[var(--color-text-3)]">{restoreMsg}</span>
+            ) : null}
           </div>
         )}
 

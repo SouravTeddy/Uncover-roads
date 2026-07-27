@@ -156,7 +156,7 @@ function ScreenRouter() {
                 const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(url);
                 if (import.meta.env.DEV) console.log('[OAuth] exchange result — session:', !!session, 'error:', error?.message);
                 if (error) {
-                  console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url);
+                  console.error('[OAuth] exchangeCodeForSession failed:', error.message, 'url:', url.split('?')[0]);
                   const { data: { session: fallback } } = await supabase.auth.getSession();
                   if (import.meta.env.DEV) console.log('[OAuth] fallback session:', !!fallback);
                   if (fallback?.user) handleSignedIn(fallback.user);
