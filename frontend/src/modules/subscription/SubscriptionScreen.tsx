@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useAppStore } from '../../shared/store';
 import { getPackRemainingTrips } from '../../shared/tier';
+import { purchaseProMonthly, purchaseTripPack } from '../../shared/purchases';
+import { Capacitor } from '@capacitor/core';
 
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
   const { userTier, tripPacks, packTripsRemaining, generationCount } = state;
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState('');
 
   function back() {
     if (state.screenStack.length > 1) {
@@ -15,8 +19,21 @@ export function SubscriptionScreen() {
     }
   }
 
-  function handlePurchase() {
-    setShowComingSoon(true);
+  async function handlePurchase(type: 'pro' | 'pack') {
+    if (!Capacitor.isNativePlatform()) {
+      setShowComingSoon(true);
+      return;
+    }
+    setPurchasing(true);
+    setPurchaseError('');
+    const result = await (type === 'pro' ? purchaseProMonthly() : purchaseTripPack());
+    setPurchasing(false);
+    if (result === 'success') {
+      dispatch({ type: 'SET_USER_TIER', tier: type === 'pro' ? 'pro' : 'pack' });
+      back();
+    } else if (result === 'error') {
+      setPurchaseError('Purchase failed. Please try again.');
+    }
   }
 
   function handleDowngrade() {
@@ -159,8 +176,9 @@ export function SubscriptionScreen() {
             </>
           ) : (
             <button
-              onClick={handlePurchase}
-              className="w-full flex items-center justify-center py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px]"
+              onClick={() => handlePurchase('pro')}
+              disabled={purchasing}
+              className="w-full flex items-center justify-center py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px] disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
             >
               Go Pro
@@ -226,8 +244,9 @@ export function SubscriptionScreen() {
           </div>
           <div className="text-[13px] text-[var(--color-text-3)] mb-4">5 trips · ₹19/trip · full experience</div>
           <button
-            onClick={handlePurchase}
-            className="w-full flex items-center justify-center gap-2 py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px]"
+            onClick={() => handlePurchase('pack')}
+            disabled={purchasing}
+            className="w-full flex items-center justify-center gap-2 py-[15px] text-[15px] font-bold text-[#0f0d0c] active:opacity-80 rounded-[14px] disabled:opacity-60"
             style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dk))' }}
           >
             Buy Trip Pack
@@ -252,7 +271,14 @@ export function SubscriptionScreen() {
 
       </div>
 
-      {/* Coming soon modal */}
+      {/* Purchase error */}
+      {purchaseError ? (
+        <div className="fixed bottom-24 left-4 right-4 bg-red-900/80 text-red-200 text-sm px-4 py-3 rounded-xl text-center" style={{ zIndex: 50 }}>
+          {purchaseError}
+        </div>
+      ) : null}
+
+      {/* Coming soon modal (web only) */}
       {showComingSoon && (
         <div
           className="fixed inset-0 flex items-center justify-center px-6"
