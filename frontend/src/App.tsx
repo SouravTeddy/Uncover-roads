@@ -6,7 +6,7 @@ import { AppProvider, useAppStore } from './shared/store';
 import { BottomNav } from './shared/ui';
 import { supabase } from './shared/supabase';
 import { syncProfile, loadSavedItineraries, loadUserProfile, loadFavouritedPins, loadSavedEvents } from './shared/userSync';
-import { initRevenueCat } from './shared/purchases';
+import { initRevenueCat, loginRevenueCat } from './shared/purchases';
 import { useBuildStatus } from './shared/useBuildStatus';
 
 import { LoginScreen, WelcomeBackScreen, WalkthroughScreen } from './modules/login';
@@ -64,8 +64,8 @@ function ScreenRouter() {
       return;
     }
 
-    // Init RevenueCat with the user's ID
-    initRevenueCat(user.id).catch(console.warn);
+    // Associate user with RevenueCat
+    loginRevenueCat(user.id).catch(console.warn);
 
     // Persist user info for the welcome back screen
     const rawName = user.user_metadata?.full_name ?? user.user_metadata?.name;
@@ -175,6 +175,10 @@ function ScreenRouter() {
     });
     return () => { removeListener?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    initRevenueCat().catch(console.warn);
   }, []);
 
   useEffect(() => {

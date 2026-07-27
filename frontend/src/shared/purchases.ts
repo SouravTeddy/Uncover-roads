@@ -3,13 +3,15 @@ import { Capacitor } from '@capacitor/core';
 
 const RC_API_KEY_IOS = 'appl_OhaMzTztOPzXpYnkgDfJoHrkljw';
 
-export async function initRevenueCat(userId?: string) {
+export async function initRevenueCat() {
   if (!Capacitor.isNativePlatform()) return;
   await Purchases.setLogLevel({ level: LOG_LEVEL.ERROR });
   await Purchases.configure({ apiKey: RC_API_KEY_IOS });
-  if (userId) {
-    await Purchases.logIn({ appUserID: userId });
-  }
+}
+
+export async function loginRevenueCat(userId: string) {
+  if (!Capacitor.isNativePlatform()) return;
+  await Purchases.logIn({ appUserID: userId }).catch(console.warn);
 }
 
 export async function purchaseProMonthly(): Promise<'success' | 'cancelled' | 'error'> {
