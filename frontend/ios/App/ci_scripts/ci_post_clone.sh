@@ -1,19 +1,19 @@
 #!/bin/sh
 set -e
 
-# Ensure Homebrew is on PATH (Apple Silicon path)
-export PATH="/opt/homebrew/bin:$PATH"
+# Skip Homebrew auto-update (avoid CI timeout/failure)
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_INSTALL_CLEANUP=1
 
-echo "=== Installing Node.js via Homebrew ==="
-# Install or upgrade node@20; don't fail if already at latest
-brew install node@20 || brew upgrade node@20 || true
+# Ensure Homebrew is on PATH (Apple Silicon)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+echo "=== Installing Node.js ==="
+brew install node@20
 export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+echo "Node: $(node --version), npm: $(npm --version)"
 
-# Verify node is usable
-node --version
-npm --version
-
-echo "=== Installing Node dependencies ==="
+echo "=== Installing dependencies ==="
 cd "$CI_PRIMARY_REPOSITORY_PATH/frontend"
 npm ci
 
