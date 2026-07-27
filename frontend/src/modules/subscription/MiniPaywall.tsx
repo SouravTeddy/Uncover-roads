@@ -64,11 +64,8 @@ export function MiniPaywall({ onClose, context }: Props) {
           <p className="text-[13px] text-[var(--color-text-2)] mb-5">{body}</p>
 
           <div className="flex flex-col gap-3">
-            <Button variant="primary" className="w-full" onClick={() => handlePackPurchase(1)}>
-              Get 1 Trip · $0.99
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => handlePackPurchase(5)}>
-              Get 5 Trips · $3.99
+            <Button variant="primary" className="w-full" onClick={() => handlePackPurchase(5)}>
+              Get 5 Trips · ₹99
             </Button>
           </div>
 
@@ -76,7 +73,7 @@ export function MiniPaywall({ onClose, context }: Props) {
             onClick={handleViewAllPlans}
             className="w-full mt-4 text-[var(--color-text-3)] text-sm text-center"
           >
-            Or go Pro for $9.99/mo →
+            Or go Pro for ₹299/mo →
           </button>
         </div>
       </div>

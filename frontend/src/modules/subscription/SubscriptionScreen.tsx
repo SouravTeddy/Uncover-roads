@@ -30,6 +30,10 @@ export function SubscriptionScreen() {
     setPurchasing(false);
     if (result === 'success') {
       dispatch({ type: 'SET_USER_TIER', tier: type === 'pro' ? 'pro' : 'pack' });
+      if (type === 'pack') {
+        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+        dispatch({ type: 'ADD_TRIP_PACK', pack: { id: `pack_${Date.now()}`, trips: 5, usedTrips: 0, expiresAt } });
+      }
       back();
     } else if (result === 'error') {
       setPurchaseError('Purchase failed. Please try again.');
