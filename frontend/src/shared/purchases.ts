@@ -3,18 +3,23 @@ import { Capacitor } from '@capacitor/core';
 
 const RC_API_KEY_IOS = 'appl_OhaMzTztOPzXpYnkgDfJoHrkljw';
 
+function isIOS() {
+  return Capacitor.getPlatform() === 'ios';
+}
+
 export async function initRevenueCat() {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!isIOS()) return;
   await Purchases.setLogLevel({ level: LOG_LEVEL.ERROR });
   await Purchases.configure({ apiKey: RC_API_KEY_IOS });
 }
 
 export async function loginRevenueCat(userId: string) {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!isIOS()) return;
   await Purchases.logIn({ appUserID: userId }).catch(console.warn);
 }
 
 export async function purchaseProMonthly(): Promise<'success' | 'cancelled' | 'error'> {
+  if (!isIOS()) return 'error';
   try {
     const offerings = await Purchases.getOfferings();
     const pkg = offerings.current?.availablePackages.find(
@@ -31,6 +36,7 @@ export async function purchaseProMonthly(): Promise<'success' | 'cancelled' | 'e
 }
 
 export async function purchaseTripPack(): Promise<'success' | 'cancelled' | 'error'> {
+  if (!isIOS()) return 'error';
   try {
     const offerings = await Purchases.getOfferings();
     const pkg = offerings.current?.availablePackages.find(
@@ -47,6 +53,7 @@ export async function purchaseTripPack(): Promise<'success' | 'cancelled' | 'err
 }
 
 export async function checkProEntitlement(): Promise<boolean> {
+  if (!isIOS()) return false;
   try {
     const info = await Purchases.getCustomerInfo();
     return !!info.customerInfo.entitlements.active['pro'];
