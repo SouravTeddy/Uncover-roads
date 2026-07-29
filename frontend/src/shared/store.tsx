@@ -209,8 +209,8 @@ function getStoredPersona(): Persona | null {
     const stored = localStorage.getItem('ur_persona');
     if (!stored) return null;
     const parsed = JSON.parse(stored) as Partial<Persona>;
-    // Reject stubs written by SET_PERSONA_PROFILE (they lack venue_filters)
-    if (!parsed.venue_filters || parsed.venue_filters.length === 0 && !parsed.archetypeData) return null;
+    // Reject stubs written by SET_PERSONA_PROFILE (they have no archetypeData and no venue_filters)
+    if (!parsed.archetypeData && (!parsed.venue_filters || parsed.venue_filters.length === 0)) return null;
     return parsed as Persona;
   } catch {
     return null;
