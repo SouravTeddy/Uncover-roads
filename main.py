@@ -422,6 +422,10 @@ def _validate_coords(*pairs: tuple[float, float]) -> None:
 
 
 def _check_rate_limit(ip: str) -> bool:
+    # Railway internal network uses 100.64.x.x (RFC 6598) — all users share this IP.
+    # Skip IP-based limiting here; user-based limiting (check_user_rate_limit) handles abuse.
+    if ip.startswith("100.64."):
+        return True
     now = _time()
     recent = [t for t in _rate_limit[ip] if now - t < RATE_LIMIT_WINDOW]
     if len(recent) >= RATE_LIMIT_MAX:
