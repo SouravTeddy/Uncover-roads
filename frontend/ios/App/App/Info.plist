@@ -39,6 +39,8 @@
 
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Location is not collected by Uncover Roads. The map framework requires this declaration.</string>
 	<key>CFBundleURLTypes</key>

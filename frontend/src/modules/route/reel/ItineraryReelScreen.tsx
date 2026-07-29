@@ -163,6 +163,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
 
 
+  // Unique per mount — forces the image-fetch effect to re-run even when activeItinerary
+  // reference is unchanged (e.g. user navigated away mid-fetch then returned).
+  const [mountKey] = useState(() => Symbol());
+
   const [weatherByCity, setWeatherByCity] = useState<Map<string, WeatherData>>(new Map());
   const [cards, setCards] = useState<ReelCard[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -446,7 +450,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeItinerary, removedStopIds, reelSavedId, journey]);
+  }, [activeItinerary, removedStopIds, reelSavedId, journey, mountKey]);
 
   // Keep activeIdxRef in sync synchronously so the layout-effect scroll restore reads
   // the correct value even when activeIdx and cards update in the same React commit.
