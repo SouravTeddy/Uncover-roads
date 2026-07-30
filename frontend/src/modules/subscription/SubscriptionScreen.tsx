@@ -4,6 +4,18 @@ import { getPackRemainingTrips } from '../../shared/tier';
 import { purchaseProMonthly, purchaseTripPack, restorePurchases } from '../../shared/purchases';
 import { Capacitor } from '@capacitor/core';
 
+const TERMS_URL   = 'https://uncoverroads.com/terms';
+const PRIVACY_URL = 'https://uncoverroads.com/privacy';
+
+async function openLegalUrl(url: string) {
+  if (Capacitor.isNativePlatform()) {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url });
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
 export function SubscriptionScreen() {
   const { state, dispatch } = useAppStore();
   const { userTier, tripPacks, packTripsRemaining, generationCount } = state;
@@ -303,6 +315,33 @@ export function SubscriptionScreen() {
             {restoreMsg ? (
               <span className="text-[12px] text-[var(--color-text-3)]">{restoreMsg}</span>
             ) : null}
+          </div>
+        )}
+
+        {/* Subscription disclosure + legal links — required by App Store guideline 3.1.2 */}
+        {!isPro && !isPack && (
+          <div className="px-6 mt-4 text-center">
+            <p className="text-[13px] text-[var(--color-text-4)] leading-relaxed mb-2">
+              Pro is a monthly auto-renewing subscription (₹299/month). Your payment method will be
+              charged at confirmation and renews automatically unless cancelled at least 24 hours
+              before the end of the current period. Manage or cancel anytime in your App Store
+              account settings.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => openLegalUrl(TERMS_URL)}
+                className="text-[13px] text-[var(--color-text-3)] underline underline-offset-2"
+              >
+                Terms of Use
+              </button>
+              <span className="text-[var(--color-text-4)]">·</span>
+              <button
+                onClick={() => openLegalUrl(PRIVACY_URL)}
+                className="text-[13px] text-[var(--color-text-3)] underline underline-offset-2"
+              >
+                Privacy Policy
+              </button>
+            </div>
           </div>
         )}
 
