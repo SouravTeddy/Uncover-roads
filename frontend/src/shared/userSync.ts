@@ -1,14 +1,27 @@
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { FavouritedPin, Persona, SavedEvent, SavedItinerary } from './types';
-// Called on SIGNED_IN — upserts the user's profile from their Google data
+// Called on SIGNED_IN — upserts the user's profile from their OAuth provider data.
+// Never overwrites an existing field with null/empty — some providers (Apple in
+// particular) only send email/name on the first-ever authorization, so a later
+// sign-in with a sparse payload must not blank out previously-captured data.
 export async function syncProfile(user: User) {
   const meta = user.user_metadata ?? {};
+  const newEmail    = user.email || null;
+  const newFullName = meta.full_name ?? meta.name ?? null;
+  const newAvatar    = meta.avatar_url ?? meta.picture ?? null;
+
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('email, full_name, avatar_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
   await supabase.from('profiles').upsert({
     id: user.id,
-    email: user.email,
-    full_name: meta.full_name ?? meta.name ?? null,
-    avatar_url: meta.avatar_url ?? meta.picture ?? null,
+    email: newEmail ?? existing?.email ?? null,
+    full_name: newFullName ?? existing?.full_name ?? null,
+    avatar_url: newAvatar ?? existing?.avatar_url ?? null,
   }, { onConflict: 'id', ignoreDuplicates: false });
 }
 
