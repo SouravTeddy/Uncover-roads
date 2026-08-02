@@ -405,6 +405,15 @@ _RATE_LIMIT_MAX_KEYS = 50000  # evict oldest key when dict exceeds this size
 RATE_LIMIT_WINDOW = 3600
 RATE_LIMIT_MAX = 100
 
+# Separate, higher-ceiling limiter for /place-photo only. Photo requests are the
+# highest-volume, lowest-cost-per-call, and already server-cached (_photo_cache),
+# so they don't need to share the same budget as /place-details ($17/1000) and
+# the other endpoints on _rate_limit.
+_photo_rate_limit: dict[str, list[float]] = defaultdict(list)
+_PHOTO_RATE_LIMIT_MAX_KEYS = 50000
+PHOTO_RATE_LIMIT_WINDOW = 3600
+PHOTO_RATE_LIMIT_MAX = 300
+
 
 def _client_ip(request: Request) -> str:
     """Return the real client IP, reading X-Forwarded-For first (Railway is behind a proxy)."""
@@ -440,6 +449,27 @@ def _check_rate_limit(ip: str) -> bool:
     elif ip in _rate_limit:
         del _rate_limit[ip]
     return True
+
+
+def _check_photo_rate_limit(ip: str) -> bool:
+    """Independent rate limit for /place-photo — see _photo_rate_limit comment above."""
+    if ip.startswith("100.64."):
+        return True
+    now = _time()
+    recent = [t for t in _photo_rate_limit[ip] if now - t < PHOTO_RATE_LIMIT_WINDOW]
+    if len(recent) >= PHOTO_RATE_LIMIT_MAX:
+        _photo_rate_limit[ip] = recent
+        return False
+    recent.append(now)
+    if recent:
+        if len(_photo_rate_limit) >= _PHOTO_RATE_LIMIT_MAX_KEYS and ip not in _photo_rate_limit:
+            oldest = next(iter(_photo_rate_limit))
+            _photo_rate_limit.pop(oldest, None)
+        _photo_rate_limit[ip] = recent
+    elif ip in _photo_rate_limit:
+        del _photo_rate_limit[ip]
+    return True
+
 
 def _sanitise(text: str | None) -> str | None:
     """Strip control characters that Google Places sometimes embeds in review/summary text.
@@ -4612,7 +4642,7 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
     if len(photo_ref) > 1000:
         raise HTTPException(status_code=422, detail="invalid_photo_ref")
     client_ip = _client_ip(request)
-    if not _check_rate_limit(client_ip):
+    if not _check_photo_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
     if not GOOGLE_PLACES_API_KEY:
         raise HTTPException(status_code=500, detail="GOOGLE_PLACES_API_KEY not configured")
