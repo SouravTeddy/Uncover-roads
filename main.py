@@ -4609,7 +4609,7 @@ def place_photo(request: Request, photo_ref: str = Query(...), max_width: int = 
     Handles both old-format photo_reference (CmRa…) and new Places API v1
     resource names (places/{id}/photos/{token}).
     """
-    if len(photo_ref) > 500:
+    if len(photo_ref) > 1000:
         raise HTTPException(status_code=422, detail="invalid_photo_ref")
     client_ip = _client_ip(request)
     if not _check_rate_limit(client_ip):
