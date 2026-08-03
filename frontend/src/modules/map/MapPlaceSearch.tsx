@@ -26,7 +26,29 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function findMatchingPlace(mainText: string, placeId: string, places: Place[]): Place | null {
+function distSq(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const dLat = aLat - bLat, dLon = aLon - bLon;
+  return dLat * dLat + dLon * dLon;
+}
+
+// When a name-based rule matches more than one pin (e.g. two "Starbucks" in the
+// same city), array order alone shouldn't decide the winner. Prefer whichever
+// candidate is closest to the current map view.
+function pickClosest(candidates: Place[], nearLat?: number, nearLon?: number): Place | null {
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1 || nearLat == null || nearLon == null) return candidates[0];
+  return candidates.reduce((best, p) =>
+    distSq(p.lat, p.lon, nearLat, nearLon) < distSq(best.lat, best.lon, nearLat, nearLon) ? p : best
+  );
+}
+
+function findMatchingPlace(
+  mainText: string,
+  placeId: string,
+  places: Place[],
+  nearLat?: number,
+  nearLon?: number,
+): Place | null {
   // Direct Google place_id match — most reliable, avoids false city-prefix matches
   if (placeId) {
     const byId = places.find(p => p.place_id === placeId);
@@ -34,17 +56,17 @@ function findMatchingPlace(mainText: string, placeId: string, places: Place[]): 
   }
   const g = normalize(mainText);
   // Exact name match
-  let m = places.find(p => normalize(p.title) === g);
-  if (m) return m;
+  let candidates = places.filter(p => normalize(p.title) === g);
+  if (candidates.length) return pickClosest(candidates, nearLat, nearLon);
   // Substring (one contains the other)
-  m = places.find(p => {
+  candidates = places.filter(p => {
     const pn = normalize(p.title);
     return g.includes(pn) || pn.includes(g);
   });
-  if (m) return m;
+  if (candidates.length) return pickClosest(candidates, nearLat, nearLon);
   // Word overlap — use Math.max (not min) so short place names don't over-match
   // e.g. "Hong Kong Cafe" must not match query "Hong Kong Disneyland"
-  m = places.find(p => {
+  candidates = places.filter(p => {
     const pWords = normalize(p.title).split(' ').filter(w => w.length > 2);
     const gWords = g.split(' ').filter(w => w.length > 2);
     if (!pWords.length || !gWords.length) return false;
@@ -52,7 +74,7 @@ function findMatchingPlace(mainText: string, placeId: string, places: Place[]): 
     const common = gWords.filter(w => pSet.has(w)).length;
     return common / Math.min(pWords.length, gWords.length) >= 0.6;
   });
-  return m ?? null;
+  return pickClosest(candidates, nearLat, nearLon);
 }
 
 function placeIcon(types: string[]): string {
@@ -138,6 +160,10 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped on every debounced search fired; lets a resolving request check whether
+  // it's still the latest one before writing results, discarding stale responses
+  // that arrive out of order.
+  const searchGenRef = useRef(0);
 
   const open = () => {
     setIsOpen(true);
@@ -174,6 +200,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
       return;
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    const myGen = ++searchGenRef.current;
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       try {
@@ -188,6 +215,9 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           api.citySearch(query).catch(() => [] as CityResult[]),
         ]);
 
+        // A newer search has since started — this response is stale, discard it.
+        if (searchGenRef.current !== myGen) return;
+
         // Filter city results — exclude the current city (already here)
         const filteredCities = cities.filter(
           c => c.name.toLowerCase() !== city.toLowerCase(),
@@ -196,7 +226,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
         // Only keep place results that match an existing pin
         const matched: MatchedResult[] = [];
         for (const r of raw) {
-          const place = findMatchingPlace(r.main_text, r.place_id, places);
+          const place = findMatchingPlace(r.main_text, r.place_id, places, cityLat ?? undefined, cityLon ?? undefined);
           if (place) matched.push({ autocomplete: r, place });
         }
 
@@ -204,11 +234,12 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
         setCityResults(filteredCities);
         setNoResults(matched.length === 0 && filteredCities.length === 0);
       } catch {
+        if (searchGenRef.current !== myGen) return;
         setResults([]);
         setCityResults([]);
         setNoResults(true);
       } finally {
-        setLoading(false);
+        if (searchGenRef.current === myGen) setLoading(false);
       }
     }, 280);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
