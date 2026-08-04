@@ -83,15 +83,6 @@ _DEFAULT_ORIGINS = [
 ]
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", ",".join(_DEFAULT_ORIGINS)).split(",")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=False,
-)
-
-
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -123,6 +114,21 @@ async def require_bearer_middleware(request: Request, call_next):
     if not auth.startswith("Bearer "):
         return JSONResponse({"detail": "not_authenticated"}, status_code=401)
     return await call_next(request)
+
+
+# CORSMiddleware must be added LAST so it becomes the OUTERMOST layer — Starlette
+# wraps each app.add_middleware() call around the previous stack, and CORS headers
+# are only applied to responses that flow back through it. require_bearer_middleware
+# above short-circuits with a direct JSONResponse (bypassing call_next) for missing
+# auth; if CORS were added before it, that response would skip CORS entirely and
+# the browser would silently block it as a network failure, not a readable 401.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=False,
+)
 
 
 ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
