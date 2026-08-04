@@ -458,6 +458,7 @@ export function buildReelCards(
   );
 
   // Totals for intro card
+  const totalRecos = allStops.filter(s => s.isEngineAdded).length;
   const totalDurationMin = allStops.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);
   const totalDistanceKm = allStops.reduce((sum, s, i) => {
     if (i === 0) return sum;
@@ -492,7 +493,7 @@ export function buildReelCards(
     city: cityLabel,
     imageUrl: introImage,
     totalStops: stopCount,
-    totalRecos: 0,
+    totalRecos,
     totalDays: itinerary.days.length,
     totalDurationMin,
     totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
