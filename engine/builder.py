@@ -9,6 +9,7 @@ from engine.types import EngineStop, EngineContext, EngineMessage, EngineDay, En
 from engine import constraints, sequencer, transitions, inserts, swapper
 from engine import narrator as _narrator
 from engine import tags as _tags
+from engine import weather as _weather
 
 
 def _haversine_km(a: EngineStop, b: EngineStop) -> float:
@@ -594,6 +595,69 @@ def _heavy_walk_advisories(days: list[EngineDay], ctx: EngineContext) -> list[En
     return messages
 
 
+def _weather_message_for_stop(stop: EngineStop, rain_intensity: str, is_hot: bool) -> EngineMessage:
+    """One combined message for a stop — never two — when both heat and rain apply."""
+    heavy_rain = rain_intensity == "heavy"
+
+    if is_hot and heavy_rain:
+        return EngineMessage(
+            type="weather",
+            what=f"{stop.name} is an outdoor stop during a hot spell with heavy rain.",
+            why="High heat and heavy rain both make outdoor visits uncomfortable and may close attractions.",
+            consequence="Consider an indoor alternative, or visit before 11am when it's cooler and drier.",
+            dismissable=True,
+            undo_key=None,
+            stop_id=stop.place_id,
+        )
+    if is_hot:
+        return EngineMessage(
+            type="weather",
+            what=f"{stop.name} is an outdoor stop during a hot spell.",
+            why="Forecast high is above the comfortable outdoor threshold for this city.",
+            consequence="Consider visiting before 11am or after 5pm, with a shade/water break nearby.",
+            dismissable=True,
+            undo_key=None,
+            stop_id=stop.place_id,
+        )
+    return EngineMessage(
+        type="weather",
+        what=f"{stop.name} is an outdoor stop during {rain_intensity} rain.",
+        why="Heavy rain makes outdoor visits uncomfortable and may close attractions.",
+        consequence="Consider an indoor alternative for this slot.",
+        dismissable=True,
+        undo_key=None,
+        stop_id=stop.place_id,
+    )
+
+
+def _weather_advisories(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Emit a per-stop weather advisory using the real forecast for that day's
+    actual date — runs after day-splitting, since only EngineDay has a real date.
+    One weather lookup per day (not per stop); applies equally to user-added
+    and engine-added stops."""
+    climate = ctx.city.climate or {}
+    heat_threshold_c = climate.get("heat_threshold_c", 32)
+    rain_months = climate.get("rain_months", [])
+    lat, lon = ctx.city.center
+
+    messages: list[EngineMessage] = []
+    for day in days:
+        if not any(s.outdoor for s in day.stops):
+            continue
+        wx = _weather.resolve_travel_weather(
+            lat=lat, lon=lon, travel_date=day.date,
+            heat_threshold_c=heat_threshold_c, rain_months=rain_months,
+        )
+        is_hot = bool(wx.get("is_hot"))
+        rain_intensity = wx.get("rain_intensity", "none")
+        if not is_hot and rain_intensity != "heavy":
+            continue
+        for stop in day.stops:
+            if stop.outdoor:
+                messages.append(_weather_message_for_stop(stop, rain_intensity, is_hot))
+    return messages
+
+
 def _needs_recommendations(stops: list[EngineStop], ctx: EngineContext) -> bool:
     return len(stops) < len(ctx.travel_dates)
 
@@ -632,11 +696,12 @@ async def build_itinerary(
     days = _split_into_days(stops, ctx)
     days = _apply_departure_pressure(days, ctx)
     walk_advisories = _heavy_walk_advisories(days, ctx)
+    weather_advisories = _weather_advisories(days, ctx)
     recs = await _get_recommendations(ctx) if _needs_recommendations(stops, ctx) else None
 
     return EngineResult(
         days=days,
-        messages=narrated + walk_advisories,
+        messages=narrated + walk_advisories + weather_advisories,
         generation_id=str(uuid.uuid4()),
         recommendations=recs,
     )

@@ -613,6 +613,7 @@ export interface EngineItineraryStop {
   openNow?: boolean | null
   orderReason?: string | null
   orderConsequence?: string | null
+  weatherAdvisory?: { what: string; why: string; consequence: string } | null
   movedFrom?: number | null
   // Server-computed signals (crowd, timing, value, transit, content, sequence, energy, photo)
   signals?: { type: string; text: string; icon: string }[]

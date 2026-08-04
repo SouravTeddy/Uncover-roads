@@ -5248,6 +5248,28 @@ def _batch_place_details(supabase_client, place_ids: list[str]) -> dict[str, dic
         return {}
 
 
+def _make_reco_insert_message(reco_stop: dict) -> dict:
+    """Build a message dict for a reco-engine-injected stop (lunch/coffee/rest
+    gap-fills added in the per-day reco injection loop below), matching the
+    shape of all_messages entries so it's correctly counted in the intro
+    card's "N spots added" summary — that loop only pushes to stops_out and
+    previously never created a corresponding message at all.
+    """
+    pid = reco_stop.get("placeId") or ""
+    title = reco_stop.get("title") or "a stop"
+    duration = reco_stop.get("durationMin", 60)
+    return {
+        "id": str(uuid.uuid4()),
+        "type": "insert",
+        "what": f"Added {title} to your itinerary.",
+        "why": reco_stop.get("whyForYou") or "Fills a gap in your day based on your preferences.",
+        "consequence": f"This adds ~{duration} minutes to your day.",
+        "dismissable": True,
+        "undo_action": f"insert_{pid}",
+        "stopId": pid,
+    }
+
+
 def _resolve_reco_trigger(
     trigger: dict,
     existing_place_ids: set[str],
@@ -6106,10 +6128,16 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
 
     # Build lookup: stop_id → first insert/swap message for that stop (for orderReason/orderConsequence)
     _stop_order_msg: dict[str, dict] = {}
+    # Separate lookup for weather advisories — its own field, doesn't override the "why" text
+    _stop_weather_msg: dict[str, dict] = {}
     for m in all_messages:
         sid = m.get("stopId")
-        if sid and sid not in _stop_order_msg and m["type"] in ("insert", "swap", "resequence"):
+        if not sid:
+            continue
+        if sid not in _stop_order_msg and m["type"] in ("insert", "swap", "resequence"):
             _stop_order_msg[sid] = m
+        if sid not in _stop_weather_msg and m["type"] == "weather":
+            _stop_weather_msg[sid] = m
 
 
     # Build persona_snapshot here so it's available inside the days loop for scenic card insertion
@@ -6179,6 +6207,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             cat_idx = _category_counters.get(s.category, 0)
             _category_counters[s.category] = cat_idx + 1
             order_msg = _stop_order_msg.get(s.place_id or "")
+            weather_msg = _stop_weather_msg.get(s.place_id or "")
             _stop_city = s.city or day_city
             _stop_city_slug = _stop_city.lower().replace(" ", "_") if _stop_city else city_slug
             _area_city_data = _city_data_map.get(_stop_city_slug, city_data)
@@ -6232,6 +6261,11 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "whyForYou": _why_for_you(s.category, weights_for_why, s.scheduled_time, cat_idx, day.date),
                 "orderReason": order_msg["why"] if order_msg else None,
                 "orderConsequence": order_msg["consequence"] if order_msg else None,
+                "weatherAdvisory": {
+                    "what": weather_msg["what"],
+                    "why": weather_msg["why"],
+                    "consequence": weather_msg["consequence"],
+                } if weather_msg else None,
                 "localTip": _pd.get("editorial_summary") or None,
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                 "website": _pd.get("website") or None,
@@ -6323,6 +6357,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                     stops_out.insert(_anchor_idx + 1, _reco_stop)
                 else:
                     stops_out.append(_reco_stop)
+                day_messages.append(_make_reco_insert_message(_reco_stop))
         except Exception as _reco_err:
             print(f"[reco_inject] day {i+1} setup error: {_reco_err}")
             # Non-fatal: reco injection failure doesn't break the itinerary

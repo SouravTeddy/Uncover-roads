@@ -478,6 +478,14 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   if (card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict) {
     allPills.push({ icon: 'schedule', label: 'Timing note', urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
   }
+  if (stop.weatherAdvisory) {
+    allPills.push({
+      icon: 'device_thermostat',
+      label: 'Weather advisory',
+      urgent: true,
+      detail: { title: 'Weather advisory', body: stop.weatherAdvisory.consequence || stop.weatherAdvisory.why },
+    });
+  }
   // "Good window" is already shown as the inline crowd-note badge above the pills — don't duplicate it here
   if (transitSig) {
     if (hasConflict) {
@@ -549,6 +557,8 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
     };
     const style: React.CSSProperties = pill.color
       ? { ...base, background: pill.bg ?? 'rgba(255,255,255,.06)', border: pill.border ?? '1px solid rgba(255,255,255,.12)', color: pill.color }
+      : pill.urgent
+      ? { ...base, background: 'rgba(196,152,64,.15)', border: '1px solid rgba(196,152,64,.30)', color: '#c49840' }
       : clickable
       ? { ...base, background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.22)', color: 'rgba(255,255,255,.88)' }
       : { ...base, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.09)', color: 'rgba(255,255,255,.42)' };

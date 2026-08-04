@@ -276,3 +276,34 @@ describe('ReelStopCard — crowdNote hyphen stripping', () => {
     expect(crowdEl?.textContent).not.toMatch(/ — /);
   });
 });
+
+describe('ReelStopCard — weather advisory pill', () => {
+  it('shows a Weather advisory pill when stop.weatherAdvisory is set', async () => {
+    const card = {
+      ...mockCard,
+      stop: {
+        ...mockStop,
+        weatherAdvisory: {
+          what: 'Senso-ji Temple is an outdoor stop during a hot spell.',
+          why: 'Forecast high is above the comfortable outdoor threshold for this city.',
+          consequence: 'Consider visiting before 11am or after 5pm, with a shade/water break nearby.',
+        },
+      },
+    };
+    // @ts-ignore
+    const { container, findByText } = render(<ReelStopCard card={card} active={true} />);
+    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
+    const dragHandle = panel?.firstElementChild as HTMLElement;
+    await act(async () => { fireEvent.click(dragHandle); });
+    expect(await findByText(/weather advisory/i)).toBeInTheDocument();
+  });
+
+  it('does not show a Weather advisory pill when weatherAdvisory is absent', async () => {
+    // @ts-ignore
+    const { container, queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
+    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
+    const dragHandle = panel?.firstElementChild as HTMLElement;
+    await act(async () => { fireEvent.click(dragHandle); });
+    expect(queryByText(/weather advisory/i)).not.toBeInTheDocument();
+  });
+});
