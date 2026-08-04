@@ -815,9 +815,10 @@ export function buildReelCards(
       cards.push(stopCard);
 
       // Intel cards that reference this stop (by placeId match)
-      // Suppress 'insert' type — the stop card's orderReason already covers it
+      // Suppress 'insert' type — the stop card's orderReason already covers it.
+      // Suppress 'weather' type — already rendered inline as a pill on the stop card itself.
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
-        ic => ic.stopId != null && ic.stopId === stop.placeId && ic.messageType !== 'insert',
+        ic => ic.stopId != null && ic.stopId === stop.placeId && ic.messageType !== 'insert' && ic.messageType !== 'weather',
       );
       cards.push(...stopIntelCards);
 
@@ -878,7 +879,7 @@ export function buildReelCards(
       : null;
     const allIntelIds = new Set(cards.filter(c => c.type === 'intel').map(c => (c as ReelIntelCard).id));
     const unplacedIntel = buildIntelCards(day, lastStopImage).filter(
-      ic => !allIntelIds.has(ic.id) && ic.messageType !== 'insert',
+      ic => !allIntelIds.has(ic.id) && ic.messageType !== 'insert' && ic.messageType !== 'weather',
     );
     cards.push(...unplacedIntel);
 

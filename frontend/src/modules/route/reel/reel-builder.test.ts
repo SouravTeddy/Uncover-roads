@@ -132,6 +132,22 @@ describe('buildReelCards', () => {
     expect(intelIdx).toBeLessThan(s2Idx);
   });
 
+  it('does not emit a standalone intel card for weather messages — already shown as a pill on the stop card', () => {
+    const s1 = STOP({ id: 'stop-1', placeId: 'place-abc', title: 'Al Quoz Community Facility-2', time: '09:00', durationMin: 90 });
+    const s2 = STOP({ id: 'stop-2', placeId: 'place-xyz', title: 'City Cafe', time: '12:00', durationMin: 60 });
+    const day = DAY('Dubai', '2026-06-10', [s1, s2]);
+    day.messages = [{
+      id: 'msg-weather', type: 'weather' as const,
+      what: 'Al Quoz Community Facility-2 is an outdoor stop during a hot spell.',
+      why: 'Forecast high is above the comfortable outdoor threshold for this city.',
+      consequence: 'Consider visiting before 11am or after 5pm, with a shade/water break nearby.',
+      dismissable: true, stopId: 'place-abc',
+    }];
+    const itin = { ...ITIN([s1, s2]), days: [day] };
+    const cards = buildReelCards(itin, null, null, new Map(), 'explorer');
+    expect(cards.some(c => c.type === 'intel')).toBe(false);
+  });
+
   it('generates scenic walk card between close stops when w_scenic is high', () => {
     const s1 = STOP({ id: 'stop-1', lat: 12.97, lon: 77.59, time: '09:00', durationMin: 60 });
     const s2 = STOP({ id: 'stop-2', lat: 12.972, lon: 77.591, time: '11:00', durationMin: 60 });

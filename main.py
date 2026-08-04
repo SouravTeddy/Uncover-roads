@@ -5270,6 +5270,27 @@ def _make_reco_insert_message(reco_stop: dict) -> dict:
     }
 
 
+def _dedupe_engine_messages(messages: list) -> list:
+    """Keep the first occurrence per (type, stop_id) — except weather messages,
+    which are emitted exactly once per outdoor stop (engine/builder.py's
+    _weather_advisories runs a single pass, never duplicating a real stop) and
+    so never need deduping. Applying the key-based collapse to them anyway
+    caused stops sharing a falsy/duplicate stop_id (e.g. two stops without a
+    resolved place_id) to silently lose all but one stop's advisory.
+    """
+    seen_keys: set[tuple[str, str | None]] = set()
+    deduped = []
+    for m in messages:
+        if m.type == "weather":
+            deduped.append(m)
+            continue
+        key = (m.type, m.stop_id)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            deduped.append(m)
+    return deduped
+
+
 def _resolve_reco_trigger(
     trigger: dict,
     existing_place_ids: set[str],
@@ -6103,14 +6124,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
     }
     weights_for_why = persona.get("weights", {})
 
-    # Deduplicate messages by (type, stop_id) — keep first occurrence
-    _seen_msg_keys: set[tuple[str, str | None]] = set()
-    _deduped_messages = []
-    for m in result.messages:
-        key = (m.type, m.stop_id)
-        if key not in _seen_msg_keys:
-            _seen_msg_keys.add(key)
-            _deduped_messages.append(m)
+    _deduped_messages = _dedupe_engine_messages(result.messages)
 
     all_messages = [
         {
