@@ -12,12 +12,6 @@ import {
   makeRng, WEATHER_ICON,
 } from './reel-constants';
 
-export interface PanelControl {
-  expand:     () => void;
-  collapse:   () => void;
-  isExpanded: () => boolean;
-}
-
 interface Props {
   card: ReelStopCardType;
   active: boolean;
@@ -28,7 +22,12 @@ interface Props {
   onInteract?: (action: 'viewed' | 'tapped' | 'dismissed' | 'lingered') => void;
   isJustAdjusted?: boolean;
   onRemove?: () => void;
-  onRegisterPanelControl?: (ctrl: PanelControl | null) => void;
+  // Panel expand/collapse is controlled by the parent (single source of truth —
+  // one card expanded at a time, tracked by card key). This card owns none of
+  // that state itself, so there's no ref-registration race when scrolling fast
+  // between always-mounted cards.
+  expanded: boolean;
+  onExpandChange: (expanded: boolean) => void;
 }
 
 // ── Design tokens ─────────────────────────────────────────────
@@ -324,32 +323,20 @@ const ADVISORY_LABEL: Record<string, string> = {
 };
 
 // ── Main component ────────────────────────────────────────────
-export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove: _onRemove, onRegisterPanelControl }: Props) {
+export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove: _onRemove, expanded, onExpandChange }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const expandedRef = useRef(false);
   const [pillDetail, setPillDetail] = useState<PillDetail | null>(null);
   const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
   const [placeRatingCount, setPlaceRatingCount] = useState<number | null>(null);
   const [placeReviewSummary, setPlaceReviewSummary] = useState<string | null>(null);
   const placeDetailsFetchDone = useRef(false);
 
-  // Keep expandedRef in sync so PanelControl.isExpanded() always reads current value
-  const setExpandedSync = (v: boolean) => { expandedRef.current = v; setExpanded(v); };
-
-  // Register expand/collapse handles with the parent (ItineraryReelScreen gesture handler).
-  // No cleanup null-out: when scrolling UP to a lower-index card, React runs sibling effects
-  // in DOM order (lower index first), so the new card registers before the old card's cleanup
-  // fires — the cleanup would clobber panelControlRef with null before the parent's collapse
-  // effect runs. Without the null-out, the ref always holds the most recently registered control.
+  // Whenever the panel collapses — whether from this card's own gesture/tap, or
+  // because the parent collapsed it (e.g. the user scrolled to a different card)
+  // — clear any open pill detail so it doesn't reappear pre-expanded next time.
   useEffect(() => {
-    onRegisterPanelControl?.({
-      expand:     () => setExpandedSync(true),
-      collapse:   () => { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); },
-      isExpanded: () => expandedRef.current,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onRegisterPanelControl]);
+    if (!expanded) { setPillDetail(null); setActivePillEl(null); }
+  }, [expanded]);
   const { stop } = card;
   // Use stop.time for visit-time-based crowd notes — NOT current system clock
   const hour      = stop.time ? parseInt(stop.time.split(':')[0], 10) : new Date().getHours();
@@ -559,17 +546,17 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
     const dy = e.changedTouches[0].clientY - panelTouchY.current;
     if (Math.abs(dy) < 24) return; // too small — let click fire normally
     // Only intercept when expanded — when collapsed, let the scroll container handle pan-y
-    if (!expandedRef.current) return;
+    if (!expanded) return;
     e.preventDefault(); // prevent the subsequent synthetic click
-    if (dy < 0) setExpandedSync(true);
-    if (dy > 0) { setPillDetail(null); setActivePillEl(null); setExpandedSync(false); }
+    if (dy < 0) onExpandChange(true);
+    if (dy > 0) onExpandChange(false);
   };
 
   // ── Pill click ─────────────────────────────────────────────
   const handlePillClick = (pill: CardPill, el: HTMLElement) => {
     if (!pill.detail) return;
     if (!expanded) {
-      setExpandedSync(true);
+      onExpandChange(true);
       setTimeout(() => { setPillDetail(pill.detail); setActivePillEl(el); }, 420);
     } else {
       // Compare by title (string) not by reference — allPills is rebuilt each render
@@ -739,7 +726,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
       >
         {/* ── Always-visible drag handle — tap collapses/expands ──── */}
         <div
-          onClick={(e) => { e.stopPropagation(); if (expanded) { setPillDetail(null); setActivePillEl(null); } setExpandedSync(!expandedRef.current); }}
+          onClick={(e) => { e.stopPropagation(); onExpandChange(!expanded); }}
           style={{ flexShrink: 0, display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
         >
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,.22)' }} />
@@ -754,7 +741,7 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
           padding: '0 20px',
           paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 90px)',
         }}
-          onClick={(e) => { e.stopPropagation(); setExpandedSync(true); }}
+          onClick={(e) => { e.stopPropagation(); onExpandChange(true); }}
         >
           {/* Stop counter */}
           <span style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.28)', marginBottom: 10 }}>
