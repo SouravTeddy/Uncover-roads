@@ -68,6 +68,12 @@ def _fetch_forecast(lat: float, lon: float, travel_date: str) -> dict | None:
     except Exception:
         return None
 
+    if temp is None or precip is None:
+        # Open-Meteo can return nulls for a requested date (seen in production) —
+        # treat as forecast-unavailable so the caller falls back to climatology,
+        # rather than crashing or fabricating a value.
+        return None
+
     if precip >= _HEAVY_RAIN_MM:
         rain_intensity = "heavy"
     elif precip >= _MODERATE_RAIN_MM:

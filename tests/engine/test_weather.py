@@ -138,6 +138,40 @@ def test_forecast_below_heat_threshold_is_not_hot():
     assert result["is_hot"] is False
 
 
+def test_forecast_with_null_precipitation_falls_back_to_climatology():
+    """Open-Meteo can return precipitation_sum: null for a given date (seen in
+    production for Marrakech) — must degrade gracefully like any other
+    malformed-response case, not crash comparing None >= float."""
+    travel_date = (date.today() + timedelta(days=2)).isoformat()
+    travel_month = (date.today() + timedelta(days=2)).month
+    mock_resp = _mock_forecast_response([travel_date], [30.0], [None])
+
+    with patch("requests.get") as mock_get:
+        mock_get.return_value.json.return_value = mock_resp
+        result = weather.resolve_travel_weather(
+            lat=31.6, lon=-8.0, travel_date=travel_date,
+            heat_threshold_c=32, rain_months=[travel_month],
+        )
+
+    assert result["source"] == "climatology"
+    assert result["temp"] is None
+
+
+def test_forecast_with_null_temperature_falls_back_to_climatology():
+    travel_date = (date.today() + timedelta(days=2)).isoformat()
+    mock_resp = _mock_forecast_response([travel_date], [None], [0.0])
+
+    with patch("requests.get") as mock_get:
+        mock_get.return_value.json.return_value = mock_resp
+        result = weather.resolve_travel_weather(
+            lat=31.6, lon=-8.0, travel_date=travel_date,
+            heat_threshold_c=32, rain_months=[],
+        )
+
+    assert result["source"] == "climatology"
+    assert result["temp"] is None
+
+
 def test_forecast_api_failure_falls_back_to_climatology():
     """If Open-Meteo errors or returns malformed data, degrade gracefully — never crash the build."""
     travel_date = (date.today() + timedelta(days=2)).isoformat()
