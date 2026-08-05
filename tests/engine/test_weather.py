@@ -54,6 +54,35 @@ def test_far_future_date_falls_back_to_climatology_not_a_guessed_temp():
     assert result["rain_intensity"] == "moderate"
 
 
+def test_far_future_date_within_hot_months_is_hot():
+    """Climatology fallback still needs to flag heat for destinations with a
+    known hot season — e.g. Marrakesh in September, booked well outside the
+    16-day forecast window."""
+    travel_date = (date.today() + timedelta(days=90)).isoformat()
+    travel_month = (date.today() + timedelta(days=90)).month
+
+    result = weather.resolve_travel_weather(
+        lat=31.6, lon=-8.0, travel_date=travel_date,
+        heat_threshold_c=30, rain_months=[], hot_months=[travel_month],
+    )
+
+    assert result["source"] == "climatology"
+    assert result["is_hot"] is True
+
+
+def test_far_future_date_outside_hot_months_is_not_hot():
+    travel_date = (date.today() + timedelta(days=90)).isoformat()
+    travel_month = (date.today() + timedelta(days=90)).month
+    other_month = travel_month + 1 if travel_month < 12 else 1
+
+    result = weather.resolve_travel_weather(
+        lat=31.6, lon=-8.0, travel_date=travel_date,
+        heat_threshold_c=30, rain_months=[], hot_months=[other_month],
+    )
+
+    assert result["is_hot"] is False
+
+
 def test_far_future_date_outside_rain_months_reports_no_rain():
     travel_date = (date.today() + timedelta(days=90)).isoformat()
     travel_month = (date.today() + timedelta(days=90)).month

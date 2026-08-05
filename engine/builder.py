@@ -638,6 +638,7 @@ def _weather_advisories(days: list[EngineDay], ctx: EngineContext) -> list[Engin
     climate = ctx.city.climate or {}
     heat_threshold_c = climate.get("heat_threshold_c", 32)
     rain_months = climate.get("rain_months", [])
+    hot_months = climate.get("hot_months", [])
     lat, lon = ctx.city.center
 
     messages: list[EngineMessage] = []
@@ -647,6 +648,7 @@ def _weather_advisories(days: list[EngineDay], ctx: EngineContext) -> list[Engin
         wx = _weather.resolve_travel_weather(
             lat=lat, lon=lon, travel_date=day.date,
             heat_threshold_c=heat_threshold_c, rain_months=rain_months,
+            hot_months=hot_months,
         )
         is_hot = bool(wx.get("is_hot"))
         rain_intensity = wx.get("rain_intensity", "none")

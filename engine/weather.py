@@ -1,9 +1,9 @@
 """Day-aware weather resolution for a specific travel date.
 
 Real forecast (Open-Meteo) for dates within the forecast window; climatology
-fallback (rain_months only — heat has no honest monthly signal to fall back
-on) for dates beyond it. Never fabricates a temperature for a date we can't
-actually forecast.
+fallback (rain_months / hot_months, both derived from 5-year historical
+monthly averages) for dates beyond it. Never fabricates a temperature for a
+date we can't actually forecast.
 """
 from __future__ import annotations
 from datetime import date as _date, datetime as _datetime
@@ -22,6 +22,7 @@ def resolve_travel_weather(
     travel_date: str,
     heat_threshold_c: float,
     rain_months: list[int],
+    hot_months: list[int] | None = None,
 ) -> dict:
     """Returns {temp, rain_intensity, is_hot, source}.
 
@@ -40,7 +41,7 @@ def resolve_travel_weather(
     return {
         "temp": None,
         "rain_intensity": "moderate" if month in rain_months else "none",
-        "is_hot": False,
+        "is_hot": month in (hot_months or []),
         "source": "climatology",
     }
 

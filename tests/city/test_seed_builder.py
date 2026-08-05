@@ -136,7 +136,28 @@ def test_fetch_climate_returns_expected_shape():
         result = _fetch_climate(PORTO)
     assert "heat_threshold_c" in result
     assert "rain_months" in result
+    assert "hot_months" in result
     assert isinstance(result["rain_months"], list)
+    assert isinstance(result["hot_months"], list)
+
+
+def test_fetch_climate_hot_months_flags_months_at_or_above_threshold():
+    """A destination with a real hot season (e.g. Marrakesh) needs hot_months
+    populated so climatology fallback (trips booked >16 days out) can still
+    flag heat — heat_threshold_c alone has no month attached to it."""
+    hot_city_response = {
+        "monthly": {
+            "temperature_2m_mean": [18, 19, 22, 25, 29, 33, 37, 37, 32, 27, 21, 18],
+            "precipitation_sum": [20, 15, 10, 5, 0, 0, 0, 0, 0, 5, 15, 25],
+        }
+    }
+    with patch("city.seed_builder.requests.get") as mock_get:
+        mock_get.return_value.json.return_value = hot_city_response
+        mock_get.return_value.raise_for_status = MagicMock()
+        result = _fetch_climate(PORTO)
+    # heat_threshold_c = max(int(max(monthly_temp)), 25) = 37
+    assert result["heat_threshold_c"] == 37
+    assert result["hot_months"] == [7, 8]
 
 
 # ── build_city_seed ───────────────────────────────────────────────────────────

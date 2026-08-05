@@ -311,9 +311,10 @@ def _fetch_climate(city: dict) -> dict:
         monthly_precip = [monthly_precip[m] / max(counts[m], 1) for m in range(12)]
         heat_threshold_c = max(int(max(monthly_temp)), 25)
         rain_months = [i + 1 for i, p in enumerate(monthly_precip) if p > 80]
-        return {"heat_threshold_c": heat_threshold_c, "rain_months": rain_months}
+        hot_months = [i + 1 for i, t in enumerate(monthly_temp) if t >= heat_threshold_c]
+        return {"heat_threshold_c": heat_threshold_c, "rain_months": rain_months, "hot_months": hot_months}
     except Exception:
-        return {"heat_threshold_c": 30, "rain_months": []}
+        return {"heat_threshold_c": 30, "rain_months": [], "hot_months": []}
 
 
 # ── Assembly ──────────────────────────────────────────────────────────────────
