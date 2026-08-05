@@ -486,6 +486,12 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   // key lets us re-locate the actual card the user was looking at.
   useLayoutEffect(() => {
     activeIdxRef.current = activeIdx;
+    // Guard against the loading-screen render: displayCards is declared further
+    // down this component, after the early "still loading" return — referencing
+    // it here before that line has ever executed for the current render throws
+    // (temporal dead zone), crashing the whole tree. Nothing to key-track yet
+    // anyway while the itinerary/images/persona aren't ready.
+    if (!activeItinerary || !imagesReady || !state.persona) return;
     const activeCard = displayCards[activeIdx];
     activeCardKeyRef.current = activeCard ? getCardKey(activeCard, activeIdx) : null;
   }, [activeIdx]);
