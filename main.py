@@ -5297,6 +5297,43 @@ def _dedupe_engine_messages(messages: list) -> list:
 
 
 _ALCOHOL_CATEGORIES = {"bar", "nightlife"}
+_DINING_CATEGORIES = {"restaurant", "cafe", "coffee", "lunch", "dinner"}
+_RAMADAN_DINING_CUTOFF_MIN = 19 * 60  # 7pm — iftar-adjacent; stops scheduled after this are fine
+
+
+def _advisories_for_reco_stop(reco_stop: dict, city_culture: dict, day_date: str) -> list[dict]:
+    """Alcohol/ramadan advisories for a single reco-injected stop (lunch/
+    dinner/rest fills from _resolve_reco_trigger). These never flow through
+    engine/builder.py's per-stop advisory passes — they're plain dicts built
+    after the engine returns — so a dinner-reco'd bar in a dry city, or a
+    lunch-reco'd restaurant during Ramadan, previously got no advisory at all.
+    """
+    from engine import ramadan as _reco_ramadan
+
+    advisories: list[dict] = []
+    category = (reco_stop.get("category") or "").lower()
+
+    if (city_culture or {}).get("alcohol_restricted") and category in _ALCOHOL_CATEGORIES:
+        advisories.append({
+            "type": "alcohol",
+            "what": f"{reco_stop.get('title', 'This stop')} is in an area with alcohol restrictions.",
+            "why": "This city/region limits where alcohol is served.",
+            "consequence": "Alcohol may only be available in licensed hotel venues — confirm before arriving.",
+        })
+
+    if (city_culture or {}).get("ramadan_affected") and category in _DINING_CATEGORIES:
+        time_str = reco_stop.get("time")
+        if time_str and _reco_ramadan.is_ramadan_date(day_date):
+            h, m = (int(x) for x in time_str.split(":"))
+            if h * 60 + m < _RAMADAN_DINING_CUTOFF_MIN:
+                advisories.append({
+                    "type": "ramadan",
+                    "what": f"{reco_stop.get('title', 'This stop')} falls during Ramadan daytime hours.",
+                    "why": "Daytime dining is commonly restricted or closed during Ramadan in this city.",
+                    "consequence": "Kitchen may be closed or curtained off until sunset — confirm before arriving.",
+                })
+
+    return advisories
 
 
 def _walkability_advisory_message(stops_out: list[dict], city_culture: dict, day_date: str) -> dict | None:
@@ -5631,6 +5668,7 @@ def _resolve_reco_trigger(
         "walkFromPrev": None,
         "isUserAdded": False,
         "isEngineAdded": True,
+        "advisories": [],
     }
 
 
@@ -6431,6 +6469,8 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 if _pid and _pid in _seen_pids:
                     continue
                 _seen_pids.add(_pid)
+                _reco_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
+                _reco_stop["advisories"] = _advisories_for_reco_stop(_reco_stop, _reco_city_data.culture, day.date)
                 _anchor_id = _td.get("after_stop_id")
                 _anchor_idx = next(
                     (idx for idx, s in enumerate(stops_out) if s.get("id") == _anchor_id), -1

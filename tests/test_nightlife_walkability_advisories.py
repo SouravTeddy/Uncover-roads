@@ -4,7 +4,7 @@ recommendations — not the ~2-stop pre-reco list the engine's day-split
 produces. Deciding "is this day busy?" before recos land systematically
 under-fires, since almost every day gets bulked up with 3-4 more stops.
 """
-from main import _nightlife_advisory_message, _walkability_advisory_message
+from main import _nightlife_advisory_message, _walkability_advisory_message, _advisories_for_reco_stop
 
 
 def _stop(category, title="Some Place"):
@@ -76,3 +76,59 @@ def test_nightlife_detects_reco_injected_bar_stop():
     msg = _nightlife_advisory_message(stops, {"nightlife_score": "low"}, "2026-08-24")
 
     assert msg is not None
+
+
+# ── Per-stop advisories on reco-injected stops (alcohol/ramadan) ────────────
+# Reco stops (lunch/dinner/rest fills from _resolve_reco_trigger) are plain
+# dicts, never fed through engine/builder.py's _alcohol_advisories /
+# _ramadan_advisories — so a dinner-reco'd bar in a dry city, or a lunch-reco'd
+# restaurant during Ramadan, silently got no advisory at all.
+
+def _reco_stop(category, time, place_id="reco_p1", title="Reco Place"):
+    return {"category": category, "time": time, "placeId": place_id, "title": title}
+
+
+def test_reco_bar_stop_gets_alcohol_advisory_in_dry_city():
+    stop = _reco_stop("bar", "19:00")
+    advisories = _advisories_for_reco_stop(stop, {"alcohol_restricted": True}, "2026-08-24")
+
+    types = [a["type"] for a in advisories]
+    assert "alcohol" in types
+
+
+def test_reco_bar_stop_no_alcohol_advisory_when_not_restricted():
+    stop = _reco_stop("bar", "19:00")
+    advisories = _advisories_for_reco_stop(stop, {"alcohol_restricted": False}, "2026-08-24")
+
+    assert advisories == []
+
+
+def test_reco_restaurant_gets_ramadan_advisory_during_daytime_ramadan():
+    stop = _reco_stop("restaurant", "12:30")
+    advisories = _advisories_for_reco_stop(stop, {"ramadan_affected": True}, "2026-02-20")
+
+    types = [a["type"] for a in advisories]
+    assert "ramadan" in types
+
+
+def test_reco_restaurant_no_ramadan_advisory_outside_ramadan_window():
+    stop = _reco_stop("restaurant", "12:30")
+    advisories = _advisories_for_reco_stop(stop, {"ramadan_affected": True}, "2026-06-01")
+
+    assert advisories == []
+
+
+def test_reco_restaurant_no_ramadan_advisory_for_evening_slot():
+    stop = _reco_stop("restaurant", "20:00")
+    advisories = _advisories_for_reco_stop(stop, {"ramadan_affected": True}, "2026-02-20")
+
+    assert advisories == []
+
+
+def test_reco_non_qualifying_category_gets_no_advisories():
+    stop = _reco_stop("museum", "12:30")
+    advisories = _advisories_for_reco_stop(
+        stop, {"alcohol_restricted": True, "ramadan_affected": True}, "2026-02-20",
+    )
+
+    assert advisories == []
