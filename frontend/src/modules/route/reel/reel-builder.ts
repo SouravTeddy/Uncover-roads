@@ -281,6 +281,10 @@ export function buildWalkableDetourObservations(
 
 // ── Intel cards from engine messages ─────────────────────────
 
+// Per-stop advisory types render inline as pill(s) on the stop card itself
+// (stop.advisories) — never as a standalone intel card.
+const PER_STOP_ADVISORY_TYPES = new Set(['weather', 'alcohol', 'ramadan']);
+
 function buildIntelCards(day: EngineItineraryDay, anchorImageUrl: string | null): ReelIntelCard[] {
   if (!day.messages?.length) return [];
 
@@ -816,9 +820,11 @@ export function buildReelCards(
 
       // Intel cards that reference this stop (by placeId match)
       // Suppress 'insert' type — the stop card's orderReason already covers it.
-      // Suppress 'weather' type — already rendered inline as a pill on the stop card itself.
+      // Suppress per-stop advisory types (weather/alcohol/ramadan) — already rendered
+      // inline as pill(s) on the stop card itself via stop.advisories.
       const stopIntelCards = buildIntelCards(day, stopImageUrl).filter(
-        ic => ic.stopId != null && ic.stopId === stop.placeId && ic.messageType !== 'insert' && ic.messageType !== 'weather',
+        ic => ic.stopId != null && ic.stopId === stop.placeId
+          && ic.messageType !== 'insert' && !PER_STOP_ADVISORY_TYPES.has(ic.messageType),
       );
       cards.push(...stopIntelCards);
 
@@ -879,7 +885,7 @@ export function buildReelCards(
       : null;
     const allIntelIds = new Set(cards.filter(c => c.type === 'intel').map(c => (c as ReelIntelCard).id));
     const unplacedIntel = buildIntelCards(day, lastStopImage).filter(
-      ic => !allIntelIds.has(ic.id) && ic.messageType !== 'insert' && ic.messageType !== 'weather',
+      ic => !allIntelIds.has(ic.id) && ic.messageType !== 'insert' && !PER_STOP_ADVISORY_TYPES.has(ic.messageType),
     );
     cards.push(...unplacedIntel);
 

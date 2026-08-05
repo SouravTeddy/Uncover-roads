@@ -38,3 +38,23 @@ def test_keeps_all_weather_messages_with_distinct_stop_ids():
     messages = [_msg("weather", "place_1"), _msg("weather", "place_2")]
     result = _dedupe_engine_messages(messages)
     assert len(result) == 2
+
+
+def test_keeps_all_alcohol_and_ramadan_messages_even_with_colliding_stop_ids():
+    """Same reasoning as weather — alcohol/ramadan are emitted once per
+    qualifying stop by construction, never duplicated for a real stop."""
+    messages = [_msg("alcohol", None), _msg("alcohol", None), _msg("ramadan", None)]
+    result = _dedupe_engine_messages(messages)
+    assert len(result) == 3
+
+
+def test_keeps_all_nightlife_and_walkability_messages_across_days():
+    """Day-level messages (stop_id=None) fire once per eligible day — a
+    multi-day trip can legitimately emit several with the same falsy
+    stop_id, and none of them should be collapsed away."""
+    messages = [
+        _msg("nightlife", None, "day 1"), _msg("nightlife", None, "day 2"),
+        _msg("walkability", None, "day 1"), _msg("walkability", None, "day 3"),
+    ]
+    result = _dedupe_engine_messages(messages)
+    assert len(result) == 4

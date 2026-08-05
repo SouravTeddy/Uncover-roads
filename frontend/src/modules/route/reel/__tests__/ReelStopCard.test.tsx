@@ -277,17 +277,18 @@ describe('ReelStopCard — crowdNote hyphen stripping', () => {
   });
 });
 
-describe('ReelStopCard — weather advisory pill', () => {
-  it('shows a Weather advisory pill when stop.weatherAdvisory is set', async () => {
+describe('ReelStopCard — advisory pills', () => {
+  it('shows a Weather advisory pill when stop.advisories has one weather entry', async () => {
     const card = {
       ...mockCard,
       stop: {
         ...mockStop,
-        weatherAdvisory: {
+        advisories: [{
+          type: 'weather',
           what: 'Senso-ji Temple is an outdoor stop during a hot spell.',
           why: 'Forecast high is above the comfortable outdoor threshold for this city.',
           consequence: 'Consider visiting before 11am or after 5pm, with a shade/water break nearby.',
-        },
+        }],
       },
     };
     // @ts-ignore
@@ -298,12 +299,58 @@ describe('ReelStopCard — weather advisory pill', () => {
     expect(await findByText(/weather advisory/i)).toBeInTheDocument();
   });
 
-  it('does not show a Weather advisory pill when weatherAdvisory is absent', async () => {
+  it('does not show an advisory pill when advisories is absent', async () => {
     // @ts-ignore
     const { container, queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
     await act(async () => { fireEvent.click(dragHandle); });
     expect(queryByText(/weather advisory/i)).not.toBeInTheDocument();
+    expect(queryByText(/multiple advisories/i)).not.toBeInTheDocument();
+  });
+
+  it('shows one "Multiple advisories" pill — not one pill per type — when 2+ advisories are present', async () => {
+    const card = {
+      ...mockCard,
+      stop: {
+        ...mockStop,
+        advisories: [
+          { type: 'weather', what: 'Hot spell', why: 'Forecast high is above threshold.', consequence: 'Visit before 11am or after 5pm.' },
+          { type: 'alcohol', what: 'Dry city', why: 'Alcohol restricted here.', consequence: 'Only served in licensed hotel venues.' },
+        ],
+      },
+    };
+    // @ts-ignore
+    const { container, findByText, queryByText } = render(<ReelStopCard card={card} active={true} />);
+    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
+    const dragHandle = panel?.firstElementChild as HTMLElement;
+    await act(async () => { fireEvent.click(dragHandle); });
+    expect(await findByText(/multiple advisories/i)).toBeInTheDocument();
+    expect(queryByText('Weather advisory')).not.toBeInTheDocument();
+    expect(queryByText('Alcohol advisory')).not.toBeInTheDocument();
+  });
+
+  it('expands the "Multiple advisories" pill into a row per advisory', async () => {
+    const card = {
+      ...mockCard,
+      stop: {
+        ...mockStop,
+        advisories: [
+          { type: 'weather', what: 'Hot spell', why: 'Forecast high is above threshold.', consequence: 'Visit before 11am or after 5pm.' },
+          { type: 'ramadan', what: 'Ramadan hours', why: 'Daytime dining restricted.', consequence: 'Kitchen closed until sunset.' },
+        ],
+      },
+    };
+    // @ts-ignore
+    const { container, findByText } = render(<ReelStopCard card={card} active={true} />);
+    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
+    const dragHandle = panel?.firstElementChild as HTMLElement;
+    await act(async () => { fireEvent.click(dragHandle); });
+    const pill = await findByText(/multiple advisories/i);
+    await act(async () => { fireEvent.click(pill); });
+    expect(await findByText('Weather advisory')).toBeInTheDocument();
+    expect(await findByText('Ramadan hours')).toBeInTheDocument();
+    expect(await findByText('Visit before 11am or after 5pm.')).toBeInTheDocument();
+    expect(await findByText('Kitchen closed until sunset.')).toBeInTheDocument();
   });
 });

@@ -287,11 +287,23 @@ const chipBase: React.CSSProperties = {
 };
 
 // ── Pill types ────────────────────────────────────────────────
+interface PillDetailRow {
+  icon: string;
+  head: string;
+  body: string;
+}
+
+interface PillDetail {
+  title: string;
+  body?: string;                // single-item detail (most pills)
+  rows?: PillDetailRow[];       // multi-item detail (e.g. "Multiple advisories")
+}
+
 interface CardPill {
   icon: string;
   label: string;
   urgent: boolean;            // amber vs neutral
-  detail: { title: string; body: string } | null;
+  detail: PillDetail | null;
   // Optional explicit color overrides (for stage/identity pills)
   color?: string;
   bg?: string;
@@ -300,12 +312,23 @@ interface CardPill {
   href?: string;
 }
 
+const ADVISORY_ICON: Record<string, string> = {
+  weather: 'device_thermostat',
+  alcohol: 'wine_bar',
+  ramadan: 'nights_stay',
+};
+const ADVISORY_LABEL: Record<string, string> = {
+  weather: 'Weather advisory',
+  alcohol: 'Alcohol advisory',
+  ramadan: 'Ramadan hours',
+};
+
 // ── Main component ────────────────────────────────────────────
 export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhotoUrl, onInteract, isJustAdjusted, onRemove: _onRemove, onRegisterPanelControl }: Props) {
   const lingerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
-  const [pillDetail, setPillDetail] = useState<{ title: string; body: string } | null>(null);
+  const [pillDetail, setPillDetail] = useState<PillDetail | null>(null);
   const [activePillEl, setActivePillEl] = useState<HTMLElement | null>(null);
   const [placeRatingCount, setPlaceRatingCount] = useState<number | null>(null);
   const [placeReviewSummary, setPlaceReviewSummary] = useState<string | null>(null);
@@ -478,12 +501,30 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
   if (card.timingAdjustment?.consequenceNote && !card.timingAdjustment.isClosingConflict) {
     allPills.push({ icon: 'schedule', label: 'Timing note', urgent: false, detail: { title: 'Timing note', body: card.timingAdjustment.consequenceNote } });
   }
-  if (stop.weatherAdvisory) {
+  const advisories = stop.advisories ?? [];
+  if (advisories.length === 1) {
+    const adv = advisories[0];
+    const icon = ADVISORY_ICON[adv.type] ?? 'info';
+    const label = ADVISORY_LABEL[adv.type] ?? 'Advisory';
     allPills.push({
-      icon: 'device_thermostat',
-      label: 'Weather advisory',
+      icon,
+      label,
       urgent: true,
-      detail: { title: 'Weather advisory', body: stop.weatherAdvisory.consequence || stop.weatherAdvisory.why },
+      detail: { title: label, body: adv.consequence || adv.why },
+    });
+  } else if (advisories.length > 1) {
+    allPills.push({
+      icon: 'warning',
+      label: 'Multiple advisories',
+      urgent: true,
+      detail: {
+        title: 'Multiple advisories',
+        rows: advisories.map(adv => ({
+          icon: ADVISORY_ICON[adv.type] ?? 'info',
+          head: ADVISORY_LABEL[adv.type] ?? 'Advisory',
+          body: adv.consequence || adv.why,
+        })),
+      },
     });
   }
   // "Good window" is already shown as the inline crowd-note badge above the pills — don't duplicate it here
@@ -992,8 +1033,20 @@ export const ReelStopCard = memo(function ReelStopCard({ card, active, cityPhoto
 
               {pillDetail && (
                 <div style={{ marginTop: 9, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: 5 }}>{pillDetail.title}</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.58)' }}>{pillDetail.body}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: 'rgba(255,255,255,.25)', marginBottom: pillDetail.rows ? 10 : 5 }}>{pillDetail.title}</div>
+                  {pillDetail.rows ? (
+                    pillDetail.rows.map((row, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,.06)' }}>
+                        <span className="ms" style={{ fontSize: 15, flexShrink: 0, marginTop: 1, color: '#c49840' }}>{row.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: T.text1, marginBottom: 3 }}>{row.head}</div>
+                          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'rgba(242,237,230,.58)' }}>{row.body}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: 14, lineHeight: 1.65, color: 'rgba(242,237,230,.58)' }}>{pillDetail.body}</div>
+                  )}
                 </div>
               )}
             </div>

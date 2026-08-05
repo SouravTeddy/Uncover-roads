@@ -10,6 +10,7 @@ from engine import constraints, sequencer, transitions, inserts, swapper
 from engine import narrator as _narrator
 from engine import tags as _tags
 from engine import weather as _weather
+from engine import ramadan as _ramadan
 
 
 def _haversine_km(a: EngineStop, b: EngineStop) -> float:
@@ -660,6 +661,108 @@ def _weather_advisories(days: list[EngineDay], ctx: EngineContext) -> list[Engin
     return messages
 
 
+_ALCOHOL_CATEGORIES = {"bar", "nightlife"}
+_DINING_CATEGORIES = {"restaurant", "cafe", "coffee", "lunch", "dinner"}
+_RAMADAN_DINING_CUTOFF_MIN = 19 * 60  # 7pm — iftar-adjacent; stops scheduled after this are fine
+
+
+def _alcohol_advisories(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Per-stop advisory on bar/nightlife stops in a city/region where alcohol
+    is restricted. Unconditional — not gated on the user's ritual preference,
+    since that preference isn't currently sent to this pipeline at all."""
+    if not (ctx.city.culture or {}).get("alcohol_restricted"):
+        return []
+    messages: list[EngineMessage] = []
+    for day in days:
+        for stop in day.stops:
+            if stop.category.lower() not in _ALCOHOL_CATEGORIES:
+                continue
+            messages.append(EngineMessage(
+                type="alcohol",
+                what=f"{stop.name} is in an area with alcohol restrictions.",
+                why="This city/region limits where alcohol is served.",
+                consequence="Alcohol may only be available in licensed hotel venues — confirm before arriving.",
+                dismissable=True,
+                undo_key=None,
+                stop_id=stop.place_id,
+            ))
+    return messages
+
+
+def _ramadan_advisories(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Per-stop advisory on daytime dining stops that fall within Ramadan in a
+    Ramadan-affected city — daytime dining is commonly restricted or closed."""
+    if not (ctx.city.culture or {}).get("ramadan_affected"):
+        return []
+    messages: list[EngineMessage] = []
+    for day in days:
+        if not _ramadan.is_ramadan_date(day.date):
+            continue
+        for stop in day.stops:
+            if stop.category.lower() not in _DINING_CATEGORIES:
+                continue
+            if not stop.scheduled_time:
+                continue
+            h, m = (int(x) for x in stop.scheduled_time.split(":"))
+            if h * 60 + m >= _RAMADAN_DINING_CUTOFF_MIN:
+                continue
+            messages.append(EngineMessage(
+                type="ramadan",
+                what=f"{stop.name} falls during Ramadan daytime hours.",
+                why="Daytime dining is commonly restricted or closed during Ramadan in this city.",
+                consequence="Kitchen may be closed or curtained off until sunset — confirm before arriving.",
+                dismissable=True,
+                undo_key=None,
+                stop_id=stop.place_id,
+            ))
+    return messages
+
+
+def _nightlife_advisory(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Day-level advisory (stop_id=None) when a day includes a bar/nightlife
+    stop in a city with a low nightlife score. One per eligible day — never
+    deduped away, since each day is an independent, legitimate occurrence."""
+    if (ctx.city.culture or {}).get("nightlife_score") != "low":
+        return []
+    messages: list[EngineMessage] = []
+    for day in days:
+        if not any(s.category.lower() in _ALCOHOL_CATEGORIES for s in day.stops):
+            continue
+        messages.append(EngineMessage(
+            type="nightlife",
+            what="This city's nightlife scene is limited.",
+            why="Bars and evening venues close early or are sparse here compared to your other stops.",
+            consequence="Consider treating tonight's stop as a wind-down rather than a late night out.",
+            dismissable=True,
+            undo_key=None,
+            stop_id=None,
+            day_date=day.date,
+        ))
+    return messages
+
+
+def _walkability_advisory(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
+    """Day-level advisory (stop_id=None) for a busy day (3+ stops) in a city
+    with a low walkability score."""
+    if (ctx.city.culture or {}).get("walkability_score") != "low":
+        return []
+    messages: list[EngineMessage] = []
+    for day in days:
+        if len(day.stops) < 3:
+            continue
+        messages.append(EngineMessage(
+            type="walkability",
+            what="This city isn't very walkable.",
+            why="Sidewalks, crossings, or distances between stops make walking between today's plans impractical.",
+            consequence="Budget extra time for rideshares or transit between stops today.",
+            dismissable=True,
+            undo_key=None,
+            stop_id=None,
+            day_date=day.date,
+        ))
+    return messages
+
+
 def _needs_recommendations(stops: list[EngineStop], ctx: EngineContext) -> bool:
     return len(stops) < len(ctx.travel_dates)
 
@@ -699,11 +802,17 @@ async def build_itinerary(
     days = _apply_departure_pressure(days, ctx)
     walk_advisories = _heavy_walk_advisories(days, ctx)
     weather_advisories = _weather_advisories(days, ctx)
+    alcohol_advisories = _alcohol_advisories(days, ctx)
+    ramadan_advisories = _ramadan_advisories(days, ctx)
+    nightlife_advisories = _nightlife_advisory(days, ctx)
+    walkability_advisories = _walkability_advisory(days, ctx)
     recs = await _get_recommendations(ctx) if _needs_recommendations(stops, ctx) else None
 
     return EngineResult(
         days=days,
-        messages=narrated + walk_advisories + weather_advisories,
+        messages=narrated + walk_advisories + weather_advisories
+        + alcohol_advisories + ramadan_advisories
+        + nightlife_advisories + walkability_advisories,
         generation_id=str(uuid.uuid4()),
         recommendations=recs,
     )

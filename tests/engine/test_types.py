@@ -75,3 +75,24 @@ def test_engine_message_stop_id_defaults_none():
         dismissable=True, undo_key=None,
     )
     assert msg.stop_id is None
+
+
+def test_engine_message_day_date_defaults_none():
+    msg = EngineMessage(
+        type="walkability", what="Not walkable",
+        why="Low walkability", consequence="Budget rideshare time",
+        dismissable=True, undo_key=None,
+    )
+    assert msg.day_date is None
+
+
+def test_engine_message_accepts_day_date():
+    """Day-level messages (stop_id=None) need their own date so main.py can
+    attach them to the correct day's card instead of dumping every day-level
+    message onto day 1 regardless of which day it's actually about."""
+    msg = EngineMessage(
+        type="nightlife", what="Limited nightlife",
+        why="Low nightlife score", consequence="Treat tonight as a wind-down",
+        dismissable=True, undo_key=None, stop_id=None, day_date="2026-06-02",
+    )
+    assert msg.day_date == "2026-06-02"

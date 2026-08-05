@@ -150,7 +150,7 @@ export type RecoTrigger =
 export interface ReelIntelCard {
   type: 'intel';
   id: string;
-  messageType: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'evening' | 'culture';
+  messageType: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'evening' | 'culture' | 'alcohol' | 'ramadan' | 'nightlife' | 'walkability';
   headline: string;
   detail: string;
   afterStopId: string | null;

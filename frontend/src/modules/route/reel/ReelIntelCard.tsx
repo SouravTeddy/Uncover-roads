@@ -14,6 +14,8 @@ const TYPE_CFG: Record<string, { icon: string; color: string; bg: string; label:
   evening:    { icon: 'nightlight',     color: '#b59fe0', bg: 'rgba(181,159,224,.15)', label: 'Evening' },
   culture:    { icon: 'museum',         color: '#8b9e6a', bg: 'rgba(139,158,106,.15)', label: 'Culture' },
   event:      { icon: 'event',          color: '#d4a853', bg: 'rgba(212,168,83,.15)',  label: 'Local event' },
+  nightlife:  { icon: 'nightlife',      color: '#b59fe0', bg: 'rgba(181,159,224,.15)', label: 'Nightlife' },
+  walkability:{ icon: 'directions_walk',color: '#c0a080', bg: 'rgba(192,160,128,.15)', label: 'Getting around' },
 };
 
 const GRADIENT = 'linear-gradient(to bottom, rgba(0,0,0,.12) 0%, rgba(0,0,0,.55) 40%, rgba(0,0,0,.92) 75%, rgba(0,0,0,.98) 100%)';

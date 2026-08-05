@@ -5270,18 +5270,23 @@ def _make_reco_insert_message(reco_stop: dict) -> dict:
     }
 
 
+_SINGLE_EMISSION_MESSAGE_TYPES = {"weather", "alcohol", "ramadan", "nightlife", "walkability"}
+
+
 def _dedupe_engine_messages(messages: list) -> list:
-    """Keep the first occurrence per (type, stop_id) — except weather messages,
-    which are emitted exactly once per outdoor stop (engine/builder.py's
-    _weather_advisories runs a single pass, never duplicating a real stop) and
-    so never need deduping. Applying the key-based collapse to them anyway
-    caused stops sharing a falsy/duplicate stop_id (e.g. two stops without a
-    resolved place_id) to silently lose all but one stop's advisory.
+    """Keep the first occurrence per (type, stop_id) — except the advisory
+    types in _SINGLE_EMISSION_MESSAGE_TYPES, each of which is emitted exactly
+    once per qualifying stop or day by construction (a single builder pass,
+    never duplicating a real stop/day) and so never needs deduping. Applying
+    the key-based collapse to them anyway caused stops/days sharing a
+    falsy/duplicate stop_id (e.g. two stops without a resolved place_id, or
+    two different days both legitimately flagged) to silently lose all but
+    one advisory.
     """
     seen_keys: set[tuple[str, str | None]] = set()
     deduped = []
     for m in messages:
-        if m.type == "weather":
+        if m.type in _SINGLE_EMISSION_MESSAGE_TYPES:
             deduped.append(m)
             continue
         key = (m.type, m.stop_id)
@@ -6136,22 +6141,25 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             "dismissable": m.dismissable,
             "undo_action": m.undo_key,
             "stopId": m.stop_id,
+            "dayDate": m.day_date,
         }
         for m in _deduped_messages
     ]
 
     # Build lookup: stop_id → first insert/swap message for that stop (for orderReason/orderConsequence)
     _stop_order_msg: dict[str, dict] = {}
-    # Separate lookup for weather advisories — its own field, doesn't override the "why" text
-    _stop_weather_msg: dict[str, dict] = {}
+    # Separate lookup for per-stop advisories (weather/alcohol/ramadan) — their own field,
+    # doesn't override the "why" text. A stop can have more than one at once.
+    _ADVISORY_MESSAGE_TYPES = ("weather", "alcohol", "ramadan")
+    _stop_advisories_map: dict[str, list[dict]] = {}
     for m in all_messages:
         sid = m.get("stopId")
         if not sid:
             continue
         if sid not in _stop_order_msg and m["type"] in ("insert", "swap", "resequence"):
             _stop_order_msg[sid] = m
-        if sid not in _stop_weather_msg and m["type"] == "weather":
-            _stop_weather_msg[sid] = m
+        if m["type"] in _ADVISORY_MESSAGE_TYPES:
+            _stop_advisories_map.setdefault(sid, []).append(m)
 
 
     # Build persona_snapshot here so it's available inside the days loop for scenic card insertion
@@ -6179,8 +6187,16 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
         if not day.is_travel_day:
             day_place_ids = {s.place_id for s in day.stops if s.place_id}
             stop_matched = [m for m in all_messages if m["stopId"] and m["stopId"] in day_place_ids]
-            day_level = [m for m in all_messages if not m["stopId"]] if is_first_non_travel_day else []
-            day_messages = stop_matched + day_level
+            # Day-level messages (stopId=None): attach by dayDate when the message carries
+            # one (nightlife/walkability — each day is independently eligible). Messages
+            # without a dayDate (e.g. heavy-walk advisories) keep the old behavior of
+            # landing on the first non-travel day only.
+            day_level_dated = [m for m in all_messages if not m["stopId"] and m.get("dayDate") == day.date]
+            day_level_undated = (
+                [m for m in all_messages if not m["stopId"] and not m.get("dayDate")]
+                if is_first_non_travel_day else []
+            )
+            day_messages = stop_matched + day_level_dated + day_level_undated
             is_first_non_travel_day = False
         # Derive day city from user-added stops only (inserts inherit their city via inserts.py,
         # so s.city is reliable for all stops that have it set)
@@ -6221,7 +6237,7 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
             cat_idx = _category_counters.get(s.category, 0)
             _category_counters[s.category] = cat_idx + 1
             order_msg = _stop_order_msg.get(s.place_id or "")
-            weather_msg = _stop_weather_msg.get(s.place_id or "")
+            stop_advisories = _stop_advisories_map.get(s.place_id or "", [])
             _stop_city = s.city or day_city
             _stop_city_slug = _stop_city.lower().replace(" ", "_") if _stop_city else city_slug
             _area_city_data = _city_data_map.get(_stop_city_slug, city_data)
@@ -6275,11 +6291,15 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 "whyForYou": _why_for_you(s.category, weights_for_why, s.scheduled_time, cat_idx, day.date),
                 "orderReason": order_msg["why"] if order_msg else None,
                 "orderConsequence": order_msg["consequence"] if order_msg else None,
-                "weatherAdvisory": {
-                    "what": weather_msg["what"],
-                    "why": weather_msg["why"],
-                    "consequence": weather_msg["consequence"],
-                } if weather_msg else None,
+                "advisories": [
+                    {
+                        "type": adv["type"],
+                        "what": adv["what"],
+                        "why": adv["why"],
+                        "consequence": adv["consequence"],
+                    }
+                    for adv in stop_advisories
+                ],
                 "localTip": _pd.get("editorial_summary") or None,
                 "googleMapsUrl": f"https://www.google.com/maps/search/?api=1&query={s.lat},{s.lon}",
                 "website": _pd.get("website") or None,

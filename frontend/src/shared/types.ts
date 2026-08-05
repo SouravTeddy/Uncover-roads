@@ -517,7 +517,7 @@ export type ArchetypeId =
  */
 export interface EngineMessage {
   id: string                   // UUID — React key + dismiss target
-  type: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'event'
+  type: 'swap' | 'insert' | 'resequence' | 'weather' | 'transit' | 'advisory' | 'event' | 'alcohol' | 'ramadan' | 'nightlife' | 'walkability'
   what: string                 // "Moved Senso-ji to 8am"
   why: string                  // "It closes at 5pm — you'd arrive at 4:30"
   consequence: string          // "You now reach Ueno with 3 hours to spare"
@@ -587,6 +587,15 @@ export interface CityContext {
  * All factual fields (rating, priceLevel, weekdayText) come from Google Places.
  * whyForYou and localTip are LLM-generated (marked ✦ in UI — no factual claims).
  */
+export type StopAdvisoryType = 'weather' | 'alcohol' | 'ramadan'
+
+export interface StopAdvisory {
+  type: StopAdvisoryType
+  what: string
+  why: string
+  consequence: string
+}
+
 export interface EngineItineraryStop {
   id: string               // unique stop ID (UUID)
   placeId: string          // Google place_id
@@ -613,7 +622,7 @@ export interface EngineItineraryStop {
   openNow?: boolean | null
   orderReason?: string | null
   orderConsequence?: string | null
-  weatherAdvisory?: { what: string; why: string; consequence: string } | null
+  advisories?: StopAdvisory[]
   movedFrom?: number | null
   // Server-computed signals (crowd, timing, value, transit, content, sequence, energy, photo)
   signals?: { type: string; text: string; icon: string }[]

@@ -55,6 +55,8 @@ class EngineMessage:
     dismissable: bool
     undo_key: str | None = None
     stop_id: str | None = None   # place_id of anchor stop; None for day-level messages
+    day_date: str | None = None  # ISO date, for day-level messages (stop_id=None) so main.py
+                                  # can attach them to their actual day instead of only day 1
 
 
 @dataclass
