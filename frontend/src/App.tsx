@@ -25,6 +25,50 @@ import { ProfileScreen } from './modules/profile';
 import { TripsScreen, SavedScreen } from './modules/trips';
 import { SubscriptionScreen } from './modules/subscription/SubscriptionScreen';
 
+// Diagnostic error boundary — this app has no crash reporting anywhere, so an
+// uncaught error in any screen currently unmounts the whole tree to a blank/
+// black screen with zero information. This at least surfaces the actual error
+// on-screen so it can be read off a device directly instead of guessing blind.
+class ScreenErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ScreenErrorBoundary]', error, info.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 999, background: '#1a0e0e',
+          color: '#fff', padding: 24, overflowY: 'auto',
+          fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6,
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: '#ff8080' }}>
+            Screen crashed — please screenshot this
+          </div>
+          <div style={{ marginBottom: 12 }}>{this.state.error.message}</div>
+          <pre style={{ whiteSpace: 'pre-wrap', opacity: 0.7, fontSize: 11 }}>{this.state.error.stack}</pre>
+          <button
+            onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+            style={{ marginTop: 20, padding: '10px 18px', borderRadius: 8, background: '#fff', color: '#000', border: 'none' }}
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function ScreenRouter() {
   useBuildStatus();
   const { state, dispatch } = useAppStore();
@@ -279,6 +323,7 @@ function ScreenRouter() {
           transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
           style={{ position: 'absolute', inset: 0, minHeight: '100dvh' }}
         >
+          <ScreenErrorBoundary>
           {currentScreen === 'login'        && <LoginScreen />}
           {currentScreen === 'welcome'      && <WelcomeBackScreen />}
           {currentScreen === 'walkthrough'  && <WalkthroughScreen />}
@@ -301,6 +346,7 @@ function ScreenRouter() {
           {currentScreen === 'nav'         && <NavScreen />}
           {currentScreen === 'profile'     && <ProfileScreen />}
           {currentScreen === 'subscription' && <SubscriptionScreen />}
+          </ScreenErrorBoundary>
         </motion.div>
       </AnimatePresence>
 
