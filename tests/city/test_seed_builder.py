@@ -55,13 +55,26 @@ def _mock_foursquare_response(venue_names):
     }
 
 
+def _mock_daily_open_meteo_response(monthly_temps, monthly_precips, years=range(2020, 2025)):
+    """Open-Meteo's archive API rejects 'monthly' aggregation for precipitation_sum
+    (only certain variables support server-side monthly rollup), so _fetch_climate
+    pulls daily data and aggregates client-side. Two days per month per year is
+    enough to reproduce a known monthly average/total deterministically."""
+    dates, temps, precip = [], [], []
+    for y in years:
+        for m in range(12):
+            for d in (1, 15):
+                dates.append(f"{y}-{m + 1:02d}-{d:02d}")
+                temps.append(monthly_temps[m])
+                precip.append(monthly_precips[m] / 2)
+    return {"daily": {"time": dates, "temperature_2m_mean": temps, "precipitation_sum": precip}}
+
+
 def _mock_open_meteo_response():
-    return {
-        "monthly": {
-            "temperature_2m_mean": [9, 10, 12, 14, 16, 19, 22, 22, 20, 16, 12, 9],
-            "precipitation_sum": [130, 110, 90, 70, 60, 30, 10, 15, 45, 110, 130, 150],
-        }
-    }
+    return _mock_daily_open_meteo_response(
+        monthly_temps=[9, 10, 12, 14, 16, 19, 22, 22, 20, 16, 12, 9],
+        monthly_precips=[130, 110, 90, 70, 60, 30, 10, 15, 45, 110, 130, 150],
+    )
 
 
 # ── _fetch_wikidata_landmarks ─────────────────────────────────────────────────
@@ -145,12 +158,10 @@ def test_fetch_climate_hot_months_flags_months_at_or_above_threshold():
     """A destination with a real hot season (e.g. Marrakesh) needs hot_months
     populated so climatology fallback (trips booked >16 days out) can still
     flag heat — heat_threshold_c alone has no month attached to it."""
-    hot_city_response = {
-        "monthly": {
-            "temperature_2m_mean": [18, 19, 22, 25, 29, 33, 37, 37, 32, 27, 21, 18],
-            "precipitation_sum": [20, 15, 10, 5, 0, 0, 0, 0, 0, 5, 15, 25],
-        }
-    }
+    hot_city_response = _mock_daily_open_meteo_response(
+        monthly_temps=[18, 19, 22, 25, 29, 33, 37, 37, 32, 27, 21, 18],
+        monthly_precips=[20, 15, 10, 5, 0, 0, 0, 0, 0, 5, 15, 25],
+    )
     with patch("city.seed_builder.requests.get") as mock_get:
         mock_get.return_value.json.return_value = hot_city_response
         mock_get.return_value.raise_for_status = MagicMock()

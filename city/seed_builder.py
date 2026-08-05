@@ -280,8 +280,17 @@ def _fetch_foursquare_hidden_gems(city: dict) -> list[str]:
 
 
 def _fetch_climate(city: dict) -> dict:
-    """Return heat_threshold_c and rain_months from Open-Meteo 5-year historical avg."""
+    """Return heat_threshold_c, rain_months, and hot_months from Open-Meteo
+    5-year historical daily data, aggregated into monthly stats client-side.
+
+    Uses the `daily` endpoint rather than `monthly` — Open-Meteo's archive API
+    only supports server-side monthly rollup for a subset of variables and
+    rejects precipitation_sum with a 400, so we pull daily temperature/rain
+    and aggregate ourselves (same pattern as the real-time forecast fetch in
+    engine/weather.py).
+    """
     from datetime import date
+    from collections import defaultdict
     end_year = date.today().year - 1
     start_year = end_year - 4
     try:
@@ -290,25 +299,38 @@ def _fetch_climate(city: dict) -> dict:
             "longitude": city["lon"],
             "start_date": f"{start_year}-01-01",
             "end_date": f"{end_year}-12-31",
-            "monthly": "temperature_2m_mean,precipitation_sum",
+            "daily": "temperature_2m_mean,precipitation_sum",
             "timezone": city.get("timezone", "UTC"),
         }, timeout=15)
         r.raise_for_status()
-        data = r.json().get("monthly", {})
+        data = r.json().get("daily", {})
+        dates = data.get("time", [])
         temps = data.get("temperature_2m_mean", [])
         precip = data.get("precipitation_sum", [])
-        monthly_temp = [0.0] * 12
-        monthly_precip = [0.0] * 12
-        counts = [0] * 12
-        for i, (t, p) in enumerate(zip(temps, precip)):
-            m = i % 12
+
+        temps_by_year_month: dict[tuple[int, int], list[float]] = defaultdict(list)
+        precip_total_by_year_month: dict[tuple[int, int], float] = defaultdict(float)
+        for d_str, t, p in zip(dates, temps, precip):
+            year, month = int(d_str[:4]), int(d_str[5:7])
             if t is not None:
-                monthly_temp[m] += t
+                temps_by_year_month[(year, month)].append(t)
             if p is not None:
-                monthly_precip[m] += p
-            counts[m] += 1
-        monthly_temp = [monthly_temp[m] / max(counts[m], 1) for m in range(12)]
-        monthly_precip = [monthly_precip[m] / max(counts[m], 1) for m in range(12)]
+                precip_total_by_year_month[(year, month)] += p
+
+        monthly_temp = [0.0] * 12
+        temp_year_counts = [0] * 12
+        for (_, month), vals in temps_by_year_month.items():
+            monthly_temp[month - 1] += sum(vals) / len(vals)
+            temp_year_counts[month - 1] += 1
+        monthly_temp = [monthly_temp[m] / max(temp_year_counts[m], 1) for m in range(12)]
+
+        monthly_precip = [0.0] * 12
+        precip_year_counts = [0] * 12
+        for (_, month), total in precip_total_by_year_month.items():
+            monthly_precip[month - 1] += total
+            precip_year_counts[month - 1] += 1
+        monthly_precip = [monthly_precip[m] / max(precip_year_counts[m], 1) for m in range(12)]
+
         heat_threshold_c = max(int(max(monthly_temp)), 25)
         rain_months = [i + 1 for i, p in enumerate(monthly_precip) if p > 80]
         hot_months = [i + 1 for i, t in enumerate(monthly_temp) if t >= heat_threshold_c]
