@@ -8,6 +8,10 @@ const TYPE_ICON: Record<EngineMessage['type'], string> = {
   transit:     'directions_transit',
   advisory:    'info',
   event:       'event',
+  alcohol:     'wine_bar',
+  ramadan:     'nights_stay',
+  nightlife:   'nightlife',
+  walkability: 'directions_walk',
 }
 
 interface Props {
