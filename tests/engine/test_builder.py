@@ -315,6 +315,40 @@ def test_walkability_advisory_silent_for_light_day():
     assert not any(m.type == "walkability" for m in messages)
 
 
+# ── Day splitting — distinct dates ──────────────────────────────────────────
+
+def test_split_into_days_assigns_a_distinct_date_per_day_even_when_light():
+    """Regression: days used to silently share a date when the previous day's
+    stops ended before 4pm — a decision made before dinner/reco stops are
+    injected (which happens later, in main.py), so it systematically
+    misjudged days that would later fill out as 'light'. A 3-day trip could
+    collapse onto a single calendar date. Every day must always get its own
+    date from ctx.travel_dates, regardless of how early its stops end."""
+    stops = [
+        make_stop(place_id="p1", category="museum", start_offset_min=9 * 60, duration_min=60),   # day 1, ends 10am
+        make_stop(place_id="p2", category="cafe", start_offset_min=9 * 60, duration_min=30),      # day 2, ends 9:30am
+        make_stop(place_id="p3", category="gallery", start_offset_min=9 * 60, duration_min=45),   # day 3, ends 9:45am
+    ]
+    ctx = make_ctx(travel_dates=["2026-06-01", "2026-06-02", "2026-06-03"])
+
+    days = builder._split_into_days(stops, ctx)
+
+    assert [d.date for d in days] == ["2026-06-01", "2026-06-02", "2026-06-03"]
+
+
+def test_split_into_days_distributes_stops_one_per_day_for_equal_counts():
+    stops = [
+        make_stop(place_id="p1", category="museum"),
+        make_stop(place_id="p2", category="cafe"),
+        make_stop(place_id="p3", category="gallery"),
+    ]
+    ctx = make_ctx(travel_dates=["2026-06-01", "2026-06-02", "2026-06-03"])
+
+    days = builder._split_into_days(stops, ctx)
+
+    assert [len(d.stops) for d in days] == [1, 1, 1]
+
+
 def test_walkability_advisory_silent_when_score_not_low():
     stops = [make_stop(place_id=f"p{i}", category="museum") for i in range(3)]
     day = EngineDay(date="2026-06-01", stops=stops)

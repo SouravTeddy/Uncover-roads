@@ -446,20 +446,17 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     n_cities = len(city_groups)
     total_days = len(dates)
 
-    SAME_DAY_CUTOFF_MIN = 16 * 60  # if a day ends before 4 PM, next segment continues same date
-
     if n_cities == 1:
-        # Single city — distribute evenly across dates, but carry timing forward
-        # when a day ends before 4 PM.
+        # Single city — distribute evenly across dates. Every day gets its own
+        # date, scheduled fresh from a sane per-day start time — never carried
+        # forward or merged onto a previous day's date. (A "continue same day"
+        # heuristic used to decide this from each day's pre-reco end time, but
+        # dinner/rest recommendations are injected later in main.py, so it
+        # systematically misjudged days that would later fill out as "light,"
+        # sometimes collapsing an entire multi-day trip onto one date.)
         per_day = max(1, len(stops) // total_days)
         days: list[EngineDay] = []
-        prev_day_end_min: int | None = None
         for i, date in enumerate(dates):
-            # If previous day ended early enough, continue on same calendar date
-            same_day = (i > 0 and prev_day_end_min is not None and prev_day_end_min <= SAME_DAY_CUTOFF_MIN)
-            if same_day:
-                date = dates[i - 1]
-
             slice_start = i * per_day
             slice_end = slice_start + per_day if i < total_days - 1 else len(stops)
             day_stops = stops[slice_start:slice_end]
@@ -467,22 +464,8 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                if same_day and prev_day_end_min is not None:
-                    sm = prev_day_end_min + buffer_min
-                else:
-                    sm = _non_day1_start_min(day_stops, ctx, date)
+                sm = _non_day1_start_min(day_stops, ctx, date)
                 _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
-
-            # Track end time for next iteration
-            if day_stops:
-                last = day_stops[-1]
-                if last.scheduled_time:
-                    lh, lm = (int(x) for x in last.scheduled_time.split(":"))
-                    prev_day_end_min = lh * 60 + lm + last.duration_min
-                else:
-                    prev_day_end_min = None
-            else:
-                prev_day_end_min = None
 
             days.append(EngineDay(date=date, stops=day_stops))
         return days
@@ -503,29 +486,17 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
     days = []
     date_idx = 0
     global_day_idx = 0
-    prev_day_end_min: int | None = None
     for city_idx, ((city, city_stops), n_days) in enumerate(zip(city_groups, city_days)):
         n_days = max(1, n_days)
         per_day = max(1, len(city_stops) // n_days)
         for j in range(n_days):
-            # Same-day continuation: first day of a non-first city that ended early enough
-            same_day = (
-                j == 0 and city_idx > 0 and
-                prev_day_end_min is not None and
-                prev_day_end_min <= SAME_DAY_CUTOFF_MIN
-            )
-            if same_day:
-                # Reuse previous city's last date; don't advance date_idx
-                date = dates[date_idx - 1]
-                overflowed = False
-            elif date_idx >= total_days:
+            # Ran out of allocated dates (rounding can occasionally overshoot) —
+            # fall back to reusing the last date rather than crashing.
+            if date_idx >= total_days:
                 date = dates[-1]
-                date_idx += 1
-                overflowed = True
             else:
                 date = dates[date_idx]
-                date_idx += 1
-                overflowed = False
+            date_idx += 1
 
             slice_start = j * per_day
             slice_end = slice_start + per_day if j < n_days - 1 else len(city_stops)
@@ -534,22 +505,8 @@ def _split_into_days(stops: list[EngineStop], ctx: EngineContext) -> list[Engine
                 _d1h, _d1m = _day1_adjusted_start(ctx.user_arrival_time, ctx.user_start_type or "hotel")
                 _schedule_day_stops(day_stops, _d1h, _d1m, buffer_min)
             elif day_stops:
-                if same_day or (overflowed and prev_day_end_min is not None):
-                    # Carry forward from where previous city ended (+ transit buffer)
-                    sm = prev_day_end_min + buffer_min
-                else:
-                    sm = _non_day1_start_min(day_stops, ctx, date)
+                sm = _non_day1_start_min(day_stops, ctx, date)
                 _schedule_day_stops(day_stops, sm // 60, sm % 60, buffer_min)
-            # Record end-of-day for potential same-date continuation
-            if day_stops:
-                last = day_stops[-1]
-                if last.scheduled_time:
-                    lh, lm = (int(x) for x in last.scheduled_time.split(":"))
-                    prev_day_end_min = lh * 60 + lm + last.duration_min
-                else:
-                    prev_day_end_min = None
-            else:
-                prev_day_end_min = None
             global_day_idx += 1
             days.append(EngineDay(date=date, stops=day_stops))
 
