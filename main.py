@@ -5296,6 +5296,54 @@ def _dedupe_engine_messages(messages: list) -> list:
     return deduped
 
 
+_ALCOHOL_CATEGORIES = {"bar", "nightlife"}
+
+
+def _walkability_advisory_message(stops_out: list[dict], city_culture: dict, day_date: str) -> dict | None:
+    """Day-level advisory for a busy day (3+ stops) in a low-walkability city.
+
+    Runs on the FINAL per-day stop list — after lunch/dinner/rest recos are
+    injected — not the ~2-stop pre-reco list the engine's day-split produces,
+    which would systematically under-fire since almost every day gets bulked
+    up with several more stops.
+    """
+    if (city_culture or {}).get("walkability_score") != "low":
+        return None
+    if len(stops_out) < 3:
+        return None
+    return {
+        "id": str(uuid.uuid4()),
+        "type": "walkability",
+        "what": "This city isn't very walkable.",
+        "why": "Sidewalks, crossings, or distances between stops make walking between today's plans impractical.",
+        "consequence": "Budget extra time for rideshares or transit between stops today.",
+        "dismissable": True,
+        "undo_action": None,
+        "stopId": None,
+        "dayDate": day_date,
+    }
+
+
+def _nightlife_advisory_message(stops_out: list[dict], city_culture: dict, day_date: str) -> dict | None:
+    """Day-level advisory when a day includes a bar/nightlife stop (including
+    a reco-injected one) in a city with a low nightlife score."""
+    if (city_culture or {}).get("nightlife_score") != "low":
+        return None
+    if not any((s.get("category") or "").lower() in _ALCOHOL_CATEGORIES for s in stops_out):
+        return None
+    return {
+        "id": str(uuid.uuid4()),
+        "type": "nightlife",
+        "what": "This city's nightlife scene is limited.",
+        "why": "Bars and evening venues close early or are sparse here compared to your other stops.",
+        "consequence": "Consider treating tonight's stop as a wind-down rather than a late night out.",
+        "dismissable": True,
+        "undo_action": None,
+        "stopId": None,
+        "dayDate": day_date,
+    }
+
+
 def _resolve_reco_trigger(
     trigger: dict,
     existing_place_ids: set[str],
@@ -6495,6 +6543,13 @@ async def engine_itinerary(body: EngineItineraryPayload, request: Request, user=
                 _card["total"] = scenic_pos
 
         _day_city_data = _city_data_map.get(day_city.lower().replace(" ", "_"), city_data) if day_city else city_data
+        if not day.is_travel_day:
+            _walk_msg = _walkability_advisory_message(stops_out, _day_city_data.culture, day.date)
+            if _walk_msg:
+                day_messages.append(_walk_msg)
+            _night_msg = _nightlife_advisory_message(stops_out, _day_city_data.culture, day.date)
+            if _night_msg:
+                day_messages.append(_night_msg)
         days_out.append({
             "day": i + 1,
             "date": day.date,

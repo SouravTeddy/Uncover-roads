@@ -675,51 +675,6 @@ def _ramadan_advisories(days: list[EngineDay], ctx: EngineContext) -> list[Engin
     return messages
 
 
-def _nightlife_advisory(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
-    """Day-level advisory (stop_id=None) when a day includes a bar/nightlife
-    stop in a city with a low nightlife score. One per eligible day — never
-    deduped away, since each day is an independent, legitimate occurrence."""
-    if (ctx.city.culture or {}).get("nightlife_score") != "low":
-        return []
-    messages: list[EngineMessage] = []
-    for day in days:
-        if not any(s.category.lower() in _ALCOHOL_CATEGORIES for s in day.stops):
-            continue
-        messages.append(EngineMessage(
-            type="nightlife",
-            what="This city's nightlife scene is limited.",
-            why="Bars and evening venues close early or are sparse here compared to your other stops.",
-            consequence="Consider treating tonight's stop as a wind-down rather than a late night out.",
-            dismissable=True,
-            undo_key=None,
-            stop_id=None,
-            day_date=day.date,
-        ))
-    return messages
-
-
-def _walkability_advisory(days: list[EngineDay], ctx: EngineContext) -> list[EngineMessage]:
-    """Day-level advisory (stop_id=None) for a busy day (3+ stops) in a city
-    with a low walkability score."""
-    if (ctx.city.culture or {}).get("walkability_score") != "low":
-        return []
-    messages: list[EngineMessage] = []
-    for day in days:
-        if len(day.stops) < 3:
-            continue
-        messages.append(EngineMessage(
-            type="walkability",
-            what="This city isn't very walkable.",
-            why="Sidewalks, crossings, or distances between stops make walking between today's plans impractical.",
-            consequence="Budget extra time for rideshares or transit between stops today.",
-            dismissable=True,
-            undo_key=None,
-            stop_id=None,
-            day_date=day.date,
-        ))
-    return messages
-
-
 def _needs_recommendations(stops: list[EngineStop], ctx: EngineContext) -> bool:
     return len(stops) < len(ctx.travel_dates)
 
@@ -761,15 +716,17 @@ async def build_itinerary(
     weather_advisories = _weather_advisories(days, ctx)
     alcohol_advisories = _alcohol_advisories(days, ctx)
     ramadan_advisories = _ramadan_advisories(days, ctx)
-    nightlife_advisories = _nightlife_advisory(days, ctx)
-    walkability_advisories = _walkability_advisory(days, ctx)
+    # Nightlife/walkability are NOT computed here — they need the final per-day
+    # stop count/content *after* lunch/dinner/rest recommendations are injected
+    # (that happens later, in main.py's per-day loop), otherwise they judge a
+    # day's business off ~2 stops when it'll end up with 6-7. See main.py's
+    # _nightlife_advisory_message / _walkability_advisory_message.
     recs = await _get_recommendations(ctx) if _needs_recommendations(stops, ctx) else None
 
     return EngineResult(
         days=days,
         messages=narrated + walk_advisories + weather_advisories
-        + alcohol_advisories + ramadan_advisories
-        + nightlife_advisories + walkability_advisories,
+        + alcohol_advisories + ramadan_advisories,
         generation_id=str(uuid.uuid4()),
         recommendations=recs,
     )

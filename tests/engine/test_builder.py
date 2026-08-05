@@ -247,74 +247,6 @@ def test_ramadan_advisory_silent_when_city_not_ramadan_affected():
     assert not any(m.type == "ramadan" for m in messages)
 
 
-# ── Nightlife advisory (day-level) ──────────────────────────────────────────
-
-def test_nightlife_advisory_fires_when_day_has_bar_stop_in_low_nightlife_city():
-    stop = make_stop(place_id="bar1", category="bar")
-    day = EngineDay(date="2026-06-01", stops=[stop])
-    ctx = make_ctx()
-    ctx.city.culture["nightlife_score"] = "low"
-
-    messages = builder._nightlife_advisory([day], ctx)
-
-    nightlife_msgs = [m for m in messages if m.type == "nightlife"]
-    assert len(nightlife_msgs) == 1
-    assert nightlife_msgs[0].stop_id is None
-    assert nightlife_msgs[0].day_date == "2026-06-01"
-
-
-def test_nightlife_advisory_silent_when_score_not_low():
-    stop = make_stop(place_id="bar1", category="bar")
-    day = EngineDay(date="2026-06-01", stops=[stop])
-    ctx = make_ctx()
-    ctx.city.culture["nightlife_score"] = "high"
-
-    messages = builder._nightlife_advisory([day], ctx)
-
-    assert not any(m.type == "nightlife" for m in messages)
-
-
-def test_nightlife_advisory_fires_once_per_multiday_trip():
-    """Each day is independently eligible — this is exactly the kind of
-    day-level message that must not collide under a (type, stop_id) dedup,
-    since stop_id is None for every occurrence."""
-    day1 = EngineDay(date="2026-06-01", stops=[make_stop(place_id="bar1", category="bar")])
-    day2 = EngineDay(date="2026-06-02", stops=[make_stop(place_id="bar2", category="nightlife")])
-    ctx = make_ctx()
-    ctx.city.culture["nightlife_score"] = "low"
-
-    messages = builder._nightlife_advisory([day1, day2], ctx)
-
-    assert len([m for m in messages if m.type == "nightlife"]) == 2
-
-
-# ── Walkability advisory (day-level) ────────────────────────────────────────
-
-def test_walkability_advisory_fires_for_busy_day_in_low_walkability_city():
-    stops = [make_stop(place_id=f"p{i}", category="museum") for i in range(3)]
-    day = EngineDay(date="2026-06-01", stops=stops)
-    ctx = make_ctx()
-    ctx.city.culture["walkability_score"] = "low"
-
-    messages = builder._walkability_advisory([day], ctx)
-
-    walk_msgs = [m for m in messages if m.type == "walkability"]
-    assert len(walk_msgs) == 1
-    assert walk_msgs[0].stop_id is None
-    assert walk_msgs[0].day_date == "2026-06-01"
-
-
-def test_walkability_advisory_silent_for_light_day():
-    stops = [make_stop(place_id="p1", category="museum"), make_stop(place_id="p2", category="cafe")]
-    day = EngineDay(date="2026-06-01", stops=stops)
-    ctx = make_ctx()
-    ctx.city.culture["walkability_score"] = "low"
-
-    messages = builder._walkability_advisory([day], ctx)
-
-    assert not any(m.type == "walkability" for m in messages)
-
-
 # ── Day splitting — distinct dates ──────────────────────────────────────────
 
 def test_split_into_days_assigns_a_distinct_date_per_day_even_when_light():
@@ -347,14 +279,3 @@ def test_split_into_days_distributes_stops_one_per_day_for_equal_counts():
     days = builder._split_into_days(stops, ctx)
 
     assert [len(d.stops) for d in days] == [1, 1, 1]
-
-
-def test_walkability_advisory_silent_when_score_not_low():
-    stops = [make_stop(place_id=f"p{i}", category="museum") for i in range(3)]
-    day = EngineDay(date="2026-06-01", stops=stops)
-    ctx = make_ctx()
-    ctx.city.culture["walkability_score"] = "moderate"
-
-    messages = builder._walkability_advisory([day], ctx)
-
-    assert not any(m.type == "walkability" for m in messages)
