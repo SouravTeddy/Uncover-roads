@@ -43,6 +43,24 @@ function appendImgCache(placeId: string | undefined | null, title: string, url: 
   } catch { /* ignore */ }
 }
 
+// Stable identity per card — used for both the React list key and for
+// re-locating a card's index after the cards array changes shape (e.g. an
+// intel/scenic card is inserted asynchronously mid-session).
+function getCardKey(card: ReelCard, idx: number): string {
+  return (
+    card.type === 'stop' ? card.stop.id :
+    card.type === 'intel' ? card.id :
+    card.type === 'transit' ? `transit-${card.from}-${card.to}` :
+    card.type === 'day_divider' ? `day-${card.day}` :
+    card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
+    card.type === 'day_intel' ? card.id :
+    card.type === 'scenic' ? `scenic-${card.from}-${card.to}` :
+    card.type === 'group' ? `group-${card.fromStop}-${card.toStop}` :
+    card.type === 'growth' ? 'growth-card' :
+    `${card.type}-${idx}`
+  );
+}
+
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -199,7 +217,15 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const cardsDataRef = useRef<ReelCard[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const panelControlRef = useRef<import('./ReelStopCard').PanelControl | null>(null);
+  // Single source of truth for which card's panel is expanded — replaces a
+  // previous per-card ref-registration scheme that assumed React always runs
+  // sibling effects in a specific DOM order, which didn't hold under fast/
+  // flung scrolling and left stale cards stuck expanded.
+  const [expandedCardKey, setExpandedCardKey] = useState<string | null>(null);
+  // Tracks the *key* (not index) of the currently active card, so the scroll-
+  // restore effect below can find its new position even if the cards array
+  // changes shape (e.g. an intel card is inserted) between renders.
+  const activeCardKeyRef = useRef<string | null>(null);
   const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
   const tripDetailsRef = useRef<TripDetails | null>(savedItem?.tripDetails ?? state.pendingTripDetails ?? null);
@@ -499,14 +525,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   }, [activeIdx, imagesReady]);
   useEffect(() => () => { if (lazyRetryTimer.current) clearTimeout(lazyRetryTimer.current); }, []);
 
-  // After secondary card rebuilds (weather/persona/photos), restore scroll so the
-  // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
-  useLayoutEffect(() => {
-    if (!restoreScrollRef.current || !scrollRef.current) return;
-    restoreScrollRef.current = false;
-    const el = scrollRef.current;
-    el.scrollTop = activeIdxRef.current * el.clientHeight;
-  }, [cards]);
 
   // Deferred enrichment rebuild — avoids calling setCards mid-swipe which causes
   // iOS scroll-snap to re-snap to the wrong card ("same card again" bug).
@@ -662,9 +680,10 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
 
   // Collapse the panel whenever the active card changes so expanded state
-  // from a previous card doesn't bleed into the next one.
+  // from a previous card doesn't bleed into the next one. Direct state update —
+  // no ref-registration indirection, so this can never target a stale card.
   useEffect(() => {
-    panelControlRef.current?.collapse();
+    setExpandedCardKey(null);
   }, [activeIdx]);
 
   // Show the scroll-to-top arrow for 1 s whenever the active card changes, then fade it out
@@ -682,7 +701,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   }, []);
 
   const handleCloseTripDetails = useCallback(() => setShowTripDetails(false), []);
-  const registerPanelControl = useCallback((ctrl: import('./ReelStopCard').PanelControl | null) => { panelControlRef.current = ctrl; }, []);
 
   const handleUndo = useCallback(() => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -691,163 +709,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   }, [undoPending]);
 
 
-  if (!activeItinerary || !imagesReady || !state.persona) {
-    const stopCount = activeItinerary?.days?.flatMap(d => d.stops ?? []).length ?? 0;
-    const days = activeItinerary?.days?.length ?? 0;
-    const cityName = activeItinerary?.city ?? activeItinerary?.cities?.[0] ?? '';
-
-    const STEPS: { label: string; done: boolean }[] = [
-      { label: 'Building your itinerary', done: !!activeItinerary },
-      { label: 'Gathering photos',        done: loadingStep >= 1 },
-      { label: 'Preparing your reel',     done: imagesReady },
-    ];
-    const activeStep = STEPS.findIndex(s => !s.done);
-
-    // Collect photo URLs for the mosaic: stop photos first, city photos as supplement,
-    // then fall back to anything already in the browser bitmap cache (preloaded from destination screen).
-    const mosaicSrcs: string[] = [];
-    for (const day of activeItinerary?.days ?? []) {
-      for (const stop of day.stops ?? []) {
-        if (stop.imageUrl && !mosaicSrcs.includes(stop.imageUrl)) {
-          mosaicSrcs.push(stop.imageUrl);
-          if (mosaicSrcs.length >= 9) break;
-        }
-      }
-      if (mosaicSrcs.length >= 9) break;
-    }
-    for (const [, url] of cityPhotoMap) {
-      if (url && !mosaicSrcs.includes(url)) {
-        mosaicSrcs.push(url);
-        if (mosaicSrcs.length >= 9) break;
-      }
-    }
-    // Seed from preloaded bitmap cache so the background appears instantly
-    if (mosaicSrcs.length < 3) {
-      for (const url of getPreloadedUrls()) {
-        if (!mosaicSrcs.includes(url)) mosaicSrcs.push(url);
-        if (mosaicSrcs.length >= 9) break;
-      }
-    }
-
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
-        {/* Photo mosaic background */}
-        {mosaicSrcs.length > 0 && (
-          <div style={{ position: 'absolute', inset: '-12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: 3, filter: 'blur(14px) saturate(0.6)', overflow: 'hidden' }}>
-            {Array.from({ length: 9 }, (_, i) => {
-              const src = mosaicSrcs[i % mosaicSrcs.length];
-              const isAlt = i % 2 === 1;
-              return (
-                <img
-                  key={i}
-                  src={src}
-                  alt=""
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                    animation: `${isAlt ? 'kenBurns2' : 'kenBurns'} ${18 + (i % 3) * 4}s ease-in-out infinite alternate`,
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
-        {/* Dark overlay */}
-        <div style={{ position: 'absolute', inset: 0, background: mosaicSrcs.length > 0 ? 'rgba(10,8,6,0.72)' : 'transparent', pointerEvents: 'none' }} />
-        {/* Colour accents on top */}
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 55% at 50% 30%, rgba(212,168,83,.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,143,171,.06) 0%, transparent 60%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 40% 30% at 15% 70%, rgba(212,168,83,.04) 0%, transparent 55%)', pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, padding: '0 40px', width: '100%', maxWidth: 340 }}>
-
-          {/* Heading */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 34, fontWeight: 600, color: 'var(--color-text-1)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
-              Your itinerary<br />is almost ready
-            </p>
-            {cityName && days > 0 && (
-              <p style={{ fontSize: 12, color: 'var(--color-text-4)', margin: '10px 0 0', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                {cityName} · {days} day{days !== 1 ? 's' : ''} · {stopCount} stop{stopCount !== 1 ? 's' : ''}
-              </p>
-            )}
-            <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: '14px 0 0', lineHeight: 1.5 }}>
-              We're crafting a personalised trip just for you — this takes a little time.
-            </p>
-          </div>
-
-          {/* Step indicators */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
-            {STEPS.map((step, i) => {
-              const isActive = i === activeStep;
-              const isDone = step.done;
-              return (
-                <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {/* Icon */}
-                  <div style={{
-                    width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: isDone ? 'var(--color-primary-bg)' : isActive ? 'var(--color-surface)' : 'transparent',
-                    border: isDone ? '1px solid var(--color-primary-glow)' : isActive ? '1px solid var(--color-border-m)' : '1px solid var(--color-border)',
-                    transition: 'all .4s ease',
-                  }}>
-                    {isDone
-                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>check</span>
-                      : isActive
-                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', animation: 'spin 1s linear infinite' }}>autorenew</span>
-                      : null
-                    }
-                  </div>
-                  {/* Label */}
-                  <span style={{
-                    fontSize: 14,
-                    color: isDone ? 'var(--color-text-3)' : isActive ? 'var(--color-text-1)' : 'var(--color-text-4)',
-                    fontWeight: isActive ? 500 : 400,
-                    transition: 'color .4s ease',
-                  }}>
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Thin progress bar */}
-          <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%',
-              width: imagesReady ? '100%' : loadingStep >= 1 ? '66%' : activeItinerary ? '33%' : '8%',
-              background: 'linear-gradient(90deg, rgba(212,168,83,.5), rgba(212,168,83,.9))',
-              borderRadius: 99,
-              transition: 'width .6s cubic-bezier(.25,0,0,1)',
-            }} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Guard: imagesReady but cards is empty means buildFiltered failed on the saved itinerary
-  if (imagesReady && cards.length === 0) {
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
-        <span className="ms fill" style={{ fontSize: 40, color: 'var(--color-text-4)' }}>error_outline</span>
-        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-2)', margin: 0 }}>Couldn't load this trip</p>
-        <p style={{ fontSize: 13, color: 'var(--color-text-4)', margin: 0 }}>The saved data may be incomplete. Try going back and opening it again.</p>
-        <button
-          onClick={() => dispatch({ type: 'GO_BACK' })}
-          style={{ marginTop: 8, padding: '10px 24px', borderRadius: 99, background: 'var(--color-surface)', border: '1px solid var(--color-border-m)', color: 'var(--color-text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-        >
-          Go back
-        </button>
-      </div>
-    );
-  }
-
-  function fmtMinutes(mins: number): string {
-    if (mins < 60)  return `${mins} min`;
-    if (mins < 1440) return `${Math.round(mins / 60)}h`;
-    return `${Math.round(mins / 1440)} day${Math.round(mins / 1440) !== 1 ? 's' : ''}`;
-  }
 
   const travelGroup = state.rawOBAnswers?.group ?? 'solo';
 
@@ -1013,6 +874,193 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
     return result;
   })();
 
+  // Capture the active card's stable key (not just its index) whenever it changes —
+  // if displayCards changes shape between now and the next scroll-restore (e.g. an
+  // intel card gets inserted asynchronously), the index alone would point at the
+  // wrong card, but the key lets us re-locate the actual card the user was looking
+  // at. Deliberately placed after displayCards is computed above (never before it —
+  // that was the exact bug in the previous attempt at this fix: a useLayoutEffect
+  // higher up in the component referenced displayCards before this line had ever
+  // executed for a given render, throwing "cannot access before initialization").
+  useLayoutEffect(() => {
+    const activeCard = displayCards[activeIdx];
+    activeCardKeyRef.current = activeCard ? getCardKey(activeCard, activeIdx) : null;
+  }, [activeIdx, displayCards]);
+
+  // After secondary card rebuilds (weather/persona/photos), restore scroll so the
+  // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
+  // Re-locates the card by its stable key (not raw index) since displayCards can
+  // change shape between the rebuild and this effect firing. Positioned after
+  // displayCards is computed above for the same TDZ-safety reason as the effect
+  // directly above it.
+  useLayoutEffect(() => {
+    if (!restoreScrollRef.current || !scrollRef.current) return;
+    restoreScrollRef.current = false;
+    const el = scrollRef.current;
+    const key = activeCardKeyRef.current;
+    const foundIdx = key ? displayCards.findIndex((c, i) => getCardKey(c, i) === key) : -1;
+    const restoreIdx = foundIdx >= 0 ? foundIdx : activeIdxRef.current;
+    el.scrollTop = restoreIdx * el.clientHeight;
+  }, [displayCards]);
+
+  if (!activeItinerary || !imagesReady || !state.persona) {
+    const stopCount = activeItinerary?.days?.flatMap(d => d.stops ?? []).length ?? 0;
+    const days = activeItinerary?.days?.length ?? 0;
+    const cityName = activeItinerary?.city ?? activeItinerary?.cities?.[0] ?? '';
+
+    const STEPS: { label: string; done: boolean }[] = [
+      { label: 'Building your itinerary', done: !!activeItinerary },
+      { label: 'Gathering photos',        done: loadingStep >= 1 },
+      { label: 'Preparing your reel',     done: imagesReady },
+    ];
+    const activeStep = STEPS.findIndex(s => !s.done);
+
+    // Collect photo URLs for the mosaic: stop photos first, city photos as supplement,
+    // then fall back to anything already in the browser bitmap cache (preloaded from destination screen).
+    const mosaicSrcs: string[] = [];
+    for (const day of activeItinerary?.days ?? []) {
+      for (const stop of day.stops ?? []) {
+        if (stop.imageUrl && !mosaicSrcs.includes(stop.imageUrl)) {
+          mosaicSrcs.push(stop.imageUrl);
+          if (mosaicSrcs.length >= 9) break;
+        }
+      }
+      if (mosaicSrcs.length >= 9) break;
+    }
+    for (const [, url] of cityPhotoMap) {
+      if (url && !mosaicSrcs.includes(url)) {
+        mosaicSrcs.push(url);
+        if (mosaicSrcs.length >= 9) break;
+      }
+    }
+    // Seed from preloaded bitmap cache so the background appears instantly
+    if (mosaicSrcs.length < 3) {
+      for (const url of getPreloadedUrls()) {
+        if (!mosaicSrcs.includes(url)) mosaicSrcs.push(url);
+        if (mosaicSrcs.length >= 9) break;
+      }
+    }
+
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
+        {/* Photo mosaic background */}
+        {mosaicSrcs.length > 0 && (
+          <div style={{ position: 'absolute', inset: '-12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: 3, filter: 'blur(14px) saturate(0.6)', overflow: 'hidden' }}>
+            {Array.from({ length: 9 }, (_, i) => {
+              const src = mosaicSrcs[i % mosaicSrcs.length];
+              const isAlt = i % 2 === 1;
+              return (
+                <img
+                  key={i}
+                  src={src}
+                  alt=""
+                  style={{
+                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                    animation: `${isAlt ? 'kenBurns2' : 'kenBurns'} ${18 + (i % 3) * 4}s ease-in-out infinite alternate`,
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+        {/* Dark overlay */}
+        <div style={{ position: 'absolute', inset: 0, background: mosaicSrcs.length > 0 ? 'rgba(10,8,6,0.72)' : 'transparent', pointerEvents: 'none' }} />
+        {/* Colour accents on top */}
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 80% 55% at 50% 30%, rgba(212,168,83,.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,143,171,.06) 0%, transparent 60%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 40% 30% at 15% 70%, rgba(212,168,83,.04) 0%, transparent 55%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, padding: '0 40px', width: '100%', maxWidth: 340 }}>
+
+          {/* Heading */}
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 34, fontWeight: 600, color: 'var(--color-text-1)', margin: 0, lineHeight: 1.1, letterSpacing: '-.01em' }}>
+              Your itinerary<br />is almost ready
+            </p>
+            {cityName && days > 0 && (
+              <p style={{ fontSize: 12, color: 'var(--color-text-4)', margin: '10px 0 0', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                {cityName} · {days} day{days !== 1 ? 's' : ''} · {stopCount} stop{stopCount !== 1 ? 's' : ''}
+              </p>
+            )}
+            <p style={{ fontSize: 13, color: 'var(--color-text-3)', margin: '14px 0 0', lineHeight: 1.5 }}>
+              We're crafting a personalised trip just for you — this takes a little time.
+            </p>
+          </div>
+
+          {/* Step indicators */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
+            {STEPS.map((step, i) => {
+              const isActive = i === activeStep;
+              const isDone = step.done;
+              return (
+                <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Icon */}
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isDone ? 'var(--color-primary-bg)' : isActive ? 'var(--color-surface)' : 'transparent',
+                    border: isDone ? '1px solid var(--color-primary-glow)' : isActive ? '1px solid var(--color-border-m)' : '1px solid var(--color-border)',
+                    transition: 'all .4s ease',
+                  }}>
+                    {isDone
+                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-primary)' }}>check</span>
+                      : isActive
+                      ? <span className="ms" style={{ fontSize: 13, color: 'var(--color-text-3)', animation: 'spin 1s linear infinite' }}>autorenew</span>
+                      : null
+                    }
+                  </div>
+                  {/* Label */}
+                  <span style={{
+                    fontSize: 14,
+                    color: isDone ? 'var(--color-text-3)' : isActive ? 'var(--color-text-1)' : 'var(--color-text-4)',
+                    fontWeight: isActive ? 500 : 400,
+                    transition: 'color .4s ease',
+                  }}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Thin progress bar */}
+          <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,.07)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: imagesReady ? '100%' : loadingStep >= 1 ? '66%' : activeItinerary ? '33%' : '8%',
+              background: 'linear-gradient(90deg, rgba(212,168,83,.5), rgba(212,168,83,.9))',
+              borderRadius: 99,
+              transition: 'width .6s cubic-bezier(.25,0,0,1)',
+            }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard: imagesReady but cards is empty means buildFiltered failed on the saved itinerary
+  if (imagesReady && cards.length === 0) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '0 32px', textAlign: 'center', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}>
+        <span className="ms fill" style={{ fontSize: 40, color: 'var(--color-text-4)' }}>error_outline</span>
+        <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text-2)', margin: 0 }}>Couldn't load this trip</p>
+        <p style={{ fontSize: 13, color: 'var(--color-text-4)', margin: 0 }}>The saved data may be incomplete. Try going back and opening it again.</p>
+        <button
+          onClick={() => dispatch({ type: 'GO_BACK' })}
+          style={{ marginTop: 8, padding: '10px 24px', borderRadius: 99, background: 'var(--color-surface)', border: '1px solid var(--color-border-m)', color: 'var(--color-text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
+
+  function fmtMinutes(mins: number): string {
+    if (mins < 60)  return `${mins} min`;
+    if (mins < 1440) return `${Math.round(mins / 60)}h`;
+    return `${Math.round(mins / 1440)} day${Math.round(mins / 1440) !== 1 ? 's' : ''}`;
+  }
+
   // Old-format saved trips (flat itinerary, no days) produce zero cards
   if (displayCards.length === 0) {
     return (
@@ -1097,6 +1145,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         {displayCards.map((card, idx) => {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
+          const cardKey = getCardKey(card, idx);
           let child: ReactNode = null;
           if (card.type === 'intro') {
             const tripDets = savedItem?.tripDetails ?? state.pendingTripDetails;
@@ -1157,7 +1206,8 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
                 setUndoPending({ id: stop.id, label: stop.title });
                 undoTimer.current = setTimeout(() => setUndoPending(null), 4000);
               }}
-              onRegisterPanelControl={isActive ? registerPanelControl : undefined}
+              expanded={expandedCardKey === cardKey}
+              onExpandChange={(v) => setExpandedCardKey(v ? cardKey : null)}
             />;
           }
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
@@ -1232,17 +1282,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             />
           );
           if (!child) return null;
-          const cardKey =
-            card.type === 'stop' ? card.stop.id :
-            card.type === 'intel' ? card.id :
-            card.type === 'transit' ? `transit-${card.from}-${card.to}` :
-            card.type === 'day_divider' ? `day-${card.day}` :
-            card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
-            card.type === 'day_intel' ? card.id :
-            card.type === 'scenic' ? `scenic-${card.from}-${card.to}` :
-            card.type === 'group' ? `group-${card.fromStop}-${card.toStop}` :
-            card.type === 'growth' ? 'growth-card' :
-            `${card.type}-${idx}`;
           return (
             <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always', scrollSnapAlign: 'start' }}>
               {child}
