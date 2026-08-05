@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from city.data_model import CityData
 
-_OUTDOOR_CATEGORIES = {"park", "beach", "viewpoint", "garden", "nature_reserve", "hiking_area"}
+_OUTDOOR_CATEGORIES = {"park", "beach", "viewpoint", "garden", "nature_reserve", "hiking_area", "landmark"}
 
 
 @dataclass

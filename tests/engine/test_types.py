@@ -21,6 +21,30 @@ def test_engine_stop_non_outdoor_category():
     assert stop.outdoor is False
 
 
+def test_engine_stop_landmark_category_is_outdoor():
+    """'landmark' covers monuments/plazas — genuinely weather-exposed, unlike
+    the broader 'tourism' catch-all which also includes indoor museums."""
+    stop = EngineStop(
+        place_id="p3", name="Gateway Arch", lat=38.62, lon=-90.18,
+        category="landmark", duration_min=45, opening_hours=[],
+        price_level=0, rating=4.7, neighborhood="downtown",
+        is_user_added=True,
+    )
+    assert stop.outdoor is True
+
+
+def test_engine_stop_tourism_category_is_not_outdoor():
+    """'tourism' is left alone — it mixes indoor (museums) and outdoor
+    (mosque courtyards, viewpoints) places, so category alone can't tell."""
+    stop = EngineStop(
+        place_id="p4", name="Jumeirah Mosque", lat=25.23, lon=55.26,
+        category="tourism", duration_min=45, opening_hours=[],
+        price_level=0, rating=4.6, neighborhood="jumeirah",
+        is_user_added=True,
+    )
+    assert stop.outdoor is False
+
+
 def test_engine_message_fields():
     msg = EngineMessage(
         type="swap", what="Swapped X for Y", why="X closes at 17:00",
