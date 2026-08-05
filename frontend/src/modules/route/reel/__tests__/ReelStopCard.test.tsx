@@ -1,17 +1,6 @@
-import { useState } from 'react';
 import { render, within, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ReelStopCard } from '../ReelStopCard';
-
-// ReelStopCard's expand/collapse state is controlled by the parent in production
-// (ItineraryReelScreen owns a single expandedCardKey). This wrapper reproduces that
-// with local state so existing tests can still drive expand/collapse via clicks
-// without every test needing its own state plumbing.
-type RSCProps = React.ComponentProps<typeof ReelStopCard>;
-function StatefulReelStopCard(props: Omit<RSCProps, 'expanded' | 'onExpandChange'>) {
-  const [expanded, setExpanded] = useState(false);
-  return <ReelStopCard {...props} expanded={expanded} onExpandChange={setExpanded} />;
-}
 
 // Minimal mock stop
 const mockStop = {
@@ -61,7 +50,7 @@ afterEach(() => {
 describe('ReelStopCard — Maps CTA removal', () => {
   it('does not render any maps.google.com links', () => {
     // @ts-ignore minimal mock
-    const { container } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { container } = render(<ReelStopCard card={mockCard} active={true} />);
     const mapLinks = container.querySelectorAll('a[href*="maps.google"]');
     expect(mapLinks.length).toBe(0);
   });
@@ -71,7 +60,7 @@ describe('ReelStopCard — provenance label', () => {
   it('shows "You added this" for isUserAdded stops', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: true, isEngineAdded: false } };
     // @ts-ignore
-    const { getAllByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
     // Component renders "You added this" in both the badge row and the card section
     const matches = getAllByText(/you added this/i);
     expect(matches.length).toBeGreaterThan(0);
@@ -80,14 +69,14 @@ describe('ReelStopCard — provenance label', () => {
   it('shows "We added this" for isEngineAdded stops', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
     // Use exact match to avoid matching "Why we added this" group label
     expect(getByText('We added this', { exact: true })).toBeInTheDocument();
   });
 
   it('does not show provenance for stops with neither flag', () => {
     // @ts-ignore
-    const { queryByText } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
     expect(queryByText(/you added this/i)).not.toBeInTheDocument();
     expect(queryByText(/we added this/i)).not.toBeInTheDocument();
   });
@@ -96,28 +85,28 @@ describe('ReelStopCard — provenance label', () => {
 describe('ReelStopCard — group structure', () => {
   it('renders Getting here group', () => {
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { container } = render(<ReelStopCard card={mockCard} active={true} />);
     expect(container.querySelector('[data-group="getting-here"]')).not.toBeNull();
   });
 
   it('hides Why we added this group for isUserAdded stops', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: true, isEngineAdded: false } };
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
     expect(container.querySelector('[data-group="why-added"]')).toBeNull();
   });
 
   it('shows Why we added this group for isEngineAdded stops', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
     expect(container.querySelector('[data-group="why-added"]')).not.toBeNull();
   });
 
   it('displays "Why we added this" label within the group', () => {
     const card = { ...mockCard, stop: { ...mockStop, isUserAdded: false, isEngineAdded: true } };
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
     const group = container.querySelector('[data-group="why-added"]');
     expect(group).toBeTruthy();
     const label = group?.firstElementChild;
@@ -126,7 +115,7 @@ describe('ReelStopCard — group structure', () => {
 
   it('renders statically-present groups for an engine-added stop with localTip', () => {
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={mockEngineAddedCardWithLocalTip} active={true} />);
+    const { container } = render(<ReelStopCard card={mockEngineAddedCardWithLocalTip} active={true} />);
     // about-this-place requires async Wikipedia/content data so is absent in unit tests.
     // The other 5 groups are always rendered when the required stop data is present.
     const groups = ['getting-here', 'at-this-stop', 'local-insight', 'why-added', 'next-stop'];
@@ -151,7 +140,7 @@ describe('ReelStopCard — Group 1: Getting here', () => {
       stop: { ...mockStop, lat: 35.69, lon: 139.70 },
     };
     // @ts-ignore
-    const { container, findByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container, findByText } = render(<ReelStopCard card={card} active={true} />);
     // Click the drag handle to expand the panel (triggers transit fetch)
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
@@ -167,13 +156,13 @@ describe('ReelStopCard — Group 1: Getting here', () => {
       stop: { ...mockStop, isEngineAdded: true },
     };
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
     expect(getByText(/1\.2 km off your direct route/i)).toBeInTheDocument();
   });
 
   it('shows "Starting point" when no prevStopTitle', () => {
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { getByText } = render(<ReelStopCard card={mockCard} active={true} />);
     expect(getByText(/starting point for this day/i)).toBeInTheDocument();
   });
 });
@@ -182,7 +171,7 @@ describe('ReelStopCard — Group 3b: Local insight', () => {
   it('shows localTip text', () => {
     const card = { ...mockCard, stop: { ...mockStop, localTip: 'Best visited at dusk.' } };
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
     // localTip appears only in Group 3b (local insight) — not duplicated in Group 3a
     expect(getByText('Best visited at dusk.')).toBeInTheDocument();
   });
@@ -194,7 +183,7 @@ describe('ReelStopCard — Group 3b: Local insight', () => {
       hotelAnchor: { text: '0.4 km from your hotel', isWarning: false, isBlue: true, icon: 'hotel' },
     };
     // @ts-ignore
-    const { getAllByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
     // The hotel anchor text appears in local-insight group (and possibly about-this-place too)
     const matches = getAllByText('0.4 km from your hotel');
     expect(matches.length).toBeGreaterThan(0);
@@ -202,7 +191,7 @@ describe('ReelStopCard — Group 3b: Local insight', () => {
 
   it('hides localTip section when localTip is null', () => {
     // @ts-ignore
-    const { queryByText } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
     expect(queryByText(/local insight/i)).not.toBeInTheDocument();
   });
 });
@@ -215,7 +204,7 @@ describe('ReelStopCard — Group 3c: Why we added this', () => {
       stop: { ...mockStop, isEngineAdded: true },
     };
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
     // orderConsequence (with no orderReason) surfaces via reasonText in the collapsed view only
     expect(getByText('Balances your afternoon with a cultural break.')).toBeInTheDocument();
   });
@@ -227,7 +216,7 @@ describe('ReelStopCard — Group 3c: Why we added this', () => {
       stop: { ...mockStop, isEngineAdded: true, whyForYou: 'Great for slow mornings.' },
     };
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
     // whyForYou appears in both collapsed view and Group 3c; scope to Group 3c as regression guard
     const group = container.querySelector('[data-group="why-added"]') as HTMLElement;
     expect(within(group).getByText('Great for slow mornings.')).toBeInTheDocument();
@@ -240,7 +229,7 @@ describe('ReelStopCard — Group 3c: Why we added this', () => {
       stop: { ...mockStop, isEngineAdded: true },
     };
     // @ts-ignore
-    const { getByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getByText } = render(<ReelStopCard card={card} active={true} />);
     expect(getByText(/moved to leave time for hotel check-in at 5 PM/i)).toBeInTheDocument();
   });
 });
@@ -252,7 +241,7 @@ describe('ReelStopCard — Group 4: Next stop', () => {
       nextLeg: { distKm: 0.8, durationMin: 11, mode: 'walk' as const, nextStopTitle: 'Yoyogi Park' },
     };
     // @ts-ignore
-    const { getAllByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
     // Title appears in expanded Group 4, duration text appears in both collapsed and expanded views
     expect(getAllByText('Yoyogi Park').length).toBeGreaterThan(0);
     expect(getAllByText(/11 min/i).length).toBeGreaterThan(0);
@@ -265,7 +254,7 @@ describe('ReelStopCard — Group 4: Next stop', () => {
       hotelAnchor: { text: 'Hotel check-in at 5 PM', isWarning: false, isBlue: true, icon: 'hotel' },
     };
     // @ts-ignore
-    const { getAllByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { getAllByText } = render(<ReelStopCard card={card} active={true} />);
     // hotelAnchor.text appears in Group 3a and Group 4
     const matches = getAllByText('Hotel check-in at 5 PM');
     expect(matches.length).toBeGreaterThan(0);
@@ -280,7 +269,7 @@ describe('ReelStopCard — crowdNote hyphen stripping', () => {
       stop: { ...mockStop, category: 'museum' as const, time: '11:00' },
     };
     // @ts-ignore
-    const { container } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container } = render(<ReelStopCard card={card} active={true} />);
     // The crowd note div should not contain raw em-dash surrounded by spaces
     const crowdEl = container.querySelector('.crowd-note');
     expect(crowdEl).toBeTruthy();
@@ -303,7 +292,7 @@ describe('ReelStopCard — advisory pills', () => {
       },
     };
     // @ts-ignore
-    const { container, findByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container, findByText } = render(<ReelStopCard card={card} active={true} />);
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
     await act(async () => { fireEvent.click(dragHandle); });
@@ -312,7 +301,7 @@ describe('ReelStopCard — advisory pills', () => {
 
   it('does not show an advisory pill when advisories is absent', async () => {
     // @ts-ignore
-    const { container, queryByText } = render(<StatefulReelStopCard card={mockCard} active={true} />);
+    const { container, queryByText } = render(<ReelStopCard card={mockCard} active={true} />);
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
     await act(async () => { fireEvent.click(dragHandle); });
@@ -332,7 +321,7 @@ describe('ReelStopCard — advisory pills', () => {
       },
     };
     // @ts-ignore
-    const { container, findByText, queryByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container, findByText, queryByText } = render(<ReelStopCard card={card} active={true} />);
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
     await act(async () => { fireEvent.click(dragHandle); });
@@ -353,7 +342,7 @@ describe('ReelStopCard — advisory pills', () => {
       },
     };
     // @ts-ignore
-    const { container, findByText } = render(<StatefulReelStopCard card={card} active={true} />);
+    const { container, findByText } = render(<ReelStopCard card={card} active={true} />);
     const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
     const dragHandle = panel?.firstElementChild as HTMLElement;
     await act(async () => { fireEvent.click(dragHandle); });
@@ -363,52 +352,5 @@ describe('ReelStopCard — advisory pills', () => {
     expect(await findByText('Ramadan hours')).toBeInTheDocument();
     expect(await findByText('Visit before 11am or after 5pm.')).toBeInTheDocument();
     expect(await findByText('Kitchen closed until sunset.')).toBeInTheDocument();
-  });
-});
-
-describe('ReelStopCard — controlled expand/collapse', () => {
-  // Regression coverage for the "reopens on scroll up" / stale-expanded-card bug.
-  // Expand state used to be local to each always-mounted card, kept in sync with
-  // the parent via a single shared ref that only worked under React's assumed
-  // sibling-effect ordering — which broke under fast/skipped scrolling, leaving
-  // some cards stuck expanded. It's now a plain controlled prop, so the parent
-  // can always force a collapse directly, with no ref/registration indirection.
-
-  it('renders collapsed when expanded=false, regardless of prior interaction', () => {
-    // @ts-ignore
-    const { container } = render(<ReelStopCard card={mockCard} active={true} expanded={false} onExpandChange={() => {}} />);
-    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
-    expect(panel.style.height).toBe('auto');
-  });
-
-  it('renders expanded when the parent sets expanded=true, with no click required', () => {
-    // @ts-ignore
-    const { container } = render(<ReelStopCard card={mockCard} active={true} expanded={true} onExpandChange={() => {}} />);
-    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
-    expect(panel.style.height).toBe('86dvh');
-  });
-
-  it('clicking the drag handle calls onExpandChange instead of managing its own state', () => {
-    const onExpandChange = vi.fn();
-    // @ts-ignore
-    const { container } = render(<ReelStopCard card={mockCard} active={true} expanded={false} onExpandChange={onExpandChange} />);
-    const panel = container.querySelector('[data-panel="true"]') as HTMLElement;
-    const dragHandle = panel?.firstElementChild as HTMLElement;
-    fireEvent.click(dragHandle);
-    expect(onExpandChange).toHaveBeenCalledWith(true);
-  });
-
-  it('the parent can force-collapse an expanded card directly — no stale ref involved', () => {
-    // @ts-ignore
-    const { container, rerender } = render(<ReelStopCard card={mockCard} active={true} expanded={true} onExpandChange={() => {}} />);
-    let panel = container.querySelector('[data-panel="true"]') as HTMLElement;
-    expect(panel.style.height).toBe('86dvh');
-
-    // Simulates ItineraryReelScreen's "collapse on activeIdx change" effect —
-    // a direct prop flip, not a call through any per-card registered ref.
-    // @ts-ignore
-    rerender(<ReelStopCard card={mockCard} active={false} expanded={false} onExpandChange={() => {}} />);
-    panel = container.querySelector('[data-panel="true"]') as HTMLElement;
-    expect(panel.style.height).toBe('auto');
   });
 });

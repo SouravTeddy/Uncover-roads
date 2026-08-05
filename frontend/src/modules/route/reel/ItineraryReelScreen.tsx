@@ -43,24 +43,6 @@ function appendImgCache(placeId: string | undefined | null, title: string, url: 
   } catch { /* ignore */ }
 }
 
-// Stable identity per card — used for both the React list key and for
-// re-locating a card's index after the cards array changes shape (e.g. an
-// intel/scenic card is inserted asynchronously mid-session).
-function getCardKey(card: ReelCard, idx: number): string {
-  return (
-    card.type === 'stop' ? card.stop.id :
-    card.type === 'intel' ? card.id :
-    card.type === 'transit' ? `transit-${card.from}-${card.to}` :
-    card.type === 'day_divider' ? `day-${card.day}` :
-    card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
-    card.type === 'day_intel' ? card.id :
-    card.type === 'scenic' ? `scenic-${card.from}-${card.to}` :
-    card.type === 'group' ? `group-${card.fromStop}-${card.toStop}` :
-    card.type === 'growth' ? 'growth-card' :
-    `${card.type}-${idx}`
-  );
-}
-
 function timeToMin(t: string): number { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
 function formatGoldenHour(t: string): string {
   const [h, m] = t.split(':').map(Number);
@@ -217,15 +199,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   const cardsDataRef = useRef<ReelCard[]>([]);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Single source of truth for which card's panel is expanded — replaces a
-  // previous per-card ref-registration scheme that assumed React always runs
-  // sibling effects in a specific DOM order, which didn't hold under fast/
-  // flung scrolling and left stale cards stuck expanded.
-  const [expandedCardKey, setExpandedCardKey] = useState<string | null>(null);
-  // Tracks the *key* (not index) of the currently active card, so the scroll-
-  // restore effect below can find its new position even if the cards array
-  // changes shape (e.g. an intel card is inserted) between renders.
-  const activeCardKeyRef = useRef<string | null>(null);
+  const panelControlRef = useRef<import('./ReelStopCard').PanelControl | null>(null);
   const weatherByCityRef = useRef(weatherByCity);
   const personaNameRef = useRef(personaName);
   const tripDetailsRef = useRef<TripDetails | null>(savedItem?.tripDetails ?? state.pendingTripDetails ?? null);
@@ -480,21 +454,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
   // Keep activeIdxRef in sync synchronously so the layout-effect scroll restore reads
   // the correct value even when activeIdx and cards update in the same React commit.
-  // Also capture the active card's stable key (not just its index) — if displayCards
-  // changes shape between now and the next scroll-restore (e.g. an intel card gets
-  // inserted asynchronously), the index alone would point at the wrong card, but the
-  // key lets us re-locate the actual card the user was looking at.
-  useLayoutEffect(() => {
-    activeIdxRef.current = activeIdx;
-    // Guard against the loading-screen render: displayCards is declared further
-    // down this component, after the early "still loading" return — referencing
-    // it here before that line has ever executed for the current render throws
-    // (temporal dead zone), crashing the whole tree. Nothing to key-track yet
-    // anyway while the itinerary/images/persona aren't ready.
-    if (!activeItinerary || !imagesReady || !state.persona) return;
-    const activeCard = displayCards[activeIdx];
-    activeCardKeyRef.current = activeCard ? getCardKey(activeCard, activeIdx) : null;
-  }, [activeIdx]);
+  useLayoutEffect(() => { activeIdxRef.current = activeIdx; }, [activeIdx]);
 
   // Keep a live snapshot of cards for the lazy-fetch effect (avoids stale closure)
   useEffect(() => { cardsDataRef.current = cards; }, [cards]);
@@ -541,16 +501,11 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
   // After secondary card rebuilds (weather/persona/photos), restore scroll so the
   // user stays on the same card — prevents iOS scroll-snap jumping mid-gesture.
-  // Re-locates the card by its stable key rather than reusing the old numeric
-  // index verbatim, since the rebuild can change how many cards precede it.
   useLayoutEffect(() => {
     if (!restoreScrollRef.current || !scrollRef.current) return;
     restoreScrollRef.current = false;
     const el = scrollRef.current;
-    const key = activeCardKeyRef.current;
-    const foundIdx = key != null ? displayCards.findIndex((c, i) => getCardKey(c, i) === key) : -1;
-    const targetIdx = foundIdx >= 0 ? foundIdx : activeIdxRef.current;
-    el.scrollTop = targetIdx * el.clientHeight;
+    el.scrollTop = activeIdxRef.current * el.clientHeight;
   }, [cards]);
 
   // Deferred enrichment rebuild — avoids calling setCards mid-swipe which causes
@@ -707,10 +662,9 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
 
 
   // Collapse the panel whenever the active card changes so expanded state
-  // from a previous card doesn't bleed into the next one. Direct state update —
-  // no ref-registration indirection, so this can never target a stale card.
+  // from a previous card doesn't bleed into the next one.
   useEffect(() => {
-    setExpandedCardKey(null);
+    panelControlRef.current?.collapse();
   }, [activeIdx]);
 
   // Show the scroll-to-top arrow for 1 s whenever the active card changes, then fade it out
@@ -728,6 +682,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
   }, []);
 
   const handleCloseTripDetails = useCallback(() => setShowTripDetails(false), []);
+  const registerPanelControl = useCallback((ctrl: import('./ReelStopCard').PanelControl | null) => { panelControlRef.current = ctrl; }, []);
 
   const handleUndo = useCallback(() => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
@@ -1142,7 +1097,6 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
         {displayCards.map((card, idx) => {
           const isActive = idx === activeIdx;
           const setRef = (el: HTMLDivElement | null) => { cardRefs.current[idx] = el; };
-          const cardKey = getCardKey(card, idx);
           let child: ReactNode = null;
           if (card.type === 'intro') {
             const tripDets = savedItem?.tripDetails ?? state.pendingTripDetails;
@@ -1203,8 +1157,7 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
                 setUndoPending({ id: stop.id, label: stop.title });
                 undoTimer.current = setTimeout(() => setUndoPending(null), 4000);
               }}
-              expanded={expandedCardKey === cardKey}
-              onExpandChange={(v) => setExpandedCardKey(v ? cardKey : null)}
+              onRegisterPanelControl={isActive ? registerPanelControl : undefined}
             />;
           }
           else if (card.type === 'intel')   child = <ReelIntelCard    card={card} active={isActive} />;
@@ -1279,6 +1232,17 @@ export function ItineraryReelScreen({ onTabBarScroll }: ItineraryReelScreenProps
             />
           );
           if (!child) return null;
+          const cardKey =
+            card.type === 'stop' ? card.stop.id :
+            card.type === 'intel' ? card.id :
+            card.type === 'transit' ? `transit-${card.from}-${card.to}` :
+            card.type === 'day_divider' ? `day-${card.day}` :
+            card.type === 'day_transition' ? `transition-${card.prevDay}-${card.nextDay}` :
+            card.type === 'day_intel' ? card.id :
+            card.type === 'scenic' ? `scenic-${card.from}-${card.to}` :
+            card.type === 'group' ? `group-${card.fromStop}-${card.toStop}` :
+            card.type === 'growth' ? 'growth-card' :
+            `${card.type}-${idx}`;
           return (
             <div key={cardKey} ref={setRef} style={{ height: '100dvh', flexShrink: 0, scrollSnapStop: 'always', scrollSnapAlign: 'start' }}>
               {child}
