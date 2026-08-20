@@ -112,7 +112,7 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
         background: T.disBg, opacity: 0.6,
       }}>
         <span className="ms" style={{ fontSize: 14, color: T.sage }}>check_circle</span>
-        <span style={{ fontSize: 10.5, color: T.disClr, fontStyle: 'italic' }}>
+        <span style={{ fontSize: 'clamp(13.5px, 3.6vw, 15px)', color: T.disClr, fontStyle: 'italic' }}>
           {obs.what} — resolved
         </span>
       </div>
@@ -136,16 +136,16 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: T.t1, lineHeight: 1.25, marginBottom: 3 }}>
+        <div style={{ fontSize: 'clamp(14px, 3.8vw, 15px)', fontWeight: 700, color: T.t1, lineHeight: 1.25, marginBottom: 3 }}>
           {obs.what}
         </div>
         {obs.why && (
-          <div style={{ fontSize: 10, color: T.t3, fontStyle: 'italic', lineHeight: 1.5, marginBottom: obs.consequence ? 4 : 8 }}>
+          <div style={{ fontSize: 'clamp(13px, 3.4vw, 14px)', color: T.t3, fontStyle: 'italic', lineHeight: 1.5, marginBottom: obs.consequence ? 4 : 8 }}>
             {obs.why}
           </div>
         )}
         {obs.consequence && (
-          <div style={{ fontSize: 10.5, color: T.t2, lineHeight: 1.45, marginBottom: 8 }}>
+          <div style={{ fontSize: 'clamp(13.5px, 3.6vw, 15px)', color: T.t2, lineHeight: 1.45, marginBottom: 8 }}>
             {obs.consequence}
           </div>
         )}
@@ -159,7 +159,7 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '4px 9px', borderRadius: 6,
                   background: T.disCta, border: `1px solid ${T.disCtaBdr}`,
-                  fontSize: 9, fontWeight: 700, color: T.disCtaClr, letterSpacing: '.04em',
+                  fontSize: 'clamp(12px, 3.2vw, 13px)', fontWeight: 700, color: T.disCtaClr, letterSpacing: '.04em',
                 }}>
                   <span className="ms" style={{ fontSize: 11 }}>cloud_off</span>
                   Couldn't load nearby
@@ -170,7 +170,7 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '4px 9px', borderRadius: 6,
                     background: T.retryBg, border: `1px solid ${T.retryBdr}`,
-                    fontSize: 9, fontWeight: 700, color: T.retryClr, letterSpacing: '.04em',
+                    fontSize: 'clamp(12px, 3.2vw, 13px)', fontWeight: 700, color: T.retryClr, letterSpacing: '.04em',
                     cursor: 'pointer',
                   }}
                 >
@@ -187,7 +187,7 @@ function ObsRow({ obs, dismissed, fetchState, places: _places, onBrowse, onRetry
                   padding: '4px 9px', borderRadius: 6,
                   background: fetchState === 'loading' ? T.disCta : T.goldBg,
                   border: `1px solid ${fetchState === 'loading' ? T.disCtaBdr : T.goldBdr}`,
-                  fontSize: 9, fontWeight: 700,
+                  fontSize: 'clamp(12px, 3.2vw, 13px)', fontWeight: 700,
                   color: fetchState === 'loading' ? T.disCtaClr : T.gold,
                   letterSpacing: '.04em', cursor: fetchState === 'loading' ? 'default' : 'pointer',
                 }}
@@ -290,12 +290,12 @@ export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onM
           display: 'inline-flex', alignItems: 'center', gap: 4,
           padding: '3px 9px', borderRadius: 99,
           background: T.chipBg, backdropFilter: 'blur(10px)', border: `1px solid ${T.chipBdr}`,
-          fontSize: 8, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: T.chipClr,
+          fontSize: 'clamp(11px, 2.8vw, 12px)', fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.chipClr,
         }}>
           <span className="ms" style={{ fontSize: 11, marginRight: 2 }}>calendar_today</span>
           DAY {card.day}{card.totalDays > 1 ? ` OF ${card.totalDays}` : ''}
         </div>
-        <span style={{ fontSize: 8.5, color: T.t4, letterSpacing: '.06em' }}>
+        <span style={{ fontSize: 'clamp(11px, 2.9vw, 12.5px)', color: T.t4, letterSpacing: '.04em' }}>
           Day {card.day} · {card.dayCity}
         </span>
       </div>
@@ -309,14 +309,14 @@ export function ReelDayIntelCard({ card, active, selectedPlaces, onInteract, onM
       }}>
         {/* Header */}
         <div style={fade('0s')}>
-          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: T.eyebrow, marginBottom: 4 }}>
+          <div style={{ fontSize: 'clamp(11px, 2.8vw, 12px)', fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: T.eyebrow, marginBottom: 4 }}>
             Before you go
           </div>
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 600, color: T.t1, lineHeight: 1.15 }}>
             {title}
           </div>
           {subtitle && (
-            <div style={{ fontSize: 10, color: T.t3, marginTop: 2 }}>{subtitle}</div>
+            <div style={{ fontSize: 'clamp(13px, 3.4vw, 14px)', color: T.t3, marginTop: 2 }}>{subtitle}</div>
           )}
         </div>
 

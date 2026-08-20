@@ -82,9 +82,9 @@ export function ScenePill({ icon, code, meta, live = false, accent = '#d4a853' }
               fontVariationSettings: "'FILL' 1, 'wght' 400",
             }}>{MS_SCENE[icon] ?? icon}</span>
           )}
-      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700, color: '#f2ede6', letterSpacing: '.08em' }}>{code}</span>
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'clamp(13px, 3.4vw, 14px)', fontWeight: 700, color: '#f2ede6', letterSpacing: '.06em' }}>{code}</span>
       <span style={{ width: 1, height: 10, background: 'rgba(242,237,230,.15)', flexShrink: 0 }} />
-      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'rgba(242,237,230,.7)' }}>{meta}</span>
+      <span style={{ fontFamily: 'var(--font-sans)', fontSize: 'clamp(13px, 3.4vw, 14px)', color: 'rgba(242,237,230,.7)' }}>{meta}</span>
     </div>
   );
 }
@@ -133,7 +133,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
         }
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to bottom, transparent, #0a0908)' }} />
         <div style={{ position: 'absolute', top: 56, left: 24 }}>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>From</div>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 'clamp(11px, 2.8vw, 12px)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>From</div>
           <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Playfair Display', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.from}</div>
         </div>
       </div>
@@ -146,7 +146,7 @@ export function WalkSpineScene({ card }: { card: ReelScenicCard }) {
         }
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(to top, transparent, #0a0908)' }} />
         <div style={{ position: 'absolute', bottom: 64, left: 24 }}>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 3 }}>To</div>
+          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 'clamp(11px, 2.8vw, 12px)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>To</div>
           <div style={{ color: '#f5f0ea', fontSize: 22, fontFamily: "'Playfair Display', serif", fontWeight: 600, lineHeight: 1.1 }}>{card.to}</div>
         </div>
       </div>
