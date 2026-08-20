@@ -81,8 +81,27 @@ function styleLabels(style: any): any {
 
 async function fetchMapStyle(url: string): Promise<StyleSpecification> {
   const res = await fetch(url)
+  if (!res.ok) throw new Error(`Map style fetch failed: ${res.status}`)
   const style = await res.json()
   return inject3DBuildings(styleLabels(forceEnglishLabels(style)))
+}
+
+// CARTO's free basemap/glyph endpoints can be slow or rate-limited under load.
+// One retry after a short delay covers transient failures without masking a
+// real outage (a second consecutive failure logs and gives up for this call).
+async function fetchMapStyleWithRetry(url: string): Promise<StyleSpecification | null> {
+  try {
+    return await fetchMapStyle(url)
+  } catch (err) {
+    console.error('[MapLibreMap] style fetch failed, retrying once', err)
+    await new Promise((r) => setTimeout(r, 800))
+    try {
+      return await fetchMapStyle(url)
+    } catch (err2) {
+      console.error('[MapLibreMap] style fetch failed after retry', err2)
+      return null
+    }
+  }
 }
 
 export interface MapHandle {
@@ -116,7 +135,9 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
   const [mapStyle, setMapStyle] = useState<StyleSpecification | null>(null);
 
   useEffect(() => {
-    fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
+    fetchMapStyleWithRetry(getMapStyleUrl()).then((style) => {
+      if (style) setMapStyle(style);
+    });
   }, []);
 
   useImperativeHandle(ref, () => ({
@@ -150,7 +171,11 @@ export const MapLibreMap = forwardRef<MapHandle, Props>(function MapLibreMap(
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
-      fetchMapStyle(getMapStyleUrl()).then(setMapStyle);
+      // On failure, keep whatever style is currently showing rather than
+      // clearing it — a flaky theme-switch fetch shouldn't blank the map.
+      fetchMapStyleWithRetry(getMapStyleUrl()).then((style) => {
+        if (style) setMapStyle(style);
+      });
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();

@@ -783,6 +783,11 @@ export function MapScreen() {
           cityLon={mapCenter?.lon ?? cityGeo?.lon ?? null}
           places={places}
           onSelect={(place) => {
+            // Searched places aren't always already in `places` (e.g. resolved
+            // on demand from Google when no local pin matched) — merge so a
+            // pin actually renders at the correct location. No-op/deduped by
+            // id if it's already loaded.
+            dispatch({ type: 'MERGE_PLACES', places: [place] });
             setActivePlace(place);
             fetchDetails(place);
             dispatch({ type: 'SET_ACTIVE_PIN_ID', id: place.id });

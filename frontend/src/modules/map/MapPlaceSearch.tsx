@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { placesAutocomplete, api } from '../../shared/api';
+import { placesAutocomplete, api, geocodePlace } from '../../shared/api';
 import type { AutocompleteResult, CityResult } from '../../shared/types';
-import type { Place } from '../../shared/types';
+import type { Place, Category } from '../../shared/types';
 
 interface Props {
   city: string;
@@ -17,7 +17,30 @@ interface Props {
 
 interface MatchedResult {
   autocomplete: AutocompleteResult;
-  place: Place;
+  // Non-null when this result matches a pin already loaded on the map (fast
+  // path — used as-is). Null means no local pin matched; its real location is
+  // resolved on demand when the user selects it (see resolvePlace below).
+  place: Place | null;
+}
+
+function categoryFromTypes(types: string[]): Category {
+  if (types.some(t => ['restaurant', 'food', 'meal_takeaway'].includes(t))) return 'restaurant';
+  if (types.some(t => ['bakery'].includes(t))) return 'bakery';
+  if (types.some(t => ['cafe', 'coffee_shop'].includes(t))) return 'cafe';
+  if (types.some(t => ['bar', 'night_club'].includes(t))) return 'bar';
+  if (types.some(t => ['museum'].includes(t))) return 'museum';
+  if (types.some(t => ['art_gallery'].includes(t))) return 'gallery';
+  if (types.some(t => ['park', 'natural_feature', 'campground'].includes(t))) return 'park';
+  if (types.some(t => ['zoo'].includes(t))) return 'zoo';
+  if (types.some(t => ['aquarium'].includes(t))) return 'aquarium';
+  if (types.some(t => ['stadium'].includes(t))) return 'stadium';
+  if (types.some(t => ['library'].includes(t))) return 'library';
+  if (types.some(t => ['movie_theater'].includes(t))) return 'cinema';
+  if (types.some(t => ['amusement_park'].includes(t))) return 'amusement_park';
+  if (types.some(t => ['spa'].includes(t))) return 'spa';
+  if (types.some(t => ['place_of_worship'].includes(t))) return 'spiritual';
+  if (types.some(t => ['tourist_attraction', 'point_of_interest'].includes(t))) return 'tourism';
+  return 'place';
 }
 
 const SESSION_ID = crypto.randomUUID();
@@ -158,6 +181,10 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
   const [loading, setLoading] = useState(false);
   const [noResults, setNoResults] = useState(false);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  // place_id of a result currently being resolved to a real location via
+  // geocodePlace() — used to show inline loading state on that row only.
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Bumped on every debounced search fired; lets a resolving request check whether
@@ -203,6 +230,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
     const myGen = ++searchGenRef.current;
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
+      setResolveError(false);
       try {
         const [raw, cities] = await Promise.all([
           placesAutocomplete(
@@ -223,12 +251,14 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
           c => c.name.toLowerCase() !== city.toLowerCase(),
         ).slice(0, 3);
 
-        // Only keep place results that match an existing pin
-        const matched: MatchedResult[] = [];
-        for (const r of raw) {
-          const place = findMatchingPlace(r.main_text, r.place_id, places, cityLat ?? undefined, cityLon ?? undefined);
-          if (place) matched.push({ autocomplete: r, place });
-        }
+        // Prefer a match against an already-loaded pin (fast, no extra fetch).
+        // If none, still keep the result — its real location is resolved from
+        // Google directly when the user selects it, rather than silently
+        // dropping it or guessing a nearby pin with a similar name.
+        const matched: MatchedResult[] = raw.map(r => ({
+          autocomplete: r,
+          place: findMatchingPlace(r.main_text, r.place_id, places, cityLat ?? undefined, cityLon ?? undefined),
+        }));
 
         setResults(matched);
         setCityResults(filteredCities);
@@ -245,9 +275,36 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, isOpen, cityLat, cityLon, places, city]);
 
-  const pick = (item: MatchedResult) => {
+  const pick = async (item: MatchedResult) => {
+    // Fast path: result already matches a pin loaded on the map — unchanged
+    // behavior, no network round-trip needed.
+    if (item.place) {
+      setSelectedName(item.autocomplete.main_text);
+      onSelect(item.place);
+      close();
+      return;
+    }
+
+    // No local pin matched — resolve the real location from Google directly
+    // rather than guessing. Keep the search open with a brief loading state
+    // instead of closing on a request that might fail.
+    setResolving(item.autocomplete.place_id);
+    const geo = await geocodePlace(item.autocomplete.place_id, SESSION_ID);
+    setResolving(null);
+    if (!geo) {
+      setResolveError(true);
+      return;
+    }
+    const resolved: Place = {
+      id: item.autocomplete.place_id,
+      title: geo.name || item.autocomplete.main_text,
+      category: categoryFromTypes(item.autocomplete.types ?? []),
+      lat: geo.lat,
+      lon: geo.lon,
+      place_id: item.autocomplete.place_id,
+    };
     setSelectedName(item.autocomplete.main_text);
-    onSelect(item.place);
+    onSelect(resolved);
     close();
   };
 
@@ -367,6 +424,12 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
             <div style={{ padding: '20px 16px', color: 'var(--color-text-4)', fontSize: 13, textAlign: 'center' }}>Searching…</div>
           )}
 
+          {resolveError && (
+            <div style={{ margin: '12px 16px 0', padding: '10px 14px', borderRadius: 12, background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text-3)', fontSize: 13, textAlign: 'center' }}>
+              Couldn't locate that place — try again.
+            </div>
+          )}
+
           {!loading && (cityResults.length > 0 || results.length > 0) && (
             <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 88px)' }}>
 
@@ -401,15 +464,17 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
                   <div style={GROUP_LABEL}>Places</div>
                   {results.map((item, i) => {
                     const types = item.autocomplete.types ?? [];
+                    const isResolving = resolving === item.autocomplete.place_id;
                     return (
                       <button
                         key={item.autocomplete.place_id}
-                        onClick={() => pick(item)}
-                        style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop }}
+                        onClick={() => { setResolveError(false); pick(item); }}
+                        disabled={resolving !== null}
+                        style={{ ...ROW, borderTop: i === 0 ? 'none' : ROW.borderTop, opacity: resolving && !isResolving ? 0.5 : 1 }}
                       >
                         <div style={ROW_ICON}>
                           <span className="ms" style={{ fontSize: 20, color: 'var(--color-text-3)', lineHeight: 1 }}>
-                            {placeIcon(types)}
+                            {isResolving ? 'sync' : placeIcon(types)}
                           </span>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -418,7 +483,7 @@ export function MapPlaceSearch({ city, cityLat, cityLon, places, onSelect, onCit
                           </div>
                           {item.autocomplete.secondary_text && (
                             <div style={{ fontSize: 14, color: 'var(--color-text-4)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {item.autocomplete.secondary_text}
+                              {isResolving ? 'Locating…' : item.autocomplete.secondary_text}
                             </div>
                           )}
                         </div>
